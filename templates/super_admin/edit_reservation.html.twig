@@ -1,0 +1,402 @@
+{% extends "layouts/app.html.twig" %}
+
+{% block title %}Edit Reservation - Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="edit-reservation-container">
+    <div class="content-header">
+        <a href="{{ path('admin_calendar') }}" class="back-link">← Back to Calendar</a>
+        <h2>Edit Reservation</h2>
+        <p class="subtitle">Facility: <strong>{{ reservation.facility.name }}</strong> | Reservation ID: <strong>#{{ reservation.id }}</strong></p>
+    </div>
+
+    <div class="form-section card-panel">
+        <form method="POST" action="{{ path('admin_update_reservation', {'id': reservation.id}) }}" class="edit-form">
+            <div class="form-grid">
+                <!-- Requester Information -->
+                <div class="form-group">
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" name="name" class="form-input" 
+                           value="{{ reservation.name }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" class="form-input" 
+                           value="{{ reservation.email }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="contact">Contact Number *</label>
+                    <input type="tel" id="contact" name="contact" class="form-input" 
+                           value="{{ reservation.contact }}" required>
+                </div>
+
+                <!-- Facility Selection -->
+                <div class="form-group">
+                    <label for="facility">Facility *</label>
+                    <select id="facility" name="facility" class="form-input" required onchange="updateFacilityCapacity()">
+                        <option value="">Select a facility</option>
+                        {% for facility in facilities %}
+                            <option value="{{ facility.id }}" 
+                                    data-capacity="{{ facility.capacity }}"
+                                    {% if reservation.facility.id == facility.id %}selected{% endif %}>
+                                {{ facility.name }} (Capacity: {{ facility.capacity }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Capacity -->
+                <div class="form-group">
+                    <label for="capacity">Number of Attendees *</label>
+                    <input type="number" id="capacity" name="capacity" class="form-input" 
+                           value="{{ reservation.capacity }}" min="1" required>
+                    <small class="help-text">Max capacity: <span id="maxCapacity">{{ reservation.facility.capacity }}</span></small>
+                </div>
+
+                <!-- Date and Time -->
+                <div class="form-group">
+                    <label for="reservationDate">Reservation Date *</label>
+                    <input type="date" id="reservationDate" name="reservationDate" class="form-input" 
+                           value="{{ reservation.reservationDate.format('Y-m-d') }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reservationStartTime">Start Time *</label>
+                    <input type="time" id="reservationStartTime" name="reservationStartTime" class="form-input" 
+                           value="{{ reservation.reservationStartTime.format('H:i') }}" required>
+                    <small class="help-text">Available: 08:00 - 17:00</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="reservationEndTime">End Time *</label>
+                    <input type="time" id="reservationEndTime" name="reservationEndTime" class="form-input" 
+                           value="{{ reservation.reservationEndTime.format('H:i') }}" required>
+                    <small class="help-text">Must be after start time</small>
+                </div>
+
+                <!-- Purpose -->
+                <div class="form-group full-width">
+                    <label for="purpose">Purpose/Notes (Optional)</label>
+                    <textarea id="purpose" name="purpose" class="form-input" rows="4" 
+                              placeholder="Describe the purpose of the reservation...">{{ reservation.purpose ?? '' }}</textarea>
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label for="status">Status *</label>
+                    <select id="status" name="status" class="form-input" required>
+                        <option value="Pending" {% if reservation.status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Approved" {% if reservation.status == 'Approved' %}selected{% endif %}>Approved</option>
+                        <option value="Rejected" {% if reservation.status == 'Rejected' %}selected{% endif %}>Rejected</option>
+                        <option value="Cancelled" {% if reservation.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span>✓ Update Reservation</span>
+                </button>
+                <a href="{{ path('admin_calendar') }}" class="btn btn-secondary">
+                    <span>✕ Cancel</span>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Reservation Info Card -->
+    <div class="info-card card-panel">
+        <h3>Reservation Information</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Created:</span>
+                <span class="info-value">{{ reservation.createdAt.format('M d, Y H:i') }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Updated:</span>
+                <span class="info-value">{{ reservation.updatedAt.format('M d, Y H:i') }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Current Status:</span>
+                <span class="info-value status-badge status-{{ reservation.status|lower }}">{{ reservation.status }}</span>
+            </div>
+            {% if reservation.rejectionReason %}
+            <div class="info-item">
+                <span class="info-label">Rejection Reason:</span>
+                <span class="info-value">{{ reservation.rejectionReason }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .edit-reservation-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .content-header {
+        margin-bottom: 2rem;
+    }
+
+    .content-header h2 {
+        color: var(--feu-green-dark);
+        margin: 0.5rem 0;
+    }
+
+    .subtitle {
+        color: #6b7280;
+        font-size: 0.95rem;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 1rem;
+        color: var(--feu-green);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .back-link:hover {
+        color: var(--feu-green-dark);
+    }
+
+    .card-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+    }
+
+    .form-section h3,
+    .info-card h3 {
+        color: var(--feu-green-dark);
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #f3f4f6;
+        padding-bottom: 0.75rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.95rem;
+    }
+
+    .form-input {
+        padding: 0.75rem;
+        border: 2px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        color: #1f2937;
+        transition: border-color 0.2s;
+        font-family: inherit;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--feu-green);
+        box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.1);
+    }
+
+    .form-input::placeholder {
+        color: #9ca3af;
+    }
+
+    .help-text {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        padding-top: 1.5rem;
+        border-top: 2px solid #f3f4f6;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: var(--feu-green);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--feu-green-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 102, 51, 0.2);
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
+        border-color: #9ca3af;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        border-left: 3px solid var(--feu-green);
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .info-value {
+        color: #1f2937;
+        font-size: 0.95rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        width: fit-content;
+    }
+
+    .status-pending {
+        background: #fff7ed;
+        color: #9a3412;
+    }
+
+    .status-approved {
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+    .status-rejected {
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+    .status-suggested {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-cancelled {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    @media (max-width: 768px) {
+        .edit-reservation-container {
+            padding: 1rem;
+        }
+
+        .card-panel {
+            padding: 1.5rem;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<script>
+    function updateFacilityCapacity() {
+        const facilitySelect = document.getElementById('facility');
+        const selectedOption = facilitySelect.options[facilitySelect.selectedIndex];
+        const maxCapacity = selectedOption.dataset.capacity;
+        document.getElementById('maxCapacity').textContent = maxCapacity;
+        
+        // Update capacity input max value
+        const capacityInput = document.getElementById('capacity');
+        capacityInput.max = maxCapacity;
+    }
+
+    // Validate time inputs
+    document.getElementById('reservationEndTime').addEventListener('change', function() {
+        const startTime = document.getElementById('reservationStartTime').value;
+        const endTime = this.value;
+        
+        if (startTime && endTime && startTime >= endTime) {
+            alert('End time must be after start time');
+            this.value = '';
+        }
+    });
+
+    // Validate capacity
+    document.getElementById('capacity').addEventListener('change', function() {
+        const maxCapacity = parseInt(document.getElementById('maxCapacity').textContent);
+        const capacity = parseInt(this.value);
+        
+        if (capacity > maxCapacity) {
+            alert(`Capacity cannot exceed ${maxCapacity}`);
+            this.value = maxCapacity;
+        }
+    });
+</script>
+{% endblock %}

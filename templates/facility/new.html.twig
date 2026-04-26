@@ -1,0 +1,39 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Create Facility | Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Add New Facility</h2>
+    </div>
+
+    <div class="card-panel">
+        <form method="POST" enctype="multipart/form-data" style="max-width: 600px;">
+            <div class="form-group">
+                <label for="name">Facility Name <span style="color: #dc2626;">*</span></label>
+                <input type="text" id="name" name="name" required placeholder="Facility name">
+            </div>
+
+            <div class="form-group">
+                <label for="capacity">Capacity (pax) <span style="color: #dc2626;">*</span></label>
+                <input type="number" id="capacity" name="capacity" required min="1" placeholder="Number of persons">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="5" placeholder="Facility description"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="image">Facility Image</label>
+                <input type="file" id="image" name="image" accept="image/*">
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn-primary">Create Facility</button>
+                <a href="{{ path('app_facility_management') }}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+{% endblock %}

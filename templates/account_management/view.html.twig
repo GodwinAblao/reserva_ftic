@@ -1,0 +1,81 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Account Details | Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Account Details</h2>
+    </div>
+
+    <div class="card-panel" style="max-width: 700px;">
+        <div style="display: flex; gap: 32px; margin-bottom: 24px;">
+            <div style="flex-shrink: 0;">
+                <div class="profile-picture-holder">
+                    {% if user.profilePicture %}
+                        <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Profile Picture">
+                    {% else %}
+                        <div class="profile-placeholder">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="8" r="4"/>
+                                <path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+                            </svg>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <div style="margin-bottom: 24px;">
+                    <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Identification</p>
+                    <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.identification ?? 'Not set' }}</p>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Institutional Email</p>
+                    <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.institutionalEmail ?? 'Not set' }}</p>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Full Name</p>
+                    <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.firstName ?? '' }} {{ user.middleName ?? '' }} {{ user.lastName ?? '' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Degree</p>
+            <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.degree ?? 'Not set' }}</p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Degree Name</p>
+            <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.degreeName ?? 'Not set' }}</p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Email (Login)</p>
+            <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.email }}</p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Role</p>
+            <div>
+                {% for role in user.roles %}
+                    <span class="pill-role" style="margin-right: 8px;">
+                        {% if role == 'ROLE_SUPER_ADMIN' %}
+                            SUPER ADMIN
+                        {% elseif role == 'ROLE_USER' %}
+                            USER
+                        {% else %}
+                            {{ role }}
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="btn-primary">Edit</a>
+            <a href="{{ path('app_account_management') }}" class="btn-secondary">Back</a>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Edit Account | Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Edit Account</h2>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success">{{ message }}</div>
+    {% endfor %}
+
+    <div class="card-panel">
+        <form method="post" enctype="multipart/form-data" style="max-width: 600px;">
+            <div class="form-group">
+                <label for="identification">Identification</label>
+                <input type="text" name="identification" id="identification" value="{{ user.identification }}" placeholder="Student/Employee ID">
+            </div>
+
+            <div class="form-group">
+                <label for="institutional_email">Institutional Email</label>
+                <input type="email" name="institutional_email" id="institutional_email" value="{{ user.institutionalEmail }}" placeholder="user@fit.edu.ph">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label for="first_name">First Name</label>
+                    <input type="text" name="first_name" id="first_name" value="{{ user.firstName }}" placeholder="First name">
+                </div>
+
+                <div class="form-group">
+                    <label for="middle_name">Middle Name</label>
+                    <input type="text" name="middle_name" id="middle_name" value="{{ user.middleName }}" placeholder="Middle name">
+                </div>
+
+                <div class="form-group">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" name="last_name" id="last_name" value="{{ user.lastName }}" placeholder="Last name">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="degree">Degree</label>
+                <input type="text" name="degree" id="degree" value="{{ user.degree }}" placeholder="e.g., BSIT, BSBA">
+            </div>
+
+            <div class="form-group">
+                <label for="degree_name">Degree Name</label>
+                <input type="text" name="degree_name" id="degree_name" value="{{ user.degreeName }}" placeholder="Full degree name">
+            </div>
+
+            <div class="form-group">
+                <label for="profile_picture">Profile Picture</label>
+                {% if user.profilePicture %}
+                    <div style="margin-bottom: 8px;">
+                        <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Current profile picture" style="max-width: 150px; border-radius: 8px; border: 2px solid #006633;">
+                        <div style="margin-top: 4px; font-size: 14px; color: #666;">Current picture: {{ user.profilePicture }}</div>
+                    </div>
+                {% endif %}
+                <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
+                {% if user.profilePicture %}
+                    <small style="color: #666;">Upload a new file to replace the current picture</small>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email (Login)</label>
+                <input type="email" name="email" id="email" value="{{ user.email }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password (leave blank to keep current)</label>
+                <input type="password" name="password" id="password">
+            </div>
+
+            <div class="form-group">
+                <label for="roles">Role</label>
+                <select name="roles[]" id="roles" multiple required>
+                    <option value="ROLE_USER" {% if 'ROLE_USER' in user.roles %}selected{% endif %}>User</option>
+                    <option value="ROLE_SUPER_ADMIN" {% if 'ROLE_SUPER_ADMIN' in user.roles %}selected{% endif %}>Super Admin</option>
+                </select>
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('account_edit') }}">
+
+            <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn-primary">Save Changes</button>
+                <a href="{{ path('app_account_management') }}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

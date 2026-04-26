@@ -1,0 +1,46 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Edit Facility | Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Edit Facility</h2>
+    </div>
+
+    <div class="card-panel">
+        <form method="POST" enctype="multipart/form-data" style="max-width: 600px;">
+            <div class="form-group">
+                <label for="name">Facility Name <span style="color: #dc2626;">*</span></label>
+                <input type="text" id="name" name="name" value="{{ facility.name }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="capacity">Capacity (pax) <span style="color: #dc2626;">*</span></label>
+                <input type="number" id="capacity" name="capacity" value="{{ facility.capacity }}" required min="1">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="5">{{ facility.description }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="image">Facility Image</label>
+                {% if facility.image %}
+                    <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; text-align: center;">
+                        <img src="{{ facility.image }}" alt="{{ facility.name }}" style="max-width: 200px; max-height: 200px; margin-bottom: 10px; border-radius: 6px; display: block; margin-left: auto; margin-right: auto;">
+                        <p style="margin: 0; color: #666; font-size: 12px;">Current Image</p>
+                    </div>
+                {% endif %}
+                <input type="file" id="image" name="image" accept="image/*">
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn-primary">Update Facility</button>
+                <a href="{{ path('app_facility_management') }}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+
+{% endblock %}

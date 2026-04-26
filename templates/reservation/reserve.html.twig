@@ -1,0 +1,944 @@
+{% extends "layouts/app.html.twig" %}
+
+{% block title %}Reserve {{ facility.name }} - Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="reservation-container">
+    <div class="content-header">
+        <a href="{{ path('app_facility_view', {'id': facility.id}) }}" class="back-link">← Back to {{ facility.name }}</a>
+        <h2>Reserve {{ facility.name }}</h2>
+        <p class="facility-capacity">Maximum Capacity: <strong>{{ facility.capacity }} people</strong></p>
+    </div>
+
+    <div class="reservation-main">
+        <!-- Calendar Section -->
+        <div class="calendar-section card-panel">
+            <h3>Select Date & Time</h3>
+            <p class="info-text">Available times: <strong>8:00 AM - 5:00 PM</strong></p>
+
+            <div class="calendar-wrapper">
+                <div class="month-navigation">
+                    <button type="button" id="prevMonth" class="btn-nav">← Previous</button>
+                    <h4 id="monthYear"></h4>
+                    <button type="button" id="nextMonth" class="btn-nav">Next →</button>
+                </div>
+
+                <div id="calendar" class="calendar-grid"></div>
+            </div>
+
+            <!-- Time Slots -->
+            <div class="time-slots-section" id="timeSlots">
+                <h4>Select Time Range</h4>
+                <div class="time-grid" id="timeGrid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="calendar-legend">
+                <div class="legend-item">
+                    <div class="slot available"></div>
+                    <span>Available</span>
+                </div>
+                <div class="legend-item">
+                    <div class="slot booked"></div>
+                    <span>Booked</span>
+                </div>
+                <div class="legend-item">
+                    <div class="slot pending"></div>
+                    <span>Pending</span>
+                </div>
+                <div class="legend-item">
+                    <div class="slot disabled"></div>
+                    <span>Past Date</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reservation Form Section -->
+        <div class="form-section card-panel">
+            <h3>Reservation Details</h3>
+            <form id="reservationForm" class="form-group">
+                <div class="form-row">
+                    <div class="form-group-item">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" class="form-input" 
+                               value="{{ userName }}" required>
+                    </div>
+                    <div class="form-group-item">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" class="form-input" 
+                               value="{{ userEmail }}" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group-item">
+                        <label for="contact">Contact Number</label>
+                        <input type="tel" id="contact" name="contact" class="form-input" 
+                               placeholder="e.g., 09123456789" required>
+                    </div>
+                    <div class="form-group-item">
+                        <label for="capacity">Number of Attendees</label>
+                        <input type="number" id="capacity" name="capacity" class="form-input" 
+                               min="1" max="{{ facility.capacity }}" required>
+                        <small class="help-text">Maximum: {{ facility.capacity }} people</small>
+                    </div>
+                </div>
+
+                <div class="form-group-item">
+                    <label for="purpose">Purpose/Notes (Optional)</label>
+                    <textarea id="purpose" name="purpose" class="form-input" rows="4" 
+                              placeholder="Describe the purpose of your reservation..."></textarea>
+                </div>
+
+                <!-- Hidden fields for date and time -->
+                <input type="hidden" id="reservation_date" name="reservation_date" required>
+                <input type="hidden" id="reservation_start_time" name="reservation_start_time" required>
+                <input type="hidden" id="reservation_end_time" name="reservation_end_time" required>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token('reservation') }}">
+
+                <!-- Selected date and time display -->
+                <div class="selected-info">
+                    <p>Selected Date: <strong id="selectedDate">Not selected</strong></p>
+                    <p>Selected Time: <strong id="selectedTime">Not selected</strong></p>
+                </div>
+
+                <!-- Error message display -->
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Submit Reservation</button>
+                    <a href="{{ path('app_facility_view', {'id': facility.id}) }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .reservation-container {
+        padding: 2rem 0;
+    }
+
+    .reservation-main {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .calendar-section, .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: var(--feu-shadow);
+    }
+
+    .calendar-section h3, .form-section h3 {
+        color: var(--feu-green-dark);
+        margin-bottom: 1rem;
+        font-size: 1.25rem;
+    }
+
+    .info-text {
+        color: #666;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+    }
+
+    /* Calendar Styles */
+    .calendar-wrapper {
+        margin-bottom: 2rem;
+    }
+
+    .month-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .month-navigation h4 {
+        color: var(--feu-green-dark);
+        margin: 0;
+    }
+
+    .btn-nav {
+        background: var(--feu-green);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.3s ease;
+    }
+
+    .btn-nav:hover {
+        background: var(--feu-green-dark);
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .calendar-grid .day-header {
+        text-align: center;
+        font-weight: bold;
+        color: var(--feu-green-dark);
+        padding: 0.5rem 0;
+        font-size: 0.85rem;
+    }
+
+    .calendar-grid .date-cell {
+        aspect-ratio: 1;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .calendar-grid .date-cell:hover:not(.disabled):not(.past) {
+        background: #f0f8f5;
+        border-color: var(--feu-green);
+    }
+
+    .calendar-grid .date-cell.selected {
+        background: var(--feu-green);
+        color: white;
+        border-color: var(--feu-green-dark);
+    }
+
+    .calendar-grid .date-cell.disabled,
+    .calendar-grid .date-cell.past {
+        background: #f5f5f5;
+        color: #999;
+        cursor: not-allowed;
+        border-color: #ddd;
+    }
+
+    .calendar-grid .date-cell.has-booking {
+        position: relative;
+    }
+
+    .calendar-grid .date-cell.has-booking::after {
+        content: '';
+        position: absolute;
+        bottom: 2px;
+        width: 6px;
+        height: 6px;
+        background: var(--feu-green);
+        border-radius: 50%;
+    }
+
+    /* Time Slots */
+    .time-slots-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #f0f0f0;
+    }
+
+    .time-slots-section h4 {
+        color: var(--feu-green-dark);
+        margin-bottom: 1rem;
+    }
+
+    .time-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+    }
+
+    .time-slot {
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        background: white;
+    }
+
+    .time-slot.available:hover {
+        background: #f0f8f5;
+        border-color: var(--feu-green);
+    }
+
+    .time-slot.selected {
+        background: var(--feu-green);
+        color: white;
+        border-color: var(--feu-green-dark);
+    }
+
+    .time-slot.booked {
+        background: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+        cursor: not-allowed;
+    }
+
+    .time-slot.pending {
+        background: #d9edf7;
+        border-color: #5bc0de;
+        color: #31708f;
+    }
+
+    .time-slot.disabled {
+        background: #f5f5f5;
+        color: #999;
+        cursor: not-allowed;
+        border-color: #ddd;
+    }
+
+    /* Legend */
+    .calendar-legend {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .legend-item .slot {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 2px solid #ddd;
+    }
+
+    .legend-item .slot.available {
+        background: white;
+    }
+
+    .legend-item .slot.booked {
+        background: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    .legend-item .slot.pending {
+        background: #d9edf7;
+        border-color: #5bc0de;
+    }
+
+    .legend-item .slot.disabled {
+        background: #f5f5f5;
+    }
+
+    /* Form Styles */
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .form-group-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group-item label {
+        color: var(--feu-ink);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .form-input {
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--feu-green);
+        box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.1);
+    }
+
+    .help-text {
+        color: #666;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+
+    .selected-info {
+        background: #f0f8f5;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+        color: var(--feu-green-dark);
+    }
+
+    .selected-info p {
+        margin: 0.5rem 0;
+        font-size: 0.95rem;
+    }
+
+    .error-message {
+        background: #f8d7da;
+        border: 2px solid #f5c6cb;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+    }
+
+    .error-with-alternatives {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .error-text {
+        margin: 0;
+        padding: 1rem;
+        background: #fde8e8;
+        border-left: 4px solid #dc3545;
+        border-radius: 4px;
+        color: #721c24;
+    }
+
+    .alternatives-container h4 {
+        color: var(--feu-green-dark);
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+    }
+
+    .alternatives-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .alternative-card {
+        background: #f0f8f5;
+        border: 2px solid var(--feu-green);
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .alt-name {
+        font-weight: 700;
+        color: var(--feu-green-dark);
+        font-size: 1rem;
+    }
+
+    .alt-capacity {
+        font-size: 0.9rem;
+        color: #555;
+    }
+
+    .btn-small {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        background: var(--feu-green);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    .btn-small:hover {
+        background: var(--feu-green-dark);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: var(--feu-green);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--feu-green-dark);
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .back-link {
+        color: var(--feu-green);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
+
+    .back-link:hover {
+        color: var(--feu-green-dark);
+    }
+
+    .facility-capacity {
+        color: #666;
+        margin-top: 0.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .reservation-main {
+            grid-template-columns: 1fr;
+        }
+
+        .time-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .calendar-legend {
+            flex-direction: column;
+            gap: 1rem;
+        }
+    }
+</style>
+
+<script>
+    const bookedTimesData = (() => {
+        const raw = {{ bookedTimes|raw }};
+        if (typeof raw === 'string') {
+            try {
+                return JSON.parse(raw);
+            } catch (error) {
+                return {};
+            }
+        }
+        return raw || {};
+    })();
+    const pendingTimesData = (() => {
+        const raw = {{ pendingTimes|raw }};
+        if (typeof raw === 'string') {
+            try {
+                return JSON.parse(raw);
+            } catch (error) {
+                return {};
+            }
+        }
+        return raw || {};
+    })();
+    let currentMonth = new Date();
+    let selectedDate = null;
+    let selectedStartTime = null;
+    let selectedEndTime = null;
+
+    function initReservationCalendar() {
+        const container = document.querySelector('.reservation-container');
+        if (!container || container.dataset.calendarInit === '1') {
+            return;
+        }
+        container.dataset.calendarInit = '1';
+
+        const prevButton = document.getElementById('prevMonth');
+        const nextButton = document.getElementById('nextMonth');
+        const form = document.getElementById('reservationForm');
+
+        if (!prevButton || !nextButton || !form) {
+            return;
+        }
+
+        renderCalendar();
+
+        // Month navigation
+        prevButton.addEventListener('click', () => {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            renderCalendar();
+        });
+
+        nextButton.addEventListener('click', () => {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // Form submission
+        form.addEventListener('submit', submitReservation);
+    }
+
+    document.addEventListener('DOMContentLoaded', initReservationCalendar);
+    document.addEventListener('turbo:load', initReservationCalendar);
+
+    function renderCalendar() {
+        const calendar = document.getElementById('calendar');
+        const monthYear = document.getElementById('monthYear');
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+
+        monthYear.textContent = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        calendar.innerHTML = '';
+
+        // Day headers
+        const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        dayHeaders.forEach(day => {
+            const header = document.createElement('div');
+            header.className = 'day-header';
+            header.textContent = day;
+            calendar.appendChild(header);
+        });
+
+        // Get first day of month
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const prevLastDay = new Date(year, month, 0);
+
+        // Previous month dates
+        for (let i = firstDay.getDay() - 1; i >= 0; i--) {
+            const cell = createDateCell(new Date(year, month - 1, prevLastDay.getDate() - i), true);
+            calendar.appendChild(cell);
+        }
+
+        // Current month dates
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const date = new Date(year, month, day);
+            const cell = createDateCell(date);
+            calendar.appendChild(cell);
+        }
+
+        // Next month dates
+        const remainingCells = 42 - calendar.children.length;
+        for (let day = 1; day <= remainingCells; day++) {
+            const cell = createDateCell(new Date(year, month + 1, day), true);
+            calendar.appendChild(cell);
+        }
+    }
+
+    function createDateCell(date, isOtherMonth = false) {
+        const cell = document.createElement('div');
+        cell.className = 'date-cell';
+        cell.textContent = date.getDate();
+
+        if (isOtherMonth) {
+            cell.classList.add('disabled');
+        } else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (date.getDay() === 0) {
+                cell.classList.add('disabled');
+                cell.title = 'Sundays are unavailable';
+            } else if (isPastDate(date, today)) {
+                cell.classList.add('past');
+            } else {
+                const dateStr = formatLocalDate(date);
+                if (bookedTimesData[dateStr] && bookedTimesData[dateStr].length > 0) {
+                    cell.classList.add('has-booking');
+                }
+
+                cell.addEventListener('click', () => selectDate(date, cell));
+            }
+        }
+
+        return cell;
+    }
+
+    function selectDate(date, element) {
+        // Remove previous selection
+        document.querySelectorAll('.date-cell.selected').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+
+        selectedDate = date;
+        selectedStartTime = null;
+        selectedEndTime = null;
+        document.getElementById('reservation_date').value = formatLocalDate(date);
+        document.getElementById('selectedDate').textContent = date.toLocaleDateString('en-US', 
+            { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('selectedTime').textContent = 'Not selected';
+        document.getElementById('reservation_start_time').value = '';
+        document.getElementById('reservation_end_time').value = '';
+
+        renderTimeSlots(date);
+    }
+
+    function renderTimeSlots(date) {
+        const timeGrid = document.getElementById('timeGrid');
+        timeGrid.innerHTML = '';
+        const dateStr = formatLocalDate(date);
+        const bookedRanges = bookedTimesData[dateStr] || [];
+        const pendingRanges = pendingTimesData[dateStr] || [];
+        const slots = buildTimeSlots('08:00', '17:00', 15);
+
+        slots.forEach(timeStr => {
+            const slot = document.createElement('button');
+            slot.type = 'button';
+            slot.className = 'time-slot';
+            slot.textContent = timeStr;
+
+            if (isTimeBooked(timeStr, bookedRanges)) {
+                slot.classList.add('booked');
+                slot.disabled = true;
+                slot.title = 'This time range is booked';
+            } else if (isTimeBooked(timeStr, pendingRanges)) {
+                slot.classList.add('pending');
+                slot.title = 'This time range has a pending request';
+            } else {
+                slot.classList.add('available');
+                slot.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    selectTimeRange(timeStr, slot, slots);
+                });
+            }
+
+            timeGrid.appendChild(slot);
+        });
+    }
+
+    function selectTimeRange(timeStr, element, slots) {
+        const minutes = timeToMinutes(timeStr);
+        if (!selectedStartTime || (selectedStartTime && selectedEndTime)) {
+            selectedStartTime = timeStr;
+            selectedEndTime = null;
+        } else if (minutes <= timeToMinutes(selectedStartTime)) {
+            selectedStartTime = timeStr;
+            selectedEndTime = null;
+        } else {
+            selectedEndTime = timeStr;
+        }
+
+        document.getElementById('reservation_start_time').value = selectedStartTime || '';
+        document.getElementById('reservation_end_time').value = selectedEndTime || '';
+
+        updateSelectedTimeDisplay();
+        highlightSelectedRange(slots);
+        document.getElementById('errorMessage').style.display = 'none';
+    }
+
+    function submitReservation(e) {
+        e.preventDefault();
+
+        // Validate selections
+        if (!selectedDate || !selectedStartTime || !selectedEndTime) {
+            showError('Please select a start and end time');
+            return;
+        }
+
+        // Validate time is between 8 AM and 5 PM
+        const startMinutes = timeToMinutes(selectedStartTime);
+        const endMinutes = timeToMinutes(selectedEndTime);
+        if (startMinutes < timeToMinutes('08:00') || endMinutes > timeToMinutes('17:00')) {
+            showError('Reservation time must be between 8:00 AM and 5:00 PM');
+            return;
+        }
+
+        if (endMinutes <= startMinutes) {
+            showError('End time must be later than start time');
+            return;
+        }
+
+        // Validate capacity
+        const capacity = parseInt(document.getElementById('capacity').value);
+        const maxCapacity = {{ facility.capacity }};
+        if (capacity > maxCapacity) {
+            showError(`Capacity cannot exceed facility maximum of ${maxCapacity}`);
+            return;
+        }
+
+        // Submit form
+        const formData = new FormData(document.getElementById('reservationForm'));
+        fetch('{{ path('facility_reserve', {'id': facility.id}) }}', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    if (data.alternatives && data.alternatives.length > 0) {
+                        showAlternatives(data.alternatives, data.error);
+                    } else {
+                        throw new Error(data.error || 'Submission failed');
+                    }
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.success) {
+                if (data.redirect) {
+                    // Redirect to suggestion page if alternatives were found
+                    window.location.href = data.redirect;
+                } else {
+                    alert('Reservation submitted successfully! Your request is pending approval.');
+                    window.location.href = '{{ path('user_reservations') }}';
+                }
+            }
+        })
+        .catch(error => {
+            showError(error.message);
+        });
+    }
+
+    function showAlternatives(alternatives, errorMessage) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.innerHTML = `
+            <div class="error-with-alternatives">
+                <p class="error-text">${errorMessage}</p>
+                <div class="alternatives-container">
+                    <h4>Alternative Facilities Available:</h4>
+                    <div class="alternatives-grid">
+                        ${alternatives.map(alt => `
+                            <div class="alternative-card">
+                                <div class="alt-name">${alt.name}</div>
+                                <div class="alt-capacity">Capacity: ${alt.capacity} people</div>
+                                <button type="button" class="btn btn-small" onclick="switchFacility(${alt.id})">
+                                    Reserve This Instead
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        errorDiv.style.display = 'block';
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function switchFacility(facilityId) {
+        window.location.href = `{{ path('facility_reserve', {'id': '__id__'}) }}`.replace('__id__', facilityId) + 
+            `?date=${document.getElementById('reservation_date').value}&` +
+            `start=${document.getElementById('reservation_start_time').value}&` +
+            `end=${document.getElementById('reservation_end_time').value}`;
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+
+    function buildTimeSlots(start, end, stepMinutes) {
+        const slots = [];
+        let current = timeToMinutes(start);
+        const endMinutes = timeToMinutes(end);
+
+        while (current <= endMinutes) {
+            slots.push(minutesToTime(current));
+            current += stepMinutes;
+        }
+
+        return slots;
+    }
+
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+
+    function minutesToTime(totalMinutes) {
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+    }
+
+    function formatLocalDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function isPastDate(date, today) {
+        if (date.getFullYear() !== today.getFullYear()) {
+            return date.getFullYear() < today.getFullYear();
+        }
+        if (date.getMonth() !== today.getMonth()) {
+            return date.getMonth() < today.getMonth();
+        }
+        return date.getDate() < today.getDate();
+    }
+
+    function isTimeBooked(timeStr, bookedRanges) {
+        const minutes = timeToMinutes(timeStr);
+        return bookedRanges.some(range => {
+            const start = timeToMinutes(range.start);
+            const end = timeToMinutes(range.end);
+            return minutes >= start && minutes < end;
+        });
+    }
+
+    function highlightSelectedRange(slots) {
+        const slotButtons = document.querySelectorAll('.time-slot');
+        slotButtons.forEach((button, index) => {
+            button.classList.remove('selected');
+            if (!selectedStartTime) {
+                return;
+            }
+
+            const timeStr = slots[index];
+            const minutes = timeToMinutes(timeStr);
+            const start = timeToMinutes(selectedStartTime);
+            const end = selectedEndTime ? timeToMinutes(selectedEndTime) : start;
+
+            if (minutes === start || (selectedEndTime && minutes > start && minutes < end)) {
+                button.classList.add('selected');
+            }
+        });
+    }
+
+    function updateSelectedTimeDisplay() {
+        const display = document.getElementById('selectedTime');
+        if (!selectedStartTime) {
+            display.textContent = 'Not selected';
+            return;
+        }
+        if (!selectedEndTime) {
+            display.textContent = selectedStartTime + ' -';
+            return;
+        }
+        display.textContent = selectedStartTime + ' - ' + selectedEndTime;
+    }
+</script>
+{% endblock %}

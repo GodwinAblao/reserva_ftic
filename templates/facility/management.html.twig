@@ -1,0 +1,160 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block content %}
+<div class="content-header">
+    <h2>Facility Management</h2>
+    <a href="{{ path('app_facility_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, var(--feu-green) 0%, var(--feu-green-light) 100%); color: white; font-weight: 700;">+ Add New Facility</a>
+</div>
+
+{% if app.flashes('success') %}
+    <div class="alert alert-success">
+        {% for message in app.flashes('success') %}
+            {{ message }}
+        {% endfor %}
+    </div>
+{% endif %}
+
+{% if facilities is empty %}
+    <div class="no-facilities">
+        <p>No facilities found. <a href="{{ path('app_facility_new') }}">Create one now</a></p>
+    </div>
+{% else %}
+    <div class="management-grid">
+        {% for facility in facilities %}
+            <div class="management-card">
+                <div class="card-image">
+                    {% if facility.image %}
+                        <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                    {% else %}
+                        <div class="placeholder">{{ facility.name | first }}</div>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <h3>{{ facility.name }}</h3>
+                    <p class="capacity"><strong>Capacity:</strong> {{ facility.capacity }} pax</p>
+                    {% if facility.description %}
+                        <p class="desc">{{ facility.description | slice(0, 100) }}{% if facility.description | length > 100 %}...{% endif %}</p>
+                    {% endif %}
+                </div>
+                <div class="card-actions">
+                    <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-link">View</a>
+                    <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn-link">Edit</a>
+                    <form action="{{ path('app_facility_delete', {id: facility.id}) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
+                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ facility.id) }}">
+                        <button type="submit" class="btn-link btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<style>
+    .management-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 24px;
+    }
+
+    .management-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px var(--feu-shadow);
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(0, 102, 51, 0.08);
+    }
+
+    .management-card:hover {
+        box-shadow: 0 8px 20px rgba(0, 102, 51, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .card-image {
+        width: 100%;
+        height: 180px;
+        background: #f0f0f0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .placeholder {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        color: white;
+        font-weight: bold;
+    }
+
+    .card-body {
+        padding: 15px;
+        flex: 1;
+    }
+
+    .card-body h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        color: var(--feu-ink);
+    }
+
+    .capacity {
+        margin: 5px 0;
+        font-size: 13px;
+        color: var(--feu-ink);
+    }
+
+    .desc {
+        margin: 10px 0;
+        font-size: 12px;
+        color: #999;
+        line-height: 1.4;
+    }
+
+    .card-actions {
+        padding: 10px 15px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .card-actions .btn-link {
+        flex: 1;
+        text-align: center;
+        min-width: 60px;
+        padding: 6px 8px;
+    }
+
+    .no-facilities {
+        text-align: center;
+        padding: 60px 20px;
+        background: rgba(0, 102, 51, 0.05);
+        border-radius: 12px;
+        color: #999;
+    }
+
+    .no-facilities a {
+        color: var(--feu-green);
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .no-facilities a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

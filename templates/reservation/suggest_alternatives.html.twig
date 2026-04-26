@@ -1,0 +1,324 @@
+{% extends "layouts/app.html.twig" %}
+
+{% block title %}Suggest Alternative Facility - Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Suggested Alternative Facilities</h2>
+    </div>
+
+    <!-- Original Reservation Details -->
+    <div class="card-panel">
+        <h3 class="section-title">Your Reservation Request</h3>
+        <div class="reservation-details-grid">
+            <div class="detail-item">
+                <label>Facility:</label>
+                <span class="highlight">{{ reservation.facility.name }}</span>
+            </div>
+            <div class="detail-item">
+                <label>Date:</label>
+                <span>{{ reservation.reservationDate|date('M d, Y') }}</span>
+            </div>
+            <div class="detail-item">
+                <label>Time:</label>
+                <span>{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+            </div>
+            <div class="detail-item">
+                <label>Attendees:</label>
+                <span>{{ reservation.capacity }} people</span>
+            </div>
+            <div class="detail-item">
+                <label>Facility Capacity:</label>
+                <span>{{ reservation.facility.capacity }} people</span>
+            </div>
+            {% if reservation.purpose %}
+                <div class="detail-item full-width">
+                    <label>Purpose:</label>
+                    <span>{{ reservation.purpose }}</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Alternative Suggestions -->
+    <div class="card-panel">
+        <h3 class="section-title">Better-Fit Facilities Available</h3>
+        <p class="section-description">We found these facilities that are better suited for your group size ({{ reservation.capacity }} people) and available at your preferred date and time:</p>
+        
+        <div class="alternatives-grid">
+            {% for facility in alternatives %}
+                <div class="facility-card">
+                    <div class="facility-header">
+                        <h4>{{ facility.name }}</h4>
+                        <span class="capacity-badge">
+                            <i class="fas fa-users"></i> {{ facility.capacity }} capacity
+                        </span>
+                    </div>
+
+                    <div class="facility-body">
+                        {% if facility.description %}
+                            <p class="facility-description">{{ facility.description }}</p>
+                        {% endif %}
+
+                        <div class="facility-info">
+                            <div class="info-row">
+                                <span class="label">Capacity:</span>
+                                <span class="value">{{ facility.capacity }} people</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Fit Score:</span>
+                                <span class="value fit-score">✓ Perfect fit for {{ reservation.capacity }} attendees</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Status:</span>
+                                <span class="value status-available">✓ Available</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="facility-footer">
+                        <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}">
+                            <button type="submit" class="btn btn-primary-full">
+                                <i class="fas fa-check"></i> Accept This Facility
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if alternatives|length == 0 %}
+            <div class="empty-alternative">
+                <p>No better-fit facilities are available for your requested date and time.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Keep Original Reservation -->
+    <div class="card-panel keep-original-section">
+        <h3 class="section-title">Keep My Original Facility</h3>
+        <p class="section-description">You can also proceed with your original choice of {{ reservation.facility.name }}, even though it has a larger capacity than needed.</p>
+        
+        <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.id}) }}">
+            <button type="submit" class="btn btn-secondary-large">
+                <i class="fas fa-arrow-right"></i> Keep {{ reservation.facility.name }}
+            </button>
+        </form>
+    </div>
+
+<style>
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .reservation-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .detail-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .detail-item label {
+        font-weight: 600;
+        color: #666;
+        font-size: 0.875rem;
+    }
+
+    .detail-item span {
+        color: #333;
+        font-size: 1rem;
+    }
+
+    .detail-item .highlight {
+        color: #2563eb;
+        font-weight: 600;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+    }
+
+    .section-description {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .alternatives-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .facility-card {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .facility-card:hover {
+        border-color: #2563eb;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .facility-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white;
+        padding: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .facility-header h4 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .capacity-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .facility-body {
+        padding: 1.25rem;
+    }
+
+    .facility-description {
+        color: #6b7280;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+    }
+
+    .facility-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-row .label {
+        font-weight: 600;
+        color: #6b7280;
+    }
+
+    .info-row .value {
+        color: #1f2937;
+    }
+
+    .fit-score {
+        color: #10b981 !important;
+        font-weight: 600;
+    }
+
+    .status-available {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .facility-footer {
+        padding: 1rem 1.25rem;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .btn-primary-full {
+        width: 100%;
+        background: #2563eb;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary-full:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-primary-full i {
+        font-size: 1rem;
+    }
+
+    .keep-original-section {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+        border: 2px solid #d1fae5;
+        margin-top: 2rem;
+    }
+
+    .btn-secondary-large {
+        width: 100%;
+        background: transparent;
+        color: var(--feu-green);
+        border: 2px solid var(--feu-green);
+        padding: 0.875rem 1.75rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-secondary-large:hover {
+        background: rgba(0, 102, 51, 0.08);
+    }
+
+    .empty-alternative {
+        text-align: center;
+        padding: 2rem;
+        color: #6b7280;
+    }
+
+    @media (max-width: 768px) {
+        .alternatives-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}

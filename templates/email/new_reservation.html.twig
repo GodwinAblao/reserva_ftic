@@ -1,0 +1,172 @@
+{# Email notification for new facility reservation #}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .header {
+            background: linear-gradient(135deg, #006633, #004d26);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 102, 51, 0.1);
+        }
+        .detail-row {
+            display: flex;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 12px;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: bold;
+            color: #006633;
+            min-width: 150px;
+        }
+        .value {
+            color: #333;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #006633;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background: #004d26;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .status-badge {
+            display: inline-block;
+            background: #ff9800;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>New Facility Reservation Request</h1>
+            <p>A user has submitted a reservation request that requires your review.</p>
+        </div>
+
+        <div class="content">
+            <h2 style="color: #006633; margin-top: 0;">Reservation Details</h2>
+            
+            <div class="detail-row">
+                <span class="label">Status:</span>
+                <span class="value"><span class="status-badge">Pending Review</span></span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Facility:</span>
+                <span class="value"><strong>{{ reservation.facility.name }}</strong></span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Facility Capacity:</span>
+                <span class="value">{{ reservation.facility.capacity }} people</span>
+            </div>
+
+            <h3 style="color: #006633; margin-top: 20px;">Requester Information</h3>
+
+            <div class="detail-row">
+                <span class="label">Name:</span>
+                <span class="value">{{ reservation.name }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Email:</span>
+                <span class="value"><a href="mailto:{{ reservation.email }}">{{ reservation.email }}</a></span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Contact Number:</span>
+                <span class="value">{{ reservation.contact }}</span>
+            </div>
+
+            <h3 style="color: #006633; margin-top: 20px;">Reservation Information</h3>
+
+            <div class="detail-row">
+                <span class="label">Date:</span>
+                <span class="value">{{ reservation.reservationDate|date('F d, Y') }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Time:</span>
+                <span class="value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="label">Number of Attendees:</span>
+                <span class="value">{{ reservation.capacity }} people</span>
+            </div>
+
+            {% if reservation.purpose %}
+                <div class="detail-row">
+                    <span class="label">Purpose/Notes:</span>
+                    <span class="value">{{ reservation.purpose }}</span>
+                </div>
+            {% endif %}
+
+            <div class="detail-row">
+                <span class="label">Submitted:</span>
+                <span class="value">{{ reservation.createdAt|date('F d, Y h:i A') }}</span>
+            </div>
+
+            <div class="action-buttons">
+                <a href="https://reserva-ftic.edu.ph/super-admin/reservations" class="btn">Review in Dashboard</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification from Reserva FTIC Reservation System.</p>
+            <p>&copy; {{ "now"|date('Y') }} Faculty of Information and Communication Technology - FEU</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Account Management | Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Account Management</h2>
+        <a href="{{ path('app_account_management_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, var(--feu-green) 0%, var(--feu-green-light) 100%); color: white; font-weight: 700;">+ Create Account</a>
+    </div>
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success">{{ message }}</div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-error">{{ message }}</div>
+    {% endfor %}
+
+    <div class="card-panel">
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>
+                            {% if user.firstName or user.lastName %}
+                                {{ user.firstName ?? '' }} {{ user.lastName ?? '' }}
+                            {% else %}
+                                <span style="color: #999;">Not set</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="pill-role">
+                                {% if 'ROLE_SUPER_ADMIN' in user.roles %}
+                                    SUPER ADMIN
+                                {% else %}
+                                    USER
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ path('app_account_management_view', {'id': user.id}) }}" class="btn-link">View</a>
+                            <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="btn-link">Edit</a>
+                            {% if user != app.user %}
+                                <form method="post" action="{{ path('app_account_management_delete', {'id': user.id}) }}" style="display: inline;" onsubmit="return confirm('Are you sure?');">
+                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('delete_' ~ user.id) }}">
+                                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

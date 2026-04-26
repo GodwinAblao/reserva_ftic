@@ -1,0 +1,224 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block content %}
+<div class="facility-view-container">
+    <a href="{{ path('app_facility_index') }}" class="back-link">&larr; Back to Facilities</a>
+
+    <div class="facility-view-content">
+        <div class="facility-image-section">
+            {% if facility.image %}
+                <img src="{{ facility.image }}" alt="{{ facility.name }}">
+            {% else %}
+                <div class="placeholder-image">
+                    {{ facility.name | first }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="facility-info-section">
+            <h1>{{ facility.name }}</h1>
+
+            <div class="info-box">
+                <h3>Capacity</h3>
+                <p class="capacity-value">{{ facility.capacity }} persons</p>
+            </div>
+
+            {% if facility.description %}
+                <div class="info-box">
+                    <h3>Description</h3>
+                    <p>{{ facility.description }}</p>
+                </div>
+            {% endif %}
+
+            <div class="info-box">
+                <h3>Information</h3>
+                <p>
+                    <strong>Created:</strong> {{ facility.createdAt | format_datetime('long', 'none') }}<br>
+                    <strong>Last Updated:</strong> {{ facility.updatedAt | format_datetime('long', 'none') }}
+                </p>
+            </div>
+
+            {% if is_granted('ROLE_SUPER_ADMIN') %}
+                <div class="admin-actions">
+                    <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn btn-warning">Edit</a>
+                    <a href="{{ path('app_facility_management') }}" class="btn btn-secondary">Back to Management</a>
+                </div>
+            {% else %}
+                <div class="user-actions">
+                    {% if is_granted('ROLE_USER') %}
+                        <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn btn-reserve">Reserve Now</a>
+                    {% else %}
+                        <a href="{{ path('app_login') }}" class="btn btn-reserve">Sign In to Reserve</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .facility-view-container {
+        padding: 30px;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: var(--feu-green);
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .facility-view-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        align-items: start;
+    }
+
+    .facility-image-section {
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .facility-image-section img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .placeholder-image {
+        width: 100%;
+        aspect-ratio: 1;
+        background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 100px;
+        color: white;
+        font-weight: bold;
+    }
+
+    .facility-info-section {
+        padding: 20px;
+    }
+
+    .facility-info-section h1 {
+        font-size: 32px;
+        margin: 0 0 20px 0;
+        color: var(--feu-green-dark);
+    }
+
+    .info-box {
+        margin-bottom: 25px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .info-box:last-of-type {
+        border-bottom: none;
+    }
+
+    .info-box h3 {
+        font-size: 14px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 10px 0;
+        font-weight: 600;
+    }
+
+    .capacity-value {
+        font-size: 24px;
+        color: var(--feu-green);
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .info-box p {
+        margin: 0;
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .admin-actions,
+    .user-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+
+    .btn-reserve {
+        background: var(--feu-green);
+        color: white;
+        flex: 1;
+        text-align: center;
+        font-size: 15px;
+        padding: 14px 24px;
+    }
+
+    .btn-reserve:hover {
+        background: var(--feu-green-dark);
+        box-shadow: 0 4px 8px rgba(0, 102, 51, 0.3);
+    }
+
+    .btn-warning {
+        background: #f39c12;
+        color: white;
+    }
+
+    .btn-warning:hover {
+        background: #d68910;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    @media (max-width: 768px) {
+        .facility-view-content {
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        .facility-view-container {
+            padding: 20px;
+        }
+
+        .facility-info-section h1 {
+            font-size: 24px;
+        }
+
+        .admin-actions,
+        .user-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

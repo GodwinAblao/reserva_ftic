@@ -1,0 +1,516 @@
+{% extends "layouts/app.html.twig" %}
+
+{% block title %}Reservation Management - Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>Reservation Management</h2>
+        <div class="header-actions">
+            <a href="{{ path('admin_calendar') }}" class="btn btn-primary">📅 Calendar View</a>
+            <a href="{{ path('app_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Pending Reservations Tab -->
+    <div class="reservation-section card-panel">
+        <div class="section-header">
+            <h3 class="status-title pending">⏳ Pending Reservations ({{ pending|length }})</h3>
+            <p class="section-description">Review and approve or reject new reservation requests from users.</p>
+        </div>
+
+        {% if pending|length > 0 %}
+            <div class="reservations-table">
+                {% for reservation in pending %}
+                    <div class="reservation-row">
+                        <div class="row-header">
+                            <h4>{{ reservation.facility.name }}</h4>
+                            <span class="status-badge pending">Pending</span>
+                        </div>
+
+                        <div class="row-details">
+                            <div class="detail-col">
+                                <label>Requester</label>
+                                <p>{{ reservation.name }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Email</label>
+                                <p>{{ reservation.email }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Contact</label>
+                                <p>{{ reservation.contact }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Date & Time</label>
+                                <p>{{ reservation.reservationDate|date('M d, Y') }} at {{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Attendees</label>
+                                <p>{{ reservation.capacity }}/{{ reservation.facility.capacity }}</p>
+                            </div>
+                            {% if reservation.purpose %}
+                                <div class="detail-col full-width">
+                                    <label>Purpose</label>
+                                    <p>{{ reservation.purpose }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row-actions">
+                            <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-approve">Approve</button>
+                            </form>
+
+                            <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display: inline;" class="reject-form">
+                                <input type="hidden" name="reason" class="reject-reason">
+                                <button type="button" class="btn btn-reject" onclick="showRejectModal(this)">Reject</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-message">
+                <p>No pending reservations at the moment.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Approved Reservations Tab -->
+    <div class="reservation-section card-panel">
+        <div class="section-header">
+            <h3 class="status-title approved">✓ Approved Reservations ({{ approved|length }})</h3>
+        </div>
+
+        {% if approved|length > 0 %}
+            <div class="reservations-table">
+                {% for reservation in approved %}
+                    <div class="reservation-row approved-row">
+                        <div class="row-header">
+                            <h4>{{ reservation.facility.name }}</h4>
+                            <span class="status-badge approved">Approved</span>
+                        </div>
+
+                        <div class="row-details">
+                            <div class="detail-col">
+                                <label>Requester</label>
+                                <p>{{ reservation.name }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Date & Time</label>
+                                <p>{{ reservation.reservationDate|date('M d, Y') }} at {{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Attendees</label>
+                                <p>{{ reservation.capacity }}/{{ reservation.facility.capacity }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-message">
+                <p>No approved reservations.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Rejected Reservations Tab -->
+    <div class="reservation-section card-panel">
+        <div class="section-header">
+            <h3 class="status-title rejected">✗ Rejected Reservations ({{ rejected|length }})</h3>
+        </div>
+
+        {% if rejected|length > 0 %}
+            <div class="reservations-table">
+                {% for reservation in rejected %}
+                    <div class="reservation-row rejected-row">
+                        <div class="row-header">
+                            <h4>{{ reservation.facility.name }}</h4>
+                            <span class="status-badge rejected">Rejected</span>
+                        </div>
+
+                        <div class="row-details">
+                            <div class="detail-col">
+                                <label>Requester</label>
+                                <p>{{ reservation.name }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Date & Time</label>
+                                <p>{{ reservation.reservationDate|date('M d, Y') }} at {{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</p>
+                            </div>
+                            {% if reservation.rejectionReason %}
+                                <div class="detail-col full-width">
+                                    <label>Rejection Reason</label>
+                                    <p>{{ reservation.rejectionReason }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-message">
+                <p>No rejected reservations.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Reject Reservation</h3>
+            <button type="button" class="modal-close" onclick="closeRejectModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <label for="rejectionReason">Reason for rejection:</label>
+            <textarea id="rejectionReason" class="form-input" rows="4" placeholder="Explain why this reservation is being rejected..."></textarea>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRejectModal()">Cancel</button>
+            <button type="button" class="btn btn-reject" onclick="submitReject()">Confirm Reject</button>
+        </div>
+    </div>
+
+<style>
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .content-header h2 {
+        color: var(--feu-green-dark);
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .section-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.2rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 3px solid;
+        display: inline-block;
+    }
+
+    .status-title.pending {
+        color: #ff9800;
+        border-bottom-color: #ff9800;
+    }
+
+    .status-title.approved {
+        color: #28a745;
+        border-bottom-color: #28a745;
+    }
+
+    .status-title.rejected {
+        color: #dc3545;
+        border-bottom-color: #dc3545;
+    }
+
+    .section-description {
+        color: #666;
+        margin: 0.5rem 0 0 0;
+        font-size: 0.95rem;
+    }
+
+    .reservation-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: var(--feu-shadow);
+        margin-bottom: 2rem;
+    }
+
+    .reservations-table {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .reservation-row {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 1.5rem;
+        background: white;
+        transition: all 0.3s ease;
+    }
+
+    .reservation-row:hover {
+        box-shadow: 0 4px 12px rgba(0, 102, 51, 0.15);
+        border-color: var(--feu-green-light);
+    }
+
+    .reservation-row.approved-row,
+    .reservation-row.rejected-row {
+        opacity: 0.8;
+    }
+
+    .row-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .row-header h4 {
+        margin: 0;
+        color: var(--feu-green-dark);
+        font-size: 1.1rem;
+    }
+
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: white;
+    }
+
+    .status-badge.pending {
+        background: #ff9800;
+    }
+
+    .status-badge.approved {
+        background: #28a745;
+    }
+
+    .status-badge.rejected {
+        background: #dc3545;
+    }
+
+    .row-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .detail-col {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-col.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .detail-col label {
+        color: var(--feu-green-dark);
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .detail-col p {
+        margin: 0;
+        color: #333;
+    }
+
+    .row-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+    }
+
+    .btn-approve {
+        background: #28a745;
+        color: white;
+    }
+
+    .btn-approve:hover {
+        background: #218838;
+    }
+
+    .btn-reject {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-reject:hover {
+        background: #c82333;
+    }
+
+    .btn-suggest {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .btn-suggest:hover {
+        background: #138496;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .empty-message {
+        text-align: center;
+        padding: 2rem;
+        color: #666;
+        background: #f9f9f9;
+        border-radius: 8px;
+    }
+
+    /* Modal Styles */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 500px;
+        width: 90%;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: var(--feu-green-dark);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #999;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-body label {
+        display: block;
+        color: var(--feu-green-dark);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        font-family: inherit;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--feu-green);
+        box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.1);
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: flex-end;
+        padding: 1.5rem;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    @media (max-width: 768px) {
+        .row-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .row-details {
+            grid-template-columns: 1fr;
+        }
+
+        .row-actions {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<script>
+    let currentForm = null;
+
+    function showRejectModal(button) {
+        currentForm = button.closest('.reject-form');
+        document.getElementById('rejectModal').style.display = 'flex';
+        document.getElementById('rejectionReason').focus();
+    }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').style.display = 'none';
+        document.getElementById('rejectionReason').value = '';
+        currentForm = null;
+    }
+
+    function submitReject() {
+        const reason = document.getElementById('rejectionReason').value.trim();
+        if (!reason) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+
+        if (currentForm) {
+            currentForm.querySelector('.reject-reason').value = reason;
+            currentForm.submit();
+        }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeRejectModal();
+        }
+    });
+</script>
+{% endblock %}

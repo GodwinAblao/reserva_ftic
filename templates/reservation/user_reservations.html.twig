@@ -1,0 +1,594 @@
+{% extends "layouts/app.html.twig" %}
+
+{% block title %}My Reservations - Reserva FTIC{% endblock %}
+
+{% block content %}
+    <div class="content-header">
+        <h2>My Reservations</h2>
+        <a href="{{ path('app_facility_index') }}" class="btn btn-primary">Reserve a Facility</a>
+    </div>
+
+    <!-- Reservation Status Overview -->
+    <div class="status-overview">
+        <div class="status-card approved">
+            <div class="status-count">{{ reservations['Approved']|length }}</div>
+            <div class="status-label">Approved</div>
+        </div>
+        <div class="status-card pending">
+            <div class="status-count">{{ reservations['Pending']|length }}</div>
+            <div class="status-label">Pending</div>
+        </div>
+        <div class="status-card rejected">
+            <div class="status-count">{{ reservations['Rejected']|length }}</div>
+            <div class="status-label">Rejected</div>
+        </div>
+        <div class="status-card cancelled">
+            <div class="status-count">{{ reservations['Cancelled']|length }}</div>
+            <div class="status-label">Cancelled</div>
+        </div>
+    </div>
+
+    <!-- Approved Reservations -->
+    {% if reservations['Approved']|length > 0 %}
+        <div class="reservations-section card-panel">
+            <h3 class="status-heading approved">Approved Reservations</h3>
+            <div class="reservations-grid">
+                {% for reservation in reservations['Approved'] %}
+                    <div class="reservation-card">
+                        <div class="card-header">
+                            <span class="status-badge approved">Approved</span>
+                            <span class="reservation-date">{{ reservation.reservationDate|date('M d, Y') }}</span>
+                        </div>
+
+                        <div class="card-body">
+                            <h4 class="facility-name">{{ reservation.facility.name }}</h4>
+                            
+                            <div class="reservation-details">
+                                <div class="detail-row">
+                                    <span class="label">Time:</span>
+                                    <span class="value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Attendees:</span>
+                                    <span class="value">
+                                        {{ reservation.capacity }}/
+                                        {% if reservation.suggestedFacility %}
+                                            {{ reservation.suggestedFacility.capacity }}
+                                        {% else %}
+                                            {{ reservation.facility.capacity }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Contact:</span>
+                                    <span class="value">{{ reservation.contact }}</span>
+                                </div>
+                                
+                                {% if reservation.purpose %}
+                                    <div class="detail-row">
+                                        <span class="label">Purpose:</span>
+                                        <span class="value">{{ reservation.purpose }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="button-group">
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Pending Reservations -->
+    {% if reservations['Pending']|length > 0 %}
+        <div class="reservations-section card-panel">
+            <h3 class="status-heading pending">Pending Reservation Requests</h3>
+            <p class="section-description">Your request is under review by the Super Admin.</p>
+            <div class="reservations-grid">
+                {% for reservation in reservations['Pending'] %}
+                    <div class="reservation-card">
+                        <div class="card-header">
+                            <span class="status-badge pending">Pending</span>
+                            <span class="reservation-date">{{ reservation.reservationDate|date('M d, Y') }}</span>
+                        </div>
+
+                        <div class="card-body">
+                            <h4 class="facility-name">{{ reservation.facility.name }}</h4>
+                            
+                            <div class="reservation-details">
+                                <div class="detail-row">
+                                    <span class="label">Time:</span>
+                                    <span class="value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Attendees:</span>
+                                    <span class="value">
+                                        {{ reservation.capacity }}/
+                                        {% if reservation.suggestedFacility %}
+                                            {{ reservation.suggestedFacility.capacity }}
+                                        {% else %}
+                                            {{ reservation.facility.capacity }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Contact:</span>
+                                    <span class="value">{{ reservation.contact }}</span>
+                                </div>
+                                
+                                {% if reservation.purpose %}
+                                    <div class="detail-row">
+                                        <span class="label">Purpose:</span>
+                                        <span class="value">{{ reservation.purpose }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="button-group">
+                                <form method="POST" action="{{ path('cancel_reservation', {'id': reservation.id}) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-danger-small" onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Rejected Reservations -->
+    {% if reservations['Rejected']|length > 0 %}
+        <div class="reservations-section card-panel">
+            <h3 class="status-heading rejected">Rejected Reservations</h3>
+            <div class="reservations-grid">
+                {% for reservation in reservations['Rejected'] %}
+                    <div class="reservation-card">
+                        <div class="card-header">
+                            <span class="status-badge rejected">Rejected</span>
+                            <span class="reservation-date">{{ reservation.reservationDate|date('M d, Y') }}</span>
+                        </div>
+
+                        <div class="card-body">
+                            <h4 class="facility-name">{{ reservation.facility.name }}</h4>
+                            
+                            <div class="reservation-details">
+                                <div class="detail-row">
+                                    <span class="label">Time:</span>
+                                    <span class="value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Attendees:</span>
+                                    <span class="value">{{ reservation.capacity }}/{{ reservation.facility.capacity }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Contact:</span>
+                                    <span class="value">{{ reservation.contact }}</span>
+                                </div>
+                                
+                                {% if reservation.purpose %}
+                                    <div class="detail-row">
+                                        <span class="label">Purpose:</span>
+                                        <span class="value">{{ reservation.purpose }}</span>
+                                    </div>
+                                {% endif %}
+
+                                {% if reservation.rejectionReason %}
+                                    <div class="detail-row rejection-reason">
+                                        <span class="label">Reason:</span>
+                                        <span class="value">{{ reservation.rejectionReason }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="button-group">
+
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Cancelled Reservations -->
+    {% if reservations['Cancelled']|length > 0 %}
+        <div class="reservations-section card-panel">
+            <h3 class="status-heading cancelled">Cancelled Reservations</h3>
+            <div class="reservations-grid">
+                {% for reservation in reservations['Cancelled'] %}
+                    <div class="reservation-card">
+                        <div class="card-header">
+                            <span class="status-badge cancelled">Cancelled</span>
+                            <span class="reservation-date">{{ reservation.reservationDate|date('M d, Y') }}</span>
+                        </div>
+
+                        <div class="card-body">
+                            <h4 class="facility-name">{{ reservation.facility.name }}</h4>
+                            
+                            <div class="reservation-details">
+                                <div class="detail-row">
+                                    <span class="label">Time:</span>
+                                    <span class="value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Attendees:</span>
+                                    <span class="value">{{ reservation.capacity }}/{{ reservation.facility.capacity }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Contact:</span>
+                                    <span class="value">{{ reservation.contact }}</span>
+                                </div>
+                                
+                                {% if reservation.purpose %}
+                                    <div class="detail-row">
+                                        <span class="label">Purpose:</span>
+                                        <span class="value">{{ reservation.purpose }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="button-group">
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- No Reservations Message -->
+    {% if reservations['Approved']|length == 0 and reservations['Pending']|length == 0 
+        and reservations['Rejected']|length == 0 and reservations['Cancelled']|length == 0 %}
+        <div class="empty-state card-panel">
+            <h3>No Reservations Yet</h3>
+            <p>You haven't made any facility reservations.</p>
+            <a href="{{ path('app_facility_index') }}" class="btn btn-primary">Browse Facilities</a>
+        </div>
+    {% endif %}
+
+<style>
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .content-header h2 {
+        color: var(--feu-green-dark);
+        margin: 0;
+        flex: 1;
+    }
+
+    /* Status Overview */
+    .status-overview {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .status-card {
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-card.approved {
+        background: linear-gradient(135deg, #28a745, #20c997);
+    }
+
+    .status-card.pending {
+        background: linear-gradient(135deg, #ffc107, #ff9800);
+    }
+
+    .status-card.rejected {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+    }
+
+    .status-card.cancelled {
+        background: linear-gradient(135deg, #6c757d, #495057);
+    }
+
+    .status-count {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .status-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    /* Sections */
+    .reservations-section {
+        margin-bottom: 2.5rem;
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: var(--feu-shadow);
+    }
+
+    .status-heading {
+        margin: 0 0 1rem 0;
+        font-size: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 3px solid;
+        display: inline-block;
+    }
+
+    .status-heading.approved {
+        color: #28a745;
+        border-bottom-color: #28a745;
+    }
+
+    .status-heading.pending {
+        color: #ff9800;
+        border-bottom-color: #ff9800;
+    }
+
+    .status-heading.rejected {
+        color: #dc3545;
+        border-bottom-color: #dc3545;
+    }
+
+    .status-heading.cancelled {
+        color: #6c757d;
+        border-bottom-color: #6c757d;
+    }
+
+    .section-description {
+        color: #666;
+        margin: 0.5rem 0 1.5rem 0;
+        font-size: 0.95rem;
+    }
+
+    /* Reservation Grid */
+    .reservations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+
+    /* Reservation Card */
+    .reservation-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s ease;
+    }
+
+    .reservation-card:hover {
+        box-shadow: 0 8px 16px rgba(0, 102, 51, 0.15);
+        border-color: var(--feu-green-light);
+    }
+
+    .card-header {
+        background: #f8f9fa;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: white;
+    }
+
+    .status-badge.approved {
+        background: #28a745;
+    }
+
+    .status-badge.pending {
+        background: #ff9800;
+    }
+
+    .status-badge.rejected {
+        background: #dc3545;
+    }
+
+    .status-badge.cancelled {
+        background: #6c757d;
+    }
+
+    .reservation-date {
+        color: #666;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+        flex: 1;
+    }
+
+    .facility-name {
+        margin: 0 0 1rem 0;
+        color: var(--feu-green-dark);
+        font-size: 1.1rem;
+    }
+
+    .reservation-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.95rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .detail-row .label {
+        font-weight: 600;
+        color: var(--feu-green-dark);
+        min-width: 80px;
+    }
+
+    .detail-row .value {
+        color: #333;
+        flex: 1;
+        text-align: right;
+    }
+
+    .rejection-reason {
+        background: #f8d7da;
+        padding: 0.75rem;
+        border-left: 4px solid #dc3545;
+        border-radius: 4px;
+        margin-top: 0.75rem;
+    }
+
+    .rejection-reason .value {
+        text-align: left;
+        color: #721c24;
+    }
+
+    .suggestion-info {
+        background: #d1ecf1;
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-top: 1rem;
+        color: #0c5460;
+        font-size: 0.9rem;
+    }
+
+    .suggestion-info p {
+        margin: 0;
+    }
+
+    .card-footer {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-secondary-small,
+    .btn-danger-small,
+    .btn-primary-small {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary-small {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary-small:hover {
+        background: #5a6268;
+    }
+
+    .btn-danger-small {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-danger-small:hover {
+        background: #c82333;
+    }
+
+    .btn-primary-small {
+        background: var(--feu-green);
+        color: white;
+    }
+
+    .btn-primary-small:hover {
+        background: var(--feu-green-dark);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--feu-shadow);
+    }
+
+    .empty-state h3 {
+        color: var(--feu-green-dark);
+        margin-top: 0;
+    }
+
+    .empty-state p {
+        color: #666;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: var(--feu-green);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--feu-green-dark);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .status-overview {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .content-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .reservations-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
