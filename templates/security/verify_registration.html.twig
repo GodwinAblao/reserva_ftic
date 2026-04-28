@@ -28,6 +28,10 @@
             </div>
         {% endfor %}
 
+        <div class="alert alert-info">
+            If you don’t receive the code, check your spam/junk folder and use the resend form below.
+        </div>
+
         <form method="post" action="{{ path('app_verify_registration') }}" data-turbo="false">
             <div class="form-group">
                 <label for="email">Institutional Email</label>

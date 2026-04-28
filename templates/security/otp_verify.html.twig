@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Verify OTP | Reserva FTIC{% endblock %}
+
+{% block body_class %}page-login{% endblock %}
+
+{% block body %}
+    <div class="login-card">
+        <div class="login-brand">
+            <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
+        </div>
+
+        <h2>Verify OTP</h2>
+
+        {% if errors|length > 0 %}
+            <div class="alert alert-danger">
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <form method="post" action="{{ path('app_otp_reset', {'token': token}) }}" data-turbo="false">
+            <div class="form-group">
+                <label for="otp">6-Digit OTP</label>
+                <input type="text" id="otp" name="otp" value="{{ otp }}" maxlength="6" required autofocus>
+                <small>Check your email (including spam) for the OTP. Expires in 10 minutes.</small>
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('otp_reset') }}">
+
+            <button class="btn-primary" type="submit">Verify OTP</button>
+            <a href="{{ path('app_login') }}" class="btn-link">Back to Login</a>
+        </form>
+    </div>
+{% endblock %}

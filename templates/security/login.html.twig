@@ -52,6 +52,38 @@
         </form>
 
         <p class="form-footer">Don't have an account? <a href="{{ path('app_register') }}" data-turbo="false" target="_self">Register here</a>.</p>
-        <p class="form-footer">Already registered? <a href="{{ path('app_verify_registration') }}" data-turbo="false" target="_self">Verify your account</a>.</p>
+        <p class="form-footer"><button class="btn-link forgot-password-btn" onclick="showForgotPassword()" data-turbo="false">Forgot Password?</button></p>
     </div>
+
+    {# Forgot Password Modal #}
+    <div id="forgotPasswordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="hideForgotPassword()">&times;</span>
+            <h3>Forgot Password</h3>
+            <form method="post" action="{{ path('app_forgot_password') }}" data-turbo="false">
+                <div class="form-group">
+                    <label for="forgotEmail">Email</label>
+                    <input type="email" id="forgotEmail" name="email" required>
+                </div>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('forgot_password') }}">
+                <button type="submit" class="btn-primary">Send OTP</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showForgotPassword() {
+            document.getElementById('forgotPasswordModal').style.display = 'block';
+        }
+        function hideForgotPassword() {
+            document.getElementById('forgotPasswordModal').style.display = 'none';
+        }
+    </script>
+
+    <style>
+        .modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 10px; width: 80%; max-width: 400px; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+    </style>
 {% endblock %}
