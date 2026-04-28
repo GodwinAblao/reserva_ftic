@@ -10,13 +10,19 @@
             <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
         </div>
 
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success">
+                {{ message }}
+            </div>
+        {% endfor %}
+
         {% if error %}
             <div class="alert">
                 {{ error.messageKey|trans(error.messageData, 'security') }}
             </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" action="{{ path('app_login') }}" data-turbo="false">
             <div class="form-group">
                 <label for="inputEmail">Email</label>
                 <input
@@ -44,5 +50,8 @@
 
             <button class="btn-primary" type="submit">Log in</button>
         </form>
+
+        <p class="form-footer">Don't have an account? <a href="{{ path('app_register') }}" data-turbo="false" target="_self">Register here</a>.</p>
+        <p class="form-footer">Already registered? <a href="{{ path('app_verify_registration') }}" data-turbo="false" target="_self">Verify your account</a>.</p>
     </div>
 {% endblock %}

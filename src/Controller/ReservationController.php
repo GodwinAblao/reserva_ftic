@@ -474,7 +474,7 @@ class ReservationController extends AbstractController
     {
         try {
             $email = (new Email())
-                ->from('no-reply@reserva-ftic.edu.ph')
+                ->from('Reserva FTIC <hurstdale101@gmail.com>')
                 ->to('admin@reserva-ftic.edu.ph')
                 ->subject('New Facility Reservation Request')
                 ->html($this->renderView('email/new_reservation.html.twig', [

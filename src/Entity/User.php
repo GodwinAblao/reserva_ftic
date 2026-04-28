@@ -35,6 +35,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 180, nullable: true)]
     private ?string $institutionalEmail = null;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $isVerified = false;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $verificationCode = null;
+
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $firstName = null;
 
@@ -77,10 +83,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array
     {
-        $roles = $this->roles;
-        $roles[] = 'ROLE_USER';
-
-        return array_values(array_unique($roles));
+        return array_values(array_unique($this->roles));
     }
 
     public function setRoles(array $roles): self
@@ -126,6 +129,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setInstitutionalEmail(?string $institutionalEmail): self
     {
         $this->institutionalEmail = $institutionalEmail;
+
+        return $this;
+    }
+
+    public function isVerified(): bool
+    {
+        return $this->isVerified;
+    }
+
+    public function setIsVerified(bool $isVerified): self
+    {
+        $this->isVerified = $isVerified;
+
+        return $this;
+    }
+
+    public function getVerificationCode(): ?string
+    {
+        return $this->verificationCode;
+    }
+
+    public function setVerificationCode(?string $verificationCode): self
+    {
+        $this->verificationCode = $verificationCode;
 
         return $this;
     }

@@ -45,7 +45,7 @@ class AccountManagementController extends AbstractController
 
             $email = $request->request->get('email');
             $password = $request->request->get('password');
-            $roles = (array) $request->request->all()['roles'] ?? ['ROLE_USER'];
+            $roles = (array) ($request->request->all()['roles'] ?? ['ROLE_STUDENT']);
             $identification = $request->request->get('identification');
             $institutionalEmail = $request->request->get('institutional_email');
             $firstName = $request->request->get('first_name');
@@ -93,7 +93,7 @@ class AccountManagementController extends AbstractController
             if (!empty($roles) && is_array($roles)) {
                 $user->setRoles($roles);
             } else {
-                $user->setRoles(['ROLE_USER']);
+                $user->setRoles(['ROLE_STUDENT']);
             }
 
             try {

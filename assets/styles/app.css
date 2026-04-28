@@ -149,6 +149,22 @@ a {
     box-shadow: 0 14px 30px rgba(11, 93, 58, 0.25);
 }
 
+.form-footer {
+    margin-top: 18px;
+    font-size: 14px;
+    color: rgba(12, 30, 20, 0.8);
+}
+
+.form-footer a {
+    color: var(--feu-green);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.form-footer a:hover {
+    text-decoration: none;
+}
+
 .alert {
     padding: 12px 14px;
     border-radius: 12px;

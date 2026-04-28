@@ -5,14 +5,24 @@
 {% block content %}
     <div class="content-header">
         <h2>Dashboard</h2>
-        <div class="pill-role">{{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : 'USER' }}</div>
+        <div class="pill-role">
+            {% if is_granted('ROLE_SUPER_ADMIN') %}
+                SUPER ADMIN
+            {% elseif is_granted('ROLE_FACULTY') %}
+                FACULTY
+            {% elseif is_granted('ROLE_STUDENT') %}
+                STUDENT
+            {% else %}
+                MEMBER
+            {% endif %}
+        </div>
     </div>
 
     <div class="card-panel welcome-card">
         <p>Welcome! <strong>{% if app.user.firstName or app.user.lastName %}{{ app.user.firstName }} {{ app.user.middleName }} {{ app.user.lastName }}{% else %}{{ app.user.email }}{% endif %}</strong></p>
     </div>
 
-    {% if is_granted('ROLE_USER') %}
+    {% if is_granted('IS_AUTHENTICATED_FULLY') %}
         <!-- Quick Stats -->
         <div class="stats-grid">
             <div class="stat-card">

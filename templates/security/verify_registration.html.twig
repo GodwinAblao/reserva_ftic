@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Verify Registration | Reserva FTIC{% endblock %}
+
+{% block body_class %}page-login{% endblock %}
+
+{% block body %}
+    <div class="login-card">
+        <div class="login-brand">
+            <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
+        </div>
+
+        <h2>Verify Your Account</h2>
+
+        {% if errors is not empty %}
+            <div class="alert alert-danger">
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success">
+                {{ message }}
+            </div>
+        {% endfor %}
+
+        <form method="post" action="{{ path('app_verify_registration') }}" data-turbo="false">
+            <div class="form-group">
+                <label for="email">Institutional Email</label>
+                <input type="email" id="email" name="email" value="{{ data.email }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="verificationCode">Verification Code</label>
+                <input type="text" id="verificationCode" name="verificationCode" value="{{ data.verificationCode }}" required>
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('verify_registration') }}">
+
+            <button class="btn-primary" type="submit">Verify Account</button>
+        </form>
+
+        <hr>
+
+        <form method="post" action="{{ path('app_resend_verification_code') }}">
+            <div class="form-group">
+                <label for="resendEmail">Resend Verification Code</label>
+                <input type="email" id="resendEmail" name="email" value="{{ data.email }}" placeholder="Enter your institutional email" required>
+            </div>
+
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
+
+            <button class="btn-secondary" type="submit">Resend Code</button>
+        </form>
+
+        <p class="form-footer">Already verified? <a href="{{ path('app_login') }}" data-turbo="false" target="_self">Log in here</a>.</p>
+    </div>
+{% endblock %}
