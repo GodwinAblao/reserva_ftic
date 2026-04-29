@@ -98,59 +98,69 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 }
             }
 
+            // Secure password validation
+            if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/', $password)) {
+                $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
+            }
+
+            $commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1', 'admin', 'letmein'];
+            if (in_array(strtolower($password), $commonPasswords)) {
+                $errors[] = 'Password is too common. Choose a stronger one.';
+            }
+
             if (!$errors) {
-                $user = new User();
-                $user->setFirstName($data['firstName']);
-                $user->setMiddleName($data['middleName'] ?: null);
-                $user->setLastName($data['lastName']);
-                $user->setIdentification(null);
-                $user->setEmail($data['institutionalEmail']);
-                $user->setInstitutionalEmail($data['institutionalEmail']);
-                $user->setPassword($passwordHasher->hashPassword($user, $password));
-                $user->setRoles($roles);
-                $user->setIsVerified(false);
+                $tempUser = new User();
+                $hashedPassword = $passwordHasher->hashPassword($tempUser, $password);
                 $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                $user->setVerificationCode($verificationCode);
 
-                $entityManager->persist($user);
-                $entityManager->flush();
+                // Store pending data in session
+                $session = $request->getSession();
+                $pendingData = [
+                    'firstName' => $data['firstName'],
+                    'middleName' => $data['middleName'] ?: null,
+                    'lastName' => $data['lastName'],
+                    'email' => $data['institutionalEmail'],
+                    'institutionalEmail' => $data['institutionalEmail'],
+                    'hashedPassword' => $hashedPassword,
+                    'roles' => $roles,
+                    'verificationCode' => $verificationCode,
+                ];
+                $session->set('pending_registration', $pendingData);
 
-                $logger->info('User registered', [
-                    'user_id' => $user->getId(),
-                    'email' => $user->getEmail(),
+                $logger->info('Registration pending', [
+                    'email' => $pendingData['email'],
                     'verification_code' => $verificationCode,
-                    'institutional_email' => $user->getInstitutionalEmail()
                 ]);
 
                 try {
                     $verificationEmail = (new Email())
-                        ->from(new Address('no-reply@reserva-ftic.com', 'Reserva FTIC'))
+                        ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
                         ->replyTo('hurstdale101@gmail.com')
-                        ->to($user->getInstitutionalEmail())
-                        ->subject('Reserva FTIC - Your Verification Code')
-                        ->text(sprintf('Hi %s, your Reserva FTIC verification code is %s. Enter it on the site to verify.', $user->getFirstName() ?: $user->getEmail(), $verificationCode))
+                        ->to($pendingData['institutionalEmail'])
+                        ->subject('Reserva FTIC - Verify Your Registration')
+                        ->text(sprintf('Hi %s %s, your Reserva FTIC verification code is %s. Enter it on the site to complete registration.', $data['firstName'], $data['lastName'], $verificationCode))
                         ->html($this->renderView('email/registration_verification.html.twig', [
-                            'user' => $user,
+                            'user' => null,
                             'verificationCode' => $verificationCode,
+                            'name' => $data['firstName'] . ' ' . $data['lastName'],
                         ]));
 
-                    $logger->info('Sending verification email', ['to' => $user->getInstitutionalEmail()]);
+                    $logger->info('Sending registration verification email', ['to' => $pendingData['institutionalEmail']]);
 
                     $mailer->send($verificationEmail);
 
-                    $logger->info('Verification email sent successfully', ['to' => $user->getInstitutionalEmail()]);
+                    $logger->info('Registration verification email sent successfully', ['to' => $pendingData['institutionalEmail']]);
                 } catch (\Exception $e) {
-                    $logger->error('Failed to send verification email', [
-                        'to' => $user->getInstitutionalEmail(),
+                    $logger->error('Failed to send registration verification email', [
+                        'to' => $pendingData['institutionalEmail'],
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
                     ]);
-                    $errors[] = 'Registration succeeded, but we could not send the verification code email: ' . $e->getMessage() . '. Please use resend.';
+                    $errors[] = 'Verification code email could not be sent: ' . $e->getMessage() . '. Please try again.';
                 }
 
                 if (!$errors) {
-                    $this->addFlash('success', 'Registration successful. Check your institutional email for the verification code.');
-                    return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $user->getEmail()]));
+                    $this->addFlash('success', 'Registration started! Check your institutional email for the verification code.');
+                    return new RedirectResponse($this->generateUrl('app_verify_registration'));
                 }
             }
         }
@@ -162,17 +172,24 @@ public function register(Request $request, EntityManagerInterface $entityManager
     }
 
     #[Route('/verify-registration', name: 'app_verify_registration')]
-    public function verifyRegistration(Request $request, EntityManagerInterface $entityManager, CsrfTokenManagerInterface $csrfTokenManager): Response
+    public function verifyRegistration(Request $request, EntityManagerInterface $entityManager, CsrfTokenManagerInterface $csrfTokenManager, UserPasswordHasherInterface $passwordHasher): Response
     {
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
+
+        $session = $request->getSession();
+        $pendingData = $session->get('pending_registration');
 
         $errors = [];
         $data = [
             'email' => trim($request->query->get('email', '')),
             'verificationCode' => '',
         ];
+
+        if (!$pendingData) {
+            $errors[] = 'No pending registration found. Please start registration first.';
+        }
 
         if ($request->isMethod('POST')) {
             $data['email'] = trim($request->request->get('email', ''));
@@ -190,16 +207,32 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $errors[] = 'Verification code is required.';
             }
 
-            if (!$errors) {
-                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
-                if (!$user || $user->getVerificationCode() !== $data['verificationCode']) {
+            if (!$errors && $pendingData) {
+                if ($data['email'] !== $pendingData['email'] || $data['verificationCode'] !== $pendingData['verificationCode']) {
                     $errors[] = 'The verification code or email is invalid.';
                 } else {
-                    $user->setIsVerified(true);
+                    // Create user from pending data
+                    $user = new User();
+                    $user->setFirstName($pendingData['firstName']);
+                    $user->setMiddleName($pendingData['middleName']);
+                    $user->setLastName($pendingData['lastName']);
+                    $user->setIdentification(null);
+                    $user->setEmail($pendingData['email']);
+                    $user->setInstitutionalEmail($pendingData['institutionalEmail']);
+                    $user->setPassword($pendingData['hashedPassword']);
+                    $user->setRoles($pendingData['roles']);
+                    $user->setIsVerified(true);  // Verified immediately
                     $user->setVerificationCode(null);
+
+                    $entityManager->persist($user);
                     $entityManager->flush();
 
-                    $this->addFlash('success', 'Your account has been verified. You may now log in.');
+                    // $this->logger->info('User created from pending registration', ['user_id' => $user->getId(), 'email' => $user->getEmail()]);
+
+                    // Clear session
+                    $session->remove('pending_registration'); 
+
+                    $this->addFlash('success', 'Account created and verified! You may now log in.');
                     return new RedirectResponse($this->generateUrl('app_login'));
                 }
             }
@@ -212,15 +245,18 @@ public function register(Request $request, EntityManagerInterface $entityManager
     }
 
     #[Route('/verify-registration/resend', name: 'app_resend_verification_code', methods: ['POST'])]
-    public function resendVerificationCode(Request $request, EntityManagerInterface $entityManager, CsrfTokenManagerInterface $csrfTokenManager, MailerInterface $mailer, LoggerInterface $logger): Response
+    public function resendVerificationCode(Request $request, EntityManagerInterface $entityManager, CsrfTokenManagerInterface $csrfTokenManager, MailerInterface $mailer): Response
     {
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
 
-        $errors = [];
+        $session = $request->getSession();
+        $pendingData = $session->get('pending_registration');
         $email = trim($request->request->get('email', ''));
         $csrfToken = $request->request->get('_csrf_token', '');
+
+        $errors = [];
 
         if (!$csrfTokenManager->isTokenValid(new CsrfToken('resend_verification', $csrfToken))) {
             $errors[] = 'Invalid CSRF token. Please refresh the page and try again.';
@@ -231,43 +267,79 @@ public function register(Request $request, EntityManagerInterface $entityManager
         }
 
         if (!$errors) {
-            $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
-            if (!$user) {
-                $errors[] = 'No account was found for that email address.';
-            } elseif ($user->isVerified()) {
-                $this->addFlash('success', 'Your account is already verified. You may log in.');
-                return new RedirectResponse($this->generateUrl('app_login'));
-            } else {
+            if ($pendingData && $email === $pendingData['email']) {
+                // Pending registration - regenerate code
                 $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                $user->setVerificationCode($verificationCode);
-                $entityManager->flush();
+                $pendingData['verificationCode'] = $verificationCode;
+                $session->set('pending_registration', $pendingData);
 
                 try {
                     $verificationEmail = (new Email())
-                        ->from(new Address('no-reply@reserva-ftic.com', 'Reserva FTIC'))
+                        ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
                         ->replyTo('hurstdale101@gmail.com')
-                        ->to($user->getInstitutionalEmail())
+                        ->to($pendingData['institutionalEmail'])
                         ->subject('Reserva FTIC - New Verification Code')
-                        ->text(sprintf('Hi %s, your new Reserva FTIC verification code is %s.', $user->getFirstName() ?: $user->getEmail(), $verificationCode))
+                        ->text(sprintf('Hi %s %s, your new Reserva FTIC verification code is %s.', $pendingData['firstName'], $pendingData['lastName'], $verificationCode))
                         ->html($this->renderView('email/registration_verification.html.twig', [
-                            'user' => $user,
+                            'user' => null,
                             'verificationCode' => $verificationCode,
+                            'name' => $pendingData['firstName'] . ' ' . $pendingData['lastName'],
                         ]));
 
-                    $logger->info('Resending verification email', ['to' => $email]);
+                    // $this->logger->info('Resending verification for pending registration', ['to' => $email]);
 
                     $mailer->send($verificationEmail);
 
-                    $logger->info('Resend verification email sent', ['to' => $email]);
+                    // $this->logger->info('Resend for pending sent', ['to' => $email]); 
 
                     $this->addFlash('success', 'A new verification code has been sent to your institutional email.');
-                    return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $email]));
+                    return new RedirectResponse($this->generateUrl('app_verify_registration'));
                 } catch (\Exception $e) {
-                    $logger->error('Resend verification failed', [
-                        'to' => $email,
-                        'error' => $e->getMessage()
-                    ]);
-                    $errors[] = 'Resend failed: ' . $e->getMessage();
+                        // $this->logger->error('Resend pending failed', [
+                            // 'to' => $email,
+                            // 'error' => $e->getMessage()
+                        // ]);
+                        $errors[] = 'Resend failed: ' . $e->getMessage(); 
+                }
+            } else {
+                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+                if (!$user) {
+                    $errors[] = 'No account was found for that email address.';
+                } elseif ($user->isVerified()) {
+                    $this->addFlash('success', 'Your account is already verified. You may log in.');
+                    return new RedirectResponse($this->generateUrl('app_login'));
+                } else {
+                    $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                    $user->setVerificationCode($verificationCode);
+                    $entityManager->flush();
+
+                    try {
+                        $verificationEmail = (new Email())
+                            ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
+                            ->replyTo('hurstdale101@gmail.com')
+                            ->to($user->getInstitutionalEmail())
+                            ->subject('Reserva FTIC - New Verification Code')
+                            ->text(sprintf('Hi %s, your new Reserva FTIC verification code is %s.', $user->getFirstName() ?: $user->getEmail(), $verificationCode))
+                            ->html($this->renderView('email/registration_verification.html.twig', [
+                                'user' => $user,
+                                'verificationCode' => $verificationCode,
+                            ]));
+
+                        // $this->logger->info('Resending verification email', ['to' => $email]);
+
+                        $mailer->send($verificationEmail);
+
+                        // $this->logger->info('Resend verification email sent', ['to' => $email]); 
+
+                        $this->addFlash('success', 'A new verification code has been sent to your institutional email.');
+                        return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $email]));
+                    } catch (\Exception $e) {
+                        // $this->logger->error('Resend verification failed', [
+                            // 'to' => $email,
+                            // 'error' => $e->getMessage()
+                        // ]);
+                        $errors[] = 'Resend failed: ' . $e->getMessage(); 
+                    }
                 }
             }
         }
@@ -307,9 +379,14 @@ public function register(Request $request, EntityManagerInterface $entityManager
             // Log without DB update (since no columns)
             $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $token]);
 
+            $session = $request->getSession();
+            $session->set('reset_email', $email);
+            $session->set('reset_token_expires', time() + 600); // 10 minutes
+            $session->set('reset_token', $token);
+
             try {
                 $emailMessage = (new Email())
-                    ->from(new Address('no-reply@reserva-ftic.com', 'Reserva FTIC'))
+                    ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
                     ->to($email)
                     ->subject('Reserva FTIC Password Reset OTP')
                     ->html($this->renderView('email/password_reset_otp.html.twig', [
@@ -364,10 +441,21 @@ public function register(Request $request, EntityManagerInterface $entityManager
     }
 
     #[Route('/reset-password/{token}', name: 'app_reset_password', methods: ['GET', 'POST'])]
-    public function resetPassword(Request $request, string $token, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager): Response
+    public function resetPassword(Request $request, string $token, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, EntityManagerInterface $entityManager): Response
     {
+        $session = $request->getSession();
+        $resetEmail = $session->get('reset_email');
+        $resetToken = $session->get('reset_token');
+        $expires = $session->get('reset_token_expires', 0);
+
         $errors = [];
-        $data = ['password' => '', 'passwordRepeat' => ''];
+
+        if (!$resetEmail || !$resetToken || time() > $expires || $token !== $resetToken) {
+            $errors[] = 'Invalid or expired reset token. Please request a new password reset.';
+            $session->remove('reset_email');
+            $session->remove('reset_token');
+            $session->remove('reset_token_expires');
+        }
 
         if ($request->isMethod('POST')) {
             $password = $request->request->get('password', '');
@@ -381,14 +469,56 @@ public function register(Request $request, EntityManagerInterface $entityManager
             if (strlen($password) < 8) {
                 $errors[] = 'Password must be at least 8 characters.';
             }
+
+            // Secure password validation
+            if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/', $password)) {
+                $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
+            }
+
+            $commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1'];
+            if (in_array(strtolower($password), $commonPasswords)) {
+                $errors[] = 'Password is too common. Choose a stronger one.';
+            }
+
+            // Check not same as old password
+            $resetEmail = $session->get('reset_email');
+            if ($resetEmail) {
+                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $resetEmail]);
+                if ($user && $passwordHasher->isPasswordValid($user, $password)) {
+                    $errors[] = 'New password cannot be the same as old password.';
+                }
+            }
+
+            // Secure password validation
+            if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/', $password)) {
+                $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
+            }
+
+            $commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1'];
+            if (in_array(strtolower($password), $commonPasswords)) {
+                $errors[] = 'Password is too common. Choose a stronger one.';
+            }
             if ($password !== $passwordRepeat) {
                 $errors[] = 'Passwords must match.';
             }
 
             if (empty($errors)) {
-                // Manual password update via login or session
-                $this->addFlash('success', 'Password reset successful! Please login.');
-                return $this->redirectToRoute('app_login');
+                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $resetEmail]);
+                if (!$user) {
+                    $errors[] = 'User not found. Please try forgot password again.';
+                } else {
+                    $user->setPassword($passwordHasher->hashPassword($user, $password));
+                    $entityManager->persist($user);
+                    $entityManager->flush();
+
+                    // Clear session
+                    $session->remove('reset_email');
+                    $session->remove('reset_token');
+                    $session->remove('reset_token_expires');
+
+                    $this->addFlash('success', 'Password reset successful! Please login with your new password.');
+                    return $this->redirectToRoute('app_login');
+                }
             }
         }
 

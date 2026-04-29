@@ -85,8 +85,8 @@
                 <h1>Verify Your Reserva FTIC Account</h1>
             </div>
             <div class="email-body">
-                <p>Hi {{ user.getFirstName() ?: user.getEmail() }},</p>
-                <p>Welcome to Reserva FTIC! Use the code below to verify your account and continue registration.</p>
+                <p>Hi {{ name ?: 'User' }},</p>
+                <p>Welcome to Reserva FTIC! Use the code below to verify your account and complete registration.</p>
                 <div class="verification-code">{{ verificationCode }}</div>
                 <p>Enter this code on the verification page to complete your account setup.</p>
                 <a class="button" href="{{ url('app_verify_registration') }}">Verify My Account</a>

@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS `user` (
 	`password` VARCHAR(255) NOT NULL,
 	`identification` VARCHAR(100) DEFAULT NULL,
 	`institutional_email` VARCHAR(180) DEFAULT NULL,
+	`is_verified` TINYINT(1) NOT NULL,
+	`verification_code` VARCHAR(10) DEFAULT NULL,
 	`first_name` VARCHAR(100) DEFAULT NULL,
 	`middle_name` VARCHAR(100) DEFAULT NULL,
 	`last_name` VARCHAR(100) DEFAULT NULL,
@@ -74,12 +76,9 @@ CREATE TABLE IF NOT EXISTS `messenger_messages` (
 	PRIMARY KEY(`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
 
-INSERT INTO `user` (`email`, `roles`, `password`, `identification`, `institutional_email`, `first_name`, `middle_name`, `last_name`, `degree`, `degree_name`, `profile_picture`) VALUES
-	('gmablao@fit.edu.ph', '["ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, 'gmablao@fit.edu.ph', 'Godwin Aldrich', 'Mangaoil', 'Ablao', 'BSITBA', 'Bachelor of Science in Information Technology with specialization in Business Analytics', NULL),
-	('asbernil@fit.edu.ph', '["ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-	('jccolina@fit.edu.ph', '["ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-	('dghurst@fit.edu.ph', '["ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-	('SuperAdmin@fit.edu.ph', '["ROLE_SUPER_ADMIN", "ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `user` (`email`, `roles`, `password`, `identification`, `institutional_email`, `is_verified`, `verification_code`, `first_name`, `middle_name`, `last_name`, `degree`, `degree_name`, `profile_picture`) VALUES
+	('SuperAdmin@feutech.edu.ph', '["ROLE_SUPER_ADMIN", "ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+	('admin@feutech.edu.ph', '["ROLE_SUPER_ADMIN", "ROLE_USER"]', '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq', NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 INSERT INTO `facility` (`name`, `capacity`, `description`, `image`, `created_at`, `updated_at`) VALUES
 	('CS Project Room', 48, 'Computer Science Project Room equipped with modern facilities and workstations for collaborative project work.', NULL, NOW(), NOW()),
