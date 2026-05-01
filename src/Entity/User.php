@@ -83,7 +83,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array
     {
-        return array_values(array_unique($this->roles));
+        $roles = $this->roles;
+
+        // Symfony convention: every authenticated account should have ROLE_USER.
+        // Specific roles like ROLE_STUDENT or ROLE_FACULTY remain stored separately.
+        $roles[] = 'ROLE_USER';
+
+        return array_values(array_unique($roles));
     }
 
     public function setRoles(array $roles): self
