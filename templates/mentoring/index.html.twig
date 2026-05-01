@@ -1,0 +1,212 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Mentoring | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header mentoring-header">
+    <div>
+        <h2>Mentoring</h2>
+        <p class="muted">Find mentors, request sessions, and track mentor applications.</p>
+    </div>
+    <div class="button-group">
+        {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_MENTOR') %}
+            <button type="button" class="btn-primary" onclick="openMentorApplication()">Apply as Mentor</button>
+        {% endif %}
+        {% if is_granted('ROLE_SUPER_ADMIN') %}
+            <a href="{{ path('mentoring_admin') }}" class="btn-secondary">Manage Mentoring</a>
+        {% endif %}
+    </div>
+</div>
+
+<section class="mentor-section">
+    <div class="section-heading">
+        <h2>Featured Mentors</h2>
+        <span>{{ mentors|length }} available profiles</span>
+
+    </div>
+
+    <div class="mentor-card-grid">
+        {% for mentor in mentors %}
+            {% set mentorUser = mentor.user %}
+            <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" class="mentor-card-link">
+                <article class="mentor-card">
+                    <div class="mentor-card-top">
+                        <div class="mentor-avatar">
+                            {% if mentorUser.profilePicture %}
+                                <img src="{{ asset('uploads/profiles/' ~ mentorUser.profilePicture) }}" alt="{{ mentor.displayName }}">
+                            {% else %}
+                                <span>{{ mentor.displayName|first|upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h4>{{ mentor.displayName }}</h4>
+                            <p class="specialization-label">{{ mentor.specialization }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mentor-meta">
+                        <div>
+                            <span>Program</span>
+                            <strong>{{ mentorUser.degreeName ?: mentorUser.degree ?: 'N/A' }}</strong>
+                        </div>
+                        <div>
+                            <span>Engagement</span>
+                            <strong class="engagement-badge">{{ mentor.engagementPoints }} pts</strong>
+                        </div>
+                    </div>
+
+                    <p class="mentor-description">{{ mentor.bio|slice(0, 120) ~ (mentor.bio|length > 120 ? '...' : '')|default('No description yet.') }}</p>
+
+                    <div class="mentor-card-footer">
+                        <span class="contact-info">{{ mentorUser.institutionalEmail ?: mentorUser.email }}</span>
+                        <div class="card-action">
+                            <span class="icon-arrow-right">→</span>
+                            <span class="action-label">View Availability</span>
+                        </div>
+                    </div>
+                </article>
+            </a>
+
+        {% else %}
+            <div class="card-panel">
+                <p>No mentor profiles yet.</p>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% if applications|length > 0 %}
+<section class="card-panel">
+    <h3>My Mentor Applications</h3>
+    {% for application in applications %}
+        <div class="list-row">
+            <div>
+                <strong>{{ application.specialization }}</strong>
+                <p>{{ application.status }} - {{ application.createdAt|date('M d, Y h:i A') }}</p>
+                {% if application.adminNote %}<small>{{ application.adminNote }}</small>{% endif %}
+            </div>
+            {% if application.status == 'Awaiting OTP' %}
+                <form method="post" action="{{ path('mentoring_verify_application', {'id': application.id}) }}" class="button-group">
+                    <input type="hidden" name="_token" value="{{ csrf_token('verify_mentor_application_' ~ application.id) }}">
+                    <input name="otp" class="form-input otp-input" placeholder="OTP" maxlength="6" required>
+                    <button class="btn-secondary" type="submit">Verify</button>
+                </form>
+            {% else %}
+                <span class="status-badge">{{ application.status }}</span>
+            {% endif %}
+        </div>
+    {% endfor %}
+</section>
+{% endif %}
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Request a Session</h3>
+        {% for slot in availability %}
+            <form method="post" action="{{ path('mentoring_request', {'id': slot.id}) }}" class="list-row">
+                <input type="hidden" name="_token" value="{{ csrf_token('request_mentoring_' ~ slot.id) }}">
+                <div>
+                    <strong>{{ slot.mentor.displayName }}</strong>
+                    <p>{{ slot.availableDate|date('M d, Y') }} {{ slot.startTime|date('h:i A') }} - {{ slot.endTime|date('h:i A') }}</p>
+                    <input name="topic" class="form-input" placeholder="Session topic">
+                </div>
+                <button class="btn-primary" type="submit">Request</button>
+            </form>
+        {% else %}
+        <p>Send a custom request below!</p>
+        {% endfor %}
+    </section>
+
+    <section class="card-panel">
+        <h3>My Sessions</h3>
+        {% for appointment in appointments %}
+            <div class="list-row">
+                <div>
+                    <strong>{{ appointment.mentor.displayName }}</strong>
+                    <p>{{ appointment.scheduledAt|date('M d, Y h:i A') }} - {{ appointment.topic ?: 'No topic' }}</p>
+                </div>
+                <span class="status-badge">{{ appointment.status }}</span>
+            </div>
+        {% else %}
+            <p>No mentoring appointments yet.</p>
+        {% endfor %}
+    </section>
+</div>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Traceability Leaderboard</h3>
+        {% for mentor in leaderboard %}
+            <div class="list-row">
+                <strong>{{ loop.index }}. {{ mentor.displayName }}</strong>
+                <span>{{ mentor.engagementPoints }} points</span>
+            </div>
+        {% else %}
+            <p>No leaderboard data yet.</p>
+        {% endfor %}
+    </section>
+
+    <section class="card-panel">
+        <h3>Preferred Specializations</h3>
+        {% for row in specializations %}
+            <div class="list-row">
+                <strong>{{ row.specialization }}</strong>
+                <span>{{ row.total }} requests</span>
+            </div>
+        {% else %}
+            <p>No specialization analytics yet.</p>
+        {% endfor %}
+    </section>
+</div>
+
+{% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_MENTOR') %}
+<div id="mentorApplicationModal" class="app-modal" aria-hidden="true">
+    <div class="app-modal-backdrop" onclick="closeMentorApplication()"></div>
+    <div class="app-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mentorApplicationTitle">
+        <div class="app-modal-header">
+            <div>
+                <h3 id="mentorApplicationTitle">Apply as Mentor</h3>
+                <p>Verify your student email with an OTP before the Super Admin reviews your application.</p>
+            </div>
+            <button type="button" class="icon-button" onclick="closeMentorApplication()" aria-label="Close">x</button>
+        </div>
+
+        <form method="post" action="{{ path('mentoring_apply') }}" class="form-grid">
+            <input type="hidden" name="_token" value="{{ csrf_token('mentor_application') }}">
+            <div class="form-group">
+                <label for="mentor_email">Student Email</label>
+                <input type="email" name="email" id="mentor_email" class="form-input" value="{{ app.user.email }}" required>
+            </div>
+            <div class="form-group">
+                <label for="mentor_specialization">Mentoring Specialization</label>
+                <input name="specialization" id="mentor_specialization" class="form-input" placeholder="e.g. Programming, UI Design, Research Methods" required>
+            </div>
+            <div class="form-group">
+                <label for="mentor_reason">Reason for Applying</label>
+                <textarea name="reason" id="mentor_reason" class="form-input" rows="5" placeholder="Share your strengths, experience, and why you want to mentor other students." required></textarea>
+            </div>
+            <div class="app-modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeMentorApplication()">Cancel</button>
+                <button class="btn-primary" type="submit">Send OTP</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openMentorApplication() {
+        document.getElementById('mentorApplicationModal').classList.add('is-open');
+    }
+
+    function closeMentorApplication() {
+        document.getElementById('mentorApplicationModal').classList.remove('is-open');
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeMentorApplication();
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

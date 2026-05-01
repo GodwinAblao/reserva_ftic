@@ -1,0 +1,61 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Analytics | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>Managerial Analytics</h2>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><div class="stat-value">{{ usage|length }}</div><div class="stat-label">Facilities</div></div>
+    <div class="stat-card"><div class="stat-value">{{ series|reduce((carry, value) => carry + value, 0) }}</div><div class="stat-label">Tracked Demand</div></div>
+    <div class="stat-card"><div class="stat-value">{{ mae }}</div><div class="stat-label">MAE</div></div>
+    <div class="stat-card"><div class="stat-value">{{ rmse }}</div><div class="stat-label">RMSE</div></div>
+</div>
+
+<section class="card-panel">
+    <h3>Facility Usage</h3>
+    {% for row in usage %}
+        <div class="list-row">
+            <strong>{{ row.name }}</strong>
+            <span>{{ row.total }} reservations, {{ row.attendees }} attendees</span>
+        </div>
+    {% else %}
+        <p>No usage data yet.</p>
+    {% endfor %}
+</section>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>High Demand Facilities</h3>
+        {% for row in highDemand %}
+            <div class="list-row"><strong>{{ row.name }}</strong><span>{{ row.total }}</span></div>
+        {% else %}
+            <p>No data.</p>
+        {% endfor %}
+    </section>
+
+    <section class="card-panel">
+        <h3>Underutilized Facilities</h3>
+        {% for row in underused %}
+            <div class="list-row"><strong>{{ row.name }}</strong><span>{{ row.total }}</span></div>
+        {% else %}
+            <p>No data.</p>
+        {% endfor %}
+    </section>
+</div>
+
+<section class="card-panel">
+    <h3>Reservation Demand Forecast</h3>
+    <div class="forecast-bars">
+        {% for label, value in series %}
+            <div class="bar-row"><span>{{ label }}</span><div class="bar" style="width: {{ value * 24 + 8 }}px">{{ value }}</div></div>
+        {% endfor %}
+        {% for label, value in forecast %}
+            <div class="bar-row forecast"><span>{{ label }}</span><div class="bar" style="width: {{ value * 24 + 8 }}px">{{ value }}</div></div>
+        {% endfor %}
+    </div>
+    <p class="muted">Forecast uses a local moving-average baseline. This is ready for replacement with a true ARIMA service when Python/statistical tooling is added.</p>
+</section>
+{% endblock %}

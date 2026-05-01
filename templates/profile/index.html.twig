@@ -1,154 +1,136 @@
 {% extends 'layouts/app.html.twig' %}
 
-{% block title %}Profile Account | Reserva FTIC{% endblock %}
+{% block title %}Profile | Reserva FTIC{% endblock %}
 
 {% block content %}
-    <div class="content-header">
-        <h2>Profile Account</h2>
+<div class="content-header">
+    <h1>Profile</h1>
+</div>
+
+{% for message in app.flashes('success') %}
+    <div class="alert alert-success">{{ message }}</div>
+{% endfor %}
+{% for message in app.flashes('error') %}
+    <div class="alert alert-error">{{ message }}</div>
+{% endfor %}
+
+<div class="card-panel profile-editor">
+    <div class="profile-summary">
+        <div class="profile-picture-holder">
+            {% if app.user.profilePicture %}
+                <img src="{{ asset('uploads/profiles/' ~ app.user.profilePicture) }}" alt="Profile Picture">
+            {% else %}
+                <div class="profile-placeholder">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="8" r="4"/>
+                        <path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+                    </svg>
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <h3>{{ app.user.firstName ~ ' ' ~ app.user.lastName|default(app.user.email) }}</h3>
+            <p>{{ app.user.degreeName|default('Profile details not completed') }}</p>
+            <div class="role-badges">
+                {% for role in app.user.roles %}
+                    {% if role != 'ROLE_USER' %}
+                        <span class="role-badge">{{ role|replace({'ROLE_': ''}) }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
-    {% for message in app.flashes('success') %}
-        <div class="alert alert-success">{{ message }}</div>
-    {% endfor %}
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="profile-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
+        
+        <div class="form-section">
+            <h3>Personal Information</h3>
+            <p class="muted">Update your account details</p>
 
-    <div class="card-panel">
-        {% if is_granted('ROLE_SUPER_ADMIN') %}
-            <div style="display: flex; gap: 32px; margin-bottom: 24px;">
-                <div style="flex-shrink: 0; position: relative;">
-                    <div class="profile-picture-holder">
-                        {% if app.user.profilePicture %}
-                            <img src="{{ asset('uploads/profiles/' ~ app.user.profilePicture) }}" alt="Profile Picture">
-                        {% else %}
-                            <div class="profile-placeholder">
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <circle cx="12" cy="8" r="4"/>
-                                    <path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
-                                </svg>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <label for="profile_picture_super" class="profile-upload-btn">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                    </label>
-                </div>
-                <form method="post" enctype="multipart/form-data" style="flex: 1; max-width: 600px;" id="profileForm">
-                    <input type="file" name="profile_picture" id="profile_picture_super" accept="image/*" style="display: none;" onchange="this.form.submit();">
-                    
-                    <div class="form-group">
-                        <label for="identification">Identification</label>
-                        <input type="text" name="identification" id="identification" value="{{ app.user.identification }}" placeholder="Student/Employee ID">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="institutional_email">Institutional Email</label>
-                        <input type="email" name="institutional_email" id="institutional_email" value="{{ app.user.institutionalEmail }}" placeholder="user@fit.edu.ph">
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                        <div class="form-group">
-                            <label for="first_name">First Name</label>
-                            <input type="text" name="first_name" id="first_name" value="{{ app.user.firstName }}" placeholder="First name">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="middle_name">Middle Name</label>
-                            <input type="text" name="middle_name" id="middle_name" value="{{ app.user.middleName }}" placeholder="Middle name">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="last_name">Last Name</label>
-                            <input type="text" name="last_name" id="last_name" value="{{ app.user.lastName }}" placeholder="Last name">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="degree">Degree</label>
-                        <input type="text" name="degree" id="degree" value="{{ app.user.degree }}" placeholder="e.g., BSIT, BSBA">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="degree_name">Degree Name</label>
-                        <input type="text" name="degree_name" id="degree_name" value="{{ app.user.degreeName }}" placeholder="Full degree name">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="email">Email (Login)</label>
-                        <input type="email" name="email" id="email" value="{{ app.user.userIdentifier }}" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">Password (leave blank to keep current)</label>
-                        <input type="password" name="password" id="password">
-                    </div>
-
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
-
-                    <div style="display: flex; gap: 12px;">
-                        <button type="submit" class="btn-primary">Save Changes</button>
-                    </div>
-                </form>
+            {# Profile Photo #}
+            <div class="form-group">
+                <label for="profile_picture">Profile Photo</label>
+                <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
             </div>
-        {% else %}
-            <div style="display: flex; gap: 32px;">
-                <div style="flex-shrink: 0; position: relative;">
-                    <div class="profile-picture-holder">
-                        {% if app.user.profilePicture %}
-                            <img src="{{ asset('uploads/profiles/' ~ app.user.profilePicture) }}" alt="Profile Picture">
-                        {% else %}
-                            <div class="profile-placeholder">
-                                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <circle cx="12" cy="8" r="4"/>
-                                    <path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
-                                </svg>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <form method="post" enctype="multipart/form-data" id="userProfileForm">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
-                        <input type="file" name="profile_picture" id="profile_picture_user" accept="image/*" style="display: none;" onchange="document.getElementById('userProfileForm').submit();">
-                        <label for="profile_picture_user" class="profile-upload-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                        </label>
-                    </form>
+
+            {# Name #}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first_name">First Name</label>
+                    <input type="text" name="first_name" id="first_name" value="{{ app.user.firstName }}">
                 </div>
-                <div style="flex: 1;">
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: #666; font-size: 13px; margin: 0 0 4px;">Identification</p>
-                        <p style="margin: 0; font-size: 15px;">{{ app.user.identification ?? 'Not set' }}</p>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: #666; font-size: 13px; margin: 0 0 4px;">Institutional Email</p>
-                        <p style="margin: 0; font-size: 15px;">{{ app.user.institutionalEmail ?? 'Not set' }}</p>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: #666; font-size: 13px; margin: 0 0 4px;">Full Name</p>
-                        <p style="margin: 0; font-size: 15px;">{{ app.user.firstName ?? '' }} {{ app.user.middleName ?? '' }} {{ app.user.lastName ?? '' }}</p>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: #666; font-size: 13px; margin: 0 0 4px;">Degree</p>
-                        <p style="margin: 0; font-size: 15px;">{{ app.user.degree ?? 'Not set' }}</p>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: #666; font-size: 13px; margin: 0 0 4px;">Degree Name</p>
-                        <p style="margin: 0; font-size: 15px;">{{ app.user.degreeName ?? 'Not set' }}</p>
-                    </div>
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: #666; font-size: 13px; margin: 0 0 4px;">Email (Login)</p>
-                        <p style="margin: 0; font-size: 15px;">{{ app.user ? app.user.userIdentifier : 'Guest' }}</p>
-                    </div>
-                    <p style="color: #666; font-size: 14px; margin-top: 24px;">
-                        Only Super Admin can modify account information.
-                    </p>
+                <div class="form-group">
+                    <label for="middle_name">Middle Name</label>
+                    <input type="text" name="middle_name" id="middle_name" value="{{ app.user.middleName }}">
+                </div>
+                <div class="form-group">
+                    <label for="last_name">Last Name</label>
+                    <input type="text" name="last_name" id="last_name" value="{{ app.user.lastName }}">
                 </div>
             </div>
-        {% endif %}
-    </div>
+
+            {# ID & Email #}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="identification">Identification</label>
+                    <input type="text" name="identification" id="identification" value="{{ app.user.identification }}">
+                </div>
+                <div class="form-group">
+                    <label for="institutional_email">Institutional Email</label>
+                    <input type="email" name="institutional_email" id="institutional_email" value="{{ app.user.institutionalEmail }}">
+                </div>
+            </div>
+
+            {# Degree #}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="degree">Course Code</label>
+                    <input type="text" name="degree" id="degree" value="{{ app.user.degree }}" placeholder="BSIT">
+                </div>
+                <div class="form-group">
+                    <label for="degree_name">Degree Name</label>
+                    <input type="text" name="degree_name" id="degree_name" value="{{ app.user.degreeName }}">
+                </div>
+            </div>
+
+            {# Login #}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">Login Email</label>
+                    <input type="email" name="email" id="email" value="{{ app.user.email }}">
+                </div>
+                <div class="form-group">
+                    <label for="password">New Password</label>
+                    <input type="password" name="password" id="password" placeholder="Leave blank">
+                </div>
+            </div>
+
+            {% if mentorProfile %}
+            {# Mentor Description #}
+            <h3>✏️ Mentor Description</h3>
+            <p class="muted">How students see you</p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" name="display_name" value="{{ mentorProfile.displayName }}">
+                </div>
+                <div class="form-group">
+                    <label>Specialization</label>
+                    <input type="text" name="specialization" value="{{ mentorProfile.specialization }}">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Bio</label>
+                <textarea name="bio" rows="4">{{ mentorProfile.bio }}</textarea>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn-primary">Save Personal Changes</button>
+        </div>
+    </form>
+</div>
+
 {% endblock %}

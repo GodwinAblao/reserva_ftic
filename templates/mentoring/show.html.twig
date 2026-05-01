@@ -1,0 +1,82 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}{{ mentor.displayName }} | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <a href="{{ path('mentoring_index') }}" class="btn-secondary">← Back to Mentors</a>
+    <div>
+        <h1>{{ mentor.displayName }}</h1>
+        <p class="muted">{{ mentor.specialization }} Mentor • {{ mentor.engagementPoints }} Engagement Points</p>
+    </div>
+</div>
+
+<section class="mentor-detail">
+    <div class="mentor-profile-header">
+        <div class="mentor-avatar-large">
+            {% set user = mentor.user %}
+            {% if user.profilePicture %}
+                <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="{{ mentor.displayName }}">
+            {% else %}
+                <span>{{ mentor.displayName|first|upper }}</span>
+            {% endif %}
+        </div>
+        <div class="mentor-info">
+            <div class="mentor-meta">
+                <div>
+                    <span>Degree</span>
+                    <strong>{{ user.degreeName ?: user.degree ?: 'N/A' }}</strong>
+                </div>
+                <div>
+                    <span>Email</span>
+                    <strong>{{ user.institutionalEmail ?: user.email }}</strong>
+                </div>
+            </div>
+            <p class="mentor-bio">{{ mentor.bio|default('No bio available.') }}</p>
+        </div>
+    </div>
+</section>
+
+<section class="availability-section">
+    <div class="section-heading">
+        <h2>Available Sessions</h2>
+        <span>{{ availabilities|length }} open slots</span>
+    </div>
+
+    <div class="card-panel empty-state">
+        <p>Send a custom request below!</p>
+    </div>
+</section>
+
+<section class="card-panel">
+    <div class="section-heading">
+        <h3>Request Custom Session</h3>
+    </div>
+    <p class="muted">Not finding a suitable slot? Request a custom mentoring session.</p>
+    <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="form-grid">
+        <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
+        <div class="form-group full-span">
+            <label for="custom_message">Your Message</label>
+            <textarea name="message" id="custom_message" class="form-input" rows="5" placeholder="Tell the mentor about your needs, preferred topics/dates/times, and how you can meet. Max 500 characters." required maxlength="500"></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Send Custom Request</button>
+    </form>
+</section>
+
+
+<section class="card-panel">
+    <h3>Your Sessions with {{ mentor.displayName }}</h3>
+    {% for appointment in myAppointments %}
+        <div class="list-row">
+            <div>
+                <strong>{{ appointment.scheduledAt|date('MMM d, yyyy h:mm A') }}</strong>
+                <p>{{ appointment.topic ?: 'General mentoring' }} • {{ appointment.status }}</p>
+            </div>
+            <span class="status-badge">{{ appointment.status }}</span>
+        </div>
+    {% else %}
+        <p>No sessions booked with this mentor yet.</p>
+    {% endfor %}
+</section>
+{% endblock %}
+

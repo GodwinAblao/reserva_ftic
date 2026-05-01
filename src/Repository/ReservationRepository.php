@@ -76,7 +76,8 @@ class ReservationRepository extends ServiceEntityRepository
         \DateTimeInterface $date,
         \DateTimeInterface $startTime,
         \DateTimeInterface $endTime,
-        ?int $excludeReservationId = null
+        ?int $excludeReservationId = null,
+        array $statuses = ['Approved']
     ): bool
     {
         $startOfDay = (clone $date)->setTime(0, 0, 0);
@@ -86,13 +87,13 @@ class ReservationRepository extends ServiceEntityRepository
             ->select('COUNT(r.id)')
             ->andWhere('r.facility = :facility')
             ->andWhere('r.reservationDate BETWEEN :startOfDay AND :endOfDay')
-            ->andWhere('r.status = :approved')
+            ->andWhere('r.status IN (:statuses)')
             ->andWhere('r.reservationStartTime < :endTime')
             ->andWhere('r.reservationEndTime > :startTime')
             ->setParameter('facility', $facility)
             ->setParameter('startOfDay', $startOfDay)
             ->setParameter('endOfDay', $endOfDay)
-            ->setParameter('approved', 'Approved')
+            ->setParameter('statuses', $statuses)
             ->setParameter('startTime', $startTime)
             ->setParameter('endTime', $endTime);
 

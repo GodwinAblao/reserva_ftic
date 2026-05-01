@@ -132,6 +132,7 @@
                         <div class="card-footer">
                             <div class="button-group">
                                 <form method="POST" action="{{ path('cancel_reservation', {'id': reservation.id}) }}" style="display: inline;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('cancel_reservation_' ~ reservation.id) }}">
                                     <button type="submit" class="btn btn-danger-small" onclick="return confirm('Cancel this reservation?')">Cancel</button>
                                 </form>
                             </div>

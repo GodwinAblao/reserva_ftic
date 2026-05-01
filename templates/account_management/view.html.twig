@@ -63,10 +63,17 @@
                     <span class="pill-role" style="margin-right: 8px;">
                         {% if role == 'ROLE_SUPER_ADMIN' %}
                             SUPER ADMIN
-                                {% elseif role == 'ROLE_STUDENT' %}
-                                    STUDENT
-                                {% elseif role == 'ROLE_FACULTY' %}
-                                    FACULTY
+                        {% elseif role == 'ROLE_STUDENT' %}
+                            STUDENT
+                        {% elseif role == 'ROLE_FACULTY' %}
+                            FACULTY
+                        {% else %}
+                            {{ role|replace({'ROLE_': ''}) }}
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
 
         <div style="display: flex; gap: 12px;">
             <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="btn-primary">Edit</a>

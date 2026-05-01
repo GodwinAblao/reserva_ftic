@@ -17,6 +17,14 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
+use App\Repository\ResearchContentRepository;
+use App\Repository\MentorProfileRepository;
+use App\Repository\MentorApplicationRepository;
+use App\Repository\MentoringAppointmentRepository;
+use App\Repository\ReservationRepository;
+use App\Entity\MentorAvailability;
+
+
 #[Route('/account-management')]
 class AccountManagementController extends AbstractController
 {
@@ -207,7 +215,17 @@ class AccountManagementController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'app_account_management_delete', methods: ['POST'])]
-    public function delete(User $user, Request $request, EntityManagerInterface $em, CsrfTokenManagerInterface $csrfTokenManager): Response
+    public function delete(
+        User $user, 
+        Request $request, 
+        EntityManagerInterface $em, 
+        CsrfTokenManagerInterface $csrfTokenManager,
+        ResearchContentRepository $researchContentRepository,
+        ReservationRepository $reservationRepository, 
+        MentorApplicationRepository $mentorApplicationRepository,
+        MentoringAppointmentRepository $mentoringAppointmentRepository,
+        MentorProfileRepository $mentorProfileRepository
+    ): Response
     {
         $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
 
@@ -222,11 +240,63 @@ class AccountManagementController extends AbstractController
             return $this->redirectToRoute('app_account_management');
         }
 
+        // Cleanup dependent entities to avoid FK constraints
+        // Research contents
+        $researchContents = $researchContentRepository->findByAuthor($user);
+        foreach ($researchContents as $content) {
+            $em->remove($content);
+        }
+
+        // Reservations
+        $reservations = $reservationRepository->findBy(['user' => $user]);
+        foreach ($reservations as $reservation) {
+            $em->remove($reservation);
+        }
+
+        // Mentor applications as student
+        $applications = $mentorApplicationRepository->findByStudent($user);
+        foreach ($applications as $application) {
+            $em->remove($application);
+        }
+
+        // Appointments as student
+        $studentAppointments = $mentoringAppointmentRepository->findByStudent($user);
+        foreach ($studentAppointments as $appointment) {
+            $em->remove($appointment);
+        }
+
+        // Check for mentor profile
+        $mentorProfile = $mentorProfileRepository->findByUser($user);
+        if ($mentorProfile) {
+            // Appointments as mentor
+            $mentorAppointments = $mentoringAppointmentRepository->findByMentorUser($user);
+            foreach ($mentorAppointments as $appointment) {
+                $em->remove($appointment);
+            }
+
+            // Availabilities
+            $availabilities = $em->getRepository(MentorAvailability::class)->findBy(['mentor' => $mentorProfile]);
+            foreach ($availabilities as $availability) {
+                $em->remove($availability);
+            }
+
+            $em->remove($mentorProfile);
+        }
+
+        // Profile picture file
+        if ($user->getProfilePicture()) {
+            $profilePath = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles/' . $user->getProfilePicture();
+            if (file_exists($profilePath)) {
+                unlink($profilePath);
+            }
+        }
+
         $em->remove($user);
         $em->flush();
 
-        $this->addFlash('success', 'Account deleted successfully.');
+        $this->addFlash('success', 'Account and all related data deleted successfully.');
 
         return $this->redirectToRoute('app_account_management');
     }
+
 }

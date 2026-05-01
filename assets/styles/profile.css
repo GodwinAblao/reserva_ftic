@@ -1,0 +1,137 @@
+/* Profile Tab Styles */
+
+.profile-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid rgba(0, 102, 51, 0.1);
+  margin-bottom: 1rem;
+}
+
+.tab-link {
+  padding: 1rem 1.5rem;
+  color: #64748b;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab-link:hover {
+  color: var(--feu-green-dark);
+  background: rgba(0, 102, 51, 0.04);
+}
+
+.tab-link.active {
+  color: var(--feu-green-dark);
+  border-bottom-color: var(--feu-green);
+}
+
+.availability-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.availability-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  background: rgba(0, 102, 51, 0.02);
+  border-radius: 12px;
+  border-left: 4px solid var(--feu-green);
+}
+
+.availability-details strong {
+  display: block;
+  color: var(--feu-green-dark);
+}
+
+.availability-details span {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.status-badge.booked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge.open {
+  background: #ecfdf5;
+  color: var(--feu-green-dark);
+}
+
+.btn-secondary-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.delete-form button {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.request-item {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid rgba(0, 102, 51, 0.3);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.request-item.pending {
+  border-left-color: var(--feu-gold);
+  background: rgba(253, 184, 19, 0.05);
+}
+
+.request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.request-message {
+  line-height: 1.55;
+  margin-bottom: 1rem;
+  color: #475569;
+}
+
+.mentor-response {
+  background: rgba(0, 102, 51, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.form-inline {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.form-inline textarea {
+  flex: 1;
+  min-width: 300px;
+}
+
+@media (max-width: 768px) {
+  .profile-tabs {
+    flex-direction: column;
+  }
+
+  .availability-item, .request-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+

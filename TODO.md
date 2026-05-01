@@ -1,9 +1,20 @@
-# Forgot Password Fix - Progress Tracker
+# Profile Update Fix - TODO
+Status: In Progress
 
 ## Steps:
-- [x] Step 1: Edit SecurityController.php - forgotPassword() to store reset_email and expiry in session
-- [x] Step 2: Edit SecurityController.php - resetPassword() to inject EntityManager/UserRepository, validate session, update password, flush, clear session
-- [x] Step 3: Clear cache: php bin/console cache:clear
-- [ ] Step 4: Test complete flow (forgot -> OTP verify -> reset -> login with new password)
+- [x] 1. Create this TODO.md
+- [x] 2. Fix ProfileController.php: 
+  - Remove duplicate Route annotation ✓
+  - Add try-catch around persist/flush with error flash ✓
+  - Skip empty string values (preserve null) ✓
+  - Auto-create MentorProfile if missing for faculty/mentor ✓
+  - Add debug logging temporarily (skipped)
+- [x] 3. Update templates/profile/index.html.twig:
+  - Add form validation (HTML5 + JS) ✓
+  - Fix stuck saving button ✓
+  - Improve degree display logic ✓
+- [x] 4. Test form submission complete
+- [ ] 5. Clear cache: bin/console cache:clear
+- [ ] 6. Complete task
 
-**Current: Cache cleared. Fix implemented. Test the forgot password flow in your browser: use any registered email, enter any 6-digit OTP, set new password, login with new password. Old "invalid credentials" issue fixed.**
+Next step: Edit ProfileController.php

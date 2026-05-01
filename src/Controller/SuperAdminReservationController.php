@@ -35,9 +35,14 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/reservations/{id}/approve', name: 'admin_approve_reservation', methods: ['POST'])]
     public function approveReservation(
         Reservation $reservation,
+        Request $request,
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em
     ): Response {
+        if (!$this->isCsrfTokenValid('approve_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $date = $reservation->getReservationDate();
         $startTime = $reservation->getReservationStartTime();
         $endTime = $reservation->getReservationEndTime();
@@ -62,12 +67,63 @@ class SuperAdminReservationController extends AbstractController
         Request $request,
         EntityManagerInterface $em
     ): Response {
+        if (!$this->isCsrfTokenValid('reject_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $reason = $request->request->get('reason') ?? 'Not specified';
         $reservation->setStatus('Rejected');
         $reservation->setRejectionReason($reason);
         $em->flush();
 
         $this->addFlash('success', 'Reservation rejected successfully.');
+
+        return $this->redirectToRoute('admin_reservations');
+    }
+
+    #[Route('/reservations/{id}/suggest-alternatives', name: 'admin_suggest_alternatives', methods: ['GET'])]
+    public function suggestAlternatives(
+        Reservation $reservation,
+        ReservationRepository $reservationRepo
+    ): Response {
+        $alternatives = $reservationRepo->findAvailableAlternatives(
+            $reservation->getCapacity(),
+            $reservation->getReservationDate(),
+            $reservation->getReservationStartTime(),
+            $reservation->getReservationEndTime(),
+            $reservation->getFacility()
+        );
+
+        return $this->render('super_admin/suggest_alternatives.html.twig', [
+            'reservation' => $reservation,
+            'alternatives' => $alternatives,
+        ]);
+    }
+
+    #[Route('/reservations/{id}/suggest-alternatives/{facilityId}', name: 'admin_confirm_suggest', methods: ['POST'])]
+    public function confirmSuggestion(
+        Reservation $reservation,
+        int $facilityId,
+        Request $request,
+        EntityManagerInterface $em
+    ): Response {
+        if (!$this->isCsrfTokenValid('admin_suggest_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $facility = $em->getRepository(Facility::class)->find($facilityId);
+        if (!$facility) {
+            $this->addFlash('error', 'Suggested facility was not found.');
+
+            return $this->redirectToRoute('admin_reservations');
+        }
+
+        $reservation->setSuggestedFacility($facility);
+        $reservation->setStatus('Suggested');
+        $reservation->setUpdatedAt(new \DateTime());
+        $em->flush();
+
+        $this->addFlash('success', 'Alternative facility suggested to the requester.');
 
         return $this->redirectToRoute('admin_reservations');
     }
@@ -183,6 +239,10 @@ class SuperAdminReservationController extends AbstractController
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em
     ): Response {
+        if (!$this->isCsrfTokenValid('update_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         // Update basic information
         $reservation->setName($request->request->get('name'));
         $reservation->setEmail($request->request->get('email'));

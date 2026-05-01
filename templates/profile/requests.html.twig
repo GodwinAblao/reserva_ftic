@@ -1,0 +1,53 @@
+{% extends 'profile/index.html.twig' %}
+
+{% block content %}
+<div class="content-header">
+    <nav class="profile-tabs">
+        <a href="{{ path('app_profile') }}" class="btn btn-secondary">← Back to Profile</a>
+
+    </nav>
+
+</div>
+
+<div class="card-panel">
+    <h2>Mentor Requests ({{ requests|length }})</h2>
+    <p class="muted">Student requests for custom mentoring sessions.</p>
+
+    {% if requests|length > 0 %}
+        <div class="requests-list">
+            {% for request in requests %}
+                <div class="request-item {{ request.status }}">
+                    <div class="request-header">
+                        <div>
+                            <strong>{{ request.student.firstName ~ ' ' ~ request.student.lastName }}</strong>
+                            <span class="status-badge {{ request.status }}">{{ request.status|title }}</span>
+                        </div>
+                        <small>{{ request.createdAt|date('MMM d, Y h:i A') }}</small>
+                    </div>
+                    <p class="request-message">{{ request.message }}</p>
+                    {% if request.mentorResponse %}
+                        <div class="mentor-response">
+                            <strong>Your Response:</strong>
+                            <p>{{ request.mentorResponse }}</p>
+                        </div>
+                    {% endif %}
+                    {% if request.status == 'pending' %}
+                        <div class="request-actions">
+                            <form method="post" action="{{ path('profile_respond_request', {'id': request.id}) }}" class="form-inline">
+                                <input type="hidden" name="_token" value="{{ csrf_token('respond_request_' ~ request.id) }}">
+                                <textarea name="response" placeholder="Your response or decision" class="form-input" rows="2" required></textarea>
+                                <button type="submit" class="btn-primary-small">Send Response</button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No mentor requests yet. Once students request custom sessions, they'll appear here.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+

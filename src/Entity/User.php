@@ -89,6 +89,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         // Specific roles like ROLE_STUDENT or ROLE_FACULTY remain stored separately.
         $roles[] = 'ROLE_USER';
 
+        if (in_array('ROLE_FACULTY', $roles, true)) {
+            $roles[] = 'ROLE_MENTOR';
+        }
+
         return array_values(array_unique($roles));
     }
 

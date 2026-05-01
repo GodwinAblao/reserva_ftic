@@ -79,6 +79,7 @@
 
                     <div class="facility-footer">
                         <form method="POST" action="{{ path('admin_confirm_suggest', {'id': reservation.id, 'facilityId': facility.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('admin_suggest_' ~ reservation.id) }}">
                             <button type="submit" class="btn btn-primary-full" onclick="return confirm('Suggest {{ facility.name }} as an alternative to {{ reservation.name }}?')">
                                 <i class="fas fa-check"></i> Suggest This Facility
                             </button>

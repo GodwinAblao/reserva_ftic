@@ -1,0 +1,43 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Research Repository | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>Research Repository</h2>
+    <a href="{{ path('research_new') }}" class="btn-primary">Add Content</a>
+</div>
+
+<section class="card-panel">
+    <form method="get" class="form-grid compact">
+        <input name="q" value="{{ query }}" class="form-input" placeholder="Search title, summary, or tags">
+        <select name="category" class="form-input">
+            <option value="">All categories</option>
+            {% for itemCategory in categories %}
+                <option value="{{ itemCategory }}" {% if itemCategory == category %}selected{% endif %}>{{ itemCategory }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn-secondary" type="submit">Filter</button>
+    </form>
+</section>
+
+<section class="research-grid">
+    {% for item in items %}
+        <article class="card-panel">
+            <div class="pill-role">{{ item.type }} - {{ item.visibility }}</div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.summary ?: 'No summary provided.' }}</p>
+            <p><strong>Category:</strong> {{ item.category }}</p>
+            {% if item.tags %}<p><strong>Tags:</strong> {{ item.tags }}</p>{% endif %}
+            {% if item.filePath %}<a href="{{ item.filePath }}" class="btn-secondary">Open File</a>{% endif %}
+            {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
+                <a href="{{ path('research_edit', {'id': item.id}) }}" class="btn-primary">Edit</a>
+            {% endif %}
+        </article>
+    {% else %}
+        <div class="card-panel">
+            <p>No research content found.</p>
+        </div>
+    {% endfor %}
+</section>
+{% endblock %}

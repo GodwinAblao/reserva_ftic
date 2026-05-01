@@ -1,0 +1,100 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Mentoring Admin | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>Mentoring Admin</h2>
+    <a href="{{ path('mentoring_index') }}" class="btn-secondary">Back to Mentoring</a>
+</div>
+
+<section class="card-panel">
+    <h3>Create Mentor Profile</h3>
+    <form method="post" action="{{ path('mentoring_create_mentor') }}" class="form-grid">
+        <input type="hidden" name="_token" value="{{ csrf_token('create_mentor') }}">
+        <select name="user_id" class="form-input" required>
+            <option value="">Select user</option>
+            {% for user in users %}
+                <option value="{{ user.id }}">{{ user.email }}</option>
+            {% endfor %}
+        </select>
+        <input name="display_name" class="form-input" placeholder="Display name" required>
+        <input name="specialization" class="form-input" placeholder="Specialization" required>
+        <textarea name="bio" class="form-input" placeholder="Mentor bio"></textarea>
+        <button type="submit" class="btn-primary">Create Mentor</button>
+    </form>
+</section>
+
+<section class="card-panel">
+    <h3>Mentor Applications</h3>
+    {% for application in applications %}
+        <div class="list-row">
+            <div>
+                <strong>{{ application.student.email }}</strong>
+                <p>{{ application.specialization }} - {{ application.status }}</p>
+                <small>{{ application.reason }}</small>
+            </div>
+            {% if application.status == 'Pending Review' %}
+                <div class="button-group">
+                    <form method="post" action="{{ path('mentoring_review_application', {'id': application.id, 'decision': 'approve'}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_' ~ application.id) }}">
+                        <button class="btn-primary" type="submit">Approve</button>
+                    </form>
+                    <form method="post" action="{{ path('mentoring_review_application', {'id': application.id, 'decision': 'decline'}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_' ~ application.id) }}">
+                        <input name="admin_note" class="form-input" placeholder="Decline note">
+                        <button class="btn-secondary" type="submit">Decline</button>
+                    </form>
+                </div>
+            {% else %}
+                <span class="status-badge">{{ application.status }}</span>
+            {% endif %}
+        </div>
+    {% else %}
+        <p>No mentor applications yet.</p>
+    {% endfor %}
+</section>
+
+<section class="card-panel">
+    <h3>Mentors and Availability</h3>
+    {% for mentor in mentors %}
+        <div class="list-row">
+            <div>
+                <strong>{{ mentor.displayName }}</strong>
+                <p>{{ mentor.specialization }} - {{ mentor.engagementPoints }} points</p>
+            </div>
+        </div>
+        <form method="post" action="{{ path('mentoring_add_availability', {'id': mentor.id}) }}" class="form-grid compact">
+            <input type="hidden" name="_token" value="{{ csrf_token('mentor_availability_' ~ mentor.id) }}">
+            <input type="date" name="available_date" class="form-input" required>
+            <input type="time" name="start_time" class="form-input" required>
+            <input type="time" name="end_time" class="form-input" required>
+            <button class="btn-secondary" type="submit">Add Slot</button>
+        </form>
+    {% else %}
+        <p>No mentors yet.</p>
+    {% endfor %}
+</section>
+
+<section class="card-panel">
+    <h3>Appointments</h3>
+    {% for appointment in appointments %}
+        <div class="list-row">
+            <div>
+                <strong>{{ appointment.mentor.displayName }}</strong>
+                <p>{{ appointment.student.email }} - {{ appointment.scheduledAt|date('M d, Y h:i A') }} - {{ appointment.topic ?: 'No topic' }}</p>
+            </div>
+            <div class="button-group">
+                {% for status in ['Approved', 'Completed', 'Rejected'] %}
+                    <form method="post" action="{{ path('mentoring_update_status', {'id': appointment.id, 'status': status}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('mentoring_status_' ~ appointment.id) }}">
+                        <button class="btn-secondary-small" type="submit">{{ status }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <p>No appointments yet.</p>
+    {% endfor %}
+</section>
+{% endblock %}

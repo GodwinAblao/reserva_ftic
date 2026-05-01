@@ -58,13 +58,17 @@
 
                         <div class="row-actions">
                             <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display: inline;">
+                                <input type="hidden" name="_token" value="{{ csrf_token('approve_reservation_' ~ reservation.id) }}">
                                 <button type="submit" class="btn btn-approve">Approve</button>
                             </form>
 
                             <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display: inline;" class="reject-form">
+                                <input type="hidden" name="_token" value="{{ csrf_token('reject_reservation_' ~ reservation.id) }}">
                                 <input type="hidden" name="reason" class="reject-reason">
                                 <button type="button" class="btn btn-reject" onclick="showRejectModal(this)">Reject</button>
                             </form>
+
+                            <a href="{{ path('admin_suggest_alternatives', {'id': reservation.id}) }}" class="btn btn-suggest">Suggest Alternative</a>
                         </div>
                     </div>
                 {% endfor %}

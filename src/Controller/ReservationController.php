@@ -81,7 +81,7 @@ class ReservationController extends AbstractController
 
             // Check if time slot is already booked
             $date = \DateTime::createFromFormat('Y-m-d', $dateStr);
-            if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime)) {
+            if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested'])) {
                 // Find alternative facilities
                 $alternatives = $reservationRepo->findAvailableAlternatives(
                     $capacity,
@@ -296,9 +296,14 @@ class ReservationController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function cancelReservation(
         Reservation $reservation,
+        Request $request,
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em
     ): Response {
+        if (!$this->isCsrfTokenValid('cancel_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         // Verify user owns this reservation
         if ($reservation->getUser() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
@@ -421,9 +426,14 @@ class ReservationController extends AbstractController
     public function selectAlternative(
         Reservation $reservation,
         int $facilityId,
+        Request $request,
         EntityManagerInterface $em,
         MailerInterface $mailer
     ): Response {
+        if (!$this->isCsrfTokenValid('select_alternative_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         // Verify user owns this reservation
         if ($reservation->getUser() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
@@ -451,9 +461,14 @@ class ReservationController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function keepOriginalFacility(
         Reservation $reservation,
+        Request $request,
         EntityManagerInterface $em,
         MailerInterface $mailer
     ): Response {
+        if (!$this->isCsrfTokenValid('keep_original_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         // Verify user owns this reservation
         if ($reservation->getUser() !== $this->getUser()) {
             throw $this->createAccessDeniedException();

@@ -12,6 +12,7 @@
 
     <div class="form-section card-panel">
         <form method="POST" action="{{ path('admin_update_reservation', {'id': reservation.id}) }}" class="edit-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('update_reservation_' ~ reservation.id) }}">
             <div class="form-grid">
                 <!-- Requester Information -->
                 <div class="form-group">

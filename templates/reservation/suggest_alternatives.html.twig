@@ -78,6 +78,7 @@
 
                     <div class="facility-footer">
                         <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.id) }}">
                             <button type="submit" class="btn btn-primary-full">
                                 <i class="fas fa-check"></i> Accept This Facility
                             </button>
@@ -100,6 +101,7 @@
         <p class="section-description">You can also proceed with your original choice of {{ reservation.facility.name }}, even though it has a larger capacity than needed.</p>
         
         <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.id) }}">
             <button type="submit" class="btn btn-secondary-large">
                 <i class="fas fa-arrow-right"></i> Keep {{ reservation.facility.name }}
             </button>

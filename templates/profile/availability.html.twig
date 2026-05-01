@@ -1,0 +1,58 @@
+{% extends 'profile/index.html.twig' %}
+
+{% block content %}
+<div class="content-header">
+    <nav class="profile-tabs">
+        <a href="{{ path('app_profile') }}" class="btn btn-secondary">← Back to Profile</a>
+
+    </nav>
+
+</div>
+
+<div class="card-panel">
+    <h2>Manage Availability</h2>
+    <p class="muted">Add, edit, or delete your mentoring slots. Students can book open slots.</p>
+
+    <form method="post" action="{{ path('profile_add_availability') }}" class="form-grid compact" style="margin-bottom: 2rem;">
+        <input type="hidden" name="_token" value="{{ csrf_token('add_availability') }}">
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="date" class="form-input" required>
+        </div>
+        <div class="form-group">
+            <label>Start Time</label>
+            <input type="time" name="start_time" class="form-input" required>
+        </div>
+        <div class="form-group">
+            <label>End Time</label>
+            <input type="time" name="end_time" class="form-input" required>
+        </div>
+        <button type="submit" class="btn-primary">Add Slot</button>
+    </form>
+
+    <div class="availability-list">
+        {% if availabilities|length > 0 %}
+            {% for availability in availabilities %}
+                <div class="availability-item">
+                    <div class="availability-details">
+                        <strong>{{ availability.availableDate|date('MMM d, Y') }}</strong>
+                        <span>{{ availability.startTime|date('h:i A') }} - {{ availability.endTime|date('h:i A') }}</span>
+                        <span class="status-badge {{ availability.isBooked ? 'booked' : 'open' }}">
+                            {{ availability.isBooked ? 'Booked' : 'Open' }}
+                        </span>
+                    </div>
+                    {% if not availability.isBooked %}
+                        <form method="post" action="{{ path('profile_delete_availability', {'id': availability.id}) }}" class="delete-form" style="display: inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete_availability_' ~ availability.id) }}">
+                            <button type="submit" class="btn-secondary-small" onclick="return confirm('Delete this slot?')">Delete</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-state">No availability slots yet. Add some above to start mentoring!</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
