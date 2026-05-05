@@ -63,6 +63,7 @@ class ResearchController extends AbstractController
     }
 
     #[Route('/new', name: 'research_new', methods: ['GET', 'POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function new(Request $request, EntityManagerInterface $em, SluggerInterface $slugger): Response
     {
         if ($request->isMethod('POST')) {
@@ -125,6 +126,22 @@ class ResearchController extends AbstractController
             return $this->redirectToRoute('research_index');
         }
 
-        return $this->render('research/edit.html.twig', ['item' => $item]);
+return $this->render('research/edit.html.twig', ['item' => $item]);
+    }
+
+    #[Route('/{id}/delete', name: 'research_delete', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function delete(ResearchContent $item, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('research_delete_' . $item->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $em->remove($item);
+        $em->flush();
+
+        $this->addFlash('success', 'Research content deleted.');
+
+        return $this->redirectToRoute('research_index');
     }
 }

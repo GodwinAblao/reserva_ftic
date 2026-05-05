@@ -59,22 +59,31 @@ class ProfileController extends AbstractController
 
                 $em->persist($user);
 
-                // Update mentor profile
-                $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
-                if (!$mentorProfile) {
-                    $mentorProfile = new MentorProfile();
-                    $mentorProfile->setUser($user);
+// Update mentor profile only if user has mentor role
+                if (in_array('ROLE_MENTOR', $user->getRoles(), true)) {
+                    $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
+                    if (!$mentorProfile) {
+                        $mentorProfile = new MentorProfile();
+                        $mentorProfile->setUser($user);
+                    }
+
+                    $displayName = $request->request->get('display_name');
+                    $specialization = $request->request->get('specialization');
+                    $bio = $request->request->get('bio');
+
+                    // Only update if values are provided
+                    if ($displayName) {
+                        $mentorProfile->setDisplayName($displayName);
+                    }
+                    if ($specialization) {
+                        $mentorProfile->setSpecialization($specialization);
+                    }
+                    if ($bio !== null) {
+                        $mentorProfile->setBio($bio);
+                    }
+
+                    $em->persist($mentorProfile);
                 }
-
-                $displayName = $request->request->get('display_name');
-                $specialization = $request->request->get('specialization');
-                $bio = $request->request->get('bio');
-
-                $mentorProfile->setDisplayName($displayName ?: $firstName . ' ' . $lastName);
-                $mentorProfile->setSpecialization($specialization ?: 'Faculty Mentor');
-                $mentorProfile->setBio($bio);
-
-                $em->persist($mentorProfile);
 
                 try {
                     $em->flush();

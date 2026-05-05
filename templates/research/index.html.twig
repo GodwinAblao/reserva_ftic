@@ -5,7 +5,9 @@
 {% block content %}
 <div class="content-header">
     <h2>Research Repository</h2>
-    <a href="{{ path('research_new') }}" class="btn-primary">Add Content</a>
+    {% if is_granted('ROLE_SUPER_ADMIN') %}
+        <a href="{{ path('research_new') }}" class="btn-primary">Add Content</a>
+    {% endif %}
 </div>
 
 <section class="card-panel">

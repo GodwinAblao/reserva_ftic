@@ -9,6 +9,7 @@ use App\Entity\MentorApplication;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\User;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +24,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 class MentoringController extends AbstractController
 {
+    private NotificationService $notificationService;
+
+    public function __invoke(NotificationService $notificationService): void
+    {
+        $this->notificationService = $notificationService;
+    }
     #[Route('', name: 'mentoring_index', methods: ['GET'])]
     public function index(EntityManagerInterface $em): Response
     {
@@ -59,38 +66,73 @@ class MentoringController extends AbstractController
         ]);
     }
 
-    #[Route('/mentor-application', name: 'mentoring_apply', methods: ['POST'])]
+#[Route('/mentor-application', name: 'mentoring_apply', methods: ['POST'])]
     #[IsGranted('ROLE_STUDENT')]
-    public function applyForMentor(Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
+    public function applyForMentor(Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('mentor_application', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
         $user = $this->getUser();
+        
+        // Get form data
         $email = trim((string) $request->request->get('email'));
-        $reason = trim((string) $request->request->get('reason'));
+        $firstName = trim((string) $request->request->get('firstName'));
+        $middleName = trim((string) $request->request->get('middleName'));
+        $lastName = trim((string) $request->request->get('lastName'));
+        $contactNumber = trim((string) $request->request->get('contactNumber'));
         $specialization = trim((string) $request->request->get('specialization'));
+        $yearsOfExperience = $request->request->get('yearsOfExperience') ? (int)$request->request->get('yearsOfExperience') : null;
+        $currentProfession = trim((string) $request->request->get('currentProfession'));
+        $highestEducation = trim((string) $request->request->get('highestEducation'));
+        $supportingDescription = trim((string) $request->request->get('supportingDescription'));
+        
+        // Handle file uploads (store as JSON array)
+        $files = $request->files->get('proofOfExpertise');
+        $proofFiles = [];
+        if ($files) {
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    // Validate file size (5MB max)
+                    if ($file->getSize() > 5 * 1024 * 1024) {
+                        $this->addFlash('error', 'File ' . $file->getClientOriginalName() . ' exceeds 5MB limit.');
+                        return $this->redirectToRoute('mentoring_index');
+                    }
+                    // Validate file type
+                    $allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+                    if (!in_array($file->getMimeType(), $allowedTypes)) {
+                        $this->addFlash('error', 'File ' . $file->getClientOriginalName() . ' must be JPG, PNG, or PDF.');
+                        return $this->redirectToRoute('mentoring_index');
+                    }
+// Store file with proper extension
+$extension = $file->getClientOriginalExtension();
+                    if (empty($extension)) {
+                        $extension = 'pdf';
+                    }
+                    $newFilename = 'mentor_' . uniqid() . '.' . $extension;
+                    $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles';
+                    $file->move($targetDir, $newFilename);
+                    $proofFiles[] = $newFilename;
+                }
+            }
+        }
 
-        if (!$user instanceof User || $email === '' || $reason === '' || $specialization === '') {
-            $this->addFlash('error', 'Email, specialization, and reason are required.');
+        // Validation
+        if (!$user instanceof User || $email === '' || $specialization === '' || $firstName === '' || $lastName === '') {
+            $this->addFlash('error', 'Name, email, and specialization are required.');
 
             return $this->redirectToRoute('mentoring_index');
         }
 
-        if (strcasecmp($email, $user->getEmail()) !== 0 && strcasecmp($email, (string) $user->getInstitutionalEmail()) !== 0) {
-            $this->addFlash('error', 'Use the email connected to your student account.');
-
-            return $this->redirectToRoute('mentoring_index');
-        }
-
+        // Check for existing active application
         $active = $em->createQueryBuilder()
             ->select('a')
             ->from(MentorApplication::class, 'a')
             ->where('a.student = :student')
             ->andWhere('a.status IN (:statuses)')
             ->setParameter('student', $user)
-            ->setParameter('statuses', ['Awaiting OTP', 'Pending Review'])
+            ->setParameter('statuses', ['Pending', 'Approved'])
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -101,75 +143,31 @@ class MentoringController extends AbstractController
             return $this->redirectToRoute('mentoring_index');
         }
 
-        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        // Create application directly (no OTP)
         $application = (new MentorApplication())
             ->setStudent($user)
             ->setEmail($email)
-            ->setReason($reason)
+            ->setFirstName($firstName)
+            ->setMiddleName($middleName ?: null)
+            ->setLastName($lastName)
+            ->setContactNumber($contactNumber ?: null)
             ->setSpecialization($specialization)
-            ->setOtpCode($otp)
-            ->setOtpExpiresAt(new \DateTime('+10 minutes'));
+            ->setYearsOfExperience($yearsOfExperience)
+            ->setCurrentProfession($currentProfession ?: null)
+            ->setHighestEducation($highestEducation ?: null)
+            ->setSupportingDescription($supportingDescription ?: null)
+            ->setProofOfExpertise($proofFiles ?: null)
+            ->setStatus('Pending');
 
         $em->persist($application);
         $em->flush();
 
-        try {
-            $message = (new Email())
-                ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
-                ->to($email)
-                ->subject('Reserva FTIC Mentor Application OTP')
-                ->text(sprintf('Your mentor application OTP is %s. It expires in 10 minutes.', $otp));
-
-            $mailer->send($message);
-            $this->addFlash('success', 'OTP sent to your email. Enter it below to submit your request to the Super Admin.');
-        } catch (\Throwable $e) {
-            $this->addFlash('error', 'Application saved, but OTP email could not be sent: ' . $e->getMessage());
-        }
+        $this->addFlash('success', 'Your mentor application has been submitted and is pending Super Admin review.');
 
         return $this->redirectToRoute('mentoring_index');
     }
 
-    #[Route('/mentor-application/{id}/verify', name: 'mentoring_verify_application', methods: ['POST'])]
-    #[IsGranted('ROLE_STUDENT')]
-    public function verifyApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
-    {
-        if ($application->getStudent() !== $this->getUser()) {
-            throw $this->createAccessDeniedException();
-        }
-
-        if (!$this->isCsrfTokenValid('verify_mentor_application_' . $application->getId(), (string) $request->request->get('_token'))) {
-            throw $this->createAccessDeniedException('Invalid CSRF token.');
-        }
-
-        if ($application->getStatus() !== 'Awaiting OTP') {
-            $this->addFlash('error', 'This application is no longer waiting for OTP verification.');
-
-            return $this->redirectToRoute('mentoring_index');
-        }
-
-        if ($application->getOtpExpiresAt() < new \DateTime()) {
-            $this->addFlash('error', 'OTP expired. Please submit a new application.');
-
-            return $this->redirectToRoute('mentoring_index');
-        }
-
-        if (trim((string) $request->request->get('otp')) !== $application->getOtpCode()) {
-            $this->addFlash('error', 'Invalid OTP.');
-
-            return $this->redirectToRoute('mentoring_index');
-        }
-
-        $application
-            ->setIsOtpVerified(true)
-            ->setStatus('Pending Review');
-        $em->flush();
-
-        $this->addFlash('success', 'Your mentor application is now pending Super Admin review.');
-
-        return $this->redirectToRoute('mentoring_index');
-    }
-
-    #[Route('/admin/application/{id}/{decision}', name: 'mentoring_review_application', methods: ['POST'])]
+#[Route('/admin/application/{id}/{decision}', name: 'mentoring_review_application', methods: ['POST'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
     public function reviewApplication(MentorApplication $application, string $decision, Request $request, EntityManagerInterface $em): Response
     {
@@ -181,37 +179,53 @@ class MentoringController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        if ($application->getStatus() !== 'Pending Review' || !$application->isOtpVerified()) {
-            $this->addFlash('error', 'Only OTP-verified pending applications can be reviewed.');
+        // Allow reviewing any Pending application (no OTP required)
+        if (!in_array($application->getStatus(), ['Pending', 'Pending Review'], true)) {
+            $this->addFlash('error', 'Only pending applications can be reviewed.');
 
             return $this->redirectToRoute('mentoring_admin');
         }
 
         if ($decision === 'decline') {
             $application
-                ->setStatus('Declined')
+                ->setStatus('Rejected')
                 ->setAdminNote($request->request->get('admin_note'));
             $em->flush();
 
-            $this->addFlash('success', 'Mentor application declined.');
+            $this->addFlash('success', 'Mentor application rejected.');
 
             return $this->redirectToRoute('mentoring_admin');
         }
 
+        // Approve - set validity period if provided
+$validUntil = $request->request->get('valid_until');
+        if (!$validUntil) {
+            $this->addFlash('error', 'Valid until date is required when approving a mentor application.');
+            return $this->redirectToRoute('mentoring_admin');
+        }
+        $validUntilDate = \DateTime::createFromFormat('Y-m-d', $validUntil);
+        if ($validUntilDate) {
+            $application->setValidUntil($validUntilDate);
+        }
+
         $student = $application->getStudent();
         $roles = $student->getRoles();
-        $roles[] = 'ROLE_STUDENT';
-        $roles[] = 'ROLE_MENTOR';
+        if (!in_array('ROLE_STUDENT', $roles)) {
+            $roles[] = 'ROLE_STUDENT';
+        }
+        if (!in_array('ROLE_MENTOR', $roles)) {
+            $roles[] = 'ROLE_MENTOR';
+        }
         $student->setRoles(array_values(array_unique($roles)));
 
         $existingProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $student]);
         if (!$existingProfile) {
-            $name = trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? '')) ?: $student->getEmail();
+            $name = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $student->getEmail();
             $profile = (new MentorProfile())
                 ->setUser($student)
                 ->setDisplayName($name)
                 ->setSpecialization($application->getSpecialization())
-                ->setBio($application->getReason());
+                ->setBio($application->getSupportingDescription() ?: $application->getReason());
 
             $em->persist($profile);
         }

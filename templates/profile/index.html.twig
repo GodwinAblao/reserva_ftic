@@ -106,25 +106,39 @@
                 </div>
             </div>
 
-            {% if mentorProfile %}
-            {# Mentor Description #}
-            <h3>✏️ Mentor Description</h3>
-            <p class="muted">How students see you</p>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Display Name</label>
-                    <input type="text" name="display_name" value="{{ mentorProfile.displayName }}">
+{% if is_granted('ROLE_MENTOR') and mentorProfile %}
+            <div class="mentor-section">
+                <h3>Mentor Public Profile</h3>
+                <p class="muted">This information is visible to all students</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" name="display_name" value="{{ mentorProfile.displayName }}" placeholder="How you want to be known">
+                    </div>
+                    <div class="form-group">
+                        <label>Specialization</label>
+                        <select name="specialization" class="form-input">
+                            <option value="">Select specialization...</option>
+                            <option value="BSITBA" {{ mentorProfile.specialization == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
+                            <option value="BSCS" {{ mentorProfile.specialization == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
+                            <option value="Software Engineering" {{ mentorProfile.specialization == 'Software Engineering' ? 'selected' : '' }}>Software Engineering</option>
+                            <option value="Data Science" {{ mentorProfile.specialization == 'Data Science' ? 'selected' : '' }}>Data Science</option>
+                            <option value="Cybersecurity" {{ mentorProfile.specialization == 'Cybersecurity' ? 'selected' : '' }}>Cybersecurity</option>
+                            <option value="Cloud Computing" {{ mentorProfile.specialization == 'Cloud Computing' ? 'selected' : '' }}>Cloud Computing</option>
+                            <option value="Web Development" {{ mentorProfile.specialization == 'Web Development' ? 'selected' : '' }}>Web Development</option>
+                            <option value="Mobile Development" {{ mentorProfile.specialization == 'Mobile Development' ? 'selected' : '' }}>Mobile Development</option>
+                            <option value="UI/UX Design" {{ mentorProfile.specialization == 'UI/UX Design' ? 'selected' : '' }}>UI/UX Design</option>
+                            <option value="Research" {{ mentorProfile.specialization == 'Research' ? 'selected' : '' }}>Research</option>
+                            <option value="Other" {{ mentorProfile.specialization == 'Other' ? 'selected' : '' }}>Other</option>
+                        </select>
+                    </div>
                 </div>
+                
                 <div class="form-group">
-                    <label>Specialization</label>
-                    <input type="text" name="specialization" value="{{ mentorProfile.specialization }}">
+                    <label>Bio / Description</label>
+                    <textarea name="bio" rows="4" placeholder="Tell students about your expertise, experience, and what you can help with...">{{ mentorProfile.bio }}</textarea>
                 </div>
-            </div>
-            
-            <div class="form-group">
-                <label>Bio</label>
-                <textarea name="bio" rows="4">{{ mentorProfile.bio }}</textarea>
             </div>
             {% endif %}
 

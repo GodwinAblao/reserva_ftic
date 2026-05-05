@@ -11,7 +11,7 @@
 <section class="card-panel">
     <h3>Create Mentor Profile</h3>
     <form method="post" action="{{ path('mentoring_create_mentor') }}" class="form-grid">
-        <input type="hidden" name="_token" value="{{ csrf_token('create_mentor') }}">
+
         <select name="user_id" class="form-input" required>
             <option value="">Select user</option>
             {% for user in users %}
@@ -19,41 +19,216 @@
             {% endfor %}
         </select>
         <input name="display_name" class="form-input" placeholder="Display name" required>
-        <input name="specialization" class="form-input" placeholder="Specialization" required>
+        <select name="specialization" class="form-input">
+            <option value="">Select specialization...</option>
+            <option value="BSITBA">BSITBA (IT Business Analysis)</option>
+            <option value="BSCS">BSCS (Computer Science)</option>
+            <option value="Software Engineering">Software Engineering</option>
+            <option value="Data Science">Data Science</option>
+            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Cloud Computing">Cloud Computing</option>
+            <option value="Web Development">Web Development</option>
+            <option value="Mobile Development">Mobile Development</option>
+            <option value="UI/UX Design">UI/UX Design</option>
+            <option value="Research">Research</option>
+            <option value="Other">Other</option>
+        </select>
         <textarea name="bio" class="form-input" placeholder="Mentor bio"></textarea>
         <button type="submit" class="btn-primary">Create Mentor</button>
     </form>
 </section>
-
 <section class="card-panel">
     <h3>Mentor Applications</h3>
     {% for application in applications %}
-        <div class="list-row">
-            <div>
-                <strong>{{ application.student.email }}</strong>
-                <p>{{ application.specialization }} - {{ application.status }}</p>
-                <small>{{ application.reason }}</small>
-            </div>
-            {% if application.status == 'Pending Review' %}
-                <div class="button-group">
-                    <form method="post" action="{{ path('mentoring_review_application', {'id': application.id, 'decision': 'approve'}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_' ~ application.id) }}">
-                        <button class="btn-primary" type="submit">Approve</button>
-                    </form>
-                    <form method="post" action="{{ path('mentoring_review_application', {'id': application.id, 'decision': 'decline'}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_' ~ application.id) }}">
-                        <input name="admin_note" class="form-input" placeholder="Decline note">
-                        <button class="btn-secondary" type="submit">Decline</button>
-                    </form>
+        <div class="mentor-application-card">
+            <div class="application-header">
+                <div>
+                    <strong>{{ application.firstName }} {{ application.middleName ? application.middleName ~ ' ' : '' }}{{ application.lastName }}</strong>
+                    <span class="status-badge {{ application.status|lower }}">{{ application.status }}</span>
                 </div>
-            {% else %}
-                <span class="status-badge">{{ application.status }}</span>
+                <small>Submitted: {{ application.createdAt|date('M d, Y h:i A') }}</small>
+            </div>
+            
+            <div class="application-details">
+                <div class="detail-row">
+                    <span class="label">Email:</span>
+                    <span>{{ application.email }}</span>
+                </div>
+                {% if application.contactNumber %}
+                <div class="detail-row">
+                    <span class="label">Contact:</span>
+                    <span>{{ application.contactNumber }}</span>
+                </div>
+                {% endif %}
+                <div class="detail-row">
+                    <span class="label">Specialization:</span>
+                    <span>{{ application.specialization }}</span>
+                </div>
+                {% if application.yearsOfExperience %}
+                <div class="detail-row">
+                    <span class="label">Experience:</span>
+                    <span>{{ application.yearsOfExperience }} year(s)</span>
+                </div>
+                {% endif %}
+                {% if application.currentProfession %}
+                <div class="detail-row">
+                    <span class="label">Profession:</span>
+                    <span>{{ application.currentProfession }}</span>
+                </div>
+                {% endif %}
+                {% if application.highestEducation %}
+                <div class="detail-row">
+                    <span class="label">Education:</span>
+                    <span>{{ application.highestEducation }}</span>
+                </div>
+                {% endif %}
+                {% if application.supportingDescription %}
+                <div class="detail-row">
+                    <span class="label">Description:</span>
+                    <span>{{ application.supportingDescription }}</span>
+                </div>
+                {% endif %}
+{% if application.proofOfExpertise %}
+                <div class="detail-row">
+                    <span class="label">Files:</span>
+                    <div class="file-list">
+                        {% for file in application.proofOfExpertise %}
+                            {% if file %}
+                                <a href="{{ asset('uploads/profiles/' ~ file) }}" target="_blank" class="file-thumbnail">
+                                    <img src="{{ asset('uploads/profiles/' ~ file) }}" alt="Proof of expertise" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                    <span class="file-icon">📎 {{ file|split('.')|last|upper }}</span>
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if application.status == 'Pending' %}
+                <form method="post" action="{{ path('mentoring_review_application', {'id': application.id, 'decision': 'approve'}) }}" class="application-actions">
+                    <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_' ~ application.id) }}">
+<div class="validity-input">
+                        <label for="valid_until_{{ application.id }}">Valid until:</label>
+                        <input type="date" name="valid_until" id="valid_until_{{ application.id }}" class="form-input" required>
+                    </div>
+                    <button class="btn-primary" type="submit">Approve</button>
+                </form>
+                <form method="post" action="{{ path('mentoring_review_application', {'id': application.id, 'decision': 'decline'}) }}" class="application-actions">
+                    <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_' ~ application.id) }}">
+                    <input name="admin_note" class="form-input" placeholder="Rejection reason">
+                    <button class="btn-secondary" type="submit">Reject</button>
+                </form>
+            {% endif %}
+            
+            {% if application.adminNote %}
+                <div class="admin-note">
+                    <strong>Admin Note:</strong> {{ application.adminNote }}
+                </div>
+            {% endif %}
+            
+            {% if application.validUntil %}
+                <div class="valid-until">
+                    <strong>Valid until:</strong> {{ application.validUntil|date('F d, Y') }}
+                </div>
             {% endif %}
         </div>
     {% else %}
         <p>No mentor applications yet.</p>
     {% endfor %}
 </section>
+
+<style>
+.mentor-application-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.application-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.application-header strong {
+    font-size: 1.1rem;
+}
+.application-details {
+    margin-bottom: 1rem;
+}
+.detail-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.detail-row .label {
+    font-weight: 600;
+    color: #6b7280;
+    min-width: 100px;
+}
+.status-badge.pending { background: #fef3c7; color: #92400e; }
+.status-badge.approved { background: #d1fae5; color: #065f46; }
+.status-badge.rejected { background: #fee2e2; color: #991b1b; }
+.status-badge.pending review { background: #fef3c7; color: #92400e; }
+.file-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.file-thumbnail {
+    display: inline-block;
+    width: 80px;
+    height: 80px;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    cursor: pointer;
+    position: relative;
+}
+.file-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.file-thumbnail .file-icon {
+    display: none;
+    text-align: center;
+    line-height: 76px;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+.file-link {
+    padding: 0.25rem 0.5rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+.application-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    align-items: center;
+}
+.validity-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.validity-input input {
+    width: 150px;
+}
+.admin-note, .valid-until {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+</style>
 
 <section class="card-panel">
     <h3>Mentors and Availability</h3>

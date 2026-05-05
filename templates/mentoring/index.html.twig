@@ -55,7 +55,7 @@
                         </div>
                     </div>
 
-                    <p class="mentor-description">{{ mentor.bio|slice(0, 120) ~ (mentor.bio|length > 120 ? '...' : '')|default('No description yet.') }}</p>
+{% if mentor.bio %}<p class="mentor-description">{{ mentor.bio|slice(0, 120) ~ (mentor.bio|length > 120 ? '...' : '') }}</p>{% endif %}
 
                     <div class="mentor-card-footer">
                         <span class="contact-info">{{ mentorUser.institutionalEmail ?: mentorUser.email }}</span>
@@ -162,36 +162,164 @@
 {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_MENTOR') %}
 <div id="mentorApplicationModal" class="app-modal" aria-hidden="true">
     <div class="app-modal-backdrop" onclick="closeMentorApplication()"></div>
-    <div class="app-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mentorApplicationTitle">
+    <div class="app-modal-panel app-modal-large" role="dialog" aria-modal="true" aria-labelledby="mentorApplicationTitle">
         <div class="app-modal-header">
             <div>
                 <h3 id="mentorApplicationTitle">Apply as Mentor</h3>
-                <p>Verify your student email with an OTP before the Super Admin reviews your application.</p>
+                <p>Fill out the form below. Your application will be reviewed by the Super Admin.</p>
             </div>
             <button type="button" class="icon-button" onclick="closeMentorApplication()" aria-label="Close">x</button>
         </div>
 
-        <form method="post" action="{{ path('mentoring_apply') }}" class="form-grid">
+        <form method="post" action="{{ path('mentoring_apply') }}" class="mentor-form" enctype="multipart/form-data">
             <input type="hidden" name="_token" value="{{ csrf_token('mentor_application') }}">
-            <div class="form-group">
-                <label for="mentor_email">Student Email</label>
-                <input type="email" name="email" id="mentor_email" class="form-input" value="{{ app.user.email }}" required>
+            
+<div class="form-section">
+                <h4>Personal Information</h4>
+                <div class="form-grid form-grid-3">
+                    <div class="form-group">
+                        <label for="mentor_firstName">First Name <span class="required">*</span></label>
+                        <input type="text" name="firstName" id="mentor_firstName" class="form-input" value="{{ app.user.firstName|default('') }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mentor_middleName">Middle Name</label>
+                        <input type="text" name="middleName" id="mentor_middleName" class="form-input" value="{{ app.user.middleName|default('') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="mentor_lastName">Last Name <span class="required">*</span></label>
+                        <input type="text" name="lastName" id="mentor_lastName" class="form-input" value="{{ app.user.lastName|default('') }}" required>
+                    </div>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="form-group">
+                        <label for="mentor_email">Student Email <span class="required">*</span></label>
+                        <input type="email" name="email" id="mentor_email" class="form-input" value="{{ app.user.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mentor_contactNumber">Contact Number</label>
+                        <input type="tel" name="contactNumber" id="mentor_contactNumber" class="form-input" placeholder="e.g. 09123456789">
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="mentor_specialization">Mentoring Specialization</label>
-                <input name="specialization" id="mentor_specialization" class="form-input" placeholder="e.g. Programming, UI Design, Research Methods" required>
+
+            <div class="form-section">
+                <h4>Professional Background</h4>
+                <div class="form-grid form-grid-2">
+                    <div class="form-group">
+                        <label for="mentor_specialization">Mentoring Specialization <span class="required">*</span></label>
+                        <select name="specialization" id="mentor_specialization" class="form-input" required>
+                            <option value="">Select specialization...</option>
+                            <option value="BSITBA">BSITBA (IT Business Analysis)</option>
+                            <option value="BSCS">BSCS (Computer Science)</option>
+                            <option value="Software Engineering">Software Engineering</option>
+                            <option value="Data Science">Data Science</option>
+                            <option value="Cybersecurity">Cybersecurity</option>
+                            <option value="Cloud Computing">Cloud Computing</option>
+                            <option value="Web Development">Web Development</option>
+                            <option value="Mobile Development">Mobile Development</option>
+                            <option value="UI/UX Design">UI/UX Design</option>
+                            <option value="Research">Research</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mentor_yearsOfExperience">Years of Experience</label>
+                        <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="form-input" min="0" max="50" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="form-grid form-grid-2">
+                    <div class="form-group">
+                        <label for="mentor_currentProfession">Current Profession</label>
+                        <input type="text" name="currentProfession" id="mentor_currentProfession" class="form-input" placeholder="e.g. Student, Intern, Freelancer">
+                    </div>
+                    <div class="form-group">
+                        <label for="mentor_highestEducation">Highest Educational Attainment</label>
+                        <input type="text" name="highestEducation" id="mentor_highestEducation" class="form-input" placeholder="e.g. BS Computer Science 3rd Year">
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="mentor_reason">Reason for Applying</label>
-                <textarea name="reason" id="mentor_reason" class="form-input" rows="5" placeholder="Share your strengths, experience, and why you want to mentor other students." required></textarea>
+
+            <div class="form-section">
+                <h4>Additional Details</h4>
+                <div class="form-group">
+                    <label for="mentor_supportingDescription">Supporting Description <span class="required">*</span></label>
+                    <textarea name="supportingDescription" id="mentor_supportingDescription" class="form-input" rows="4" placeholder="Share your strengths, experience, and why you want to mentor other students." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="mentor_proofOfExpertise">Proof of Expertise (optional)</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" class="file-input" multiple accept=".jpg,.jpeg,.png,.pdf">
+                        <div class="file-upload-hint">Accepted formats: JPG, PNG, PDF. Max 5MB per file. You can select multiple files.</div>
+                    </div>
+                </div>
             </div>
+
             <div class="app-modal-actions">
                 <button type="button" class="btn-secondary" onclick="closeMentorApplication()">Cancel</button>
-                <button class="btn-primary" type="submit">Send OTP</button>
+                <button class="btn-primary" type="submit">Submit Application</button>
             </div>
         </form>
     </div>
 </div>
+
+<style>
+.app-modal-large {
+    max-width: 720px;
+}
+.mentor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.form-section {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1rem;
+}
+.form-section:last-of-type {
+    border-bottom: none;
+}
+.form-section h4 {
+    margin: 0 0 1rem;
+    color: var(--feu-green-dark);
+    font-size: 1rem;
+}
+.form-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+.required {
+    color: #dc2626;
+}
+.file-upload-wrapper {
+    margin-top: 0.5rem;
+}
+.file-input {
+    padding: 0.75rem;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    width: 100%;
+    cursor: pointer;
+}
+.file-input:hover {
+    border-color: var(--feu-green);
+}
+.file-upload-hint {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+@media (max-width: 600px) {
+    .form-grid-3, .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
 <script>
     function openMentorApplication() {

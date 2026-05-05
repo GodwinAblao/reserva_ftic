@@ -5,8 +5,11 @@ namespace App\Controller;
 use App\Entity\Reservation;
 use App\Entity\Facility;
 use App\Entity\User;
+use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
+use App\Repository\UserRepository;
+use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,12 +24,13 @@ use Symfony\Component\Mime\Email;
 class ReservationController extends AbstractController
 {
     #[Route('/{id}/reserve', name: 'facility_reserve', methods: ['GET', 'POST'])]
-    public function reserve(
+public function reserve(
         Facility $facility,
         Request $request,
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em,
-        MailerInterface $mailer
+        MailerInterface $mailer,
+        UserRepository $userRepository
     ): Response {
         if (!$this->getUser()) {
             return $this->redirectToRoute('app_login');
@@ -140,8 +144,8 @@ class ReservationController extends AbstractController
                 }
             }
 
-            // Send notification to super admin
-            $this->notifyAdminNewReservation($reservation, $mailer);
+// Send notification to super admin
+            $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
 
             return $this->json(['success' => true, 'message' => 'Reservation submitted successfully! Your request is pending approval.']);
         }
@@ -423,12 +427,13 @@ class ReservationController extends AbstractController
 
     #[Route('/reservations/{id}/select-alternative/{facilityId}', name: 'user_select_alternative', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-    public function selectAlternative(
+public function selectAlternative(
         Reservation $reservation,
         int $facilityId,
         Request $request,
         EntityManagerInterface $em,
-        MailerInterface $mailer
+        MailerInterface $mailer,
+        UserRepository $userRepository
     ): Response {
         if (!$this->isCsrfTokenValid('select_alternative_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -449,8 +454,8 @@ class ReservationController extends AbstractController
         $reservation->setStatus('Pending');
         $em->flush();
 
-        // Send notification to super admin
-        $this->notifyAdminNewReservation($reservation, $mailer);
+// Send notification to super admin
+        $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
 
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
 
@@ -463,7 +468,8 @@ class ReservationController extends AbstractController
         Reservation $reservation,
         Request $request,
         EntityManagerInterface $em,
-        MailerInterface $mailer
+        MailerInterface $mailer,
+        UserRepository $userRepository
     ): Response {
         if (!$this->isCsrfTokenValid('keep_original_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -478,15 +484,19 @@ class ReservationController extends AbstractController
         $em->flush();
 
         // Send notification to super admin
-        $this->notifyAdminNewReservation($reservation, $mailer);
+        $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
 
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
 
         return $this->redirectToRoute('user_reservations');
     }
 
-    private function notifyAdminNewReservation(Reservation $reservation, MailerInterface $mailer): void
+private function notifyAdminNewReservation(Reservation $reservation, MailerInterface $mailer, EntityManagerInterface $em, UserRepository $userRepository): void
     {
+        // Log that we're trying to notify admin
+        error_log('notifyAdminNewReservation called for reservation: ' . $reservation->getId());
+
+        // 1. Send email notification to admin
         try {
             $email = (new Email())
                 ->from('Reserva FTIC <hurstdale101@gmail.com>')
@@ -498,9 +508,43 @@ class ReservationController extends AbstractController
             ;
 
             $mailer->send($email);
+            error_log('Email notification sent to admin');
         } catch (\Exception $e) {
             // Log error but don't fail the reservation
             \error_log('Failed to send admin notification: ' . $e->getMessage());
+        }
+
+        // 2. Create database notifications for all super admin users
+        try {
+            $admins = $userRepository->findAdmins();
+            error_log('Found ' . count($admins) . ' admin(s)');
+
+            foreach ($admins as $admin) {
+                error_log('Creating notification for admin: ' . $admin->getEmail());
+                
+                $notification = new Notification();
+                $notification->setUser($admin);
+                $notification->setType('reservation');
+                $notification->setTitle('New Reservation Request');
+                $notification->setMessage(sprintf(
+                    'New facility reservation request from %s for %s on %s.',
+                    $reservation->getName(),
+                    $reservation->getFacility()->getName(),
+                    $reservation->getReservationDate()->format('F j, Y')
+                ));
+                $notification->setStatus('Pending');
+                $notification->setReferenceId($reservation->getId());
+                $notification->setIsRead(false);
+                $notification->setCreatedAt(new \DateTime());
+
+                $em->persist($notification);
+            }
+
+            $em->flush();
+            error_log('Notifications created successfully');
+        } catch (\Exception $e) {
+            // Log error but don't fail the reservation
+            \error_log('Failed to create admin notification: ' . $e->getMessage());
         }
     }
 }
