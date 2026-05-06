@@ -1,82 +1,159 @@
 {% extends 'layouts/app.html.twig' %}
 
-{% block title %}{{ mentor.displayName }} | Reserva FTIC{% endblock %}
+{% block title %}{{ mentor.displayName }} - Mentor Profile | Reserva FTIC{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <a href="{{ path('mentoring_index') }}" class="btn-secondary">← Back to Mentors</a>
-    <div>
-        <h1>{{ mentor.displayName }}</h1>
-        <p class="muted">{{ mentor.specialization }} Mentor • {{ mentor.engagementPoints }} Engagement Points</p>
+<div class="mentor-page-container">
+    <!-- Back Navigation -->
+    <nav class="mentor-breadcrumb">
+        <a href="{{ path('mentoring_index') }}" class="breadcrumb-link">
+            <span class="breadcrumb-icon">←</span> Back to Mentors
+        </a>
+    </nav>
+
+    <!-- Mentor Profile Hero Section -->
+    <div class="mentor-hero-section">
+        <div class="mentor-profile-card">
+            <!-- Profile Picture -->
+            <div class="mentor-profile-image">
+                {% set user = mentor.user %}
+                {% if user.profilePicture %}
+                    <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="{{ mentor.displayName }}" class="mentor-photo">
+                {% else %}
+                    <div class="mentor-avatar-placeholder">
+                        <span>{{ mentor.displayName|first|upper }}</span>
+                    </div>
+                {% endif %}
+                <div class="mentor-engagement-badge">
+                    <span class="engagement-icon">⭐</span>
+                    <strong>{{ mentor.engagementPoints }}</strong>
+                    <p>Engagement Points</p>
+                </div>
+            </div>
+
+            <!-- Mentor Information -->
+            <div class="mentor-profile-info">
+                <h1 class="mentor-name">{{ mentor.displayName }}</h1>
+                    {% if app.user and app.user == mentor.user and 'ROLE_MENTOR' in app.user.roles %}
+                        <div class="mentor-actions">
+                            <a href="{{ path('app_profile') }}" class="btn-secondary">Edit public profile</a>
+                        </div>
+                    {% endif %}
+                
+                <div class="mentor-specialization-tag">
+                    {{ mentor.specialization }} Mentor
+                </div>
+
+                <div class="mentor-credentials">
+                    <div class="credential-item">
+                        <span class="credential-label">Education</span>
+                        <span class="credential-value">{{ user.degreeName ?: user.degree ?: 'N/A' }}</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="credential-label">Contact</span>
+                        <span class="credential-value">{{ user.institutionalEmail ?: user.email }}</span>
+                    </div>
+                </div>
+
+                <div class="mentor-bio-section">
+                    <h3>About This Mentor</h3>
+                    <p class="mentor-bio">{{ mentor.bio|default('This mentor hasn\'t added a bio yet. Contact them to learn more about their expertise and mentoring approach.') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Request Section -->
+    <div class="custom-request-section">
+        <div class="request-header">
+            <h2>Send a Custom Mentoring Request</h2>
+            <p class="request-subtitle">Not finding a suitable time slot? Send a personalized message to {{ mentor.displayName }} to discuss your specific needs and find the perfect mentoring arrangement.</p>
+        </div>
+
+        <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
+            
+            <div class="form-section">
+                <label for="custom_message" class="form-label">
+                    Your Message
+                    <span class="form-required">*</span>
+                </label>
+                <p class="form-helper-text">
+                    Share your mentoring goals, preferred topics, availability, and any specific questions you'd like to discuss.
+                </p>
+                <textarea 
+                    name="message" 
+                    id="custom_message" 
+                    class="custom-textarea" 
+                    rows="6" 
+                    placeholder="Example: I'm interested in learning about AI and machine learning. I'm available on weekends and prefer online sessions via Zoom. Please let me know your rates and availability..." 
+                    required 
+                    maxlength="500">
+                </textarea>
+                <div class="character-count">
+                    <span id="char-count">0</span> / 500 characters
+                </div>
+            </div>
+
+                <div class="form-actions">
+                <button type="submit" class="btn-primary btn-lg">
+                    <span class="btn-icon">📨</span>
+                    Send Custom Request
+                </button>
+                <p class="form-note">{{ mentor.displayName }} will receive an email and an in-site notification with your message and can respond within 24-48 hours.</p>
+            </div>
+        </form>
+    </div>
+
+    <!-- Sessions Section -->
+    <div class="sessions-section">
+        <h2>Your Sessions with {{ mentor.displayName }}</h2>
+        
+        {% if myAppointments|length > 0 %}
+            <div class="sessions-list">
+                {% for appointment in myAppointments %}
+                    <div class="session-item">
+                        <div class="session-datetime">
+                            <span class="session-date">📅 {{ appointment.scheduledAt|date('MMM d, Y') }}</span>
+                            <span class="session-time">🕐 {{ appointment.scheduledAt|date('h:mm A') }}</span>
+                        </div>
+                        <div class="session-details">
+                            <strong>{{ appointment.topic ?: 'General Mentoring Session' }}</strong>
+                        </div>
+                        <span class="status-badge status-{{ appointment.status|lower }}">{{ appointment.status }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-sessions">
+                <p class="empty-icon">📅</p>
+                <p class="empty-text">You haven't booked any sessions with this mentor yet.</p>
+                <p class="empty-subtext">Send a custom request above or browse available time slots to schedule your first session!</p>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<section class="mentor-detail">
-    <div class="mentor-profile-header">
-        <div class="mentor-avatar-large">
-            {% set user = mentor.user %}
-            {% if user.profilePicture %}
-                <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="{{ mentor.displayName }}">
-            {% else %}
-                <span>{{ mentor.displayName|first|upper }}</span>
-            {% endif %}
-        </div>
-        <div class="mentor-info">
-            <div class="mentor-meta">
-                <div>
-                    <span>Degree</span>
-                    <strong>{{ user.degreeName ?: user.degree ?: 'N/A' }}</strong>
-                </div>
-                <div>
-                    <span>Email</span>
-                    <strong>{{ user.institutionalEmail ?: user.email }}</strong>
-                </div>
-            </div>
-            <p class="mentor-bio">{{ mentor.bio|default('No bio available.') }}</p>
-        </div>
-    </div>
-</section>
+<style>
+    #custom_message {
+        resize: vertical;
+    }
+</style>
 
-<section class="availability-section">
-    <div class="section-heading">
-        <h2>Available Sessions</h2>
-        <span>{{ availabilities|length }} open slots</span>
-    </div>
-
-    <div class="card-panel empty-state">
-        <p>Send a custom request below!</p>
-    </div>
-</section>
-
-<section class="card-panel">
-    <div class="section-heading">
-        <h3>Request Custom Session</h3>
-    </div>
-    <p class="muted">Not finding a suitable slot? Request a custom mentoring session.</p>
-    <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="form-grid">
-        <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
-        <div class="form-group full-span">
-            <label for="custom_message">Your Message</label>
-            <textarea name="message" id="custom_message" class="form-input" rows="5" placeholder="Tell the mentor about your needs, preferred topics/dates/times, and how you can meet. Max 500 characters." required maxlength="500"></textarea>
-        </div>
-        <button type="submit" class="btn-primary">Send Custom Request</button>
-    </form>
-</section>
-
-
-<section class="card-panel">
-    <h3>Your Sessions with {{ mentor.displayName }}</h3>
-    {% for appointment in myAppointments %}
-        <div class="list-row">
-            <div>
-                <strong>{{ appointment.scheduledAt|date('MMM d, yyyy h:mm A') }}</strong>
-                <p>{{ appointment.topic ?: 'General mentoring' }} • {{ appointment.status }}</p>
-            </div>
-            <span class="status-badge">{{ appointment.status }}</span>
-        </div>
-    {% else %}
-        <p>No sessions booked with this mentor yet.</p>
-    {% endfor %}
-</section>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const textarea = document.getElementById('custom_message');
+        const charCount = document.getElementById('char-count');
+        
+        if (textarea && charCount) {
+            function updateCharCount() {
+                charCount.textContent = textarea.value.length;
+            }
+            
+            textarea.addEventListener('input', updateCharCount);
+            textarea.addEventListener('change', updateCharCount);
+        }
+    });
+</script>
 {% endblock %}
 

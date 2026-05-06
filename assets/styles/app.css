@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700&display=swap');
+@import './mentoring.css';
+@import './profile.css';
 
 :root {
     --feu-green: #006633;

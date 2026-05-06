@@ -3,7 +3,7 @@
 {% block title %}Mentoring Admin | Reserva FTIC{% endblock %}
 
 {% block content %}
-<div class="content-header">
+<div class="content-header" style="align-items:center; justify-content:space-between;">
     <h2>Mentoring Admin</h2>
     <a href="{{ path('mentoring_index') }}" class="btn-secondary">Back to Mentoring</a>
 </div>
@@ -244,7 +244,7 @@
             <input type="date" name="available_date" class="form-input" required>
             <input type="time" name="start_time" class="form-input" required>
             <input type="time" name="end_time" class="form-input" required>
-            <button class="btn-secondary" type="submit">Add Slot</button>
+            <button class="btn-primary" type="submit">Add Slot</button>
         </form>
     {% else %}
         <p>No mentors yet.</p>

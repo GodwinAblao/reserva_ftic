@@ -26,7 +26,7 @@ class MentoringController extends AbstractController
 {
     private NotificationService $notificationService;
 
-    public function __invoke(NotificationService $notificationService): void
+    public function __construct(NotificationService $notificationService)
     {
         $this->notificationService = $notificationService;
     }
@@ -354,21 +354,50 @@ $validUntil = $request->request->get('valid_until');
         $em->persist($customRequest);
         $em->flush();
 
-        // Email mentor
-        $user = $profile->getUser();
+        // Create an in-site notification for the mentor so they see the request on the website
         try {
+            $studentName = trim($this->getUser()->getFirstName() . ' ' . $this->getUser()->getLastName());
+            $studentName = $studentName ?: $this->getUser()->getEmail();
+            $this->notificationService->create(
+                $user,
+                'mentor_request',
+                'New Mentoring Request',
+                'You received a new mentoring request from ' . $studentName . '.',
+                'New',
+                $customRequest->getId()
+            );
+        } catch (\Throwable $e) {
+            // Do not break the flow if notification creation fails; it will be logged by the app if configured
+        }
+
+        // Email mentor with professional template
+        $user = $profile->getUser();
+        $student = $this->getUser();
+        try {
+            $studentName = trim($student->getFirstName() . ' ' . $student->getLastName());
+            $studentName = $studentName ?: $student->getEmail();
+            
+            $emailHtml = $this->renderView('emails/mentor_custom_request.html.twig', [
+                'mentorName' => $profile->getDisplayName(),
+                'studentName' => $studentName,
+                'studentEmail' => $student->getEmail(),
+                'studentInstitutionalEmail' => $student->getInstitutionalEmail(),
+                'message' => $message,
+                'requestId' => $customRequest->getId(),
+            ]);
+
             $emailMessage = (new Email())
                 ->from('noreply@reserva-ftic.edu.ph')
                 ->to($user->getEmail())
-                ->subject('New Custom Mentoring Request')
-                ->html('<h2>New Mentoring Request</h2><p><strong>From:</strong> ' . $this->getUser()->getEmail() . '</p><p><strong>Message:</strong><br>' . nl2br($message) . '</p><p>Review in your profile requests tab.</p>');
+                ->subject('New Custom Mentoring Request from ' . $studentName)
+                ->html($emailHtml);
 
             $mailer->send($emailMessage);
         } catch (\Exception $e) {
-            // Log but don't fail
+            // Log but don't fail - user has already seen success message
         }
 
-        $this->addFlash('success', 'Custom request sent! The mentor will receive an email and can respond via profile.');
+        $this->addFlash('success', 'Custom request sent! ' . $profile->getDisplayName() . ' will receive an email with your message and can respond within 24-48 hours.');
 
         return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
     }

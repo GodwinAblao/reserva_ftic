@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Mentoring Request</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #222222;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border: 1px solid rgba(0, 102, 51, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 102, 51, 0.08);
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #006633 0%, #008844 100%);
+            padding: 2rem;
+            text-align: center;
+            color: white;
+        }
+        
+        .email-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        
+        .email-header p {
+            font-size: 1rem;
+            opacity: 0.95;
+            margin: 0;
+        }
+        
+        .email-body {
+            padding: 2.5rem;
+        }
+        
+        .greeting {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            color: #222222;
+        }
+        
+        .student-card {
+            background: linear-gradient(135deg, rgba(0, 102, 51, 0.03) 0%, transparent 100%);
+            border: 1px solid rgba(0, 102, 51, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .student-card h3 {
+            color: #004d26;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .student-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+        
+        .info-row {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.95rem;
+        }
+        
+        .info-label {
+            color: #64748b;
+            font-weight: 600;
+            min-width: 120px;
+        }
+        
+        .info-value {
+            color: #222222;
+            flex: 1;
+            word-break: break-all;
+        }
+        
+        .message-section {
+            margin: 2rem 0;
+        }
+        
+        .message-section h3 {
+            color: #004d26;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .message-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #006633;
+            padding: 1.25rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #222222;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+        }
+        
+        .action-section {
+            background: linear-gradient(135deg, rgba(0, 102, 51, 0.05) 0%, transparent 100%);
+            border: 1px solid rgba(0, 102, 51, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        .action-section p {
+            margin: 0 0 1rem;
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #006633 0%, #008844 100%);
+            color: white;
+            padding: 0.9rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 102, 51, 0.3);
+        }
+        
+        .footer-section {
+            background-color: #f8f9fa;
+            padding: 1.5rem 2.5rem;
+            border-top: 1px solid rgba(0, 102, 51, 0.1);
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .footer-section p {
+            margin: 0.5rem 0;
+        }
+        
+        .footer-divider {
+            margin: 1rem 0;
+            border: 0;
+            border-top: 1px solid rgba(0, 102, 51, 0.1);
+        }
+        
+        .highlight {
+            color: #004d26;
+            font-weight: 600;
+        }
+        
+        .note {
+            background-color: #fef08a;
+            border-left: 4px solid #fdb813;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+            color: #854d0e;
+        }
+        
+        @media (max-width: 600px) {
+            .email-container {
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+            }
+            
+            .email-body {
+                padding: 1.5rem;
+            }
+            
+            .email-header {
+                padding: 1.5rem;
+            }
+            
+            .email-header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .student-card {
+                padding: 1rem;
+            }
+            
+            .info-row {
+                flex-direction: column;
+                gap: 0.3rem;
+            }
+            
+            .info-label {
+                min-width: auto;
+            }
+            
+            .cta-button {
+                width: 100%;
+                padding: 1rem;
+                font-size: 0.95rem;
+            }
+            
+            .footer-section {
+                padding: 1rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="email-header">
+            <h1>📨 New Mentoring Request</h1>
+            <p>You have received a custom mentoring request on Reserva FTIC</p>
+        </div>
+        
+        <!-- Body -->
+        <div class="email-body">
+            <!-- Greeting -->
+            <div class="greeting">
+                Hello <span class="highlight">{{ mentorName }}</span>,
+            </div>
+            
+            <!-- Introduction -->
+            <p style="margin-bottom: 1.5rem; color: #475569;">
+                A student has sent you a custom mentoring request. They're interested in working with you and have provided their contact information and mentoring needs below.
+            </p>
+            
+            <!-- Student Information Card -->
+            <div class="student-card">
+                <h3>📚 Student Information</h3>
+                <div class="student-info">
+                    <div class="info-row">
+                        <span class="info-label">Name:</span>
+                        <span class="info-value"><strong>{{ studentName }}</strong></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value"><strong>{{ studentEmail }}</strong></span>
+                    </div>
+                    {% if studentInstitutionalEmail %}
+                    <div class="info-row">
+                        <span class="info-label">School Email:</span>
+                        <span class="info-value"><strong>{{ studentInstitutionalEmail }}</strong></span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Student Message -->
+            <div class="message-section">
+                <h3>💬 Student's Message</h3>
+                <div class="message-box">{{ message }}</div>
+            </div>
+            
+            <!-- Call to Action -->
+            <div class="action-section">
+                <p>Review this request and respond to the student to discuss mentoring details, availability, and next steps.</p>
+                <a href="https://reserva-ftic.edu.ph" class="cta-button">View Request in Dashboard →</a>
+            </div>
+            
+            <!-- Important Note -->
+            <div class="note">
+                ⚠️ <strong>Next Steps:</strong> Please reply to the student's email or respond through your Reserva FTIC dashboard. Typically, mentors respond within 24-48 hours.
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer-section">
+            <p>
+                <strong>Request ID:</strong> #{{ requestId }}
+            </p>
+            <hr class="footer-divider">
+            <p>
+                This is an automated message from <strong>Reserva FTIC</strong>. Please do not reply directly to this email. Use the contact information above to communicate with the student.
+            </p>
+            <p style="margin-top: 1rem; color: #a0aec0;">
+                © 2025 Reserva FTIC - Far Eastern University's Mentoring Platform
+            </p>
+        </div>
+    </div>
+</body>
+</html>
