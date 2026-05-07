@@ -1,89 +1,100 @@
 {% extends 'base.html.twig' %}
 
 {% block title %}Log in | Reserva FTIC{% endblock %}
-
 {% block body_class %}page-login{% endblock %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('styles/login.css') }}">
+{% endblock %}
+
 {% block body %}
-    <div class="login-card">
-        <div class="login-brand">
-            <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
-        </div>
-
-        {% for message in app.flashes('success') %}
-            <div class="alert alert-success">
-                {{ message }}
-            </div>
-        {% endfor %}
-
-        {% if error %}
-            <div class="alert">
-                {{ error.messageKey|trans(error.messageData, 'security') }}
-            </div>
-        {% endif %}
-
-        <form method="post" action="{{ path('app_login') }}" data-turbo="false">
-            <div class="form-group">
-                <label for="inputEmail">Email</label>
-                <input
-                    type="email"
-                    name="email"
-                    id="inputEmail"
-                    value="{{ last_username }}"
-                    autocomplete="email"
-                    required
-                >
+<div class="login-layout">
+    <section class="form-side">
+        <div class="form-wrapper">
+            <div class="form-header">
+                <h1 class="form-title">Welcome back!</h1>
+                <p class="form-subtitle">Sign in your account</p>
             </div>
 
-            <div class="form-group">
-                <label for="inputPassword">Password</label>
-                <input
-                    type="password"
-                    name="password"
-                    id="inputPassword"
-                    autocomplete="current-password"
-                    required
-                >
-            </div>
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success">{{ message }}</div>
+            {% endfor %}
 
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+            {% if error %}
+                <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+            {% endif %}
 
-            <button class="btn-primary" type="submit">Log in</button>
-        </form>
-
-        <p class="form-footer">Don't have an account? <a href="{{ path('app_register') }}" data-turbo="false" target="_self">Register here</a>.</p>
-        <p class="form-footer"><button class="btn-link forgot-password-btn" onclick="showForgotPassword()" data-turbo="false">Forgot Password?</button></p>
-    </div>
-
-    {# Forgot Password Modal #}
-    <div id="forgotPasswordModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close" onclick="hideForgotPassword()">&times;</span>
-            <h3>Forgot Password</h3>
-            <form method="post" action="{{ path('app_forgot_password') }}" data-turbo="false">
-                <div class="form-group">
-                    <label for="forgotEmail">Email</label>
-                    <input type="email" id="forgotEmail" name="email" required>
+            <form method="post" action="{{ path('app_login') }}" class="login-form" data-turbo="false">
+                <div class="field">
+                    <label class="field-label" for="login_email">Email</label>
+                    <input class="input" id="login_email" type="email" name="email" value="{{ last_username }}" required>
                 </div>
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token('forgot_password') }}">
-                <button type="submit" class="btn-primary">Send OTP</button>
+
+                <div class="field">
+                    <label class="field-label" for="login_password">Password</label>
+                    <input class="input" id="login_password" type="password" name="password" required>
+                </div>
+
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <div class="forgot-password">
+                    <a class="forgot" href="#" onclick="showForgotPassword();return false;">Forgot password?</a>
+                </div>
+
+                <button class="btn btn-primary" type="submit">Sign in</button>
+
+                <p class="login-foot">You don't have an account? <a class="btn-link" href="{{ path('app_register') }}" data-logo-slide-link data-logo-slide-direction="left">Sign up here</a></p>
             </form>
         </div>
+    </section>
+
+    <section class="logo-side" aria-hidden="true">
+        <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva Logo" class="logo-image">
+    </section>
+</div>
+
+<!-- MODAL -->
+<div id="forgotPasswordModal" class="modal">
+    <div class="modal-content">
+        <button class="close" onclick="hideForgotPassword()">&times;</button>
+        <h3>Forgot Password</h3>
+        <form method="post" action="{{ path('app_forgot_password') }}">
+            <input type="email" name="email" placeholder="Enter your email" required>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('forgot_password') }}">
+            <button class="btn btn-primary" type="submit">Send OTP</button>
+        </form>
     </div>
+</div>
 
-    <script>
-        function showForgotPassword() {
-            document.getElementById('forgotPasswordModal').style.display = 'block';
-        }
-        function hideForgotPassword() {
-            document.getElementById('forgotPasswordModal').style.display = 'none';
-        }
-    </script>
+<script>
+    function showForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='flex' }
+    function hideForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='none' }
+    window.addEventListener('click', function(e){ const modal = document.getElementById('forgotPasswordModal'); if(e.target===modal) hideForgotPassword(); });
 
-    <style>
-        .modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
-        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 10px; width: 80%; max-width: 400px; }
-        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .close:hover { color: black; }
-    </style>
-{% endblock %}
+    document.querySelectorAll('[data-logo-slide-link]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            const logo = document.querySelector('.logo-image');
+            const formSide = document.querySelector('.form-side');
+
+            if (!logo || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
+            }
+
+            e.preventDefault();
+            const direction = link.dataset.logoSlideDirection || 'left';
+            logo.classList.remove('logo-slide-left', 'logo-slide-right');
+            formSide?.classList.remove('form-fade-out');
+            void logo.offsetWidth;
+
+            logo.addEventListener('animationend', function() {
+                window.location.href = link.href;
+            }, { once: true });
+
+            window.requestAnimationFrame(function() {
+                logo.classList.add('logo-slide-' + direction);
+                formSide?.classList.add('form-fade-out');
+            });
+        });
+    });
+</script>
+    {% endblock %}

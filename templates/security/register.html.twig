@@ -1,123 +1,108 @@
 {% extends 'base.html.twig' %}
 
 {% block title %}Register | Reserva FTIC{% endblock %}
-
 {% block body_class %}page-login{% endblock %}
 
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('styles/register.css') }}">
+{% endblock %}
+
 {% block body %}
-    <div class="login-card">
-        <div class="login-brand">
-            <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
-        </div>
+<div class="register-layout">
+    <section class="logo-side" aria-hidden="true">
+        <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva Logo" class="logo-image">
+    </section>
 
-        <h2>Register</h2>
-
-        {% if errors is not empty %}
-            <div class="alert alert-danger">
-                <ul>
-                    {% for error in errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        {% endif %}
-
-        <form method="post" action="{{ path('app_register') }}" data-turbo="false">
-            <div class="form-group">
-                <label for="firstName">First Name</label>
-                <input type="text" id="firstName" name="firstName" value="{{ data.firstName }}" required>
+    <section class="form-side">
+        <div class="form-wrapper">
+            <div class="form-header">
+                <h1 class="form-title">Get Started with Reserva</h1>
+                <p class="form-subtitle">Create an account to continue.</p>
             </div>
 
-            <div class="form-group">
-                <label for="middleName">Middle Name</label>
-                <input type="text" id="middleName" name="middleName" value="{{ data.middleName }}">
-            </div>
-
-            <div class="form-group">
-                <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" name="lastName" value="{{ data.lastName }}" required>
-            </div>
-
-            <div class="form-group">
-                <label for="institutionalEmail">Institutional Email</label>
-                <input type="email" id="institutionalEmail" name="institutionalEmail" value="{{ data.institutionalEmail }}" placeholder="example@fit.edu.ph" required>
-                <small style="display: block; margin-top: 6px; color: #666;">Your institutional email will also become your login email.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-                <small style="display: block; margin-top: 6px; color: #666;">
-                    Password must be 8+ chars with uppercase, lowercase, number, special char.
-                </small>
-                <div id="password-strength" style="margin-top: 5px;">
-                    <div class="strength-bar">
-                        <div id="strength-fill"></div>
-                    </div>
-                    <span id="strength-text">Enter password</span>
+            {% if errors is not empty %}
+                <div class="alert alert-error">
+                    <ul>
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
                 </div>
-            </div>
+            {% endif %}
 
-            <div class="form-group">
-                <label for="passwordRepeat">Confirm Password</label>
-                <input type="password" id="passwordRepeat" name="passwordRepeat" required>
-            </div>
+            <form class="form" method="post" action="{{ path('app_register') }}" data-turbo="false">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input id="first_name" class="form-input" type="text" name="firstName" value="{{ data.firstName }}" required>
+                    </div>
 
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('register') }}">
+                    <div class="form-group">
+                        <label for="middle_name" class="form-label">Middle Name</label>
+                        <input id="middle_name" class="form-input" type="text" name="middleName" value="{{ data.middleName }}">
+                    </div>
+                </div>
 
-            <button class="btn-primary" type="submit">Register</button>
-        </form>
+                <div class="form-group-full">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <input id="last_name" class="form-input" type="text" name="lastName" value="{{ data.lastName }}" required>
+                </div>
 
-        <p class="form-footer">Already have an account? <a href="{{ path('app_login') }}">Log in here</a>.</p>
-    </div>
+                <div class="form-group-full">
+                    <label for="institutional_email" class="form-label">Institutional Email</label>
+                    <input id="institutional_email" class="form-input" type="email" name="institutionalEmail" value="{{ data.institutionalEmail }}" required>
+                </div>
 
-    <style>
-        .strength-bar {
-            width: 100%;
-            height: 4px;
-            background: #ddd;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 5px;
-        }
-        #strength-fill {
-            height: 100%;
-            transition: width 0.3s ease;
-            border-radius: 2px;
-        }
-        .weak { background: #ff4757; }
-        .medium { background: #ffa502; }
-        .strong { background: #2ed573; }
-    </style>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input id="password" class="form-input" type="password" name="password" required>
+                    </div>
 
-    <script>
-        const passwordField = document.getElementById('password');
-        const strengthFill = document.getElementById('strength-fill');
-        const strengthText = document.getElementById('strength-text');
+                    <div class="form-group">
+                        <label for="password_repeat" class="form-label">Confirm Password</label>
+                        <input id="password_repeat" class="form-input" type="password" name="passwordRepeat" required>
+                    </div>
+                </div>
 
-        function getStrength(password) {
-            let score = 0;
-            if (password.length >= 8) score++;
-            if (/[a-z]/.test(password)) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/\\d/.test(password)) score++;
-            if (/[@$!%*?&]/.test(password)) score++;
-            return score;
-        }
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('register') }}">
 
-        passwordField.addEventListener('input', function() {
-            const strength = getStrength(this.value);
-            let strengthClass, text, width;
-            switch (strength) {
-                case 0:
-                case 1: strengthClass = 'weak'; text = 'Weak'; width = '20%'; break;
-                case 2:
-                case 3: strengthClass = 'medium'; text = 'Medium'; width = '60%'; break;
-                default: strengthClass = 'strong'; text = 'Strong'; width = '100%'; break;
+                <button type="submit" class="submit-button">Sign up</button>
+
+                <div class="login-link-container">
+                    <p class="login-text">Already have an account? <a href="{{ path('app_login') }}" class="login-link" data-logo-slide-link data-logo-slide-direction="right">Log in here</a></p>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+
+<script>
+    document.querySelectorAll('[data-logo-slide-link]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            const logo = document.querySelector('.logo-image');
+            const formSide = document.querySelector('.form-side');
+
+            if (!logo || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
             }
-            strengthFill.className = strengthClass;
-            strengthFill.style.width = width;
-            strengthText.textContent = text;
+
+            e.preventDefault();
+            const direction = link.dataset.logoSlideDirection || 'right';
+            logo.classList.remove('logo-slide-left', 'logo-slide-right');
+            formSide?.classList.remove('form-fade-out');
+            void logo.offsetWidth;
+
+            logo.addEventListener('animationend', function() {
+                window.location.href = link.href;
+            }, { once: true });
+
+            window.requestAnimationFrame(function() {
+                logo.classList.add('logo-slide-' + direction);
+                formSide?.classList.add('form-fade-out');
+            });
         });
-    </script>
+    });
+</script>
+
 {% endblock %}
