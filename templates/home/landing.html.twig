@@ -1,0 +1,237 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Reserva | Landing Page{% endblock %}
+
+{% block body_class %}page-landing{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('styles/landing.css') }}">
+{% endblock %}
+
+{% block body %}
+    <header class="site-header">
+        <div class="header-container">
+            <a href="{{ path('app_home') }}" class="brand-logo" aria-label="Reserva home">
+                <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva R Logo">
+            </a>
+
+            <nav class="main-nav" aria-label="Main navigation">
+                <a href="#home" class="active">Home</a>
+                <a href="#about">About us</a>
+                <a href="#faq">FAQ</a>
+            </nav>
+
+            <div class="auth-buttons">
+                <a href="{{ path('app_login') }}" class="btn-login">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signin">Sign up</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section id="home" class="hero-section">
+            <div class="hero-image-container">
+                <img src="{{ asset('innovcent_header_photo.jpg') }}" alt="FTIC Innovation Center workspace" class="hero-image">
+                <div class="hero-gradient"></div>
+
+                <div class="hero-content">
+                    <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo" class="hero-logo">
+                    <h1 class="hero-title">Your All-in-One Hub for Reservations, Mentoring, and Learning at FTIC</h1>
+                </div>
+            </div>
+
+            <div class="description-section">
+                <div class="description-content">
+                    <p class="description-text">
+                        Reserva simplifies room reservations, mentoring sessions, and access to FTIC research and innovation articles,
+                        helping students and faculty stay organized, connected, and productive within the FEU Tech Innovation Center.
+                    </p>
+                    <a class="btn-get-started" href="{{ path('app_register') }}">Get Started</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="offers-section">
+            <h2 class="section-title">What we offer</h2>
+
+            <div class="offers-grid">
+                <article class="offer-card">
+                    <img class="offer-icon" src="{{ asset('3.png') }}" alt="Smart Facility Reservation icon">
+                    <h3 class="offer-title">Smart Facility Reservation</h3>
+                    <ul class="offer-list">
+                        <li>Check room availability in real time</li>
+                        <li>Book rooms for classes, meetings, and events</li>
+                        <li>Avoid schedule conflicts and double bookings</li>
+                        <li>Manage all your reservations in one dashboard</li>
+                    </ul>
+                    <a href="#facilities" class="offer-link">View Facilities &rarr;</a>
+                </article>
+
+                <article class="offer-card">
+                    <img class="offer-icon" src="{{ asset('4.png') }}" alt="Research and Innovation Hub icon">
+                    <h3 class="offer-title">FTIC Research &amp; Innovation Hub</h3>
+                    <ul class="offer-list">
+                        <li>Access FTIC research publications and articles</li>
+                        <li>Explore innovation-related content and updates</li>
+                        <li>Discover academic achievements and projects</li>
+                        <li>Support learning through shared knowledge and insights</li>
+                    </ul>
+                    <a href="#research" class="offer-link">View Research/Articles &rarr;</a>
+                </article>
+
+                <article class="offer-card">
+                    <img class="offer-icon" src="{{ asset('5.png') }}" alt="Mentorship Leaderboard icon">
+                    <h3 class="offer-title">Mentorship Leaderboard</h3>
+                    <ul class="offer-list">
+                        <li>Earn recognition through mentoring participation</li>
+                        <li>Track mentor engagement and contributions</li>
+                        <li>Encourage knowledge sharing and peer support</li>
+                        <li>Promote a more active learning environment</li>
+                    </ul>
+                    <a href="{{ path('app_register') }}" class="offer-link">Get Started &rarr;</a>
+                </article>
+
+                <article class="offer-card">
+                    <img class="offer-icon" src="{{ asset('6.png') }}" alt="Mentoring Sessions icon">
+                    <h3 class="offer-title">Mentoring Sessions Made Easy</h3>
+                    <ul class="offer-list">
+                        <li>Request mentoring sessions anytime</li>
+                        <li>Connect with mentors based on your needs</li>
+                        <li>Schedule consultations quickly and efficiently</li>
+                        <li>Strengthen academic and professional growth</li>
+                    </ul>
+                    <a href="{{ path('app_register') }}" class="offer-link">Get Started &rarr;</a>
+                </article>
+            </div>
+        </section>
+
+        <section id="facilities" class="facilities-section">
+            <h2 class="section-title">Facilities Overview</h2>
+
+            <div class="facilities-grid">
+                {% set facilities = [
+                    { name: 'Lounge', capacity: '150 pax', image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=500&h=320&fit=crop' },
+                    { name: 'Presentation Room 1', capacity: '40 pax', image: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=500&h=320&fit=crop' },
+                    { name: 'Presentation Room 2', capacity: '60 pax', image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500&h=320&fit=crop' },
+                    { name: 'Discussion Room 3', capacity: '6 pax', image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=500&h=320&fit=crop' },
+                    { name: 'Discussion Room 4', capacity: '8 pax', image: 'https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=500&h=320&fit=crop' },
+                    { name: 'Discussion Room 5', capacity: '8 pax', image: 'https://images.unsplash.com/photo-1568992688065-536aad8a12f6?w=500&h=320&fit=crop' },
+                    { name: 'CS Project Room', capacity: '48 pax', image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&h=320&fit=crop' },
+                    { name: 'COE Project Room', capacity: '48 pax', image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=500&h=320&fit=crop' }
+                ] %}
+
+                {% for facility in facilities %}
+                    <article class="facility-card">
+                        <div class="facility-image">
+                            <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                        </div>
+                        <div class="facility-info">
+                            <p class="facility-name">{{ facility.name }}</p>
+                            <p class="facility-capacity">({{ facility.capacity }})</p>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="research" class="carousel-section">
+            <h2 class="section-title">Research/Articles Overview</h2>
+
+            <div class="carousel-container">
+                <div class="research-carousel" aria-label="Research and article previews">
+                    <div class="carousel-item">
+                        <img src="https://images.unsplash.com/photo-1532619187608-e5375cab36aa?w=500&h=320&fit=crop" alt="Research preview 1">
+                    </div>
+                    <div class="carousel-item">
+                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=320&fit=crop" alt="Research preview 2">
+                    </div>
+                    <div class="carousel-item">
+                        <img src="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&h=320&fit=crop" alt="Research preview 3">
+                    </div>
+                    <div class="carousel-item">
+                        <img src="https://images.unsplash.com/photo-1516534775068-ba3e7458af70?w=500&h=320&fit=crop" alt="Research preview 4">
+                    </div>
+                    <div class="carousel-item">
+                        <img src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=500&h=320&fit=crop" alt="Research preview 5">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="about-section">
+            <h2 class="section-title">About us</h2>
+
+            <div class="about-grid">
+                <div class="about-content">
+                    <p class="about-text about-text-lead">
+                        Reserva is a modern web-based platform created for the FEU Tech Innovation Center (FTIC) to simplify facility
+                        reservations, mentoring coordination, and access to FTIC research and innovation content.
+                    </p>
+                    <p class="about-text">
+                        By transforming manual processes into a centralized digital experience, Reserva helps create a more efficient,
+                        accessible, and connected environment for students and faculty.
+                    </p>
+                </div>
+
+                <div class="about-image-container">
+                    <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo" class="about-image">
+                </div>
+            </div>
+
+            <div class="mission-container">
+                <div class="mission-card">
+                    <h3 class="mission-title">Our Mission</h3>
+                    <div class="mission-list">
+                        {% set missions = [
+                            'Simplify reservation and scheduling processes',
+                            'Improve access to mentoring opportunities',
+                            'Centralize FTIC research and innovation resources',
+                            'Encourage collaboration and engagement',
+                            'Create a smarter and more organized FTIC experience'
+                        ] %}
+
+                        {% for mission in missions %}
+                            <div class="mission-item">
+                                <span class="mission-checkbox" aria-hidden="true">✓</span>
+                                <p class="mission-text">{{ mission }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="faq-section">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+
+            <div class="faq-container">
+                <div class="accordion">
+                    {% set faqs = [
+                        { question: 'What is Reserva?', answer: 'Reserva is a comprehensive web-based platform designed for the FEU Tech Innovation Center that simplifies facility reservations, mentoring coordination, and academic resource access in one place.' },
+                        { question: 'What can I do in Reserva?', answer: 'You can reserve rooms and facilities, request mentoring sessions, access academic resources, manage schedules, and track activities in one centralized dashboard.' },
+                        { question: 'How does room reservation work?', answer: 'Check room availability in real time, select your preferred room and time slot, submit your reservation request, and wait for approval.' },
+                        { question: 'How do mentoring sessions work?', answer: 'You can search for mentors based on skills and expertise, request a session, and receive confirmation once approved.' },
+                        { question: 'Can students apply as mentors?', answer: 'Yes. Students can apply to become mentors and share their expertise with others in the FTIC community.' },
+                        { question: 'What is the Mentorship Leaderboard?', answer: 'The Mentorship Leaderboard recognizes active mentors and tracks mentor engagement and contributions.' },
+                        { question: 'What resources can I access?', answer: 'You can access research papers, academic articles, innovation-focused content, and other educational materials for the FTIC community.' },
+                        { question: 'Can I manage my schedule in Reserva?', answer: 'Yes. Reserva provides a centralized dashboard where you can view and manage reservations, mentoring sessions, and schedules.' }
+                    ] %}
+
+                    {% for faq in faqs %}
+                        <details class="accordion-item">
+                            <summary>{{ faq.question }}</summary>
+                            <p>{{ faq.answer }}</p>
+                        </details>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p>&copy; {{ "now"|date("Y") }} Reserva. All rights reserved.</p>
+        </div>
+    </footer>
+{% endblock %}
