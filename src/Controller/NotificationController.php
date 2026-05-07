@@ -29,6 +29,22 @@ class NotificationController extends AbstractController
         $notifications = $notificationRepo->findLatest($user, 20);
         
         $data = array_map(function(Notification $n) {
+            // compute a link appropriate to the notification and the current user's roles
+            $link = '#';
+            if (str_starts_with($n->getType(), 'mentor')) {
+                if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                    $link = $this->generateUrl('mentoring_admin');
+                } else {
+                    $link = $this->generateUrl('mentoring_index');
+                }
+            } elseif ($n->getType() === 'reservation') {
+                if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                    $link = $this->generateUrl('admin_reservations');
+                } else {
+                    $link = $this->generateUrl('user_reservations');
+                }
+            }
+
             return [
                 'id' => $n->getId(),
                 'type' => $n->getType(),
@@ -38,6 +54,7 @@ class NotificationController extends AbstractController
                 'isRead' => $n->isIsRead(),
                 'referenceId' => $n->getReferenceId(),
                 'createdAt' => $n->getCreatedAt()->format('c'),
+                'link' => $link,
             ];
         }, $notifications);
 

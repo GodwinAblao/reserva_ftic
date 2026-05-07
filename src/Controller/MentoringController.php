@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
@@ -32,7 +33,7 @@ class MentoringController extends AbstractController
         $this->notificationService = $notificationService;
     }
     #[Route('', name: 'mentoring_index', methods: ['GET'])]
-    public function index(EntityManagerInterface $em): Response
+    public function index(Request $request, EntityManagerInterface $em): Response
     {
         $this->ensureFacultyMentorProfiles($em);
 
@@ -41,12 +42,50 @@ class MentoringController extends AbstractController
             ? $em->getRepository(MentorProfile::class)->findOneBy(['user' => $currentUser])
             : null;
 
-        $mentors = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC']);
+        // Get search and filter parameters
+        $searchTerm = $request->query->get('search', '');
+        $specializationFilter = $request->query->get('specialization', '');
+
+        // Build query for mentors with filters
+        $qb = $em->getRepository(MentorProfile::class)->createQueryBuilder('m')
+            ->leftJoin('m.user', 'u')
+            ->orderBy('m.engagementPoints', 'DESC');
+
+        if ($searchTerm) {
+            $qb->andWhere('CONCAT(u.firstName, \' \', u.lastName) LIKE :search OR u.email LIKE :search OR m.displayName LIKE :search')
+                ->setParameter('search', '%' . $searchTerm . '%');
+        }
+
+        if ($specializationFilter) {
+            $qb->andWhere('m.specialization = :specialization')
+                ->setParameter('specialization', $specializationFilter);
+        }
+
+        $mentors = $qb->getQuery()->getResult();
+
+        // Check if this is an AJAX request
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        if ($isAjax) {
+            // Return just the mentor cards as HTML
+            $html = $this->renderView('mentoring/_mentor_cards.html.twig', [
+                'mentors' => $mentors,
+            ]);
+            return new JsonResponse(['html' => $html]);
+        }
+
         $appointments = $currentUser instanceof User
             ? $em->getRepository(MentoringAppointment::class)->findBy(['student' => $currentUser], ['scheduledAt' => 'DESC'])
             : [];
         $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10);
         $specializations = $this->specializationStats($em);
+        
+        // Get all unique specializations for the dropdown
+        $allSpecializations = $em->getRepository(MentorProfile::class)->createQueryBuilder('m')
+            ->select('DISTINCT m.specialization')
+            ->orderBy('m.specialization', 'ASC')
+            ->getQuery()
+            ->getResult();
+
         $availability = $em->getRepository(MentorAvailability::class)->findBy(['isBooked' => false], ['availableDate' => 'ASC', 'startTime' => 'ASC']);
         $applications = $currentUser instanceof User
             ? $em->getRepository(MentorApplication::class)->findBy(['student' => $currentUser], ['createdAt' => 'DESC'])
@@ -64,6 +103,7 @@ class MentoringController extends AbstractController
             'appointments' => $appointments,
             'leaderboard' => $leaderboard,
             'specializations' => $specializations,
+            'allSpecializations' => $allSpecializations,
             'availability' => $availability,
             'applications' => $applications,
             'sentCustomRequests' => $sentCustomRequests,
@@ -356,6 +396,10 @@ $validUntil = $request->request->get('valid_until');
     public function customRequest(MentorProfile $profile, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
     {
         if (!$this->isCsrfTokenValid('custom_request_' . $profile->getId(), $request->request->get('_token'))) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'Invalid request.'], Response::HTTP_BAD_REQUEST);
+            }
             $this->addFlash('error', 'Invalid request.');
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
@@ -367,6 +411,10 @@ $validUntil = $request->request->get('valid_until');
 
         $message = trim($request->request->get('message', ''));
         if (strlen($message) < 10) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'Message too short.'], Response::HTTP_BAD_REQUEST);
+            }
             $this->addFlash('error', 'Message too short.');
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
@@ -425,6 +473,15 @@ $validUntil = $request->request->get('valid_until');
             // Log but don't fail - user has already seen success message
         }
 
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        if ($isAjax) {
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Custom request sent successfully!',
+                'mentorName' => $profile->getDisplayName()
+            ]);
+        }
+
         $this->addFlash('success', 'Custom request sent! ' . $profile->getDisplayName() . ' will receive an email with your message and can respond within 24-48 hours.');
 
         return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
@@ -480,6 +537,11 @@ $validUntil = $request->request->get('valid_until');
             $customRequest->setMentorResponse($mentorResponse);
         }
         $customRequest->setStatus($status);
+
+        // Increment engagement points when mentor accepts a request
+        if ($decision === 'accept') {
+            $mentorProfile->setEngagementPoints(($mentorProfile->getEngagementPoints() ?? 0) + 1);
+        }
 
         $studentRequestUrl = $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#my-custom-requests';
 

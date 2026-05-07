@@ -1,5 +1,4 @@
 import { Controller } from '@hotwired/stimulus';
-import { useDispatch } from '@hotwired/stimulus-portal';
 
 export default class extends Controller {
     static targets = ['badge', 'dropdown', 'list', 'empty'];
@@ -12,6 +11,7 @@ export default class extends Controller {
 
     connect() {
         console.log('Notification controller connected');
+        this.element.dataset.notificationConnected = '1';
         this.loadNotifications();
         // Poll for new notifications every 30 seconds
         this.pollingInterval = setInterval(() => this.loadNotifications(), 30000);
@@ -123,20 +123,20 @@ export default class extends Controller {
     }
 
     renderNotification(notification) {
-        const iconClass = notification.type === 'mentor' ? 'bi-person-badge' : 'bi-building';
+        const iconClass = notification.type.startsWith('mentor') ? 'bi-person-badge' : 'bi-building';
         const statusClass = notification.status === 'Approved' ? 'text-success' : 
                          notification.status === 'Rejected' ? 'text-danger' : 'text-warning';
         const timeAgo = this.formatTimeAgo(notification.createdAt);
         const unreadClass = !notification.isRead ? 'unread' : '';
 
         return `
-            <a href="${this.getNotificationLink(notification)}" 
+            <a href="${this.escapeHtml(notification.link || '#')}" 
                class="notification-item ${unreadClass}"
                data-action="click->notification#markAsRead"
                data-id="${notification.id}"
                data-type="${notification.type}">
                 <div class="notification-icon ${iconClass}">
-                    <i class="bi ${notification.type === 'mentor' ? 'bi-person-check' : 'bi-calendar-check'}"></i>
+                    <i class="bi ${notification.type.startsWith('mentor') ? 'bi-person-check' : 'bi-calendar-check'}"></i>
                 </div>
                 <div class="notification-content">
                     <div class="notification-title">${this.escapeHtml(notification.title)}</div>
@@ -150,15 +150,7 @@ export default class extends Controller {
         `;
     }
 
-getNotificationLink(notification) {
-        if (notification.type === 'mentor') {
-            return '/mentoring?application=' + notification.referenceId;
-        } else if (notification.type === 'reservation') {
-            // For super admins, go to admin reservations page, otherwise go to user reservations
-            return '/super-admin/reservations?id=' + notification.referenceId;
-        }
-        return '#';
-    }
+    // notification.link is provided by the server; fallback preserved above
 
     formatTimeAgo(dateString) {
         const date = new Date(dateString);
@@ -186,24 +178,42 @@ getNotificationLink(notification) {
             event.preventDefault();
             event.stopPropagation();
         }
-        
         const dropdown = this.dropdownTarget;
-        dropdown.classList.toggle('show');
-        
-        // Load fresh notifications when opening
-        if (dropdown.classList.contains('show')) {
+
+        // Toggle using an "open" class so CSS can animate smoothly
+        const isOpen = this.element.classList.contains('open');
+        if (isOpen) {
+            this.element.classList.remove('open');
+            dropdown.classList.remove('show');
+            if (this.closeOnOutsideClick) {
+                document.removeEventListener('click', this.closeOnOutsideClick);
+                this.closeOnOutsideClick = null;
+            }
+            // update aria
+            const btn = this.element.querySelector('.notification-bell-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        } else {
+            this.element.classList.add('open');
+            dropdown.classList.add('show');
+
+            // Load fresh notifications when opening
             this.loadNotifications();
-        }
-        
-        // Close on outside click
-        if (dropdown.classList.contains('show')) {
+
+            // set aria
+            const btn = this.element.querySelector('.notification-bell-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+
+            // Close on outside click
             setTimeout(() => {
-                document.addEventListener('click', this.closeOnOutsideClick = (e) => {
-                    if (!dropdown.contains(e.target)) {
+                this.closeOnOutsideClick = (e) => {
+                    if (!dropdown.contains(e.target) && !this.element.contains(e.target)) {
+                        this.element.classList.remove('open');
                         dropdown.classList.remove('show');
                         document.removeEventListener('click', this.closeOnOutsideClick);
+                        this.closeOnOutsideClick = null;
                     }
-                });
+                };
+                document.addEventListener('click', this.closeOnOutsideClick);
             }, 100);
         }
     }

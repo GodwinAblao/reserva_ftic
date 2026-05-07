@@ -62,9 +62,9 @@
     </div>
     
 {# Floating Notification Bell - Top Right Corner for Super Admin #}
-    {% if is_granted('ROLE_SUPER_ADMIN') %}
-    <div class="floating-notification-bell" data-controller="notification" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
-        <button class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
+    {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+        <button type="button" aria-expanded="false" class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -103,7 +103,6 @@
             background: white;
             border-radius: 12px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            display: none;
             flex-direction: column;
             overflow: hidden;
         ">
@@ -137,6 +136,39 @@
                 <p>No notifications yet</p>
             </div>
         </div>
+    </div>
+
+    {# Fallback JS: ensure bell toggles dropdown even if Stimulus didn't bind #}
+    <script>
+    (function(){
+        try {
+            console.log('Notification fallback script loaded');
+            const wrapper = document.getElementById('floatingNotificationBell');
+            if (!wrapper) return;
+            const btn = wrapper.querySelector('.notification-bell-btn');
+            const dropdown = wrapper.querySelector('.notification-dropdown-floating');
+            if (!btn || !dropdown) return;
+            console.log('Notification fallback initialized');
+            btn.addEventListener('click', function(e){
+                e.preventDefault();
+                if (wrapper.dataset.notificationConnected === '1') {
+                    return;
+                }
+                const isOpen = wrapper.classList.contains('open');
+                console.log('Notification bell clicked, isOpen=', isOpen);
+                if (isOpen) {
+                    wrapper.classList.remove('open');
+                    dropdown.classList.remove('show');
+                    btn.setAttribute('aria-expanded', 'false');
+                } else {
+                    wrapper.classList.add('open');
+                    dropdown.classList.add('show');
+                    btn.setAttribute('aria-expanded', 'true');
+                }
+            });
+        } catch (err) { console.error('Notification fallback init error', err); }
+    })();
+    </script>
     </div>
     {% endif %}
 {% endblock %}

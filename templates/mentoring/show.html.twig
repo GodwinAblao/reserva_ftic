@@ -96,13 +96,39 @@
             </div>
 
                 <div class="form-actions">
-                <button type="submit" class="btn-primary btn-lg">
+                <button type="submit" class="btn-primary btn-lg" id="submitCustomRequest">
                     <span class="btn-icon">📨</span>
-                    Send Custom Request
+                    <span class="btn-text">Send Custom Request</span>
                 </button>
                 <p class="form-note">{{ mentor.displayName }} will receive an email and an in-site notification with your message and can respond within 24-48 hours.</p>
             </div>
         </form>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="success-modal-overlay" style="display: none;">
+        <div class="success-modal">
+            <div class="success-modal-content">
+                <div class="success-icon-container">
+                    <div class="success-checkmark">
+                        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" stroke-width="2" class="checkmark-circle"/>
+                            <path d="M15.5 26.5l7 7 14-15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="checkmark-mark"/>
+                        </svg>
+                    </div>
+                </div>
+                <h2 class="success-modal-title">Request Sent Successfully! ✨</h2>
+                <p class="success-modal-message">
+                    Your custom mentoring request has been sent to <strong>{{ mentor.displayName }}</strong>
+                </p>
+                <div class="success-modal-details">
+                    <p>📧 They will receive your message via email and in-site notification</p>
+                    <p>⏱️ You can expect a response within <strong>24-48 hours</strong></p>
+                    <p>💬 Check your mentoring dashboard for updates</p>
+                </div>
+                <button class="btn-primary" onclick="closeSuccessModal()">Great, Thanks!</button>
+            </div>
+        </div>
     </div>
 
     <!-- Sessions Section -->
@@ -138,12 +164,195 @@
     #custom_message {
         resize: vertical;
     }
+
+    /* Success Modal Styles */
+    .success-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .success-modal {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        max-width: 450px;
+        width: 90%;
+        overflow: hidden;
+        animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .success-modal-content {
+        padding: 40px 32px;
+        text-align: center;
+    }
+
+    .success-icon-container {
+        margin-bottom: 24px;
+    }
+
+    .success-checkmark {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto;
+        color: #10b981;
+        animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+    }
+
+    @keyframes scaleIn {
+        from {
+            transform: scale(0);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .success-checkmark svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .checkmark-circle {
+        transform-origin: 50% 50%;
+        stroke-dasharray: 157;
+        stroke-dashoffset: 157;
+        animation: strokeCircle 0.6s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+    }
+
+    @keyframes strokeCircle {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    .checkmark-mark {
+        transform-origin: 50% 50%;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        animation: strokeMark 0.6s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+    }
+
+    @keyframes strokeMark {
+        to {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    .success-modal-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0 0 12px 0;
+        animation: fadeIn 0.5s ease-out 0.3s both;
+    }
+
+    .success-modal-message {
+        font-size: 16px;
+        color: #6b7280;
+        margin: 0 0 24px 0;
+        line-height: 1.5;
+        animation: fadeIn 0.5s ease-out 0.4s both;
+    }
+
+    .success-modal-details {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 0 0 24px 0;
+        text-align: left;
+        animation: fadeIn 0.5s ease-out 0.5s both;
+    }
+
+    .success-modal-details p {
+        font-size: 14px;
+        color: #4b5563;
+        margin: 8px 0;
+        line-height: 1.6;
+    }
+
+    .success-modal-details p:first-child {
+        margin-top: 0;
+    }
+
+    .success-modal-details p:last-child {
+        margin-bottom: 0;
+    }
+
+    .success-modal-details strong {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .success-modal button {
+        animation: fadeIn 0.5s ease-out 0.6s both;
+    }
+
+    /* Loading state for button */
+    .submit-loading {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    .submit-loading .btn-text {
+        display: none;
+    }
+
+    .submit-loading::after {
+        content: '';
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top: 2px solid white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 </style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const textarea = document.getElementById('custom_message');
         const charCount = document.getElementById('char-count');
+        const customRequestForm = document.querySelector('.custom-request-form');
+        const submitButton = document.getElementById('submitCustomRequest');
         
         if (textarea && charCount) {
             function updateCharCount() {
@@ -152,6 +361,78 @@
             
             textarea.addEventListener('input', updateCharCount);
             textarea.addEventListener('change', updateCharCount);
+        }
+
+        // Handle custom request form submission
+        if (customRequestForm && submitButton) {
+            customRequestForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Add loading state to button
+                submitButton.classList.add('submit-loading');
+                submitButton.disabled = true;
+
+                try {
+                    const formData = new FormData(customRequestForm);
+                    const response = await fetch(customRequestForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    // Remove loading state
+                    submitButton.classList.remove('submit-loading');
+                    submitButton.disabled = false;
+
+                    if (response.ok) {
+                        // Show success modal
+                        showSuccessModal();
+                        
+                        // Reset form
+                        customRequestForm.reset();
+                        if (charCount) charCount.textContent = '0';
+                        
+                        // Auto-close modal after 4 seconds and redirect
+                        setTimeout(() => {
+                            closeSuccessModal();
+                            // Optional: refresh page to show updated requests
+                            window.location.reload();
+                        }, 4000);
+                    } else {
+                        // Show error
+                        alert('An error occurred. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    submitButton.classList.remove('submit-loading');
+                    submitButton.disabled = false;
+                    alert('An error occurred. Please try again.');
+                }
+            });
+        }
+    });
+
+    function showSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('successModal');
+        if (modal && e.target === modal) {
+            closeSuccessModal();
         }
     });
 </script>

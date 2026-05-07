@@ -1,0 +1,48 @@
+{% for mentor in mentors %}
+    {% set mentorUser = mentor.user %}
+    <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" class="mentor-card-link">
+        <article class="mentor-card">
+            <div class="mentor-card-top">
+                <div class="mentor-avatar">
+                    {% if mentorUser.profilePicture %}
+                        <img src="{{ asset('uploads/profiles/' ~ mentorUser.profilePicture) }}" alt="{{ mentor.displayName }}">
+                    {% else %}
+                        <span>{{ mentor.displayName|first|upper }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <h4>{{ mentor.displayName }}</h4>
+                    <p class="specialization-label">{{ mentor.specialization }}</p>
+                </div>
+            </div>
+
+            <div class="mentor-meta">
+                <div>
+                    <span>Education</span>
+                    <strong>{{ mentorUser.degreeName ?: mentorUser.degree ?: 'N/A' }}</strong>
+                </div>
+                <div>
+                    <span>Engagement</span>
+                    <strong class="engagement-badge">{{ mentor.engagementPoints }} pts</strong>
+                </div>
+            </div>
+
+            {% if mentor.bio %}
+                <p class="mentor-description">{{ mentor.bio|slice(0, 140) ~ (mentor.bio|length > 140 ? '...' : '') }}</p>
+            {% endif %}
+
+            <div class="mentor-card-footer">
+                <span class="contact-info">{{ mentorUser.institutionalEmail ?: mentorUser.email }}</span>
+                <div class="card-action">
+                    <span class="icon-arrow-right">→</span>
+                    <span class="action-label">View Profile</span>
+                </div>
+            </div>
+        </article>
+    </a>
+{% else %}
+    <div class="card-panel" style="grid-column: 1 / -1; text-align: center; padding: 3rem 2rem;">
+        <p style="font-size: 1.1rem; color: #64748b;">No mentors found matching your search.</p>
+        <p style="color: #94a3b8; margin-top: 0.5rem;">Try adjusting your search terms or filters.</p>
+    </div>
+{% endfor %}

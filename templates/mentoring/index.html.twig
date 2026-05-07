@@ -25,54 +25,36 @@
             <span>{{ mentors|length }} available profiles</span>
         </div>
 
-        <div class="mentor-card-grid">
-            {% for mentor in mentors %}
-                {% set mentorUser = mentor.user %}
-                <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" class="mentor-card-link">
-                    <article class="mentor-card">
-                        <div class="mentor-card-top">
-                            <div class="mentor-avatar">
-                                {% if mentorUser.profilePicture %}
-                                    <img src="{{ asset('uploads/profiles/' ~ mentorUser.profilePicture) }}" alt="{{ mentor.displayName }}">
-                                {% else %}
-                                    <span>{{ mentor.displayName|first|upper }}</span>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <h4>{{ mentor.displayName }}</h4>
-                                <p class="specialization-label">{{ mentor.specialization }}</p>
-                            </div>
-                        </div>
-
-                        <div class="mentor-meta">
-                            <div>
-                                <span>Education</span>
-                                <strong>{{ mentorUser.degreeName ?: mentorUser.degree ?: 'N/A' }}</strong>
-                            </div>
-                            <div>
-                                <span>Engagement</span>
-                                <strong class="engagement-badge">{{ mentor.engagementPoints }} pts</strong>
-                            </div>
-                        </div>
-
-                        {% if mentor.bio %}
-                            <p class="mentor-description">{{ mentor.bio|slice(0, 140) ~ (mentor.bio|length > 140 ? '...' : '') }}</p>
-                        {% endif %}
-
-                        <div class="mentor-card-footer">
-                            <span class="contact-info">{{ mentorUser.institutionalEmail ?: mentorUser.email }}</span>
-                            <div class="card-action">
-                                <span class="icon-arrow-right">→</span>
-                                <span class="action-label">View Profile</span>
-                            </div>
-                        </div>
-                    </article>
-                </a>
-            {% else %}
-                <div class="card-panel">
-                    <p>No mentor profiles yet.</p>
+        <!-- Search and Filter Section -->
+        <div class="mentor-search-filters">
+            <div class="search-form">
+                <div class="search-input-group">
+                    <input 
+                        type="text" 
+                        id="mentorSearchInput"
+                        name="search" 
+                        class="search-input" 
+                        placeholder="Search mentor by name..."
+                        value="{{ app.request.query.get('search', '') }}"
+                    >
+                    <span class="search-icon">🔍</span>
                 </div>
-            {% endfor %}
+
+                <div class="filter-group">
+                    <select id="specializationFilter" name="specialization" class="filter-dropdown">
+                        <option value="">All Specializations</option>
+                        {% for spec in allSpecializations %}
+                            <option value="{{ spec.specialization }}" {% if app.request.query.get('specialization') == spec.specialization %}selected{% endif %}>
+                                {{ spec.specialization }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="mentor-card-grid" id="mentorCardGrid">
+            {% include 'mentoring/_mentor_cards.html.twig' with { mentors: mentors } only %}
         </div>
     </section>
 
@@ -286,6 +268,69 @@
 {% block javascripts %}
     {{ parent() }}
     <script>
+        let searchTimeout;
+        const DEBOUNCE_DELAY = 300; // 300ms delay before searching
+
+        // Real-time search and filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('mentorSearchInput');
+            const specializationFilter = document.getElementById('specializationFilter');
+            const mentorCardGrid = document.getElementById('mentorCardGrid');
+
+            function performSearch() {
+                const searchTerm = searchInput?.value || '';
+                const specialization = specializationFilter?.value || '';
+
+                // Show loading state
+                if (mentorCardGrid) {
+                    mentorCardGrid.style.opacity = '0.6';
+                }
+
+                // Make AJAX request
+                fetch('{{ path("mentoring_index") }}?search=' + encodeURIComponent(searchTerm) + '&specialization=' + encodeURIComponent(specialization), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Search failed');
+                    return response.json();
+                })
+                .then(data => {
+                    if (mentorCardGrid) {
+                        mentorCardGrid.innerHTML = data.html;
+                        mentorCardGrid.style.opacity = '1';
+                        
+                        // Add animation to new cards
+                        const cards = mentorCardGrid.querySelectorAll('.mentor-card-link');
+                        cards.forEach((card, index) => {
+                            card.style.opacity = '0';
+                            card.style.animation = `fadeInUp 0.4s ease-out ${index * 0.05}s forwards`;
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    if (mentorCardGrid) {
+                        mentorCardGrid.style.opacity = '1';
+                    }
+                });
+            }
+
+            // Add event listeners
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(performSearch, DEBOUNCE_DELAY);
+                });
+            }
+
+            if (specializationFilter) {
+                specializationFilter.addEventListener('change', performSearch);
+            }
+        });
+
         function openMentorApplication() {
             const modal = document.getElementById('mentorApplicationModal');
             if (!modal) {
@@ -314,4 +359,17 @@
             }
         });
     </script>
+
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 {% endblock %}
