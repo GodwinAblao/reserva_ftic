@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\MentorAvailability;
+use App\Entity\MentorCustomRequest;
 use App\Entity\MentorApplication;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
@@ -15,9 +16,9 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/mentoring')]
@@ -35,12 +36,28 @@ class MentoringController extends AbstractController
     {
         $this->ensureFacultyMentorProfiles($em);
 
+        $currentUser = $this->getUser();
+        $mentorProfile = $currentUser instanceof User
+            ? $em->getRepository(MentorProfile::class)->findOneBy(['user' => $currentUser])
+            : null;
+
         $mentors = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC']);
-        $appointments = $em->getRepository(MentoringAppointment::class)->findBy(['student' => $this->getUser()], ['scheduledAt' => 'DESC']);
+        $appointments = $currentUser instanceof User
+            ? $em->getRepository(MentoringAppointment::class)->findBy(['student' => $currentUser], ['scheduledAt' => 'DESC'])
+            : [];
         $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10);
         $specializations = $this->specializationStats($em);
         $availability = $em->getRepository(MentorAvailability::class)->findBy(['isBooked' => false], ['availableDate' => 'ASC', 'startTime' => 'ASC']);
-        $applications = $em->getRepository(MentorApplication::class)->findBy(['student' => $this->getUser()], ['createdAt' => 'DESC']);
+        $applications = $currentUser instanceof User
+            ? $em->getRepository(MentorApplication::class)->findBy(['student' => $currentUser], ['createdAt' => 'DESC'])
+            : [];
+        $customRequestRepo = $em->getRepository(MentorCustomRequest::class);
+        $sentCustomRequests = $currentUser instanceof User
+            ? $customRequestRepo->findByStudent($currentUser)
+            : [];
+        $incomingCustomRequests = $mentorProfile
+            ? $customRequestRepo->findByMentor($mentorProfile)
+            : [];
 
         return $this->render('mentoring/index.html.twig', [
             'mentors' => $mentors,
@@ -49,6 +66,9 @@ class MentoringController extends AbstractController
             'specializations' => $specializations,
             'availability' => $availability,
             'applications' => $applications,
+            'sentCustomRequests' => $sentCustomRequests,
+            'incomingCustomRequests' => $incomingCustomRequests,
+            'mentorProfile' => $mentorProfile,
         ]);
     }
 
@@ -340,6 +360,11 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
 
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            throw $this->createAccessDeniedException('You must be logged in to send a mentoring request.');
+        }
+
         $message = trim($request->request->get('message', ''));
         if (strlen($message) < 10) {
             $this->addFlash('error', 'Message too short.');
@@ -347,19 +372,21 @@ $validUntil = $request->request->get('valid_until');
         }
 
         $customRequest = new \App\Entity\MentorCustomRequest();
-        $customRequest->setStudent($this->getUser())
+        $customRequest->setStudent($currentUser)
             ->setMentorProfile($profile)
             ->setMessage($message);
 
         $em->persist($customRequest);
         $em->flush();
 
+        $requestUrl = $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#custom-requests';
+
         // Create an in-site notification for the mentor so they see the request on the website
         try {
-            $studentName = trim($this->getUser()->getFirstName() . ' ' . $this->getUser()->getLastName());
-            $studentName = $studentName ?: $this->getUser()->getEmail();
+            $studentName = trim(($currentUser->getFirstName() ?? '') . ' ' . ($currentUser->getLastName() ?? ''));
+            $studentName = $studentName !== '' ? $studentName : $currentUser->getEmail();
             $this->notificationService->create(
-                $user,
+                $profile->getUser(),
                 'mentor_request',
                 'New Mentoring Request',
                 'You received a new mentoring request from ' . $studentName . '.',
@@ -372,10 +399,10 @@ $validUntil = $request->request->get('valid_until');
 
         // Email mentor with professional template
         $user = $profile->getUser();
-        $student = $this->getUser();
+        $student = $currentUser;
         try {
-            $studentName = trim($student->getFirstName() . ' ' . $student->getLastName());
-            $studentName = $studentName ?: $student->getEmail();
+            $studentName = trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? ''));
+            $studentName = $studentName !== '' ? $studentName : $student->getEmail();
             
             $emailHtml = $this->renderView('emails/mentor_custom_request.html.twig', [
                 'mentorName' => $profile->getDisplayName(),
@@ -384,6 +411,7 @@ $validUntil = $request->request->get('valid_until');
                 'studentInstitutionalEmail' => $student->getInstitutionalEmail(),
                 'message' => $message,
                 'requestId' => $customRequest->getId(),
+                'requestUrl' => $requestUrl,
             ]);
 
             $emailMessage = (new Email())
@@ -400,6 +428,96 @@ $validUntil = $request->request->get('valid_until');
         $this->addFlash('success', 'Custom request sent! ' . $profile->getDisplayName() . ' will receive an email with your message and can respond within 24-48 hours.');
 
         return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
+    }
+
+    #[Route('/custom-request/{id}/review', name: 'mentoring_custom_request_review', methods: ['POST'])]
+    #[IsGranted('ROLE_MENTOR')]
+    public function reviewCustomRequest(MentorCustomRequest $customRequest, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
+    {
+        if (!$this->isCsrfTokenValid('custom_request_review_' . $customRequest->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            throw $this->createAccessDeniedException('You must be logged in to review requests.');
+        }
+
+        $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $currentUser]);
+        if (!$mentorProfile || $customRequest->getMentorProfile()?->getId() !== $mentorProfile->getId()) {
+            throw $this->createAccessDeniedException('You can only review your own mentoring requests.');
+        }
+
+        if ($customRequest->getStatus() !== 'pending') {
+            $this->addFlash('error', 'This request has already been reviewed.');
+
+            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        }
+
+        $decision = strtolower((string) $request->request->get('decision', ''));
+        $mentorResponse = trim((string) $request->request->get('mentor_response', ''));
+
+        if (!in_array($decision, ['accept', 'decline'], true)) {
+            throw $this->createNotFoundException();
+        }
+
+        $student = $customRequest->getStudent();
+        if (!$student) {
+            throw $this->createNotFoundException();
+        }
+
+        $studentName = trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? ''));
+        $studentName = $studentName !== '' ? $studentName : $student->getEmail();
+
+        $status = $decision === 'accept' ? 'accepted' : 'declined';
+        $title = $decision === 'accept' ? 'Custom Mentoring Request Accepted' : 'Custom Mentoring Request Declined';
+        $flashMessage = $decision === 'accept' ? 'Custom request accepted.' : 'Custom request declined.';
+        $message = $decision === 'accept'
+            ? 'Your custom mentoring request has been accepted by ' . $mentorProfile->getDisplayName() . '.'
+            : 'Your custom mentoring request has been declined by ' . $mentorProfile->getDisplayName() . '.';
+
+        if ($mentorResponse !== '') {
+            $customRequest->setMentorResponse($mentorResponse);
+        }
+        $customRequest->setStatus($status);
+
+        $studentRequestUrl = $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#my-custom-requests';
+
+        try {
+            $emailHtml = $this->renderView('emails/mentor_custom_request_status.html.twig', [
+                'studentName' => $studentName,
+                'mentorName' => $mentorProfile->getDisplayName(),
+                'status' => ucfirst($status),
+                'message' => $message,
+                'mentorResponse' => $mentorResponse ?: null,
+                'requestUrl' => $studentRequestUrl,
+            ]);
+
+            $emailMessage = (new Email())
+                ->from('noreply@reserva-ftic.edu.ph')
+                ->to($student->getEmail())
+                ->subject($title)
+                ->html($emailHtml);
+
+            $mailer->send($emailMessage);
+        } catch (\Exception $e) {
+            // Email failure should not block the in-site status update.
+        }
+
+        $this->notificationService->create(
+            $student,
+            'mentor',
+            $title,
+            $message,
+            ucfirst($status),
+            $customRequest->getId()
+        );
+
+        $em->flush();
+
+        $this->addFlash('success', $flashMessage);
+
+        return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
     }
 
 

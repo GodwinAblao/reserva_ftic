@@ -23,6 +23,7 @@ use App\Repository\MentorApplicationRepository;
 use App\Repository\MentoringAppointmentRepository;
 use App\Repository\ReservationRepository;
 use App\Entity\MentorAvailability;
+use App\Entity\MentorCustomRequest;
 
 
 #[Route('/account-management')]
@@ -241,6 +242,12 @@ class AccountManagementController extends AbstractController
         }
 
         // Cleanup dependent entities to avoid FK constraints
+        // Mentor custom requests
+        $mentorCustomRequests = $em->getRepository(MentorCustomRequest::class)->findBy(['student' => $user]);
+        foreach ($mentorCustomRequests as $customRequest) {
+            $em->remove($customRequest);
+        }
+
         // Research contents
         $researchContents = $researchContentRepository->findByAuthor($user);
         foreach ($researchContents as $content) {

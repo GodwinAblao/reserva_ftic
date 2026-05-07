@@ -3,64 +3,59 @@
 {% block title %}Verify Registration | Reserva FTIC{% endblock %}
 
 {% block body_class %}page-login{% endblock %}
-
 {% block body %}
-    <div class="login-card">
-        <div class="login-brand">
+    <div class="login-card verify-card">
+        <div class="login-brand verify-card__header">
             <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
+            <h1>Confirm your institutional email</h1>
+            <p>Enter the code we sent to your institutional address to complete registration.</p>
         </div>
 
-        <h2>Verify Your Account</h2>
-
         {% if errors is not empty %}
-            <div class="alert alert-danger">
-                <ul>
-                    {% for error in errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
+            <div class="verify-alert verify-alert--error">
+                {% for error in errors %}
+                    <span>{{ error }}</span>
+                {% endfor %}
             </div>
         {% endif %}
 
-        {% for message in app.flashes('success') %}
-            <div class="alert alert-success">
-                {{ message }}
-            </div>
-        {% endfor %}
-
-        <div class="alert alert-info">
-            If you don’t receive the code, check your spam/junk folder and use the resend form below.
+        <div class="verify-summary">
+            <span class="verify-summary__label">Institutional email</span>
+            <strong>{{ data.email ?: 'Not available' }}</strong>
         </div>
 
-        <form method="post" action="{{ path('app_verify_registration') }}" data-turbo="false">
-            <div class="form-group">
-                <label for="email">Institutional Email</label>
-                <input type="email" id="email" name="email" value="{{ data.email }}" required>
-            </div>
+        <form method="post" action="{{ path('app_verify_registration') }}" data-turbo="false" class="verify-form">
+            <input type="hidden" name="email" value="{{ data.email }}">
 
-            <div class="form-group">
-                <label for="verificationCode">Verification Code</label>
-                <input type="text" id="verificationCode" name="verificationCode" value="{{ data.verificationCode }}" required>
-            </div>
+            <label class="verify-field" for="verificationCode">
+                <span>Verification code</span>
+                <input type="text" id="verificationCode" name="verificationCode" value="{{ data.verificationCode }}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code" required>
+            </label>
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('verify_registration') }}">
 
-            <button class="btn-primary" type="submit">Verify Account</button>
+            <button class="verify-button verify-button--primary" type="submit">Verify account</button>
         </form>
 
-        <hr>
+        <div class="verify-divider"><span>Didn't receive it?</span></div>
 
-        <form method="post" action="{{ path('app_resend_verification_code') }}">
-            <div class="form-group">
-                <label for="resendEmail">Resend Verification Code</label>
-                <input type="email" id="resendEmail" name="email" value="{{ data.email }}" placeholder="Enter your institutional email" required>
-            </div>
-
+        <form
+            method="post"
+            action="{{ path('app_resend_verification_code') }}"
+            class="verify-resend"
+            data-controller="resend-cooldown"
+            data-resend-cooldown-remaining-value="{{ resendCooldownRemaining|default(0) }}"
+            data-resend-cooldown-label-value="Resend code"
+        >
+            <input type="hidden" name="email" value="{{ data.email }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
 
-            <button class="btn-secondary" type="submit">Resend Code</button>
+            <button class="verify-button verify-button--secondary" type="submit" data-resend-cooldown-target="button">Resend code</button>
+            <p class="verify-resend__status" data-resend-cooldown-target="status"></p>
         </form>
 
-        <p class="form-footer">Already verified? <a href="{{ path('app_login') }}" data-turbo="false" target="_self">Log in here</a>.</p>
+        <p class="verify-footer">
+            Already verified? <a href="{{ path('app_login') }}" data-turbo="false" target="_self">Log in here</a>.
+        </p>
     </div>
 {% endblock %}

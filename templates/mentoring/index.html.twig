@@ -112,6 +112,104 @@
 
     <div class="module-grid">
         <section class="card-panel">
+            <h3>My Pending Submission</h3>
+            {% set pendingApplications = applications|filter(application => application.status in ['Pending', 'Pending Review']) %}
+
+            {% for application in pendingApplications %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ application.specialization }}</strong>
+                        <p>
+                            Submitted {{ application.createdAt|date('M d, Y h:i A') }}
+                            {% if application.currentProfession %} - {{ application.currentProfession }}{% endif %}
+                        </p>
+                    </div>
+                    <span class="status-badge status-pending">{{ application.status }}</span>
+                </div>
+            {% else %}
+                <p>No pending mentor submission right now.</p>
+            {% endfor %}
+        </section>
+
+        <section class="card-panel">
+            <h3>My Mentor Applications</h3>
+            {% for application in applications %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ application.specialization }}</strong>
+                        <p>Submitted {{ application.createdAt|date('M d, Y h:i A') }}</p>
+                    </div>
+                    <span class="status-badge status-{{ application.status|lower|replace({' ': '-'}) }}">{{ application.status }}</span>
+                </div>
+            {% else %}
+                <p>You have not submitted a mentor application yet.</p>
+            {% endfor %}
+        </section>
+    </div>
+
+    <div class="module-grid" id="my-custom-requests">
+        <section class="card-panel">
+            <h3>My Custom Requests</h3>
+            {% for request in sentCustomRequests %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ request.mentorProfile.displayName }}</strong>
+                        <p>Submitted {{ request.createdAt|date('M d, Y h:i A') }}</p>
+                        <p class="muted">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</p>
+                        {% if request.mentorResponse %}
+                            <p class="muted"><strong>Response:</strong> {{ request.mentorResponse }}</p>
+                        {% endif %}
+                    </div>
+                    <span class="status-badge status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
+                </div>
+            {% else %}
+                <p>You have not sent a custom request yet.</p>
+            {% endfor %}
+        </section>
+
+        {% if is_granted('ROLE_MENTOR') %}
+            <section class="card-panel" id="custom-requests">
+                <h3>Incoming Custom Requests</h3>
+                {% for request in incomingCustomRequests %}
+                    <div class="mentor-request-card {{ request.status == 'pending' ? 'is-pending' : '' }}">
+                        <div class="mentor-request-card__header">
+                            <div>
+                                <strong>{{ request.student.firstName ?: request.student.email }}</strong>
+                                <p>{{ request.student.email }}</p>
+                            </div>
+                            <span class="status-badge status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
+                        </div>
+
+                        <p class="mentor-request-card__meta">Submitted {{ request.createdAt|date('M d, Y h:i A') }}</p>
+                        <div class="mentor-request-card__message">{{ request.message }}</div>
+
+                        {% if request.mentorResponse %}
+                            <div class="mentor-request-card__response">
+                                <strong>Your response:</strong>
+                                <p>{{ request.mentorResponse }}</p>
+                            </div>
+                        {% endif %}
+
+                        {% if request.status == 'pending' %}
+                            <form method="post" action="{{ path('mentoring_custom_request_review', {'id': request.id}) }}" class="mentor-request-actions">
+                                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_review_' ~ request.id) }}">
+                                <textarea name="mentor_response" class="form-input" rows="3" placeholder="Optional response to the student"></textarea>
+                                <div class="button-group">
+                                    <button type="submit" name="decision" value="accept" class="btn-primary">Accept</button>
+                                    <button type="submit" name="decision" value="decline" class="btn-secondary">Decline</button>
+                                </div>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p>No incoming custom requests yet.</p>
+                {% endfor %}
+            </section>
+        {% endif %}
+    </div>
+
+    <div class="module-grid">
+        <section class="card-panel">
             <h3>Traceability Leaderboard</h3>
             {% for mentor in leaderboard %}
                 <div class="list-row">
@@ -148,16 +246,72 @@
                     <button type="button" class="icon-button" onclick="closeMentorApplication()" aria-label="Close">x</button>
                 </div>
 
-                <form method="post" action="{{ path('mentoring_apply') }}" class="mentor-form" enctype="multipart/form-data">
-                    <input type="hidden" name="_token" value="{{ csrf_token('mentor_application') }}">
-                    {% include 'mentoring/_mentor_application_form_fields.html.twig' with { defaultUser: app.user } only %}
-                    <div class="app-modal-actions">
-                        <button type="button" class="btn-secondary" onclick="closeMentorApplication()">Cancel</button>
-                        <button class="btn-primary" type="submit">Submit Application</button>
-                    </div>
-                </form>
+                <div class="mentor-application-layout">
+                    <aside class="mentor-application-summary">
+                        <div class="mentor-application-summary__eyebrow">Mentor application</div>
+                        <h4>Share your strengths with the team</h4>
+                        <p>Your application is reviewed by the Super Admin. Keep it clear, specific, and professional.</p>
+
+                        <div class="mentor-application-points">
+                            <div>
+                                <strong>Complete profile</strong>
+                                <span>We use these details to review your background.</span>
+                            </div>
+                            <div>
+                                <strong>Professional proof</strong>
+                                <span>Attach certificates, IDs, or samples if available.</span>
+                            </div>
+                            <div>
+                                <strong>Fast review</strong>
+                                <span>Applications are kept organized for quick checking.</span>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <form method="post" action="{{ path('mentoring_apply') }}" class="mentor-form" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="{{ csrf_token('mentor_application') }}">
+                        {% include 'mentoring/_mentor_application_form_fields.html.twig' with { defaultUser: app.user } only %}
+                        <div class="app-modal-actions">
+                            <button type="button" class="btn-secondary" onclick="closeMentorApplication()">Cancel</button>
+                            <button class="btn-primary" type="submit">Submit Application</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        function openMentorApplication() {
+            const modal = document.getElementById('mentorApplicationModal');
+            if (!modal) {
+                return;
+            }
+
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMentorApplication() {
+            const modal = document.getElementById('mentorApplicationModal');
+            if (!modal) {
+                return;
+            }
+
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeMentorApplication();
+            }
+        });
+    </script>
 {% endblock %}

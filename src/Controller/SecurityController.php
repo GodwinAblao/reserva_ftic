@@ -159,7 +159,6 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 }
 
                 if (!$errors) {
-                    $this->addFlash('success', 'Registration started! Check your institutional email for the verification code.');
                     return new RedirectResponse($this->generateUrl('app_verify_registration'));
                 }
             }
@@ -180,12 +179,17 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
         $session = $request->getSession();
         $pendingData = $session->get('pending_registration');
+        $resendAvailableAt = (int) $session->get('verification_resend_available_at', 0);
 
         $errors = [];
         $data = [
             'email' => trim($request->query->get('email', '')),
             'verificationCode' => '',
         ];
+
+        if ($pendingData && empty($data['email'])) {
+            $data['email'] = $pendingData['email'];
+        }
 
         if (!$pendingData) {
             $errors[] = 'No pending registration found. Please start registration first.';
@@ -231,8 +235,9 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
                     // Clear session
                     $session->remove('pending_registration'); 
+                    $session->remove('verification_resend_available_at');
 
-                    $this->addFlash('success', 'Account created and verified! You may now log in.');
+                    $this->addFlash('success', 'Registration complete');
                     return new RedirectResponse($this->generateUrl('app_login'));
                 }
             }
@@ -241,6 +246,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
         return $this->render('security/verify_registration.html.twig', [
             'errors' => $errors,
             'data' => $data,
+            'resendCooldownRemaining' => max(0, $resendAvailableAt - time()),
         ]);
     }
 
@@ -260,6 +266,11 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
         if (!$csrfTokenManager->isTokenValid(new CsrfToken('resend_verification', $csrfToken))) {
             $errors[] = 'Invalid CSRF token. Please refresh the page and try again.';
+        }
+
+        $availableAt = (int) $session->get('verification_resend_available_at', 0);
+        if (!$errors && $availableAt > time()) {
+            $errors[] = 'Please wait before requesting another code.';
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -292,7 +303,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
                     // $this->logger->info('Resend for pending sent', ['to' => $email]); 
 
-                    $this->addFlash('success', 'A new verification code has been sent to your institutional email.');
+                    $session->set('verification_resend_available_at', time() + 120);
                     return new RedirectResponse($this->generateUrl('app_verify_registration'));
                 } catch (\Exception $e) {
                         // $this->logger->error('Resend pending failed', [
@@ -331,7 +342,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
                         // $this->logger->info('Resend verification email sent', ['to' => $email]); 
 
-                        $this->addFlash('success', 'A new verification code has been sent to your institutional email.');
+                        $session->set('verification_resend_available_at', time() + 120);
                         return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $email]));
                     } catch (\Exception $e) {
                         // $this->logger->error('Resend verification failed', [
@@ -383,6 +394,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
             $session->set('reset_email', $email);
             $session->set('reset_token_expires', time() + 600); // 10 minutes
             $session->set('reset_token', $token);
+            $session->set('reset_otp', $otp); // Store OTP for validation
 
             try {
                 $emailMessage = (new Email())
@@ -399,7 +411,6 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $logger->error('Failed to send OTP email', ['error' => $e->getMessage()]);
             }
 
-            $this->addFlash('success', 'Password reset OTP sent to your email.');
             return $this->redirectToRoute('app_otp_reset', ['token' => $token]);
             }
         }
@@ -413,8 +424,17 @@ public function register(Request $request, EntityManagerInterface $entityManager
     #[Route('/otp-reset/{token}', name: 'app_otp_reset', methods: ['GET', 'POST'])]
     public function verifyOtpReset(Request $request, string $token, CsrfTokenManagerInterface $csrfTokenManager): Response
     {
+        $session = $request->getSession();
+        $storedOtp = $session->get('reset_otp');
+        $resetToken = $session->get('reset_token');
+        
         $errors = [];
         $otp = '';
+
+        // Validate token and OTP session exist
+        if (!$storedOtp || !$resetToken || $token !== $resetToken) {
+            $errors[] = 'Invalid or expired OTP session. Please request a new password reset.';
+        }
 
         if ($request->isMethod('POST')) {
             $otp = trim($request->request->get('otp', ''));
@@ -426,9 +446,11 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
             if (strlen($otp) !== 6 || !ctype_digit($otp)) {
                 $errors[] = 'Valid 6-digit OTP required.';
+            } elseif ($otp !== $storedOtp) {
+                // Compare with the OTP that was sent
+                $errors[] = 'Invalid OTP. The code you entered does not match the one sent to your email.';
             } else {
-                // Simple demo validation - in prod store hashed OTP in session
-                $this->addFlash('success', 'OTP verified!');
+                // OTP is valid - proceed to password reset
                 return $this->redirectToRoute('app_reset_password', ['token' => $token]);
             }
         }
@@ -515,8 +537,9 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $session->remove('reset_email');
                     $session->remove('reset_token');
                     $session->remove('reset_token_expires');
+                    $session->remove('reset_otp');
 
-                    $this->addFlash('success', 'Password reset successful! Please login with your new password.');
+                    $this->addFlash('success', 'Password reset');
                     return $this->redirectToRoute('app_login');
                 }
             }

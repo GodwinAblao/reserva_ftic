@@ -7,6 +7,7 @@ namespace App\Controller;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -29,6 +30,10 @@ class ProfileController extends AbstractController
     ): Response
     {
         $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('You must be logged in to edit your profile.');
+        }
+
         $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
 
         if ($request->isMethod('POST')) {
@@ -46,6 +51,7 @@ class ProfileController extends AbstractController
                 $degreeName = $request->request->get('degree_name');
                 $email = $request->request->get('email');
                 $password = $request->request->get('password');
+                $profilePictureFile = $request->files->get('profile_picture');
 
                 $user->setFirstName($firstName);
                 $user->setMiddleName($middleName);
@@ -56,6 +62,31 @@ class ProfileController extends AbstractController
                 $user->setDegreeName($degreeName);
                 if ($email) $user->setEmail($email);
                 if ($password) $user->setPassword($passwordHasher->hashPassword($user, $password));
+
+                if ($profilePictureFile instanceof UploadedFile && $profilePictureFile->isValid()) {
+                    $originalFilename = pathinfo($profilePictureFile->getClientOriginalName(), PATHINFO_FILENAME);
+                    $safeFilename = $slugger->slug($originalFilename);
+                    $extension = $profilePictureFile->guessExtension() ?: 'jpg';
+                    $newFilename = $safeFilename . '-' . uniqid() . '.' . $extension;
+
+                    try {
+                        $profilePictureFile->move(
+                            $this->getParameter('kernel.project_dir') . '/public/uploads/profiles',
+                            $newFilename
+                        );
+
+                        if ($user->getProfilePicture()) {
+                            $oldFile = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles/' . $user->getProfilePicture();
+                            if (file_exists($oldFile)) {
+                                unlink($oldFile);
+                            }
+                        }
+
+                        $user->setProfilePicture($newFilename);
+                    } catch (FileException $e) {
+                        $this->addFlash('error', 'Failed to upload profile picture.');
+                    }
+                }
 
                 $em->persist($user);
 

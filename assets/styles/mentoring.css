@@ -68,6 +68,259 @@
   transform: translateX(3px);
 }
 
+.app-modal-panel.app-modal-large {
+  width: min(1080px, 100%);
+  max-height: 92vh;
+  padding: 1.75rem;
+  border-radius: 24px;
+}
+
+.mentor-application-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.mentor-application-summary {
+  padding: 1.5rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(0, 102, 51, 0.06), rgba(0, 102, 51, 0.02));
+  border: 1px solid rgba(0, 102, 51, 0.1);
+  position: sticky;
+  top: 0;
+}
+
+.mentor-application-summary__eyebrow {
+  display: inline-flex;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(0, 102, 51, 0.1);
+  color: var(--feu-green-dark);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mentor-application-summary h4 {
+  margin: 0.9rem 0 0.5rem;
+  color: var(--feu-green-dark);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.mentor-application-summary p {
+  margin: 0;
+  color: #526165;
+  line-height: 1.55;
+}
+
+.mentor-application-points {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.mentor-application-points div {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 102, 51, 0.08);
+}
+
+.mentor-application-points strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #13251c;
+  font-size: 0.98rem;
+}
+
+.mentor-application-points span {
+  color: #60706a;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.mentor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.mentor-form .form-section {
+  padding: 1.1rem 1.15rem;
+  border: 1px solid rgba(0, 102, 51, 0.08);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.mentor-form .form-section h4 {
+  margin: 0 0 0.9rem;
+  color: var(--feu-green-dark);
+  font-size: 1.05rem;
+}
+
+.mentor-form .form-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mentor-form .form-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mentor-form .form-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mentor-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mentor-form .form-group label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #34453c;
+}
+
+.mentor-form .form-input,
+.mentor-form .file-input,
+.mentor-form textarea.form-input,
+.mentor-form select.form-input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(0, 102, 51, 0.16);
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+}
+
+.mentor-form .form-input:focus,
+.mentor-form .file-input:focus,
+.mentor-form textarea.form-input:focus,
+.mentor-form select.form-input:focus {
+  outline: none;
+  border-color: var(--feu-green);
+  box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.1);
+}
+
+.mentor-form .file-upload-wrapper {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.mentor-form .file-upload-hint {
+  color: #60706a;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.mentor-form .app-modal-actions {
+  padding-top: 0.25rem;
+}
+
+.mentor-request-card {
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(0, 102, 51, 0.08);
+}
+
+.mentor-request-card:last-child {
+  border-bottom: 0;
+}
+
+.mentor-request-card.is-pending {
+  background: linear-gradient(135deg, rgba(0, 102, 51, 0.03), transparent);
+  border: 1px solid rgba(0, 102, 51, 0.08);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.mentor-request-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.6rem;
+}
+
+.mentor-request-card__header strong {
+  display: block;
+  color: var(--feu-green-dark);
+  font-size: 1rem;
+}
+
+.mentor-request-card__header p,
+.mentor-request-card__meta {
+  margin: 0.15rem 0 0;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.mentor-request-card__message {
+  margin-top: 0.8rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: #f8faf9;
+  color: #334155;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.mentor-request-card__response {
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid var(--feu-green);
+  background: rgba(0, 102, 51, 0.05);
+  border-radius: 10px;
+}
+
+.mentor-request-card__response strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--feu-green-dark);
+}
+
+.mentor-request-card__response p {
+  margin: 0;
+  color: #334155;
+  white-space: pre-wrap;
+}
+
+.mentor-request-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.mentor-request-actions textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.mentor-request-actions .button-group {
+  justify-content: flex-end;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-accepted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-declined {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* ============= PROFESSIONAL MENTOR PROFILE PAGE ============= */
 
 .mentor-page-container {
@@ -531,6 +784,14 @@
   .mentor-credentials {
     grid-template-columns: 1fr;
   }
+
+  .mentor-application-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mentor-application-summary {
+    position: static;
+  }
 }
 
 @media (max-width: 768px) {
@@ -582,6 +843,16 @@
 
   .custom-request-section {
     padding: 1.5rem;
+  }
+
+  .app-modal-panel.app-modal-large {
+    padding: 1.25rem;
+    border-radius: 18px;
+  }
+
+  .mentor-form .form-grid-2,
+  .mentor-form .form-grid-3 {
+    grid-template-columns: 1fr;
   }
 
   .request-header h2 {
