@@ -1,108 +1,517 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Register | Reserva FTIC{% endblock %}
-{% block body_class %}page-login{% endblock %}
+{% block title %}Reserva - Sign Up{% endblock %}
 
 {% block stylesheets %}
     <link rel="stylesheet" href="{{ asset('styles/register.css') }}">
 {% endblock %}
 
 {% block body %}
-<div class="register-layout">
-    <section class="logo-side" aria-hidden="true">
-        <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva Logo" class="logo-image">
-    </section>
-
-    <section class="form-side">
-        <div class="form-wrapper">
-            <div class="form-header">
-                <h1 class="form-title">Get Started with Reserva</h1>
-                <p class="form-subtitle">Create an account to continue.</p>
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <a href="{{ path('app_home') }}">
+                    <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
+                </a>
             </div>
 
-            {% if errors is not empty %}
-                <div class="alert alert-error">
-                    <ul>
-                        {% for error in errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            {% endif %}
+            <nav class="header-nav">
+                <a href="{{ path('app_home') }}#home">Home</a>
+                <a href="{{ path('app_home') }}#about">About us</a>
+                <a href="{{ path('app_home') }}#faq">FAQ</a>
+            </nav>
 
-            <form class="form" method="post" action="{{ path('app_register') }}" data-turbo="false">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="first_name" class="form-label">First Name</label>
-                        <input id="first_name" class="form-input" type="text" name="firstName" value="{{ data.firstName }}" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="middle_name" class="form-label">Middle Name</label>
-                        <input id="middle_name" class="form-input" type="text" name="middleName" value="{{ data.middleName }}">
-                    </div>
-                </div>
-
-                <div class="form-group-full">
-                    <label for="last_name" class="form-label">Last Name</label>
-                    <input id="last_name" class="form-input" type="text" name="lastName" value="{{ data.lastName }}" required>
-                </div>
-
-                <div class="form-group-full">
-                    <label for="institutional_email" class="form-label">Institutional Email</label>
-                    <input id="institutional_email" class="form-input" type="email" name="institutionalEmail" value="{{ data.institutionalEmail }}" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="password" class="form-label">Password</label>
-                        <input id="password" class="form-input" type="password" name="password" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password_repeat" class="form-label">Confirm Password</label>
-                        <input id="password_repeat" class="form-input" type="password" name="passwordRepeat" required>
-                    </div>
-                </div>
-
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token('register') }}">
-
-                <button type="submit" class="submit-button">Sign up</button>
-
-                <div class="login-link-container">
-                    <p class="login-text">Already have an account? <a href="{{ path('app_login') }}" class="login-link" data-logo-slide-link data-logo-slide-direction="right">Log in here</a></p>
-                </div>
-            </form>
+            <div class="header-auth">
+                <a href="{{ path('app_login') }}" class="btn-login">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup">Sign in</a>
+            </div>
         </div>
-    </section>
-</div>
+    </header>
 
-<script>
-    document.querySelectorAll('[data-logo-slide-link]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            const logo = document.querySelector('.logo-image');
-            const formSide = document.querySelector('.form-side');
+    <div class="container">
+        <div class="logo-side">
+            <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva Logo" class="logo-image" />
+        </div>
 
-            if (!logo || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        <div class="form-side">
+            <div class="form-wrapper">
+                <div class="form-header">
+                    <h1 class="form-title">Get Started with Reserva</h1>
+                    <p class="form-subtitle">Create an account to continue.</p>
+                </div>
+
+                {# Backend Logic: Symfony Error Messages #}
+                {% if errors is defined and errors is not empty %}
+                    <div class="alert alert-error">
+                        <ul>
+                            {% for error in errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <form class="form" method="post" action="{{ path('app_register') }}">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName" class="form-label">First Name</label>
+                            <input type="text" id="firstName" name="firstName" class="form-input" value="{{ data.firstName ?? '' }}" required />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="middleName" class="form-label">Middle Name</label>
+                            <input type="text" id="middleName" name="middleName" class="form-input" value="{{ data.middleName ?? '' }}" />
+                        </div>
+                    </div>
+
+                    <div class="form-group-full">
+                        <label for="lastName" class="form-label">Last Name</label>
+                        <input type="text" id="lastName" name="lastName" class="form-input" value="{{ data.lastName ?? '' }}" required />
+                    </div>
+
+                    <div class="form-group-full">
+                        <label for="email" class="form-label">Institutional Email</label>
+                        <input type="email" id="email" name="institutionalEmail" class="form-input" value="{{ data.institutionalEmail ?? '' }}" required />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" id="password" name="password" class="form-input" required />
+                                <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" id="confirmPassword" name="passwordRepeat" class="form-input" required />
+                                <button type="button" class="password-toggle" data-password-toggle="confirmPassword" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('register') }}">
+
+                    <button type="submit" class="submit-button" id="registerSubmitButton">
+                        Sign up
+                    </button>
+
+                    <div class="login-link-container">
+                        <p class="login-text">
+                            Already have an account?
+                            <a href="{{ path('app_login') }}" class="login-link">Sign in</a>
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {# Modal for Registration Verification #}
+    <div id="verifyRegistrationModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 420px; position: relative;">
+            <button type="button" onclick="hideVerifyRegistrationModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            <h3 style="margin-bottom: 0.6rem; color: #16a34a;">Confirm your Institutional Email</h3>
+            <p style="margin-top: 0; margin-bottom: 1.2rem; color: #6b7280; font-size: 0.95rem;">Enter the code we sent to your email to complete registration.</p>
+            <div id="verifyRegistrationNotice" class="verify-notice" style="display:none; margin-bottom: 1rem;"></div>
+            <form method="post" id="verifyRegistrationForm" class="form">
+                <div class="form-group">
+                    <label for="verifyRegistrationEmail" class="form-label">Institutional Email</label>
+                    <input type="email" id="verifyRegistrationEmail" name="email" class="form-input" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="verifyRegistrationCode" class="form-label">Verification code</label>
+                    <input type="text" id="verifyRegistrationCode" name="verificationCode" class="form-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter 6-digit code" required>
+                </div>
+                <input type="hidden" name="_csrf_token" id="verifyRegistrationCsrfToken" value="{{ csrf_token('verify_registration') }}">
+                <button class="submit-button" type="submit" id="verifyAccountButton">Verify Account</button>
+            </form>
+            <div style="text-align:center; margin-top: 1rem;">
+                <form method="post" id="resendVerificationForm" style="display:inline-block;">
+                    <input type="hidden" name="email" id="resendVerificationEmail" value="">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
+                    <p style="margin: 0; font-size: 0.78rem; color: #6b7280;">
+                        Didn't receive it?
+                        <button type="submit" id="resendVerificationButton" class="verify-button verify-button--secondary" style="width:auto; padding: 0; background: none; border: none; color: #16a34a; font-weight: 600; cursor: pointer; font-size: 0.78rem;">Resend code</button>
+                    </p>
+                </form>
+                <p id="resendVerificationHint" style="margin: 0.3rem 0 0; font-size: 0.74rem; color: #6b7280;">We will only resend every 2 minutes</p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal { display: none; }
+        .verify-notice {
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            padding: 0.7rem 0.9rem;
+            border-radius: 0.6rem;
+            font-size: 0.9rem;
+        }
+        .verify-notice.is-visible { opacity: 1; }
+        .verify-notice.verify-notice--success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .verify-notice.verify-notice--error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .verify-notice.verify-notice--info { background: #ecfeff; color: #0e7490; border: 1px solid #bae6fd; }
+        .password-input-wrapper {
+            position: relative;
+        }
+        .password-input-wrapper .form-input {
+            padding-right: 2.7rem;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 0.7rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            color: #6b7280;
+        }
+        .password-toggle:hover {
+            color: #16a34a;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 0.9rem;
+            height: 0.9rem;
+            margin-right: 0.45rem;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 9999px;
+            animation: verify-spin 0.75s linear infinite;
+            vertical-align: -2px;
+        }
+        @keyframes verify-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <script>
+        let resendCountdownInterval = null;
+        let resendCooldownSeconds = 0;
+        let noticeTransitionTimer = null;
+        const minimumLoadingMs = 450;
+
+        function updateResendButtonState() {
+            const button = document.getElementById('resendVerificationButton');
+            const hint = document.getElementById('resendVerificationHint');
+            if (!button) return;
+
+            if (resendCooldownSeconds > 0) {
+                const minutes = Math.floor(resendCooldownSeconds / 60);
+                const seconds = String(resendCooldownSeconds % 60).padStart(2, '0');
+                button.disabled = true;
+                button.textContent = 'Resend code';
+                button.style.cursor = 'not-allowed';
+                button.style.opacity = '0.8';
+                if (hint) {
+                    hint.textContent = `Resend code in ${minutes}:${seconds}`;
+                }
+            } else {
+                button.disabled = false;
+                button.textContent = 'Resend code';
+                button.style.cursor = 'pointer';
+                button.style.opacity = '1';
+                if (hint) {
+                    hint.textContent = 'We will only resend every 2 minutes';
+                }
+            }
+        }
+
+        function clearNotice() {
+            const notice = document.getElementById('verifyRegistrationNotice');
+            if (!notice) return;
+            if (noticeTransitionTimer) {
+                window.clearTimeout(noticeTransitionTimer);
+                noticeTransitionTimer = null;
+            }
+            notice.classList.remove('is-visible', 'verify-notice--success', 'verify-notice--error');
+            notice.textContent = '';
+            notice.style.display = 'none';
+        }
+
+        function showNotice(message, type) {
+            const notice = document.getElementById('verifyRegistrationNotice');
+            if (!notice) return;
+
+            const fadeIn = function() {
+                notice.classList.remove('verify-notice--success', 'verify-notice--error');
+                notice.classList.add(type === 'error' ? 'verify-notice--error' : 'verify-notice--success');
+                notice.textContent = message;
+                notice.style.display = 'block';
+                window.requestAnimationFrame(function() {
+                    notice.classList.add('is-visible');
+                });
+            };
+
+            if (notice.classList.contains('is-visible')) {
+                notice.classList.remove('is-visible');
+                if (noticeTransitionTimer) {
+                    window.clearTimeout(noticeTransitionTimer);
+                }
+                noticeTransitionTimer = window.setTimeout(fadeIn, 250);
                 return;
             }
 
+            fadeIn();
+        }
+
+        function showLoadingNotice(message) {
+            const notice = document.getElementById('verifyRegistrationNotice');
+            if (!notice) return;
+
+            const fadeIn = function() {
+                notice.classList.remove('verify-notice--success', 'verify-notice--error');
+                notice.classList.add('verify-notice--info');
+                notice.innerHTML = '<span class="loading-spinner" aria-hidden="true"></span>' + message;
+                notice.style.display = 'block';
+                window.requestAnimationFrame(function() {
+                    notice.classList.add('is-visible');
+                });
+            };
+
+            if (notice.classList.contains('is-visible')) {
+                notice.classList.remove('is-visible');
+                if (noticeTransitionTimer) {
+                    window.clearTimeout(noticeTransitionTimer);
+                }
+                noticeTransitionTimer = window.setTimeout(fadeIn, 250);
+                return;
+            }
+
+            fadeIn();
+        }
+
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) {
+                return;
+            }
+
+            if (isLoading) {
+                if (!button.dataset.defaultLabel) {
+                    button.dataset.defaultLabel = button.textContent;
+                }
+                button.disabled = true;
+                button.innerHTML = '<span class="loading-spinner" aria-hidden="true"></span>' + loadingText;
+                return;
+            }
+
+            button.disabled = false;
+            button.textContent = button.dataset.defaultLabel || button.textContent;
+        }
+
+        function finishButtonLoading(button, loadingText, loadingStartAt) {
+            const elapsed = Date.now() - loadingStartAt;
+            const remaining = Math.max(0, minimumLoadingMs - elapsed);
+            window.setTimeout(function() {
+                setButtonLoading(button, false, loadingText);
+            }, remaining);
+        }
+
+        function initializePasswordToggles() {
+            document.querySelectorAll('[data-password-toggle]').forEach(function(toggleButton) {
+                toggleButton.addEventListener('click', function() {
+                    const targetId = toggleButton.getAttribute('data-password-toggle');
+                    const input = document.getElementById(targetId);
+                    if (!input) {
+                        return;
+                    }
+
+                    const isPassword = input.type === 'password';
+                    input.type = isPassword ? 'text' : 'password';
+                    toggleButton.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+                    toggleButton.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+                    toggleButton.dataset.eyeState = isPassword ? 'on' : 'off';
+
+                });
+            });
+        }
+
+        initializePasswordToggles();
+
+        function startResendCooldown(seconds) {
+            resendCooldownSeconds = Math.max(0, seconds);
+            if (resendCountdownInterval) {
+                window.clearInterval(resendCountdownInterval);
+                resendCountdownInterval = null;
+            }
+
+            updateResendButtonState();
+
+            if (resendCooldownSeconds <= 0) {
+                return;
+            }
+
+            resendCountdownInterval = window.setInterval(function() {
+                resendCooldownSeconds -= 1;
+                if (resendCooldownSeconds <= 0) {
+                    resendCooldownSeconds = 0;
+                    updateResendButtonState();
+                    window.clearInterval(resendCountdownInterval);
+                    resendCountdownInterval = null;
+                    return;
+                }
+
+                updateResendButtonState();
+            }, 1000);
+        }
+
+        function showVerifyRegistrationModal(email) {
+            clearNotice();
+            document.getElementById('verifyRegistrationEmail').value = email || document.querySelector('input[name="institutionalEmail"]').value || '';
+            document.getElementById('resendVerificationEmail').value = document.getElementById('verifyRegistrationEmail').value;
+            document.getElementById('verifyRegistrationCode').value = '';
+            document.getElementById('verifyRegistrationModal').style.display = 'flex';
+            document.getElementById('verifyRegistrationCode').focus();
+            updateResendButtonState();
+        }
+
+        function hideVerifyRegistrationModal() {
+            document.getElementById('verifyRegistrationModal').style.display = 'none';
+            startResendCooldown(0);
+        }
+
+        document.getElementById('verifyRegistrationModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideVerifyRegistrationModal();
+            }
+        });
+
+        document.querySelector('.form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const direction = link.dataset.logoSlideDirection || 'right';
-            logo.classList.remove('logo-slide-left', 'logo-slide-right');
-            formSide?.classList.remove('form-fade-out');
-            void logo.offsetWidth;
+            const form = this;
+            const formData = new FormData(form);
+            const registerSubmitButton = document.getElementById('registerSubmitButton');
+            const loadingStartAt = Date.now();
 
-            logo.addEventListener('animationend', function() {
-                window.location.href = link.href;
-            }, { once: true });
+            setButtonLoading(registerSubmitButton, true, 'Creating account...');
 
-            window.requestAnimationFrame(function() {
-                logo.classList.add('logo-slide-' + direction);
-                formSide?.classList.add('form-fade-out');
+            fetch('{{ path("app_register") }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error((data.errors && data.errors[0]) || data.error || 'Registration failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    showVerifyRegistrationModal(data.email);
+                }
+            })
+            .catch(error => {
+                showNotice(error.message, 'error');
+            })
+            .finally(() => {
+                finishButtonLoading(registerSubmitButton, 'Creating account...', loadingStartAt);
             });
         });
-    });
-</script>
 
+        document.getElementById('verifyRegistrationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('verifyRegistrationEmail').value;
+            const verificationCode = document.getElementById('verifyRegistrationCode').value;
+            const csrfToken = document.getElementById('verifyRegistrationCsrfToken').value;
+            const verifyAccountButton = document.getElementById('verifyAccountButton');
+            const loadingStartAt = Date.now();
+
+            setButtonLoading(verifyAccountButton, true, 'Verifying...');
+
+            fetch('{{ path("app_verify_registration") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: 'email=' + encodeURIComponent(email) + '&verificationCode=' + encodeURIComponent(verificationCode) + '&_csrf_token=' + encodeURIComponent(csrfToken)
+            })
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error((data.errors && data.errors[0]) || data.error || 'Verification failed');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success && data.redirectTo) {
+                    showNotice('Registration complete. Redirecting to login...', 'success');
+                    window.setTimeout(function() {
+                        window.location.href = data.redirectTo;
+                    }, 1200);
+                }
+            })
+            .catch(error => {
+                showNotice(error.message, 'error');
+            })
+            .finally(() => {
+                finishButtonLoading(verifyAccountButton, 'Verifying...', loadingStartAt);
+            });
+        });
+
+        document.getElementById('resendVerificationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (resendCooldownSeconds > 0) {
+                return;
+            }
+
+            const email = document.getElementById('verifyRegistrationEmail').value;
+            document.getElementById('resendVerificationEmail').value = email;
+            const formData = new FormData(this);
+            const resendButton = document.getElementById('resendVerificationButton');
+            const loadingStartAt = Date.now();
+
+            startResendCooldown(120);
+            showLoadingNotice('Sending verification code...');
+            setButtonLoading(resendButton, true, 'Sending...');
+
+            fetch('{{ path("app_resend_verification_code") }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const err = new Error((data.errors && data.errors[0]) || data.error || 'Unable to resend code');
+                    err.cooldownRemaining = Number(data.cooldownRemaining || 0);
+                    throw err;
+                }
+                return data;
+            })
+            .then(data => {
+                startResendCooldown(Number(data.cooldownRemaining || 120));
+                showNotice(data.message || 'Verification code resent.', 'success');
+            })
+            .catch(error => {
+                showNotice(error.message, 'error');
+                startResendCooldown(Number(error.cooldownRemaining || 0));
+            })
+            .finally(() => {
+                if (resendCooldownSeconds > 0) {
+                    updateResendButtonState();
+                } else {
+                    finishButtonLoading(resendButton, 'Sending...', loadingStartAt);
+                }
+            });
+        });
+    </script>
 {% endblock %}

@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -159,9 +160,23 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 }
 
                 if (!$errors) {
+                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                        return new JsonResponse([
+                            'success' => true,
+                            'email' => $pendingData['email'],
+                        ]);
+                    }
+
                     return new RedirectResponse($this->generateUrl('app_verify_registration'));
                 }
             }
+        }
+
+        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $errors,
+            ], 400);
         }
 
         return $this->render('security/register.html.twig', [
@@ -237,10 +252,24 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $session->remove('pending_registration'); 
                     $session->remove('verification_resend_available_at');
 
+                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                        return new JsonResponse([
+                            'success' => true,
+                            'redirectTo' => $this->generateUrl('app_login'),
+                        ]);
+                    }
+
                     $this->addFlash('success', 'Registration complete');
                     return new RedirectResponse($this->generateUrl('app_login'));
                 }
             }
+        }
+
+        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $errors,
+            ], 400);
         }
 
         return $this->render('security/verify_registration.html.twig', [
@@ -304,6 +333,16 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     // $this->logger->info('Resend for pending sent', ['to' => $email]); 
 
                     $session->set('verification_resend_available_at', time() + 120);
+
+                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                        return new JsonResponse([
+                            'success' => true,
+                            'message' => 'Verification code resent successfully.',
+                            'email' => $email,
+                            'cooldownRemaining' => 120,
+                        ]);
+                    }
+
                     return new RedirectResponse($this->generateUrl('app_verify_registration'));
                 } catch (\Exception $e) {
                         // $this->logger->error('Resend pending failed', [
@@ -343,6 +382,16 @@ public function register(Request $request, EntityManagerInterface $entityManager
                         // $this->logger->info('Resend verification email sent', ['to' => $email]); 
 
                         $session->set('verification_resend_available_at', time() + 120);
+
+                        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                            return new JsonResponse([
+                                'success' => true,
+                                'message' => 'Verification code resent successfully.',
+                                'email' => $email,
+                                'cooldownRemaining' => 120,
+                            ]);
+                        }
+
                         return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $email]));
                     } catch (\Exception $e) {
                         // $this->logger->error('Resend verification failed', [
@@ -353,6 +402,16 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     }
                 }
             }
+        }
+
+        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            $cooldownRemaining = max(0, ((int) $session->get('verification_resend_available_at', 0)) - time());
+
+            return new JsonResponse([
+                'success' => false,
+                'errors' => $errors,
+                'cooldownRemaining' => $cooldownRemaining,
+            ], 400);
         }
 
         return $this->render('security/verify_registration.html.twig', [
@@ -384,35 +443,49 @@ public function register(Request $request, EntityManagerInterface $entityManager
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Valid email required.';
             } else {
-            $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $token = bin2hex(random_bytes(32));
-            
-            // Log without DB update (since no columns)
-            $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $token]);
+                $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $resetToken = bin2hex(random_bytes(32));
 
-            $session = $request->getSession();
-            $session->set('reset_email', $email);
-            $session->set('reset_token_expires', time() + 600); // 10 minutes
-            $session->set('reset_token', $token);
-            $session->set('reset_otp', $otp); // Store OTP for validation
+                // Log without DB update (since no columns)
+                $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $resetToken]);
 
-            try {
-                $emailMessage = (new Email())
-                    ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
-                    ->to($email)
-                    ->subject('Reserva FTIC Password Reset OTP')
-                    ->html($this->renderView('email/password_reset_otp.html.twig', [
-                        'user' => null,
-                        'otp' => $otp
-                    ]));
+                $session = $request->getSession();
+                $session->set('reset_email', $email);
+                $session->set('reset_token_expires', time() + 600); // 10 minutes
+                $session->set('reset_token', $resetToken);
+                $session->set('reset_otp', $otp); // Store OTP for validation
 
-                $mailer->send($emailMessage);
-            } catch (\Exception $e) {
-                $logger->error('Failed to send OTP email', ['error' => $e->getMessage()]);
+                try {
+                    $emailMessage = (new Email())
+                        ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
+                        ->to($email)
+                        ->subject('Reserva FTIC Password Reset OTP')
+                        ->html($this->renderView('email/password_reset_otp.html.twig', [
+                            'user' => null,
+                            'otp' => $otp
+                        ]));
+
+                    $mailer->send($emailMessage);
+                } catch (\Exception $e) {
+                    $logger->error('Failed to send OTP email', ['error' => $e->getMessage()]);
+                }
+
+                if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                    return new JsonResponse([
+                        'success' => true,
+                        'token' => $resetToken,
+                    ]);
+                }
+
+                return $this->redirectToRoute('app_otp_reset', ['token' => $resetToken]);
             }
+        }
 
-            return $this->redirectToRoute('app_otp_reset', ['token' => $token]);
-            }
+        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => $errors[0] ?? 'Unable to send OTP.',
+            ], 400);
         }
 
         return $this->render('security/forgot_password.html.twig', [
@@ -451,7 +524,21 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $errors[] = 'Invalid OTP. The code you entered does not match the one sent to your email.';
             } else {
                 // OTP is valid - proceed to password reset
+                if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                    return new JsonResponse([
+                        'success' => true,
+                        'token' => $token,
+                    ]);
+                }
+
                 return $this->redirectToRoute('app_reset_password', ['token' => $token]);
+            }
+
+            if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $errors[0] ?? 'Invalid OTP.',
+                ], 400);
             }
         }
 
@@ -539,9 +626,23 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $session->remove('reset_token_expires');
                     $session->remove('reset_otp');
 
+                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                        return new JsonResponse([
+                            'success' => true,
+                            'message' => 'Password reset',
+                        ]);
+                    }
+
                     $this->addFlash('success', 'Password reset');
                     return $this->redirectToRoute('app_login');
                 }
+            }
+
+            if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                return new JsonResponse([
+                    'success' => false,
+                    'error' => $errors[0] ?? 'Password reset failed.',
+                ], 400);
             }
         }
 

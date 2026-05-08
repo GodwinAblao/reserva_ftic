@@ -32,7 +32,6 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('otp_reset') }}">
 
             <button class="btn-primary" type="submit">Verify OTP</button>
-            <a href="{{ path('app_login') }}" class="btn-link">Back to Login</a>
         </form>
     </div>
 {% endblock %}
