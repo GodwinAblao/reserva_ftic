@@ -10,21 +10,23 @@
 {% endblock %}
 
 {% block body %}
-    <header class="site-header">
-        <div class="header-container">
-            <a href="{{ path('app_home') }}" class="brand-logo" aria-label="Reserva home">
-                <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva R Logo">
-            </a>
+     <header class="header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <a href="{{ path('app_home') }}">
+                    <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
+                </a>
+            </div>
 
-            <nav class="main-nav" aria-label="Main navigation">
-                <a href="#home" class="active">Home</a>
-                <a href="#about">About us</a>
-                <a href="#faq">FAQ</a>
+            <nav class="header-nav">
+                <a href="{{ path('app_home') }}">Home</a>
+                <a href="{{ path('app_home') }}#about">About us</a>
+                <a href="{{ path('app_home') }}#faq">FAQ</a>
             </nav>
 
-            <div class="auth-buttons">
+            <div class="header-auth">
                 <a href="{{ path('app_login') }}" class="btn-login">Login</a>
-                <a href="{{ path('app_register') }}" class="btn-signin">Sign up</a>
+                <a href="{{ path('app_register') }}" class="btn-signup">Sign in</a>
             </div>
         </div>
     </header>
@@ -234,4 +236,44 @@
             <p>&copy; {{ "now"|date("Y") }} Reserva. All rights reserved.</p>
         </div>
     </footer>
+
+    <div id="pageLoadingOverlay" class="page-loading-overlay" style="display: none;">
+        <div class="page-loading-spinner" aria-hidden="true"></div>
+        <span class="page-loading-text">Loading...</span>
+    </div>
+
+    <script>
+        (function() {
+            const overlay = document.getElementById('pageLoadingOverlay');
+            if (!overlay) {
+                return;
+            }
+
+            document.querySelectorAll('a[href]').forEach(function(link) {
+                link.addEventListener('click', function(event) {
+                    if (
+                        event.defaultPrevented ||
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey ||
+                        link.target === '_blank'
+                    ) {
+                        return;
+                    }
+
+                    const href = link.getAttribute('href') || '';
+                    if (!href || href.startsWith('#') || href === window.location.pathname + window.location.search + window.location.hash) {
+                        return;
+                    }
+
+                    overlay.style.display = 'flex';
+                });
+            });
+
+            window.addEventListener('beforeunload', function() {
+                overlay.style.display = 'flex';
+            });
+        })();
+    </script>
 {% endblock %}
