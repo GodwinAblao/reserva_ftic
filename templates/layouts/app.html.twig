@@ -27,7 +27,7 @@
                 <a class="nav-link {{ app.request.attributes.get('_route') starts with 'analytics_' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">
                     Analytics
                 </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_admin') }}">
+                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_super-admin') }}">
                     Mentoring
                 </a>
                 {% else %}

@@ -40,8 +40,24 @@ class ResearchContent
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $filePath = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $embeddedLink = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $externalLink = null;
+
     #[ORM\Column(length: 30)]
     private string $visibility = 'Public';
+
+    // Research-specific fields
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $repositoryType = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $authors = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $abstract = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdAt;
@@ -72,10 +88,22 @@ class ResearchContent
     public function setBody(?string $body): self { $this->body = $body; $this->touch(); return $this; }
     public function getFilePath(): ?string { return $this->filePath; }
     public function setFilePath(?string $filePath): self { $this->filePath = $filePath; $this->touch(); return $this; }
+    public function getEmbeddedLink(): ?string { return $this->embeddedLink; }
+    public function setEmbeddedLink(?string $embeddedLink): self { $this->embeddedLink = $embeddedLink; $this->touch(); return $this; }
+    public function getExternalLink(): ?string { return $this->externalLink; }
+    public function setExternalLink(?string $externalLink): self { $this->externalLink = $externalLink; $this->touch(); return $this; }
     public function getVisibility(): string { return $this->visibility; }
     public function setVisibility(string $visibility): self { $this->visibility = $visibility; $this->touch(); return $this; }
     public function getCreatedAt(): \DateTimeInterface { return $this->createdAt; }
     public function getUpdatedAt(): \DateTimeInterface { return $this->updatedAt; }
+
+    // Research-specific getters and setters
+    public function getRepositoryType(): ?string { return $this->repositoryType; }
+    public function setRepositoryType(?string $repositoryType): self { $this->repositoryType = $repositoryType; $this->touch(); return $this; }
+    public function getAuthors(): ?string { return $this->authors; }
+    public function setAuthors(?string $authors): self { $this->authors = $authors; $this->touch(); return $this; }
+    public function getAbstract(): ?string { return $this->abstract; }
+    public function setAbstract(?string $abstract): self { $this->abstract = $abstract; $this->touch(); return $this; }
 
     private function touch(): void
     {

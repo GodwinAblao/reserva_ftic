@@ -1,0 +1,11 @@
+<h3>Preferred Specializations</h3>
+{% for row in specializations %}
+    <div class="list-row specialization-row" data-specialization="{{ row.specialization }}">
+        <a href="{{ path('mentoring_index', { specialization: row.specialization, search: app.request.query.get('search', '') }) }}" class="specialization-link{% if app.request.query.get('specialization') == row.specialization %} active{% endif %}">
+            <strong>{{ row.specialization }}</strong>
+        </a>
+        <span>{{ row.total }} requests</span>
+    </div>
+{% else %}
+    <p>No specialization analytics yet.</p>
+{% endfor %}

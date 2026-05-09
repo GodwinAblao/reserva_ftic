@@ -10,11 +10,15 @@
             <p class="muted">Find mentors, request sessions, and manage your mentoring activities.</p>
         </div>
         <div class="button-group">
-            {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_MENTOR') %}
+            {% if canApplyAsMentor %}
                 <button type="button" class="btn-primary" onclick="openMentorApplication()">Apply as Mentor</button>
+            {% elseif is_granted('ROLE_MENTOR') %}
+                <a href="{{ path('app_profile') }}" class="btn-secondary">View Profile</a>
+            {% elseif applications|length > 0 %}
+                <button type="button" class="btn-secondary" disabled>Application Pending</button>
             {% endif %}
             {% if is_granted('ROLE_SUPER_ADMIN') %}
-                <a href="{{ path('mentoring_admin') }}" class="btn-primary">Manage Mentoring</a>
+                <a href="{{ path('mentoring_super-admin') }}" class="btn-primary">Manage Mentoring</a>
             {% endif %}
         </div>
     </div>
@@ -27,7 +31,7 @@
 
         <!-- Search and Filter Section -->
         <div class="mentor-search-filters">
-            <div class="search-form">
+            <form method="get" action="{{ path('mentoring_index') }}" class="search-form" id="mentorSearchForm">
                 <div class="search-input-group">
                     <input 
                         type="text" 
@@ -36,8 +40,8 @@
                         class="search-input" 
                         placeholder="Search mentor by name..."
                         value="{{ app.request.query.get('search', '') }}"
+                        autocomplete="off"
                     >
-                    <span class="search-icon">🔍</span>
                 </div>
 
                 <div class="filter-group">
@@ -50,7 +54,7 @@
                         {% endfor %}
                     </select>
                 </div>
-            </div>
+            </form>
         </div>
 
         <div class="mentor-card-grid" id="mentorCardGrid">
@@ -203,20 +207,12 @@
             {% endfor %}
         </section>
 
-        <section class="card-panel">
-            <h3>Preferred Specializations</h3>
-            {% for row in specializations %}
-                <div class="list-row">
-                    <strong>{{ row.specialization }}</strong>
-                    <span>{{ row.total }} requests</span>
-                </div>
-            {% else %}
-                <p>No specialization analytics yet.</p>
-            {% endfor %}
+        <section class="card-panel" id="preferredSpecializationsPanel">
+            {% include 'mentoring/_preferred_specializations.html.twig' with { specializations: specializations } only %}
         </section>
     </div>
 
-    {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_MENTOR') %}
+    {% if canApplyAsMentor %}
         <div id="mentorApplicationModal" class="app-modal" aria-hidden="true">
             <div class="app-modal-backdrop" onclick="closeMentorApplication()"></div>
             <div class="app-modal-panel app-modal-large" role="dialog" aria-modal="true" aria-labelledby="mentorApplicationTitle">
@@ -309,6 +305,13 @@
                             card.style.animation = `fadeInUp 0.4s ease-out ${index * 0.05}s forwards`;
                         });
                     }
+
+                    if (data.specializationsHtml) {
+                        const specializationsPanel = document.getElementById('preferredSpecializationsPanel');
+                        if (specializationsPanel) {
+                            specializationsPanel.innerHTML = data.specializationsHtml;
+                        }
+                    }
                 })
                 .catch(error => {
                     console.error('Search error:', error);
@@ -328,6 +331,33 @@
 
             if (specializationFilter) {
                 specializationFilter.addEventListener('change', performSearch);
+            }
+
+            function bindSpecializationLinks() {
+                const specializationLinks = document.querySelectorAll('.specialization-link');
+                specializationLinks.forEach(link => {
+                    link.removeEventListener('click', handleSpecializationLinkClick);
+                    link.addEventListener('click', handleSpecializationLinkClick);
+                });
+            }
+
+            function handleSpecializationLinkClick(event) {
+                event.preventDefault();
+                const specialization = this.closest('.specialization-row')?.dataset.specialization || '';
+                if (specializationFilter) {
+                    specializationFilter.value = specialization;
+                }
+                performSearch();
+            }
+
+            bindSpecializationLinks();
+
+            const mentorSearchForm = document.getElementById('mentorSearchForm');
+            if (mentorSearchForm) {
+                mentorSearchForm.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    performSearch();
+                });
             }
         });
 
@@ -358,6 +388,27 @@
                 closeMentorApplication();
             }
         });
+
+        // Auto-refresh button group state to detect real-time updates from super admin
+        const refreshButtonState = () => {
+            fetch(window.location.href, { cache: 'no-store' })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(html, 'text/html');
+                    const newButtonGroup = newDoc.querySelector('div.button-group');
+                    const oldButtonGroup = document.querySelector('div.button-group');
+                    
+                    if (newButtonGroup && oldButtonGroup && newButtonGroup.innerHTML !== oldButtonGroup.innerHTML) {
+                        oldButtonGroup.innerHTML = newButtonGroup.innerHTML;
+                        console.log('Button state updated due to admin actions');
+                    }
+                })
+                .catch(err => console.debug('Auto-refresh check completed'));
+        };
+        
+        // Check button state every 5 seconds
+        setInterval(refreshButtonState, 5000);
     </script>
 
     <style>

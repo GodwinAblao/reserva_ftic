@@ -1,36 +1,63 @@
 {% extends 'layouts/app.html.twig' %}
 
-{% block title %}Edit Research | Reserva FTIC{% endblock %}
+{% block title %}Edit {{ item.type }} | Reserva FTIC{% endblock %}
 
 {% block content %}
 <div class="content-header">
-    <h2>Edit Research Content</h2>
-    {% if is_granted('ROLE_SUPER_ADMIN') %}
-        <form method="post" action="{{ path('research_delete', {'id': item.id}) }}" onsubmit="return confirm('Are you sure you want to delete this research content?');">
-            <input type="hidden" name="_token" value="{{ csrf_token('research_delete_' ~ item.id) }}">
-            <button class="btn-danger" type="submit">Delete</button>
-        </form>
-    {% endif %}
+    <h2>Edit {{ item.type }} Content</h2>
+    <div class="button-group">
+        <a href="{{ path('research_index') }}" class="btn-secondary">Back to Research</a>
+        {% if is_granted('ROLE_SUPER_ADMIN') %}
+            <form method="post" action="{{ path('research_delete', {'id': item.id}) }}" onsubmit="return confirm('Are you sure you want to delete this research content?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('research_delete_' ~ item.id) }}">
+                <button class="btn-danger" type="submit">Delete</button>
+            </form>
+        {% endif %}
+    </div>
 </div>
 
 <section class="card-panel">
     <form method="post" class="form-grid">
         <input type="hidden" name="_token" value="{{ csrf_token('research_edit_' ~ item.id) }}">
-        <input name="title" class="form-input" value="{{ item.title }}" required>
-        <select name="type" class="form-input">
-            {% for type in ['Article', 'Research', 'News'] %}
-                <option {% if item.type == type %}selected{% endif %}>{{ type }}</option>
-            {% endfor %}
-        </select>
-        <input name="category" class="form-input" value="{{ item.category }}">
-        <input name="tags" class="form-input" value="{{ item.tags }}">
-        <select name="visibility" class="form-input">
-            {% for visibility in ['Public', 'Private'] %}
-                <option {% if item.visibility == visibility %}selected{% endif %}>{{ visibility }}</option>
-            {% endfor %}
-        </select>
-        <textarea name="summary" class="form-input">{{ item.summary }}</textarea>
-        <textarea name="body" class="form-input">{{ item.body }}</textarea>
+
+        {% if item.type == 'News' %}
+            <input type="hidden" name="type" value="{{ item.type }}">
+            <input type="hidden" name="category" value="{{ item.category }}">
+            <input type="hidden" name="tags" value="{{ item.tags }}">
+            <input type="hidden" name="visibility" value="{{ item.visibility }}">
+
+            <input name="title" class="form-input" value="{{ item.title }}" required>
+            <textarea name="body" class="form-input">{{ item.body }}</textarea>
+            <textarea name="embeddedLink" class="form-input" placeholder="Paste embedded iframe code here (e.g., Facebook video, YouTube embed, etc.)">{{ item.embeddedLink }}</textarea>
+        {% elseif item.type == 'Article' %}
+            <input type="hidden" name="type" value="{{ item.type }}">
+            <input type="hidden" name="category" value="{{ item.category }}">
+            <input type="hidden" name="tags" value="{{ item.tags }}">
+            <input type="hidden" name="visibility" value="{{ item.visibility }}">
+
+            <input name="title" class="form-input" value="{{ item.title }}" required>
+            <textarea name="body" class="form-input">{{ item.body }}</textarea>
+            <input name="externalLink" class="form-input" placeholder="External article URL (e.g. https://...)" value="{{ item.externalLink }}">
+            <input type="file" name="file" class="form-input" accept="image/*" title="Upload article image">
+        {% else %}
+            <input type="hidden" name="type" value="{{ item.type }}">
+            <input name="title" class="form-input" value="{{ item.title }}" required>
+            <select name="repositoryType" class="form-input" required>
+                <option value="">Select Academic Repository Type</option>
+                <option {% if item.repositoryType == 'Journal Article' %}selected{% endif %}>Journal Article</option>
+                <option {% if item.repositoryType == 'Conference Paper' %}selected{% endif %}>Conference Paper</option>
+                <option {% if item.repositoryType == 'Thesis/Dissertation' %}selected{% endif %}>Thesis/Dissertation</option>
+                <option {% if item.repositoryType == 'Book Chapter' %}selected{% endif %}>Book Chapter</option>
+                <option {% if item.repositoryType == 'Technical Report' %}selected{% endif %}>Technical Report</option>
+                <option {% if item.repositoryType == 'Preprint' %}selected{% endif %}>Preprint</option>
+                <option {% if item.repositoryType == 'Dataset' %}selected{% endif %}>Dataset</option>
+                <option {% if item.repositoryType == 'Working Paper' %}selected{% endif %}>Working Paper</option>
+            </select>
+            <input name="authors" class="form-input" placeholder="Authors (comma separated)" value="{{ item.authors }}" required>
+            <textarea name="abstract" class="form-input" required>{{ item.abstract }}</textarea>
+            <input type="file" name="file" class="form-input" accept="application/pdf" title="Upload PDF file">
+        {% endif %}
+
         <button class="btn-primary" type="submit">Save</button>
     </form>
 </section>

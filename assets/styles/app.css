@@ -88,12 +88,29 @@ body {
     flex-wrap: wrap;
 }
 
-.status-badge {
-    display: inline-block;
-    padding: 0.35rem 0.65rem;
-    border-radius: 999px;
-    background: #e8f2ec;
-    color: var(--feu-green-dark);
+.embedded-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+}
+
+.embedded-content iframe,
+.embedded-content embed,
+.embedded-content video {
+    width: 100% !important;
+    max-width: 560px;
+    height: auto !important;
+    border: 0;
+}
+
+.embedded-content iframe {
+    min-height: 280px;
+}
+
     font-size: 0.8rem;
     font-weight: 700;
 }
@@ -626,6 +643,19 @@ a {
     font-weight: 700;
     letter-spacing: 0.4px;
     color: var(--feu-green-dark);
+}
+
+.article-image-wrapper {
+    margin: 1rem 0;
+    overflow: hidden;
+    border-radius: 16px;
+}
+
+.article-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
 }
 
 .accounts-table {

@@ -33,7 +33,7 @@ class NotificationController extends AbstractController
             $link = '#';
             if (str_starts_with($n->getType(), 'mentor')) {
                 if ($this->isGranted('ROLE_SUPER_ADMIN')) {
-                    $link = $this->generateUrl('mentoring_admin');
+                    $link = $this->generateUrl('mentoring_super-admin');
                 } else {
                     $link = $this->generateUrl('mentoring_index');
                 }

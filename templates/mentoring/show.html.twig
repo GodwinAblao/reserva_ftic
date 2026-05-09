@@ -70,8 +70,9 @@
             <p class="request-subtitle">Not finding a suitable time slot? Send a personalized message to {{ mentor.displayName }} to discuss your specific needs and find the perfect mentoring arrangement.</p>
         </div>
 
-        <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form">
-            <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
+        {% if canSendCustomRequest %}
+            <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
             
             <div class="form-section">
                 <label for="custom_message" class="form-label">
@@ -102,7 +103,12 @@
                 </button>
                 <p class="form-note">{{ mentor.displayName }} will receive an email and an in-site notification with your message and can respond within 24-48 hours.</p>
             </div>
-        </form>
+            </form>
+        {% else %}
+            <div class="custom-request-disabled">
+                <p class="alert alert-info">You cannot send a custom request to your own mentor profile.</p>
+            </div>
+        {% endif %}
     </div>
 
     <!-- Success Modal -->

@@ -62,22 +62,28 @@ class MentoringController extends AbstractController
         }
 
         $mentors = $qb->getQuery()->getResult();
+        $specializations = $this->specializationStats($em);
 
         // Check if this is an AJAX request
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
         if ($isAjax) {
-            // Return just the mentor cards as HTML
-            $html = $this->renderView('mentoring/_mentor_cards.html.twig', [
+            // Return the mentor cards and preferred specialization section as HTML
+            $mentorHtml = $this->renderView('mentoring/_mentor_cards.html.twig', [
                 'mentors' => $mentors,
             ]);
-            return new JsonResponse(['html' => $html]);
+            $specializationsHtml = $this->renderView('mentoring/_preferred_specializations.html.twig', [
+                'specializations' => $specializations,
+            ]);
+            return new JsonResponse([
+                'html' => $mentorHtml,
+                'specializationsHtml' => $specializationsHtml,
+            ]);
         }
 
         $appointments = $currentUser instanceof User
             ? $em->getRepository(MentoringAppointment::class)->findBy(['student' => $currentUser], ['scheduledAt' => 'DESC'])
             : [];
         $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10);
-        $specializations = $this->specializationStats($em);
         
         // Get all unique specializations for the dropdown
         $allSpecializations = $em->getRepository(MentorProfile::class)->createQueryBuilder('m')
@@ -98,6 +104,12 @@ class MentoringController extends AbstractController
             ? $customRequestRepo->findByMentor($mentorProfile)
             : [];
 
+        // Check if user can apply as mentor (no active applications and not already a mentor)
+        $canApplyAsMentor = $currentUser instanceof User 
+            && $this->isGranted('ROLE_STUDENT') 
+            && !$this->isGranted('ROLE_MENTOR')
+            && empty(array_filter($applications, fn($app) => in_array($app->getStatus(), ['Pending', 'Approved'])));
+
         return $this->render('mentoring/index.html.twig', [
             'mentors' => $mentors,
             'appointments' => $appointments,
@@ -109,16 +121,17 @@ class MentoringController extends AbstractController
             'sentCustomRequests' => $sentCustomRequests,
             'incomingCustomRequests' => $incomingCustomRequests,
             'mentorProfile' => $mentorProfile,
+            'canApplyAsMentor' => $canApplyAsMentor,
         ]);
     }
 
-    #[Route('/admin', name: 'mentoring_admin', methods: ['GET'])]
+    #[Route('/super-admin', name: 'mentoring_super-admin', methods: ['GET'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
     public function admin(EntityManagerInterface $em): Response
     {
         $this->ensureFacultyMentorProfiles($em);
 
-        return $this->render('mentoring/admin.html.twig', [
+        return $this->render('mentoring/super-admin.html.twig', [
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC']),
             'applications' => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
@@ -222,6 +235,15 @@ $extension = $file->getClientOriginalExtension();
         $em->persist($application);
         $em->flush();
 
+        // Notify the user
+        $this->notificationService->notifyMentorApplicationSubmitted($user, $application->getId());
+
+        // Notify all super admins
+        $superAdmins = $em->getRepository(User::class)->findAdmins();
+        foreach ($superAdmins as $admin) {
+            $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $firstName . ' ' . $lastName);
+        }
+
         $this->addFlash('success', 'Your mentor application has been submitted and is pending Super Admin review.');
 
         return $this->redirectToRoute('mentoring_index');
@@ -243,7 +265,7 @@ $extension = $file->getClientOriginalExtension();
         if (!in_array($application->getStatus(), ['Pending', 'Pending Review'], true)) {
             $this->addFlash('error', 'Only pending applications can be reviewed.');
 
-            return $this->redirectToRoute('mentoring_admin');
+            return $this->redirectToRoute('mentoring_super-admin');
         }
 
         if ($decision === 'decline') {
@@ -252,16 +274,19 @@ $extension = $file->getClientOriginalExtension();
                 ->setAdminNote($request->request->get('admin_note'));
             $em->flush();
 
+            // Notify the user
+            $this->notificationService->notifyMentorApplicationRejected($application->getStudent(), $application->getId(), $request->request->get('admin_note'));
+
             $this->addFlash('success', 'Mentor application rejected.');
 
-            return $this->redirectToRoute('mentoring_admin');
+            return $this->redirectToRoute('mentoring_super-admin');
         }
 
         // Approve - set validity period if provided
 $validUntil = $request->request->get('valid_until');
         if (!$validUntil) {
             $this->addFlash('error', 'Valid until date is required when approving a mentor application.');
-            return $this->redirectToRoute('mentoring_admin');
+            return $this->redirectToRoute('mentoring_super-admin');
         }
         $validUntilDate = \DateTime::createFromFormat('Y-m-d', $validUntil);
         if ($validUntilDate) {
@@ -293,16 +318,39 @@ $validUntil = $request->request->get('valid_until');
         $application->setStatus('Approved');
         $em->flush();
 
+        // Notify the user
+        $this->notificationService->notifyMentorApplicationApproved($student, $application->getId(), $validUntilDate);
+
         $this->addFlash('success', 'Student approved as mentor.');
 
-        return $this->redirectToRoute('mentoring_admin');
+        return $this->redirectToRoute('mentoring_super-admin');
+    }
+
+    #[Route('/admin/application/{id}/delete', name: 'mentoring_delete_application', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function deleteApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('delete_mentor_application_' . $application->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $student = $application->getStudent();
+        $applicationId = $application->getId();
+
+        $em->remove($application);
+        $em->flush();
+
+        $this->notificationService->notifyMentorApplicationRejected($student, $applicationId, 'Your mentor application was deleted by Super Admin.');
+        $this->addFlash('success', 'Mentor application deleted and the user has been notified.');
+
+        return $this->redirectToRoute('mentoring_super-admin');
     }
 
     #[Route('/admin/mentor', name: 'mentoring_create_mentor', methods: ['POST'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
     public function createMentor(Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isCsrfTokenValid('create_mentor', (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('create_mentor', (string) $request->request->get('_csrf_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
@@ -310,14 +358,14 @@ $validUntil = $request->request->get('valid_until');
         if (!$user) {
             $this->addFlash('error', 'User not found.');
 
-            return $this->redirectToRoute('mentoring_admin');
+            return $this->redirectToRoute('mentoring_super-admin');
         }
 
         $existing = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
         if ($existing) {
             $this->addFlash('error', 'This user already has a mentor profile.');
 
-            return $this->redirectToRoute('mentoring_admin');
+            return $this->redirectToRoute('mentoring_super-admin');
         }
 
         $profile = (new MentorProfile())
@@ -333,9 +381,78 @@ $validUntil = $request->request->get('valid_until');
         $em->persist($profile);
         $em->flush();
 
+        // Notify the user that a mentor profile was created for them
+        $this->notificationService->notifyMentorProfileCreated($user);
+
         $this->addFlash('success', 'Mentor profile created.');
 
-        return $this->redirectToRoute('mentoring_admin');
+        return $this->redirectToRoute('mentoring_super-admin');
+    }
+
+    #[Route('/admin/mentor/{id}/edit', name: 'mentoring_edit_mentor', methods: ['GET', 'POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function editMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
+    {
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('edit_mentor_' . $mentor->getId(), (string) $request->request->get('_token'))) {
+                throw $this->createAccessDeniedException('Invalid CSRF token.');
+            }
+
+            $displayName = trim((string) $request->request->get('display_name'));
+            $specialization = trim((string) $request->request->get('specialization'));
+            $bio = trim((string) $request->request->get('bio'));
+
+            if ($displayName === '') {
+                $this->addFlash('error', 'Display name is required.');
+                return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
+            }
+
+            $mentor->setDisplayName($displayName);
+            $mentor->setSpecialization($specialization ?: null);
+            $mentor->setBio($bio ?: null);
+
+            $em->flush();
+
+            $this->addFlash('success', 'Mentor profile updated successfully.');
+            return $this->redirectToRoute('mentoring_super-admin');
+        }
+
+        return $this->render('mentoring/edit_mentor.html.twig', [
+            'mentor' => $mentor,
+        ]);
+    }
+
+    #[Route('/admin/mentor/{id}/delete', name: 'mentoring_delete_mentor', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function deleteMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('delete_mentor_' . $mentor->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $user = $mentor->getUser();
+        
+        // Remove ROLE_MENTOR from user
+        $roles = $user->getRoles();
+        $roles = array_filter($roles, fn($role) => $role !== 'ROLE_MENTOR');
+        $user->setRoles(array_values($roles));
+
+        // Delete mentor profile
+        $em->remove($mentor);
+        $em->flush();
+
+        // Notify user about mentor profile deletion
+        $this->notificationService->notifyMentorProfileDeleted($user);
+
+        // Delete any related mentor applications for this user
+        $applications = $em->getRepository(MentorApplication::class)->findBy(['student' => $user]);
+        foreach ($applications as $application) {
+            $em->remove($application);
+        }
+        $em->flush();
+
+        $this->addFlash('success', 'Mentor profile deleted successfully and user has been notified.');
+        return $this->redirectToRoute('mentoring_super-admin');
     }
 
     #[Route('/admin/mentor/{id}/availability', name: 'mentoring_add_availability', methods: ['POST'])]
@@ -353,7 +470,7 @@ $validUntil = $request->request->get('valid_until');
         if (!$date || !$start || !$end || $end <= $start) {
             $this->addFlash('error', 'Please enter a valid availability date and time range.');
 
-            return $this->redirectToRoute('mentoring_admin');
+            return $this->redirectToRoute('mentoring_super-admin');
         }
 
         $availability = (new MentorAvailability())
@@ -367,7 +484,7 @@ $validUntil = $request->request->get('valid_until');
 
         $this->addFlash('success', 'Availability added.');
 
-        return $this->redirectToRoute('mentoring_admin');
+        return $this->redirectToRoute('mentoring_super-admin');
     }
 
     #[Route('/{id}', name: 'mentoring_show', methods: ['GET'])]
@@ -385,10 +502,16 @@ $validUntil = $request->request->get('valid_until');
             'mentor' => $profile
         ], ['scheduledAt' => 'DESC']);
 
+        $currentUser = $this->getUser();
+        $canSendCustomRequest = $currentUser instanceof User
+            && $profile->getUser() !== null
+            && $profile->getUser()->getId() !== $currentUser->getId();
+
         return $this->render('mentoring/show.html.twig', [
             'mentor' => $profile,
             'availabilities' => $availabilities,
             'myAppointments' => $appointmentsWithThisMentor,
+            'canSendCustomRequest' => $canSendCustomRequest,
         ]);
     }
 
@@ -407,6 +530,15 @@ $validUntil = $request->request->get('valid_until');
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
             throw $this->createAccessDeniedException('You must be logged in to send a mentoring request.');
+        }
+
+        if ($profile->getUser() !== null && $profile->getUser()->getId() === $currentUser->getId()) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'You cannot send a custom request to your own mentor profile.'], Response::HTTP_FORBIDDEN);
+            }
+            $this->addFlash('error', 'You cannot send a custom request to your own mentor profile.');
+            return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
 
         $message = trim($request->request->get('message', ''));
@@ -635,19 +767,44 @@ $validUntil = $request->request->get('valid_until');
 
         $em->flush();
 
-        return $this->redirectToRoute('mentoring_admin');
+        return $this->redirectToRoute('mentoring_super-admin');
     }
 
     private function specializationStats(EntityManagerInterface $em): array
     {
-        return $em->createQueryBuilder()
-            ->select('m.specialization, COUNT(a.id) AS total')
+        $appointmentCounts = $em->createQueryBuilder()
+            ->select('m.specialization AS specialization, COUNT(a.id) AS total')
             ->from(MentoringAppointment::class, 'a')
             ->join('a.mentor', 'm')
             ->groupBy('m.specialization')
-            ->orderBy('total', 'DESC')
             ->getQuery()
             ->getArrayResult();
+
+        $customRequestCounts = $em->createQueryBuilder()
+            ->select('m.specialization AS specialization, COUNT(cr.id) AS total')
+            ->from(MentorCustomRequest::class, 'cr')
+            ->join('cr.mentorProfile', 'm')
+            ->groupBy('m.specialization')
+            ->getQuery()
+            ->getArrayResult();
+
+        $totals = [];
+        foreach (array_merge($appointmentCounts, $customRequestCounts) as $row) {
+            $spec = $row['specialization'];
+            $totals[$spec] = ($totals[$spec] ?? 0) + (int) $row['total'];
+        }
+
+        arsort($totals);
+
+        $results = [];
+        foreach ($totals as $specialization => $total) {
+            $results[] = [
+                'specialization' => $specialization,
+                'total' => $total,
+            ];
+        }
+
+        return $results;
     }
 
     private function ensureFacultyMentorProfiles(EntityManagerInterface $em): void

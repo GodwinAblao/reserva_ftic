@@ -97,6 +97,20 @@ class NotificationService
     }
 
     /**
+     * Notify user about mentor profile creation by super admin
+     */
+    public function notifyMentorProfileCreated(User $user): void
+    {
+        $this->create(
+            $user,
+            'mentor',
+            'Mentor Profile Created',
+            'A Super Admin has created a mentor profile for you. You are now a mentor!',
+            'Created'
+        );
+    }
+
+    /**
      * Notify user about reservation submission
      */
     public function notifyReservationSubmitted(User $user, int $reservationId): void
@@ -143,6 +157,20 @@ class NotificationService
             $message,
             'Rejected',
             $reservationId
+        );
+    }
+
+    /**
+     * Notify user about mentor profile deletion
+     */
+    public function notifyMentorProfileDeleted(User $user): void
+    {
+        $this->create(
+            $user,
+            'mentor',
+            'Mentor Profile Deleted',
+            'Your mentor profile has been deleted by a Super Admin. You are no longer a mentor.',
+            'Deleted'
         );
     }
 

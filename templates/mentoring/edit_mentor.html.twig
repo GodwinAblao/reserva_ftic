@@ -1,0 +1,104 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Edit Mentor | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>Edit Mentor Profile</h2>
+    <a href="{{ path('mentoring_super-admin') }}" class="btn-secondary">Back to Admin</a>
+</div>
+
+<section class="card-panel">
+    <h3>Edit Mentor: {{ mentor.displayName }}</h3>
+    <form method="post" action="{{ path('mentoring_edit_mentor', {'id': mentor.id}) }}" class="form-grid">
+        <input type="hidden" name="_token" value="{{ csrf_token('edit_mentor_' ~ mentor.id) }}">
+
+        <div class="form-group">
+            <label for="display_name">Display Name *</label>
+            <input type="text" id="display_name" name="display_name" class="form-input" value="{{ mentor.displayName }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="specialization">Specialization</label>
+            <select id="specialization" name="specialization" class="form-input">
+                <option value="">Select specialization...</option>
+                <option value="BSITBA" {% if mentor.specialization == 'BSITBA' %}selected{% endif %}>BSITBA (IT Business Analysis)</option>
+                <option value="BSCS" {% if mentor.specialization == 'BSCS' %}selected{% endif %}>BSCS (Computer Science)</option>
+                <option value="Software Engineering" {% if mentor.specialization == 'Software Engineering' %}selected{% endif %}>Software Engineering</option>
+                <option value="Data Science" {% if mentor.specialization == 'Data Science' %}selected{% endif %}>Data Science</option>
+                <option value="Cybersecurity" {% if mentor.specialization == 'Cybersecurity' %}selected{% endif %}>Cybersecurity</option>
+                <option value="Cloud Computing" {% if mentor.specialization == 'Cloud Computing' %}selected{% endif %}>Cloud Computing</option>
+                <option value="Web Development" {% if mentor.specialization == 'Web Development' %}selected{% endif %}>Web Development</option>
+                <option value="Mobile Development" {% if mentor.specialization == 'Mobile Development' %}selected{% endif %}>Mobile Development</option>
+                <option value="UI/UX Design" {% if mentor.specialization == 'UI/UX Design' %}selected{% endif %}>UI/UX Design</option>
+                <option value="Research" {% if mentor.specialization == 'Research' %}selected{% endif %}>Research</option>
+                <option value="Other" {% if mentor.specialization == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="bio">Bio</label>
+            <textarea id="bio" name="bio" class="form-input" rows="4">{{ mentor.bio }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>User Information</label>
+            <div class="user-info">
+                <p><strong>Name:</strong> {{ mentor.user.firstName }} {{ mentor.user.lastName }}</p>
+                <p><strong>Email:</strong> {{ mentor.user.email }}</p>
+                <p><strong>Engagement Points:</strong> {{ mentor.engagementPoints }}</p>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Update Mentor</button>
+            <a href="{{ path('mentoring_super-admin') }}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</section>
+
+<style>
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.user-info {
+    background: #f9fafb;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+}
+
+.user-info p {
+    margin: 0.5rem 0;
+    color: #6b7280;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+</style>
+{% endblock %}
