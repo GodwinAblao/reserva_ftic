@@ -19,15 +19,16 @@ class UserRepository extends ServiceEntityRepository
     }
 
     /**
-     * Find all admin users (those with ROLE_SUPER_ADMIN)
+     * Find all admin users (ROLE_SUPER_ADMIN and future ROLE_ADMIN accounts).
      *
      * @return User[]
      */
     public function findAdmins(): array
     {
         return $this->createQueryBuilder('u')
-            ->where('u.roles LIKE :role')
-            ->setParameter('role', '%ROLE_SUPER_ADMIN%')
+            ->where('u.roles LIKE :superAdminRole OR u.roles LIKE :adminRole')
+            ->setParameter('superAdminRole', '%ROLE_SUPER_ADMIN%')
+            ->setParameter('adminRole', '%ROLE_ADMIN%')
             ->getQuery()
             ->getResult();
     }

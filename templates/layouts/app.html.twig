@@ -52,7 +52,7 @@
                     {{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : 'USER' }}
                 </div>
                 <div>Signed in as {{ app.user ? app.user.userIdentifier : 'Guest' }}</div>
-                <div><a href="{{ path('app_logout') }}">Log out</a></div>
+                <div><a href="{{ path('app_logout') }}" data-clear-notification-session>Log out</a></div>
             </div>
         </aside>
 
@@ -63,7 +63,7 @@
     
 {# Floating Notification Bell - Top Right Corner for Super Admin #}
     {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user.id }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
         <button type="button" aria-expanded="false" class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
             width: 50px;
             height: 50px;
@@ -149,6 +149,15 @@
             const dropdown = wrapper.querySelector('.notification-dropdown-floating');
             if (!btn || !dropdown) return;
             console.log('Notification fallback initialized');
+            document.querySelectorAll('[data-clear-notification-session]').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    Object.keys(sessionStorage).forEach(function(key) {
+                        if (key.indexOf('reservaNotificationSoundPlayed:') === 0) {
+                            sessionStorage.removeItem(key);
+                        }
+                    });
+                });
+            });
             btn.addEventListener('click', function(e){
                 e.preventDefault();
                 if (wrapper.dataset.notificationConnected === '1') {

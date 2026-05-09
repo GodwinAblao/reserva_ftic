@@ -10,6 +10,7 @@
             <p class="muted">Find mentors, request sessions, and manage your mentoring activities.</p>
         </div>
         <div class="button-group">
+            <button type="button" class="btn-secondary" onclick="openMentorAssistance()">Need Help Finding a Mentor?</button>
             {% if canApplyAsMentor %}
                 <button type="button" class="btn-primary" onclick="openMentorApplication()">Apply as Mentor</button>
             {% elseif is_granted('ROLE_MENTOR') %}
@@ -139,11 +140,42 @@
             {% for request in sentCustomRequests %}
                 <div class="list-row">
                     <div>
-                        <strong>{{ request.mentorProfile.displayName }}</strong>
-                        <p>Submitted {{ request.createdAt|date('M d, Y h:i A') }}</p>
+                        <strong>{{ request.mentorProfile ? request.mentorProfile.displayName : 'Mentor assistance request' }}</strong>
+                        <p>
+                            Submitted {{ request.createdAt|date('M d, Y h:i A') }}
+                            {% if request.updatedAt %} - Updated {{ request.updatedAt|date('M d, Y h:i A') }}{% endif %}
+                        </p>
+                        {% if request.isAssistanceRequest %}
+                            <p class="muted">{{ request.departmentCourse }} - {{ request.preferredExpertise }} - {{ request.preferredSchedule }}</p>
+                        {% endif %}
                         <p class="muted">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</p>
+                        {% if request.assignedMentorName %}
+                            <div class="mentor-request-card__response">
+                                <strong>Mentor details:</strong>
+                                <p>{{ request.assignedMentorName }} - {{ request.assignedMentorExpertise }}</p>
+                                <p>{{ request.availableDates }} at {{ request.availableTime }} - {{ request.meetingMethod }}</p>
+                                {% if request.adminInstructions %}<p>{{ request.adminInstructions }}</p>{% endif %}
+                            </div>
+                        {% endif %}
                         {% if request.mentorResponse %}
                             <p class="muted"><strong>Response:</strong> {{ request.mentorResponse }}</p>
+                        {% endif %}
+                        {% if request.isAssistanceRequest and request.status == 'Pending' %}
+                            <details class="mentor-inline-editor">
+                                <summary>Update request</summary>
+                                <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" class="mentor-request-actions">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
+                                    <input class="form-input" name="full_name" value="{{ request.fullName }}" required>
+                                    <input class="form-input" name="department_course" value="{{ request.departmentCourse }}" required>
+                                    <input class="form-input" name="preferred_expertise" value="{{ request.preferredExpertise }}" required>
+                                    <input class="form-input" name="preferred_schedule" value="{{ request.preferredSchedule }}" required>
+                                    <textarea class="form-input" name="message" rows="3">{{ request.message }}</textarea>
+                                    <div class="button-group">
+                                        <button class="btn-primary" type="submit" name="action" value="update">Save Changes</button>
+                                        <button class="btn-secondary" type="submit" name="action" value="cancel">Cancel Request</button>
+                                    </div>
+                                </form>
+                            </details>
                         {% endif %}
                     </div>
                     <span class="status-badge status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
@@ -258,6 +290,52 @@
             </div>
         </div>
     {% endif %}
+
+    <div id="mentorAssistanceModal" class="app-modal" aria-hidden="true">
+        <div class="app-modal-backdrop" onclick="closeMentorAssistance()"></div>
+        <div class="app-modal-panel app-modal-large" role="dialog" aria-modal="true" aria-labelledby="mentorAssistanceTitle">
+            <div class="app-modal-header">
+                <div>
+                    <h3 id="mentorAssistanceTitle">Request a Mentor</h3>
+                    <p>Tell Admin what kind of mentor support you need.</p>
+                </div>
+                <button type="button" class="icon-button" onclick="closeMentorAssistance()" aria-label="Close">x</button>
+            </div>
+
+            <form method="post" action="{{ path('mentoring_assistance_request') }}" class="mentor-form mentor-assistance-form" data-loading-label="Submitting...">
+                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_request') }}">
+                <div class="form-section">
+                    <h4>Request Details</h4>
+                    <div class="form-grid form-grid-2">
+                        <div class="form-group">
+                            <label for="assistance_full_name">Full Name</label>
+                            <input id="assistance_full_name" class="form-input" name="full_name" value="{{ (app.user.firstName ~ ' ' ~ app.user.lastName)|trim }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="assistance_department">Department / Course</label>
+                            <input id="assistance_department" class="form-input" name="department_course" value="{{ app.user.degreeName ?: app.user.degree }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="assistance_expertise">Preferred Expertise or Skill</label>
+                            <input id="assistance_expertise" class="form-input" name="preferred_expertise" placeholder="Example: Software Engineering, Research, UI/UX" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="assistance_schedule">Preferred Schedule</label>
+                            <input id="assistance_schedule" class="form-input" name="preferred_schedule" placeholder="Example: Mondays 2:00 PM onward" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="assistance_message">Additional Notes or Message</label>
+                        <textarea id="assistance_message" class="form-input" name="message" rows="4" placeholder="Share goals, constraints, or what you have already tried."></textarea>
+                    </div>
+                </div>
+                <div class="app-modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeMentorAssistance()">Cancel</button>
+                    <button class="btn-primary js-loading-submit" type="submit">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -383,10 +461,43 @@
             document.body.style.overflow = '';
         }
 
+        function openMentorAssistance() {
+            const modal = document.getElementById('mentorAssistanceModal');
+            if (!modal) {
+                return;
+            }
+
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMentorAssistance() {
+            const modal = document.getElementById('mentorAssistanceModal');
+            if (!modal) {
+                return;
+            }
+
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 closeMentorApplication();
+                closeMentorAssistance();
             }
+        });
+
+        document.querySelectorAll('form[data-loading-label]').forEach(form => {
+            form.addEventListener('submit', () => {
+                const button = form.querySelector('.js-loading-submit');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = form.dataset.loadingLabel || 'Submitting...';
+                }
+            });
         });
 
         // Auto-refresh button group state to detect real-time updates from super admin

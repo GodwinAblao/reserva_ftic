@@ -127,15 +127,44 @@ class MentoringController extends AbstractController
 
     #[Route('/super-admin', name: 'mentoring_super-admin', methods: ['GET'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
-    public function admin(EntityManagerInterface $em): Response
+    public function admin(Request $request, EntityManagerInterface $em): Response
     {
         $this->ensureFacultyMentorProfiles($em);
+
+        $mentorRequestRepo = $em->getRepository(MentorCustomRequest::class);
+        $statusFilter = trim((string) $request->query->get('status', ''));
+        $departmentFilter = trim((string) $request->query->get('department', ''));
+        $dateFilter = trim((string) $request->query->get('date', ''));
 
         return $this->render('mentoring/super-admin.html.twig', [
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC']),
             'applications' => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
+            'mentorRequests' => $mentorRequestRepo->findAssistanceRequests($statusFilter ?: null, $departmentFilter ?: null, $dateFilter ?: null),
+            'requestFilters' => [
+                'status' => $statusFilter,
+                'department' => $departmentFilter,
+                'date' => $dateFilter,
+            ],
             'users' => $em->getRepository(User::class)->findAll(),
+        ]);
+    }
+
+    #[Route('/admin/mentor-requests', name: 'mentoring_admin_requests', methods: ['GET'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function adminMentorRequests(Request $request, EntityManagerInterface $em): Response
+    {
+        $statusFilter = trim((string) $request->query->get('status', ''));
+        $departmentFilter = trim((string) $request->query->get('department', ''));
+        $dateFilter = trim((string) $request->query->get('date', ''));
+
+        return $this->render('mentoring/admin-requests.html.twig', [
+            'mentorRequests' => $em->getRepository(MentorCustomRequest::class)->findAssistanceRequests($statusFilter ?: null, $departmentFilter ?: null, $dateFilter ?: null),
+            'requestFilters' => [
+                'status' => $statusFilter,
+                'department' => $departmentFilter,
+                'date' => $dateFilter,
+            ],
         ]);
     }
 
@@ -619,6 +648,160 @@ $validUntil = $request->request->get('valid_until');
         return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
     }
 
+    #[Route('/assistance-request', name: 'mentoring_assistance_request', methods: ['POST'])]
+    public function assistanceRequest(Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
+    {
+        if (!$this->isCsrfTokenValid('mentor_assistance_request', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            throw $this->createAccessDeniedException('You must be logged in to request mentor assistance.');
+        }
+
+        $fullName = trim((string) $request->request->get('full_name'));
+        $departmentCourse = trim((string) $request->request->get('department_course'));
+        $preferredExpertise = trim((string) $request->request->get('preferred_expertise'));
+        $preferredSchedule = trim((string) $request->request->get('preferred_schedule'));
+        $message = trim((string) $request->request->get('message'));
+
+        if ($fullName === '' || $departmentCourse === '' || $preferredExpertise === '' || $preferredSchedule === '') {
+            $this->addFlash('error', 'Please complete the required mentor request fields.');
+            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        }
+
+        $mentorRequest = (new MentorCustomRequest())
+            ->setStudent($currentUser)
+            ->setMentorProfile(null)
+            ->setFullName($fullName)
+            ->setDepartmentCourse($departmentCourse)
+            ->setPreferredExpertise($preferredExpertise)
+            ->setPreferredSchedule($preferredSchedule)
+            ->setMessage($message !== '' ? $message : 'No additional notes provided.')
+            ->setStatus('Pending');
+
+        $em->persist($mentorRequest);
+        $em->flush();
+
+        $adminUrl = $this->generateUrl('mentoring_super-admin', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
+        $admins = $em->getRepository(User::class)->findAdmins();
+        foreach ($admins as $admin) {
+            $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
+            $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
+        }
+
+        $this->notificationService->notifyMentorAssistanceStatus(
+            $currentUser,
+            $mentorRequest->getId(),
+            'Pending',
+            'Your mentor assistance request has been submitted and is now pending review.'
+        );
+
+        $this->addFlash('success', 'Your mentor request has been submitted. Admin will review it and send mentor details once a match is found.');
+
+        return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/assistance-request/{id}/update', name: 'mentoring_assistance_update', methods: ['POST'])]
+    public function updateAssistanceRequest(MentorCustomRequest $mentorRequest, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('mentor_assistance_update_' . $mentorRequest->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User || $mentorRequest->getStudent()?->getId() !== $currentUser->getId() || !$mentorRequest->isAssistanceRequest()) {
+            throw $this->createAccessDeniedException('You can only update your own mentor assistance requests.');
+        }
+
+        if ($mentorRequest->getStatus() !== 'Pending') {
+            $this->addFlash('error', 'Only pending mentor requests can be updated.');
+            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        }
+
+        $action = (string) $request->request->get('action', 'update');
+        if ($action === 'cancel') {
+            $mentorRequest->setStatus('Cancelled');
+            $em->flush();
+            $this->addFlash('success', 'Your mentor request has been cancelled.');
+            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        }
+
+        $mentorRequest
+            ->setFullName(trim((string) $request->request->get('full_name')) ?: $mentorRequest->getFullName())
+            ->setDepartmentCourse(trim((string) $request->request->get('department_course')) ?: $mentorRequest->getDepartmentCourse())
+            ->setPreferredExpertise(trim((string) $request->request->get('preferred_expertise')) ?: $mentorRequest->getPreferredExpertise())
+            ->setPreferredSchedule(trim((string) $request->request->get('preferred_schedule')) ?: $mentorRequest->getPreferredSchedule())
+            ->setMessage(trim((string) $request->request->get('message')) ?: $mentorRequest->getMessage());
+
+        $em->flush();
+        $this->addFlash('success', 'Your mentor request has been updated.');
+
+        return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+    }
+
+    #[Route('/admin/mentor-request/{id}/respond', name: 'mentoring_admin_request_respond', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function respondToAssistanceRequest(MentorCustomRequest $mentorRequest, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
+    {
+        if (!$this->isCsrfTokenValid('mentor_assistance_respond_' . $mentorRequest->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if (!$mentorRequest->isAssistanceRequest()) {
+            throw $this->createNotFoundException();
+        }
+
+        $status = (string) $request->request->get('status', 'Reviewing');
+        if (!in_array($status, ['Pending', 'Reviewing', 'Assigned', 'Completed'], true)) {
+            throw $this->createNotFoundException();
+        }
+
+        $mentorName = trim((string) $request->request->get('mentor_name'));
+        $expertise = trim((string) $request->request->get('expertise'));
+        $availableDates = trim((string) $request->request->get('available_dates'));
+        $availableTime = trim((string) $request->request->get('available_time'));
+        $meetingMethod = trim((string) $request->request->get('meeting_method'));
+        $instructions = trim((string) $request->request->get('instructions'));
+
+        if (in_array($status, ['Assigned', 'Completed'], true) && ($mentorName === '' || $expertise === '' || $availableDates === '' || $availableTime === '' || $meetingMethod === '')) {
+            $this->addFlash('error', 'Mentor name, expertise, dates, time, and meeting method are required before assigning a request.');
+            return $this->redirectToRoute('mentoring_super-admin', [], Response::HTTP_SEE_OTHER);
+        }
+
+        $mentorRequest
+            ->setStatus($status)
+            ->setAssignedMentorName($mentorName ?: null)
+            ->setAssignedMentorExpertise($expertise ?: null)
+            ->setAvailableDates($availableDates ?: null)
+            ->setAvailableTime($availableTime ?: null)
+            ->setMeetingMethod($meetingMethod ?: null)
+            ->setAdminInstructions($instructions ?: null);
+
+        if (in_array($status, ['Assigned', 'Completed'], true)) {
+            $mentorRequest->markResponded();
+        }
+
+        $student = $mentorRequest->getStudent();
+        if ($student) {
+            $notificationMessage = $status === 'Reviewing'
+                ? 'Admin is now reviewing your mentor assistance request.'
+                : 'A mentor match has been sent for your assistance request.';
+
+            $this->notificationService->notifyMentorAssistanceStatus($student, $mentorRequest->getId(), $status, $notificationMessage);
+
+            if (in_array($status, ['Assigned', 'Completed'], true)) {
+                $this->sendMentorAssistanceResponseEmail($mailer, $student, $mentorRequest);
+            }
+        }
+
+        $em->flush();
+        $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
+
+        return $this->redirectToRoute('mentoring_super-admin', [], Response::HTTP_SEE_OTHER);
+    }
+
     #[Route('/custom-request/{id}/review', name: 'mentoring_custom_request_review', methods: ['POST'])]
     #[IsGranted('ROLE_MENTOR')]
     public function reviewCustomRequest(MentorCustomRequest $customRequest, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
@@ -842,6 +1025,43 @@ $validUntil = $request->request->get('valid_until');
 
         if ($changed) {
             $em->flush();
+        }
+    }
+
+    private function sendMentorAssistanceRequestEmail(MailerInterface $mailer, User $admin, MentorCustomRequest $mentorRequest, string $adminUrl): void
+    {
+        try {
+            $email = (new Email())
+                ->from('noreply@reserva-ftic.edu.ph')
+                ->to($admin->getEmail())
+                ->subject('New Mentor Assistance Request')
+                ->html($this->renderView('emails/mentor_assistance_request.html.twig', [
+                    'request' => $mentorRequest,
+                    'adminUrl' => $adminUrl,
+                ]));
+
+            $mailer->send($email);
+        } catch (\Throwable $e) {
+            // Email delivery should not block the in-system workflow.
+        }
+    }
+
+    private function sendMentorAssistanceResponseEmail(MailerInterface $mailer, User $student, MentorCustomRequest $mentorRequest): void
+    {
+        try {
+            $email = (new Email())
+                ->from('noreply@reserva-ftic.edu.ph')
+                ->to($student->getEmail())
+                ->subject('Mentor Details for Your Request')
+                ->html($this->renderView('emails/mentor_assistance_response.html.twig', [
+                    'request' => $mentorRequest,
+                    'student' => $student,
+                    'requestUrl' => $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#my-custom-requests',
+                ]));
+
+            $mailer->send($email);
+        } catch (\Throwable $e) {
+            // Email delivery should not block the in-system notification.
         }
     }
 }

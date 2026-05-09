@@ -39,5 +39,36 @@ class MentorCustomRequestRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function findAssistanceRequests(?string $status = null, ?string $department = null, ?string $date = null): array
+    {
+        $qb = $this->createQueryBuilder('r')
+            ->leftJoin('r.student', 's')
+            ->addSelect('s')
+            ->where('r.mentorProfile IS NULL')
+            ->orderBy('r.createdAt', 'DESC');
+
+        if ($status) {
+            $qb->andWhere('r.status = :status')
+                ->setParameter('status', $status);
+        }
+
+        if ($department) {
+            $qb->andWhere('r.departmentCourse LIKE :department')
+                ->setParameter('department', '%' . $department . '%');
+        }
+
+        if ($date) {
+            $start = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' 00:00:00');
+            $end = \DateTime::createFromFormat('Y-m-d H:i:s', $date . ' 23:59:59');
+            if ($start && $end) {
+                $qb->andWhere('r.createdAt BETWEEN :startDate AND :endDate')
+                    ->setParameter('startDate', $start)
+                    ->setParameter('endDate', $end);
+            }
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }
 

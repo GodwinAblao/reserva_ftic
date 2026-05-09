@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;background:#f4f7f5;font-family:Arial,sans-serif;color:#1f2937;">
+    <div style="max-width:680px;margin:0 auto;padding:28px;">
+        <div style="background:#006633;color:#fff;padding:22px 26px;border-radius:10px 10px 0 0;">
+            <h1 style="margin:0;font-size:22px;">Mentor Details for Your Request</h1>
+            <p style="margin:8px 0 0;">Admin has found a mentor match for your request.</p>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:26px;border-radius:0 0 10px 10px;">
+            <p>Hello {{ request.fullName ?: student.email }},</p>
+            <p>Here are the mentor details prepared for you:</p>
+            <table style="width:100%;border-collapse:collapse;margin:18px 0;">
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Mentor Name</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.assignedMentorName }}</td></tr>
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Expertise / Specialty</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.assignedMentorExpertise }}</td></tr>
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Available Dates</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.availableDates }}</td></tr>
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Available Time</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.availableTime }}</td></tr>
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Meeting Method</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.meetingMethod }}</td></tr>
+            </table>
+            {% if request.adminInstructions %}
+                <div style="background:#f8faf9;border-left:4px solid #006633;padding:14px 16px;margin:18px 0;">
+                    {{ request.adminInstructions|nl2br }}
+                </div>
+            {% endif %}
+            <p>
+                <a href="{{ requestUrl }}" style="background:#006633;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;display:inline-block;">View Request History</a>
+            </p>
+            <p style="font-size:13px;color:#6b7280;">This is an automated message from Reserva FTIC.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -6,6 +6,7 @@ export default class extends Controller {
     
     initialize() {
         this.lastUnreadCount = 0;
+        this.soundPlayedKey = `reservaNotificationSoundPlayed:${this.element.dataset.userId || 'user'}`;
         console.log('Notification controller initialized');
     }
 
@@ -37,9 +38,10 @@ export default class extends Controller {
             const data = await response.json();
             const unreadCount = data.unreadCount || 0;
             
-            // Play sound if there are new unread notifications and count increased
-            if (unreadCount > 0 && unreadCount > this.lastUnreadCount) {
+            // The notification sound is a login cue. Keep badge/list live, but do not replay it on refresh.
+            if (unreadCount > 0 && !sessionStorage.getItem(this.soundPlayedKey)) {
                 this.playNotificationSound();
+                sessionStorage.setItem(this.soundPlayedKey, '1');
             }
             
             this.lastUnreadCount = unreadCount;

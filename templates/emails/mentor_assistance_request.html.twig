@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;background:#f4f7f5;font-family:Arial,sans-serif;color:#1f2937;">
+    <div style="max-width:680px;margin:0 auto;padding:28px;">
+        <div style="background:#006633;color:#fff;padding:22px 26px;border-radius:10px 10px 0 0;">
+            <h1 style="margin:0;font-size:22px;">New Mentor Assistance Request</h1>
+            <p style="margin:8px 0 0;">A user needs help finding a suitable mentor.</p>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:26px;border-radius:0 0 10px 10px;">
+            <p><strong>Requester:</strong> {{ request.fullName }}</p>
+            <p><strong>Email:</strong> {{ request.student.email }}</p>
+            <p><strong>Department / Course:</strong> {{ request.departmentCourse }}</p>
+            <p><strong>Preferred Expertise:</strong> {{ request.preferredExpertise }}</p>
+            <p><strong>Preferred Schedule:</strong> {{ request.preferredSchedule }}</p>
+            <div style="background:#f8faf9;border-left:4px solid #006633;padding:14px 16px;margin:18px 0;">
+                {{ request.message|nl2br }}
+            </div>
+            <p style="margin-top:24px;">
+                <a href="{{ adminUrl }}" style="background:#006633;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;display:inline-block;">Review Request</a>
+            </p>
+            <p style="font-size:13px;color:#6b7280;">This is an automated message from Reserva FTIC.</p>
+        </div>
+    </div>
+</body>
+</html>

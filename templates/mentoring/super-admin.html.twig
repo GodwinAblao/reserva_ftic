@@ -5,7 +5,10 @@
 {% block content %}
 <div class="content-header" style="align-items:center; justify-content:space-between;">
     <h2>Mentoring</h2>
-    <a href="{{ path('mentoring_index') }}" class="btn-secondary">Back to Mentoring</a>
+    <div class="button-group">
+        <a href="{{ path('mentoring_admin_requests') }}" class="btn-primary">Mentor Requests</a>
+        <a href="{{ path('mentoring_index') }}" class="btn-secondary">Back to Mentoring</a>
+    </div>
 </div>
 
 <section class="card-panel">
@@ -77,6 +80,88 @@
     {% else %}
         <p>No mentor profiles yet.</p>
     {% endfor %}
+</section>
+
+<section class="card-panel" id="mentor-requests">
+    <div class="section-heading">
+        <div>
+            <h3>Mentor Requests</h3>
+            <p class="muted">Review users who need help finding a suitable mentor.</p>
+        </div>
+    </div>
+
+    <form method="get" action="{{ path('mentoring_super-admin') }}" class="mentor-admin-filters">
+        <select name="status" class="form-input">
+            <option value="">All statuses</option>
+            {% for status in ['Pending', 'Reviewing', 'Assigned', 'Completed', 'Cancelled'] %}
+                <option value="{{ status }}" {{ requestFilters.status == status ? 'selected' : '' }}>{{ status }}</option>
+            {% endfor %}
+        </select>
+        <input name="department" class="form-input" placeholder="Department or course" value="{{ requestFilters.department }}">
+        <input type="date" name="date" class="form-input" value="{{ requestFilters.date }}">
+        <button class="btn-primary" type="submit">Filter</button>
+        <a class="btn-secondary" href="{{ path('mentoring_super-admin') }}#mentor-requests">Reset</a>
+    </form>
+
+    <div class="mentor-request-table-wrap">
+        <table class="mentor-request-table">
+            <thead>
+                <tr>
+                    <th>Requester</th>
+                    <th>Department / Course</th>
+                    <th>Preferred Expertise</th>
+                    <th>Schedule</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Response</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for request in mentorRequests %}
+                <tr>
+                    <td>
+                        <strong>{{ request.fullName ?: request.student.email }}</strong>
+                        <span>{{ request.student.email }}</span>
+                    </td>
+                    <td>{{ request.departmentCourse }}</td>
+                    <td>{{ request.preferredExpertise }}</td>
+                    <td>{{ request.preferredSchedule }}</td>
+                    <td><span class="status-badge status-{{ request.status|lower }}">{{ request.status }}</span></td>
+                    <td>{{ request.createdAt|date('M d, Y h:i A') }}</td>
+                    <td>
+                        <details class="mentor-response-details">
+                            <summary>{{ request.assignedMentorName ? 'Update response' : 'Send details' }}</summary>
+                            <p class="muted">{{ request.message }}</p>
+                            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': request.id}) }}" class="mentor-admin-response-form">
+                                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ request.id) }}">
+                                <select name="status" class="form-input" required>
+                                    {% for status in ['Reviewing', 'Assigned', 'Completed'] %}
+                                        <option value="{{ status }}" {{ request.status == status ? 'selected' : '' }}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input class="form-input" name="mentor_name" placeholder="Mentor Name" value="{{ request.assignedMentorName }}">
+                                <input class="form-input" name="expertise" placeholder="Expertise / Specialty" value="{{ request.assignedMentorExpertise }}">
+                                <input type="date" class="form-input" name="available_dates" aria-label="Available Date" value="{{ request.availableDates }}">
+                                <input type="time" class="form-input" name="available_time" aria-label="Available Time" value="{{ request.availableTime }}">
+                                <select name="meeting_method" class="form-input">
+                                    <option value="">Meeting Method</option>
+                                    <option value="Online" {{ request.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
+                                    <option value="Face-to-Face" {{ request.meetingMethod == 'Face-to-Face' ? 'selected' : '' }}>Face-to-Face</option>
+                                </select>
+                                <textarea class="form-input" name="instructions" rows="3" placeholder="Additional instructions or notes">{{ request.adminInstructions }}</textarea>
+                                <button class="btn-primary" type="submit">Notify User</button>
+                            </form>
+                        </details>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="empty-table">No mentor assistance requests found.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 
 <section class="card-panel">

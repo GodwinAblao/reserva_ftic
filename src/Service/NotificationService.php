@@ -189,6 +189,30 @@ class NotificationService
         );
     }
 
+    public function notifyAdminNewMentorAssistanceRequest(User $admin, int $requestId, string $requesterName): void
+    {
+        $this->create(
+            $admin,
+            'mentor_assistance',
+            'New Mentor Assistance Request',
+            $requesterName . ' requested help finding a mentor.',
+            'Pending',
+            $requestId
+        );
+    }
+
+    public function notifyMentorAssistanceStatus(User $user, int $requestId, string $status, string $message): void
+    {
+        $this->create(
+            $user,
+            'mentor_assistance',
+            'Mentor Request ' . $status,
+            $message,
+            $status,
+            $requestId
+        );
+    }
+
     /**
      * Notify super admin about new reservation
      */
