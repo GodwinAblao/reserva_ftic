@@ -5,10 +5,12 @@ START TRANSACTION;
 
 DROP TABLE IF EXISTS `reservation`;
 DROP TABLE IF EXISTS `mentoring_appointment`;
+DROP TABLE IF EXISTS `mentor_custom_request`;
 DROP TABLE IF EXISTS `mentor_availability`;
 DROP TABLE IF EXISTS `mentor_application`;
 DROP TABLE IF EXISTS `mentor_profile`;
 DROP TABLE IF EXISTS `research_content`;
+DROP TABLE IF EXISTS `notifications`;
 DROP TABLE IF EXISTS `facility`;
 DROP TABLE IF EXISTS `messenger_messages`;
 DROP TABLE IF EXISTS `user`;
@@ -59,13 +61,20 @@ CREATE TABLE IF NOT EXISTS `mentor_profile` (
 CREATE TABLE IF NOT EXISTS `mentor_application` (
 	`id` INT AUTO_INCREMENT NOT NULL,
 	`student_id` INT NOT NULL,
-	`email` VARCHAR(180) NOT NULL,
-	`reason` LONGTEXT NOT NULL,
+	`email` VARCHAR(255) NOT NULL,
+	`first_name` VARCHAR(100) DEFAULT NULL,
+	`middle_name` VARCHAR(100) DEFAULT NULL,
+	`last_name` VARCHAR(100) DEFAULT NULL,
+	`contact_number` VARCHAR(20) DEFAULT NULL,
 	`specialization` VARCHAR(255) NOT NULL,
-	`otp_code` VARCHAR(10) NOT NULL,
-	`otp_expires_at` DATETIME NOT NULL,
-	`is_otp_verified` TINYINT(1) NOT NULL DEFAULT 0,
-	`status` VARCHAR(50) NOT NULL DEFAULT 'Awaiting OTP',
+	`reason` LONGTEXT DEFAULT NULL,
+	`years_of_experience` INT DEFAULT NULL,
+	`current_profession` VARCHAR(150) DEFAULT NULL,
+	`highest_education` VARCHAR(150) DEFAULT NULL,
+	`supporting_description` LONGTEXT DEFAULT NULL,
+	`proof_of_expertise` JSON DEFAULT NULL,
+	`status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
+	`valid_until` DATETIME DEFAULT NULL,
 	`admin_note` LONGTEXT DEFAULT NULL,
 	`created_at` DATETIME NOT NULL,
 	`updated_at` DATETIME NOT NULL,
@@ -131,6 +140,21 @@ CREATE TABLE IF NOT EXISTS `mentoring_appointment` (
 	CONSTRAINT FK_8538E64061778466 FOREIGN KEY (`availability_id`) REFERENCES `mentor_availability` (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
 
+CREATE TABLE IF NOT EXISTS `mentor_custom_request` (
+	`id` INT AUTO_INCREMENT NOT NULL,
+	`student_id` INT NOT NULL,
+	`mentor_profile_id` INT NOT NULL,
+	`message` LONGTEXT NOT NULL,
+	`status` VARCHAR(20) NOT NULL,
+	`created_at` DATETIME NOT NULL,
+	`mentor_response` LONGTEXT DEFAULT NULL,
+	INDEX IDX_3A5F8C4FCB944F1A (`student_id`),
+	INDEX IDX_3A5F8C4C20F29E8B (`mentor_profile_id`),
+	PRIMARY KEY(`id`),
+	CONSTRAINT FK_3A5F8C4FCB944F1A FOREIGN KEY (`student_id`) REFERENCES `user` (`id`),
+	CONSTRAINT FK_3A5F8C4C20F29E8B FOREIGN KEY (`mentor_profile_id`) REFERENCES `mentor_profile` (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
+
 CREATE TABLE IF NOT EXISTS `research_content` (
 	`id` INT AUTO_INCREMENT NOT NULL,
 	`author_id` INT NOT NULL,
@@ -141,12 +165,32 @@ CREATE TABLE IF NOT EXISTS `research_content` (
 	`summary` LONGTEXT DEFAULT NULL,
 	`body` LONGTEXT DEFAULT NULL,
 	`file_path` VARCHAR(255) DEFAULT NULL,
+	`embedded_link` LONGTEXT DEFAULT NULL,
+	`external_link` LONGTEXT DEFAULT NULL,
 	`visibility` VARCHAR(30) NOT NULL DEFAULT 'Public',
+	`repository_type` VARCHAR(100) DEFAULT NULL,
+	`authors` LONGTEXT DEFAULT NULL,
+	`abstract` LONGTEXT DEFAULT NULL,
 	`created_at` DATETIME NOT NULL,
 	`updated_at` DATETIME NOT NULL,
 	INDEX IDX_676B80B3F675F31B (`author_id`),
 	PRIMARY KEY(`id`),
 	CONSTRAINT FK_676B80B3F675F31B FOREIGN KEY (`author_id`) REFERENCES `user` (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS `notifications` (
+	`id` INT AUTO_INCREMENT NOT NULL,
+	`user_id` INT NOT NULL,
+	`type` VARCHAR(50) NOT NULL DEFAULT 'general',
+	`title` VARCHAR(255) NOT NULL,
+	`message` LONGTEXT NOT NULL,
+	`status` VARCHAR(20) NOT NULL DEFAULT 'Pending',
+	`is_read` TINYINT(1) NOT NULL DEFAULT 0,
+	`created_at` DATETIME NOT NULL,
+	`reference_id` INT DEFAULT NULL,
+	INDEX IDX_16C413C5A76ED395 (`user_id`),
+	PRIMARY KEY(`id`),
+	CONSTRAINT FK_16C413C5A76ED395 FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS `messenger_messages` (
