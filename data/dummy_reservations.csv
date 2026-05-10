@@ -1,0 +1,101 @@
+id,user_id,facility_id,facility_name,suggested_facility_id,name,email,contact,reservation_date,reservation_start_time,reservation_end_time,capacity,purpose,status,created_at,updated_at,rejection_reason,setup_date,rso_letter_attached
+1,37,3,Discussion Room 4,,Training 1,user1@example.com,+63975948953,2026-01-27,09:00:00,13:00:00,5,Skill Building Workshop,Approved,2026-01-20,2026-01-27,,2026-01-26,False
+2,50,1,CS Project Room,,Discussion 2,user2@example.com,+63906099714,2024-02-04,13:00:00,17:00:00,38,Academic Discussion,Completed,2024-02-02,2024-02-04,,2024-02-01,False
+3,18,4,Presentation Room 1,,RSO Event 3,user3@example.com,+63926596335,2025-02-19,11:00:00,14:00:00,39,Research Presentation,Pending,2025-02-11,2025-02-19,,2025-02-16,False
+4,10,5,Presentation Room 2,,RSO Event 4,user4@example.com,+63989235511,2024-06-21,15:00:00,16:00:00,56,Technical Training,Cancelled,2024-06-01,2024-06-21,,2024-06-20,False
+5,10,4,Presentation Room 1,,Meeting 5,user5@example.com,+63962204464,2025-01-09,09:00:00,11:00:00,35,Skill Building Workshop,Cancelled,2024-12-16,2025-01-09,,2025-01-08,False
+6,35,3,Discussion Room 4,,Seminar 6,user6@example.com,+63925749314,2026-03-23,11:00:00,12:00:00,7,Research Presentation,Approved,2026-03-09,2026-03-23,,2026-03-21,False
+7,50,1,CS Project Room,,RSO Event 7,user7@example.com,+63935797696,2024-08-09,08:00:00,09:00:00,48,Career Guidance,Cancelled,2024-07-17,2024-08-09,,2024-08-06,True
+8,15,6,COE Project Room,,Orientation 8,user8@example.com,+63919576124,2025-02-18,14:00:00,18:00:00,41,Skill Building Workshop,Rejected,2025-02-13,2025-02-18,Schedule conflict,2025-02-16,False
+9,16,6,COE Project Room,,Meeting 9,user9@example.com,+63945227508,2026-03-16,14:00:00,18:00:00,36,Career Guidance,Cancelled,2026-02-26,2026-03-16,,2026-03-15,False
+10,36,4,Presentation Room 1,,Orientation 10,user10@example.com,+63918850933,2024-11-08,16:00:00,18:00:00,32,Academic Discussion,Rejected,2024-10-18,2024-11-08,,2024-11-06,False
+11,12,3,Discussion Room 4,,Meeting 11,user11@example.com,+63912311536,2024-10-27,11:00:00,12:00:00,6,Skill Building Workshop,Cancelled,2024-10-06,2024-10-27,,2024-10-26,False
+12,31,4,Presentation Room 1,,Workshop 12,user12@example.com,+63911855060,2025-03-07,10:00:00,12:00:00,30,Professional Development,Rejected,2025-02-05,2025-03-07,,2025-03-06,False
+13,13,1,CS Project Room,,Training 13,user13@example.com,+63988830062,2026-01-22,12:00:00,15:00:00,46,Academic Discussion,Completed,2026-01-05,2026-01-22,,2026-01-19,False
+14,34,6,COE Project Room,,Meeting 14,user14@example.com,+63993601955,2026-04-10,15:00:00,19:00:00,39,Community Engagement,Pending,2026-03-11,2026-04-10,,2026-04-08,False
+15,42,7,Lounge Area,,Orientation 15,user15@example.com,+63924527083,2024-04-15,08:00:00,11:00:00,112,Technical Training,Approved,2024-03-30,2024-04-15,,2024-04-12,False
+16,32,4,Presentation Room 1,,Conference 16,user16@example.com,+63966692261,2025-03-16,10:00:00,14:00:00,34,Research Presentation,Approved,2025-03-02,2025-03-16,,2025-03-14,False
+17,29,6,COE Project Room,,Training 17,user17@example.com,+63963366615,2026-04-01,12:00:00,16:00:00,36,Leadership Training,Rejected,2026-03-25,2026-04-01,,2026-03-30,False
+18,6,4,Presentation Room 1,,Training 18,user18@example.com,+63945750919,2025-09-23,11:00:00,13:00:00,29,Student Organization Meeting,Rejected,2025-09-13,2025-09-23,,2025-09-20,False
+19,31,6,COE Project Room,,Orientation 19,user19@example.com,+63916989689,2024-01-07,15:00:00,16:00:00,36,Career Guidance,Completed,2023-12-30,2024-01-07,,2024-01-04,True
+20,24,7,Lounge Area,,Presentation 20,user20@example.com,+63940393766,2025-06-13,12:00:00,16:00:00,128,Skill Building Workshop,Completed,2025-06-02,2025-06-13,,2025-06-10,True
+21,35,4,Presentation Room 1,,Training 21,user21@example.com,+63969839367,2026-01-08,10:00:00,12:00:00,37,Leadership Training,Pending,2025-12-12,2026-01-08,,2026-01-06,False
+22,37,6,COE Project Room,,Academic Activity 22,user22@example.com,+63903200320,2025-02-05,10:00:00,14:00:00,42,Leadership Training,Completed,2025-01-07,2025-02-05,,2025-02-02,False
+23,21,6,COE Project Room,,Seminar 23,user23@example.com,+63946297225,2025-06-08,12:00:00,16:00:00,47,Student Organization Meeting,Approved,2025-05-31,2025-06-08,,2025-06-07,False
+24,47,5,Presentation Room 2,,Training 24,user24@example.com,+63965288217,2025-09-16,14:00:00,18:00:00,50,Technical Training,Rejected,2025-09-10,2025-09-16,,2025-09-15,False
+25,4,7,Lounge Area,,Orientation 25,user25@example.com,+63959367506,2024-05-19,12:00:00,13:00:00,105,Community Engagement,Cancelled,2024-05-17,2024-05-19,,2024-05-16,False
+26,49,7,Lounge Area,,Seminar 26,user26@example.com,+63929523914,2026-03-03,11:00:00,14:00:00,119,Cultural Event,Completed,2026-02-03,2026-03-03,,2026-02-28,False
+27,16,4,Presentation Room 1,,Meeting 27,user27@example.com,+63971463048,2024-03-14,13:00:00,15:00:00,28,Leadership Training,Approved,2024-02-26,2024-03-14,,2024-03-11,False
+28,47,5,Presentation Room 2,,Workshop 28,user28@example.com,+63980570821,2025-01-09,16:00:00,18:00:00,48,Professional Development,Completed,2024-12-26,2025-01-09,,2025-01-06,False
+29,36,2,Discussion Room 3,,RSO Event 29,user29@example.com,+63998539563,2025-03-23,16:00:00,20:00:00,5,Professional Development,Cancelled,2025-02-23,2025-03-23,,2025-03-22,False
+30,17,5,Presentation Room 2,,Discussion 30,user30@example.com,+63956440799,2025-02-12,16:00:00,18:00:00,44,Career Guidance,Approved,2025-01-24,2025-02-12,,2025-02-11,False
+31,35,6,COE Project Room,,Orientation 31,user31@example.com,+63918158589,2026-02-03,15:00:00,17:00:00,39,Community Engagement,Completed,2026-01-14,2026-02-03,,2026-01-31,False
+32,14,5,Presentation Room 2,,Presentation 32,user32@example.com,+63981205958,2025-07-16,16:00:00,20:00:00,58,Career Guidance,Completed,2025-06-21,2025-07-16,,2025-07-15,False
+33,7,1,CS Project Room,,Presentation 33,user33@example.com,+63922840884,2024-10-02,16:00:00,20:00:00,46,Leadership Training,Pending,2024-09-12,2024-10-02,,2024-09-30,False
+34,25,2,Discussion Room 3,,Academic Activity 34,user34@example.com,+63987532939,2026-03-06,13:00:00,16:00:00,4,Cultural Event,Completed,2026-02-27,2026-03-06,,2026-03-05,False
+35,46,2,Discussion Room 3,,Presentation 35,user35@example.com,+63905677150,2025-02-03,14:00:00,15:00:00,6,Cultural Event,Completed,2025-01-10,2025-02-03,,2025-02-01,False
+36,10,3,Discussion Room 4,,Conference 36,user36@example.com,+63970753591,2024-05-05,13:00:00,16:00:00,6,Leadership Training,Completed,2024-04-16,2024-05-05,,2024-05-04,True
+37,27,6,COE Project Room,,Conference 37,user37@example.com,+63958881824,2025-02-05,15:00:00,19:00:00,36,Technical Training,Rejected,2025-01-31,2025-02-05,,2025-02-03,False
+38,47,3,Discussion Room 4,,RSO Event 38,user38@example.com,+63938501896,2026-02-13,12:00:00,13:00:00,6,Research Presentation,Rejected,2026-01-19,2026-02-13,,2026-02-12,False
+39,39,7,Lounge Area,,Seminar 39,user39@example.com,+63957030539,2025-04-27,11:00:00,14:00:00,137,Cultural Event,Pending,2025-04-08,2025-04-27,,2025-04-26,False
+40,47,4,Presentation Room 1,,Orientation 40,user40@example.com,+63994132572,2025-11-21,08:00:00,09:00:00,36,Cultural Event,Approved,2025-11-09,2025-11-21,Schedule conflict,2025-11-18,False
+41,7,2,Discussion Room 3,,Seminar 41,user41@example.com,+63994341026,2025-12-23,11:00:00,15:00:00,6,Career Guidance,Cancelled,2025-12-12,2025-12-23,,2025-12-21,False
+42,50,3,Discussion Room 4,,RSO Event 42,user42@example.com,+63966040279,2025-11-15,13:00:00,14:00:00,7,Academic Discussion,Cancelled,2025-11-08,2025-11-15,,2025-11-12,False
+43,20,3,Discussion Room 4,,Discussion 43,user43@example.com,+63908435885,2025-08-17,10:00:00,14:00:00,6,Academic Discussion,Pending,2025-08-05,2025-08-17,,2025-08-14,False
+44,47,5,Presentation Room 2,,Orientation 44,user44@example.com,+63981772135,2024-12-23,13:00:00,15:00:00,60,Research Presentation,Approved,2024-12-15,2024-12-23,,2024-12-21,False
+45,1,5,Presentation Room 2,,Meeting 45,user45@example.com,+63963930515,2025-04-03,14:00:00,18:00:00,45,Professional Development,Approved,2025-03-07,2025-04-03,,2025-03-31,False
+46,43,3,Discussion Room 4,,Training 46,user46@example.com,+63948491032,2024-03-25,13:00:00,16:00:00,7,Community Engagement,Approved,2024-03-17,2024-03-25,,2024-03-23,False
+47,1,2,Discussion Room 3,,Meeting 47,user47@example.com,+63916014475,2026-02-11,10:00:00,13:00:00,5,Skill Building Workshop,Pending,2026-01-29,2026-02-11,,2026-02-10,False
+48,38,6,COE Project Room,,Academic Activity 48,user48@example.com,+63907482046,2025-07-01,11:00:00,15:00:00,34,Professional Development,Cancelled,2025-06-14,2025-07-01,,2025-06-30,False
+49,19,2,Discussion Room 3,,Discussion 49,user49@example.com,+63931310289,2025-08-04,11:00:00,12:00:00,6,Skill Building Workshop,Pending,2025-07-05,2025-08-04,,2025-08-03,False
+50,46,1,CS Project Room,,Orientation 50,user50@example.com,+63960714557,2026-04-28,15:00:00,18:00:00,43,Academic Discussion,Cancelled,2026-04-12,2026-04-28,,2026-04-25,False
+51,33,7,Lounge Area,,Meeting 51,user51@example.com,+63980426518,2025-08-06,10:00:00,12:00:00,148,Leadership Training,Completed,2025-08-04,2025-08-06,,2025-08-03,False
+52,47,1,CS Project Room,,Academic Activity 52,user52@example.com,+63901378543,2025-09-14,13:00:00,16:00:00,37,Cultural Event,Approved,2025-09-06,2025-09-14,,2025-09-13,False
+53,14,3,Discussion Room 4,,Workshop 53,user53@example.com,+63950097400,2025-06-14,11:00:00,15:00:00,6,Career Guidance,Cancelled,2025-06-10,2025-06-14,,2025-06-13,False
+54,46,2,Discussion Room 3,,Workshop 54,user54@example.com,+63945338988,2025-04-21,09:00:00,12:00:00,5,Technical Training,Pending,2025-04-20,2025-04-21,,2025-04-18,False
+55,23,1,CS Project Room,,Discussion 55,user55@example.com,+63999568382,2025-01-23,14:00:00,15:00:00,44,Research Presentation,Pending,2025-01-01,2025-01-23,,2025-01-22,False
+56,18,5,Presentation Room 2,,Meeting 56,user56@example.com,+63923191555,2025-01-29,13:00:00,15:00:00,48,Leadership Training,Cancelled,2025-01-06,2025-01-29,,2025-01-27,False
+57,2,1,CS Project Room,,Presentation 57,user57@example.com,+63941190804,2025-05-07,16:00:00,17:00:00,38,Career Guidance,Cancelled,2025-04-27,2025-05-07,,2025-05-05,False
+58,50,2,Discussion Room 3,,Presentation 58,user58@example.com,+63906742182,2024-03-20,10:00:00,13:00:00,5,Leadership Training,Pending,2024-02-19,2024-03-20,,2024-03-19,False
+59,4,1,CS Project Room,,Workshop 59,user59@example.com,+63911798476,2025-09-06,11:00:00,14:00:00,37,Professional Development,Cancelled,2025-08-17,2025-09-06,,2025-09-04,False
+60,35,1,CS Project Room,,RSO Event 60,user60@example.com,+63927346105,2024-09-04,09:00:00,12:00:00,33,Student Organization Meeting,Approved,2024-08-05,2024-09-04,,2024-09-02,False
+61,40,6,COE Project Room,,Conference 61,user61@example.com,+63927263964,2026-03-13,08:00:00,11:00:00,47,Student Organization Meeting,Cancelled,2026-03-08,2026-03-13,,2026-03-12,False
+62,17,1,CS Project Room,,Seminar 62,user62@example.com,+63902594993,2024-03-27,08:00:00,09:00:00,33,Professional Development,Cancelled,2024-03-02,2024-03-27,,2024-03-24,False
+63,25,7,Lounge Area,,Seminar 63,user63@example.com,+63958855914,2024-08-07,10:00:00,12:00:00,127,Leadership Training,Rejected,2024-07-08,2024-08-07,,2024-08-06,False
+64,11,2,Discussion Room 3,,Workshop 64,user64@example.com,+63994033777,2025-03-11,16:00:00,18:00:00,6,Skill Building Workshop,Rejected,2025-03-08,2025-03-11,,2025-03-08,False
+65,26,1,CS Project Room,,Workshop 65,user65@example.com,+63964476639,2024-07-15,14:00:00,16:00:00,47,Technical Training,Rejected,2024-07-10,2024-07-15,,2024-07-13,False
+66,2,1,CS Project Room,,Training 66,user66@example.com,+63926397560,2024-06-27,11:00:00,13:00:00,41,Research Presentation,Approved,2024-06-23,2024-06-27,,2024-06-25,False
+67,42,5,Presentation Room 2,,Seminar 67,user67@example.com,+63930520406,2024-08-17,15:00:00,17:00:00,49,Technical Training,Rejected,2024-07-21,2024-08-17,,2024-08-15,False
+68,37,6,COE Project Room,,Presentation 68,user68@example.com,+63907787088,2025-03-11,16:00:00,18:00:00,41,Professional Development,Rejected,2025-03-09,2025-03-11,Schedule conflict,2025-03-10,False
+69,13,2,Discussion Room 3,,Workshop 69,user69@example.com,+63930311909,2025-02-23,10:00:00,13:00:00,6,Research Presentation,Pending,2025-02-14,2025-02-23,,2025-02-22,False
+70,2,4,Presentation Room 1,,Academic Activity 70,user70@example.com,+63997767956,2025-12-15,09:00:00,12:00:00,38,Student Organization Meeting,Cancelled,2025-11-24,2025-12-15,,2025-12-12,False
+71,15,2,Discussion Room 3,,RSO Event 71,user71@example.com,+63967719194,2026-03-09,16:00:00,20:00:00,6,Professional Development,Completed,2026-02-27,2026-03-09,,2026-03-08,False
+72,26,1,CS Project Room,,Discussion 72,user72@example.com,+63990841768,2026-03-17,08:00:00,09:00:00,36,Research Presentation,Pending,2026-03-09,2026-03-17,,2026-03-16,False
+73,2,7,Lounge Area,,Meeting 73,user73@example.com,+63935679525,2025-02-14,15:00:00,18:00:00,107,Community Engagement,Cancelled,2025-02-11,2025-02-14,,2025-02-12,False
+74,39,7,Lounge Area,,Academic Activity 74,user74@example.com,+63921721354,2024-08-07,10:00:00,13:00:00,145,Technical Training,Completed,2024-07-28,2024-08-07,,2024-08-04,True
+75,11,3,Discussion Room 4,,Meeting 75,user75@example.com,+63992751261,2025-06-14,09:00:00,10:00:00,8,Technical Training,Approved,2025-05-28,2025-06-14,,2025-06-11,True
+76,10,6,COE Project Room,,Orientation 76,user76@example.com,+63932209210,2024-05-12,13:00:00,17:00:00,48,Community Engagement,Cancelled,2024-05-11,2024-05-12,,2024-05-10,False
+77,18,7,Lounge Area,,Workshop 77,user77@example.com,+63959380688,2025-12-09,11:00:00,15:00:00,117,Student Organization Meeting,Completed,2025-12-02,2025-12-09,Schedule conflict,2025-12-08,False
+78,50,3,Discussion Room 4,,Presentation 78,user78@example.com,+63998561020,2024-12-08,11:00:00,13:00:00,7,Student Organization Meeting,Approved,2024-12-01,2024-12-08,Schedule conflict,2024-12-07,False
+79,33,4,Presentation Room 1,,Conference 79,user79@example.com,+63907910847,2025-05-13,11:00:00,12:00:00,36,Career Guidance,Rejected,2025-04-15,2025-05-13,,2025-05-10,False
+80,25,6,COE Project Room,,RSO Event 80,user80@example.com,+63977732274,2025-09-24,14:00:00,18:00:00,34,Cultural Event,Pending,2025-09-17,2025-09-24,,2025-09-23,True
+81,44,1,CS Project Room,,Orientation 81,user81@example.com,+63916591489,2026-05-04,09:00:00,11:00:00,35,Research Presentation,Completed,2026-04-07,2026-05-04,,2026-05-03,False
+82,47,2,Discussion Room 3,,RSO Event 82,user82@example.com,+63924031441,2026-01-23,16:00:00,18:00:00,6,Academic Discussion,Cancelled,2026-01-12,2026-01-23,Schedule conflict,2026-01-22,False
+83,39,7,Lounge Area,,Academic Activity 83,user83@example.com,+63918426001,2025-09-11,10:00:00,12:00:00,144,Cultural Event,Pending,2025-08-14,2025-09-11,,2025-09-08,False
+84,16,7,Lounge Area,,Training 84,user84@example.com,+63980695453,2024-02-05,10:00:00,13:00:00,108,Professional Development,Pending,2024-01-27,2024-02-05,,2024-02-02,False
+85,13,4,Presentation Room 1,,Meeting 85,user85@example.com,+63950230487,2025-09-29,09:00:00,12:00:00,34,Technical Training,Rejected,2025-09-24,2025-09-29,Schedule conflict,2025-09-27,False
+86,43,3,Discussion Room 4,,Conference 86,user86@example.com,+63939507639,2024-03-28,10:00:00,12:00:00,5,Professional Development,Completed,2024-03-06,2024-03-28,,2024-03-25,False
+87,19,6,COE Project Room,,RSO Event 87,user87@example.com,+63997253931,2024-10-31,10:00:00,13:00:00,35,Technical Training,Pending,2024-10-22,2024-10-31,Schedule conflict,2024-10-30,False
+88,43,6,COE Project Room,,Training 88,user88@example.com,+63938912570,2025-09-05,10:00:00,11:00:00,36,Professional Development,Approved,2025-08-15,2025-09-05,,2025-09-02,False
+89,40,4,Presentation Room 1,,RSO Event 89,user89@example.com,+63913046523,2025-08-19,09:00:00,10:00:00,29,Technical Training,Approved,2025-08-06,2025-08-19,,2025-08-16,False
+90,30,3,Discussion Room 4,,Academic Activity 90,user90@example.com,+63946549250,2024-09-24,09:00:00,11:00:00,5,Professional Development,Completed,2024-09-16,2024-09-24,,2024-09-22,False
+91,50,1,CS Project Room,,Academic Activity 91,user91@example.com,+63979024076,2025-12-22,09:00:00,10:00:00,48,Professional Development,Approved,2025-12-14,2025-12-22,,2025-12-19,True
+92,5,4,Presentation Room 1,,Presentation 92,user92@example.com,+63980516893,2026-02-24,16:00:00,20:00:00,37,Leadership Training,Approved,2026-02-19,2026-02-24,,2026-02-23,False
+93,16,3,Discussion Room 4,,Conference 93,user93@example.com,+63982785624,2025-12-16,16:00:00,19:00:00,5,Technical Training,Rejected,2025-12-07,2025-12-16,Schedule conflict,2025-12-15,False
+94,3,2,Discussion Room 3,,Training 94,user94@example.com,+63990817990,2025-11-25,10:00:00,14:00:00,6,Research Presentation,Approved,2025-10-27,2025-11-25,,2025-11-24,False
+95,7,5,Presentation Room 2,,Presentation 95,user95@example.com,+63994521347,2025-10-24,16:00:00,20:00:00,58,Academic Discussion,Cancelled,2025-10-17,2025-10-24,,2025-10-23,False
+96,26,6,COE Project Room,,Discussion 96,user96@example.com,+63960521710,2026-02-12,09:00:00,13:00:00,46,Research Presentation,Pending,2026-02-11,2026-02-12,,2026-02-09,False
+97,11,4,Presentation Room 1,,Orientation 97,user97@example.com,+63908175594,2026-03-27,13:00:00,15:00:00,35,Technical Training,Completed,2026-03-06,2026-03-27,,2026-03-24,False
+98,26,5,Presentation Room 2,,Meeting 98,user98@example.com,+63912309702,2026-04-06,12:00:00,16:00:00,54,Cultural Event,Approved,2026-03-12,2026-04-06,,2026-04-03,False
+99,49,4,Presentation Room 1,,Conference 99,user99@example.com,+63964659406,2024-12-07,15:00:00,18:00:00,32,Community Engagement,Completed,2024-11-14,2024-12-07,,2024-12-04,False
+100,7,3,Discussion Room 4,,Academic Activity 100,user100@example.com,+63927055734,2025-06-28,11:00:00,15:00:00,5,Skill Building Workshop,Approved,2025-06-24,2025-06-28,,2025-06-25,False
