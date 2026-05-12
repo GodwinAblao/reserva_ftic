@@ -3,14 +3,17 @@
 namespace App\Controller;
 
 use App\Entity\Facility;
+use App\Entity\FacilityScheduleBlock;
 use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\ReservationRepository;
+use App\Repository\FacilityScheduleBlockRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -144,7 +147,8 @@ class SuperAdminReservationController extends AbstractController
     public function calendarData(
         Request $request,
         ReservationRepository $reservationRepo,
-        FacilityRepository $facilityRepo
+        FacilityRepository $facilityRepo,
+        FacilityScheduleBlockRepository $blockRepo
     ): JsonResponse {
         $start = $request->query->get('start');
         $end = $request->query->get('end');
@@ -166,7 +170,7 @@ class SuperAdminReservationController extends AbstractController
                ->setParameter('facilityId', $facilityId);
         }
 
-        if ($status) {
+        if ($status && !in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Imported'], true)) {
             $qb->andWhere('r.status = :status')
                ->setParameter('status', $status);
         }
@@ -194,7 +198,119 @@ class SuperAdminReservationController extends AbstractController
             ];
         }, $reservations);
 
+        $facility = $facilityId ? $facilityRepo->find($facilityId) : null;
+        $blockType = in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Imported'], true) ? $status : null;
+        $blocks = $blockRepo->findBetween(new \DateTime($start), new \DateTime($end), $facility, $blockType);
+
+        foreach ($blocks as $block) {
+            $data[] = [
+                'id' => 'block-' . $block->getId(),
+                'name' => $block->getTitle(),
+                'email' => '',
+                'contact' => '',
+                'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
+                'reservationStartTime' => $block->getStartTime()->format('H:i'),
+                'reservationEndTime' => $block->getEndTime()->format('H:i'),
+                'capacity' => 0,
+                'purpose' => $block->getNotes(),
+                'status' => $block->getType(),
+                'isBlock' => true,
+                'facility' => [
+                    'id' => $block->getFacility()->getId(),
+                    'name' => $block->getFacility()->getName(),
+                    'capacity' => $block->getFacility()->getCapacity(),
+                ],
+            ];
+        }
+
         return $this->json(['reservations' => $data]);
+    }
+
+    #[Route('/calendar/block', name: 'admin_calendar_block', methods: ['POST'])]
+    public function createBlock(Request $request, FacilityRepository $facilityRepo, ReservationRepository $reservationRepo, FacilityScheduleBlockRepository $blockRepo, EntityManagerInterface $em): Response
+    {
+        $facility = $facilityRepo->find($request->request->get('facility'));
+        $date = \DateTime::createFromFormat('Y-m-d', (string) $request->request->get('date'));
+        $start = \DateTime::createFromFormat('H:i', (string) $request->request->get('start_time'));
+        $end = \DateTime::createFromFormat('H:i', (string) $request->request->get('end_time'));
+
+        if (!$facility || !$date || !$start || !$end || $end <= $start || $reservationRepo->isTimeRangeBooked($facility, $date, $start, $end) || $blockRepo->isBlocked($facility, $date, $start, $end)) {
+            $this->addFlash('error', 'Invalid or overlapping schedule block.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $block = new FacilityScheduleBlock();
+        $block->setFacility($facility);
+        $block->setTitle((string) $request->request->get('title', 'Manual Block'));
+        $block->setType((string) $request->request->get('type', 'Manual'));
+        $block->setBlockDate($date);
+        $block->setStartTime($start);
+        $block->setEndTime($end);
+        $block->setNotes($request->request->get('notes'));
+        $em->persist($block);
+        $em->flush();
+
+        $this->addFlash('success', 'Schedule block added.');
+
+        return $this->redirectToRoute('admin_calendar');
+    }
+
+    #[Route('/calendar/import', name: 'admin_calendar_import', methods: ['POST'])]
+    public function importSchedule(Request $request, FacilityRepository $facilityRepo, ReservationRepository $reservationRepo, FacilityScheduleBlockRepository $blockRepo, EntityManagerInterface $em): Response
+    {
+        $file = $request->files->get('schedule_file');
+        if (!$file instanceof UploadedFile) {
+            $this->addFlash('error', 'Please upload a CSV file.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $handle = fopen($file->getPathname(), 'r');
+        if (!$handle) {
+            $this->addFlash('error', 'Unable to read uploaded file.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $count = 0;
+        $errors = [];
+        $row = 0;
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $row++;
+            if ($row === 1 && isset($data[0]) && strtolower(trim($data[0])) === 'facility') {
+                continue;
+            }
+
+            [$facilityName, $dateStr, $startStr, $endStr, $title, $type] = array_pad($data, 6, '');
+            $facility = $facilityRepo->findOneBy(['name' => trim($facilityName)]);
+            $date = \DateTime::createFromFormat('Y-m-d', trim($dateStr));
+            $start = \DateTime::createFromFormat('H:i', trim($startStr));
+            $end = \DateTime::createFromFormat('H:i', trim($endStr));
+
+            if (!$facility || !$date || !$start || !$end || $end <= $start || $reservationRepo->isTimeRangeBooked($facility, $date, $start, $end) || $blockRepo->isBlocked($facility, $date, $start, $end)) {
+                $errors[] = 'Row ' . $row . ' skipped.';
+                continue;
+            }
+
+            $block = new FacilityScheduleBlock();
+            $block->setFacility($facility);
+            $block->setTitle(trim($title) ?: 'Imported Class Schedule');
+            $block->setType(trim($type) ?: 'Class Schedule');
+            $block->setBlockDate($date);
+            $block->setStartTime($start);
+            $block->setEndTime($end);
+            $block->setSource($file->getClientOriginalName());
+            $em->persist($block);
+            $count++;
+        }
+
+        fclose($handle);
+        $em->flush();
+        $this->addFlash('success', $count . ' schedule block(s) imported.');
+        foreach (array_slice($errors, 0, 10) as $error) {
+            $this->addFlash('error', $error);
+        }
+
+        return $this->redirectToRoute('admin_calendar');
     }
 
     #[Route('/reservations/{id}/details', name: 'admin_reservation_details')]

@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
+use App\Repository\FacilityScheduleBlockRepository;
 use App\Repository\UserRepository;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +29,7 @@ public function reserve(
         Facility $facility,
         Request $request,
         ReservationRepository $reservationRepo,
+        FacilityScheduleBlockRepository $blockRepo,
         EntityManagerInterface $em,
         MailerInterface $mailer,
         UserRepository $userRepository
@@ -158,12 +160,19 @@ public function reserve(
             $date = (new \DateTime())->modify("+$i days");
             $dateStr = $date->format('Y-m-d');
             $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
+            $blockedRanges = array_map(
+                fn($block) => [
+                    'start' => $block->getStartTime(),
+                    'end' => $block->getEndTime(),
+                ],
+                $blockRepo->findForDate($facility, $date)
+            );
             $bookedTimes[$dateStr] = array_map(
                 fn($range) => [
                     'start' => $range['start']->format('H:i'),
                     'end' => $range['end']->format('H:i'),
                 ],
-                $ranges
+                array_merge($ranges, $blockedRanges)
             );
             $pendingRanges = $reservationRepo->getPendingRangesForDate($facility, $date);
             $pendingTimes[$dateStr] = array_map(

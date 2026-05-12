@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Reservation;
 use App\Entity\User;
 use App\Entity\Facility;
+use App\Entity\FacilityScheduleBlock;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -105,7 +106,13 @@ class ReservationRepository extends ServiceEntityRepository
 
         $count = $qb->getQuery()->getSingleScalarResult();
 
-        return $count > 0;
+        if ($count > 0) {
+            return true;
+        }
+
+        return $this->getEntityManager()
+            ->getRepository(FacilityScheduleBlock::class)
+            ->isBlocked($facility, $date, $startTime, $endTime);
     }
 
     /**
@@ -214,7 +221,11 @@ class ReservationRepository extends ServiceEntityRepository
                 ->getQuery()
                 ->getSingleScalarResult();
 
-            if ($bookingCount === 0) {
+            $blocked = $this->getEntityManager()
+                ->getRepository(FacilityScheduleBlock::class)
+                ->isBlocked($facility, $date, $startTime, $endTime);
+
+            if ($bookingCount === 0 && !$blocked) {
                 $alternatives[] = $facility;
             }
         }
