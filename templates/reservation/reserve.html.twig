@@ -14,7 +14,7 @@
         <!-- Calendar Section -->
         <div class="calendar-section card-panel">
             <h3>Select Date & Time</h3>
-            <p class="info-text">Available times: <strong>8:00 AM - 5:00 PM</strong></p>
+            <p class="info-text">Available times: <strong>7:00 AM - 8:00 PM</strong></p>
 
             <div class="calendar-wrapper">
                 <div class="month-navigation">
@@ -551,7 +551,7 @@
 </style>
 
 <script>
-    const bookedTimesData = (() => {
+    let bookedTimesData = (() => {
         const raw = {{ bookedTimes|raw }};
         if (typeof raw === 'string') {
             try {
@@ -562,7 +562,7 @@
         }
         return raw || {};
     })();
-    const pendingTimesData = (() => {
+    let pendingTimesData = (() => {
         const raw = {{ pendingTimes|raw }};
         if (typeof raw === 'string') {
             try {
@@ -577,6 +577,8 @@
     let selectedDate = null;
     let selectedStartTime = null;
     let selectedEndTime = null;
+    let availabilityRefreshController = null;
+    const availabilityUrl = '{{ path('facility_reserve_availability', {'id': facility.id}) }}';
 
     function initReservationCalendar() {
         const container = document.querySelector('.reservation-container');
@@ -594,6 +596,7 @@
         }
 
         renderCalendar();
+        refreshAvailabilityData();
 
         // Month navigation
         prevButton.addEventListener('click', () => {
@@ -608,6 +611,8 @@
 
         // Form submission
         form.addEventListener('submit', submitReservation);
+        window.setInterval(() => refreshAvailabilityData(false), 15000);
+        window.addEventListener('focus', () => refreshAvailabilityData(false));
     }
 
     document.addEventListener('DOMContentLoaded', initReservationCalendar);
@@ -710,7 +715,14 @@
         const dateStr = formatLocalDate(date);
         const bookedRanges = bookedTimesData[dateStr] || [];
         const pendingRanges = pendingTimesData[dateStr] || [];
-        const slots = buildTimeSlots('08:00', '17:00', 15);
+        
+        // Fixed 50-minute interval logic: 7:00, 7:50, 8:00, 8:50...
+        const slots = [];
+        for (let hour = 7; hour <= 19; hour++) {
+            slots.push(`${String(hour).padStart(2, '0')}:00`);
+            slots.push(`${String(hour).padStart(2, '0')}:50`);
+        }
+        slots.push("20:00"); // End at 8pm
 
         slots.forEach(timeStr => {
             const slot = document.createElement('button');
@@ -749,16 +761,28 @@
             selectedEndTime = timeStr;
         }
 
+        let rangeUnavailable = false;
+        if (selectedStartTime && selectedEndTime && isSelectedRangeUnavailable()) {
+            rangeUnavailable = true;
+            selectedEndTime = null;
+            document.getElementById('reservation_end_time').value = '';
+            showError('That selected time range overlaps with an unavailable schedule. Please choose another time.');
+        }
+
         document.getElementById('reservation_start_time').value = selectedStartTime || '';
         document.getElementById('reservation_end_time').value = selectedEndTime || '';
 
         updateSelectedTimeDisplay();
         highlightSelectedRange(slots);
-        document.getElementById('errorMessage').style.display = 'none';
+        if (!rangeUnavailable) {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
     }
 
-    function submitReservation(e) {
+    async function submitReservation(e) {
         e.preventDefault();
+
+        await refreshAvailabilityData(false);
 
         // Validate selections
         if (!selectedDate || !selectedStartTime || !selectedEndTime) {
@@ -766,16 +790,22 @@
             return;
         }
 
-        // Validate time is between 8 AM and 5 PM
+        // Validate time is between 7 AM and 8 PM
         const startMinutes = timeToMinutes(selectedStartTime);
         const endMinutes = timeToMinutes(selectedEndTime);
-        if (startMinutes < timeToMinutes('08:00') || endMinutes > timeToMinutes('17:00')) {
-            showError('Reservation time must be between 8:00 AM and 5:00 PM');
+        if (startMinutes < timeToMinutes('07:00') || endMinutes > timeToMinutes('20:00')) {
+            showError('Reservation time must be between 7:00 AM and 8:00 PM');
             return;
         }
 
         if (endMinutes <= startMinutes) {
             showError('End time must be later than start time');
+            return;
+        }
+
+        if (isSelectedRangeUnavailable()) {
+            showError('This time range is unavailable because it overlaps with a reservation, pending request, class schedule, or manual block.');
+            renderTimeSlots(selectedDate);
             return;
         }
 
@@ -907,6 +937,62 @@
             const end = timeToMinutes(range.end);
             return minutes >= start && minutes < end;
         });
+    }
+
+    function isSelectedRangeUnavailable() {
+        if (!selectedDate || !selectedStartTime || !selectedEndTime) {
+            return false;
+        }
+
+        const dateStr = formatLocalDate(selectedDate);
+        const selectedStart = timeToMinutes(selectedStartTime);
+        const selectedEnd = timeToMinutes(selectedEndTime);
+        const ranges = [
+            ...(bookedTimesData[dateStr] || []),
+            ...(pendingTimesData[dateStr] || []),
+        ];
+
+        return ranges.some(range => selectedStart < timeToMinutes(range.end) && selectedEnd > timeToMinutes(range.start));
+    }
+
+    async function refreshAvailabilityData(resetInvalidSelection = true) {
+        if (availabilityRefreshController) {
+            availabilityRefreshController.abort();
+        }
+
+        availabilityRefreshController = new AbortController();
+        const start = formatLocalDate(new Date());
+
+        try {
+            const response = await fetch(`${availabilityUrl}?start=${start}&days=90`, {
+                cache: 'no-store',
+                signal: availabilityRefreshController.signal,
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            bookedTimesData = data.bookedTimes || {};
+            pendingTimesData = data.pendingTimes || {};
+            renderCalendar();
+
+            if (selectedDate) {
+                renderTimeSlots(selectedDate);
+                if (resetInvalidSelection && isSelectedRangeUnavailable()) {
+                    selectedStartTime = null;
+                    selectedEndTime = null;
+                    document.getElementById('reservation_start_time').value = '';
+                    document.getElementById('reservation_end_time').value = '';
+                    updateSelectedTimeDisplay();
+                    showError('Your selected time became unavailable. Please choose another slot.');
+                }
+            }
+        } catch (error) {}
     }
 
     function highlightSelectedRange(slots) {

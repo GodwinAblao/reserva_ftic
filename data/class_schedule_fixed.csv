@@ -1,0 +1,76 @@
+facility,day,start,end,title,type
+Presentation Room 1,Monday,09:00,10:50,COE0059 - GAMARA REX PAOLO,Class Schedule
+Presentation Room 1,Monday,13:00,14:50,COE0062 - RICHARD Q,Class Schedule
+Presentation Room 1,Monday,15:00,16:50,COE0067 - BOSSHARD HANS FELIX,Class Schedule
+Presentation Room 1,Monday,17:00,18:50,CE0071 - GANTE DONNA,Class Schedule
+Presentation Room 1,Wednesday,07:00,08:50,CCS0103 - CAMPOS MARIBEL,Class Schedule
+Presentation Room 1,Wednesday,09:00,10:50,CCS0103 - SANTOS MARK CHRISTIAN,Class Schedule
+Presentation Room 1,Wednesday,15:00,16:50,CE0071 - GANTE DONNA,Class Schedule
+Presentation Room 1,Thursday,09:00,10:50,CE0063 - GAMARA REX PAOLO,Class Schedule
+Presentation Room 1,Thursday,11:00,12:50,IT0027 - GONZALES JOSEPH,Class Schedule
+Presentation Room 1,Thursday,13:00,14:50,CE0069 - DIZON RICHARD,Class Schedule
+Presentation Room 1,Thursday,15:00,16:50,CE0065 - BOSSHARD HANS FELIX,Class Schedule
+Presentation Room 1,Thursday,17:00,18:50,CE0059 - ARCILLA DANIELICA MARIE,Class Schedule
+Presentation Room 1,Saturday,09:00,10:50,IT0029 - VICENTE HEINTJE,Class Schedule
+Presentation Room 1,Saturday,13:00,14:50,IT0027 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Monday,07:00,08:50,CCS0103 - HERNANDEZ ALEXANDER A,Class Schedule
+Presentation Room 2,Monday,09:00,10:50,MMA0081 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Monday,11:00,12:50,MMA0081 - VENTURA JELA MAE,Class Schedule
+Presentation Room 2,Monday,13:00,14:50,IT0027 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Monday,15:00,16:50,MMA0081 - VENTURA JELA MAE,Class Schedule
+Presentation Room 2,Monday,17:00,18:50,IT0037 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Wednesday,08:00,10:50,ECE0063/ECE0081 - TEOLOGO ANTIPAS IR,Class Schedule
+Presentation Room 2,Wednesday,11:00,12:50,MM0081 - ABELLANA JANICE,Class Schedule
+Presentation Room 2,Wednesday,13:00,14:50,IT0027 - TINGA ABRICAM S,Class Schedule
+Presentation Room 2,Wednesday,15:00,16:50,MMA0081 - VENTURA JELA MAE,Class Schedule
+Presentation Room 2,Wednesday,17:00,18:50,IT0039 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Thursday,07:00,08:50,IT0027 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Thursday,09:00,10:50,MMA0081 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Thursday,11:00,12:50,MMA0081 - VENTURA JELA MAE,Class Schedule
+Presentation Room 2,Thursday,13:00,14:50,IT0027 - TINGA ABRICAM S,Class Schedule
+Presentation Room 2,Thursday,15:00,16:50,MMA0081 - VENTURA JELA MAE,Class Schedule
+Presentation Room 2,Thursday,17:00,18:50,IT0039 - VICENTE HEINTJE,Class Schedule
+Presentation Room 2,Saturday,11:00,13:50,ECE0045 - DANGALAN EARL JOHN M,Class Schedule
+CS Project Room,Monday,07:00,08:50,CS0033 - TEUCO HADJI,Class Schedule
+CS Project Room,Monday,09:00,10:50,CS0033 - TEUCO HADJI,Class Schedule
+CS Project Room,Monday,11:00,12:50,CS0033 - ARGUSON ANGELO,Class Schedule
+CS Project Room,Monday,13:00,14:50,CS0033 - AMBAT SHANETH,Class Schedule
+CS Project Room,Monday,15:00,16:50,CS0033 - HABAL BEAU GRAY,Class Schedule
+CS Project Room,Monday,17:00,18:50,CS0103 - CABAOTAN JAREK BOLO,Class Schedule
+CS Project Room,Wednesday,07:00,08:50,CCS0103 - SABONSOLIN JENEFFER,Class Schedule
+CS Project Room,Wednesday,09:00,10:50,CS0033 - RAMIREZ RAMIR,Class Schedule
+CS Project Room,Wednesday,11:00,12:50,CS0033 - SEÑO JOSE L,Class Schedule
+CS Project Room,Wednesday,13:00,14:50,CS0103 - SANCHEZ MARILYN,Class Schedule
+CS Project Room,Wednesday,15:00,16:50,CS0103 - BAUTISTA KIM GISELLE,Class Schedule
+CS Project Room,Wednesday,17:00,18:50,CS0103 - CABAOTAN JAREK BOLO,Class Schedule
+CS Project Room,Thursday,07:00,08:50,CCS0103 - SEÑO JOSE,Class Schedule
+CS Project Room,Thursday,09:00,10:50,CS0101 - ROLDAN EDWARDO MIGUEL,Class Schedule
+CS Project Room,Thursday,11:00,12:50,CS0103 - SEÑO JOSE,Class Schedule
+CS Project Room,Thursday,13:00,14:50,CS0103 - CABALBUTAN JAREK BOLO,Class Schedule
+CS Project Room,Thursday,15:00,16:50,CS0103 - SANCHEZ MARILYN,Class Schedule
+CS Project Room,Thursday,17:00,18:50,CS0103 - CABAOTAN JAREK BOLO,Class Schedule
+CS Project Room,Saturday,09:00,10:50,CS0033 - MALASAGA ELISA,Class Schedule
+CS Project Room,Saturday,11:00,12:50,CS0033 - PATILANO HAZEL S,Class Schedule
+CS Project Room,Saturday,13:00,14:50,CS0033 - MALASAGA ELISA V,Class Schedule
+3D Printing Lab,Monday,09:00,10:50,CE0067 - DIZON RICHARD,Class Schedule
+3D Printing Lab,Monday,11:00,12:50,CS0103 - BALOCON OWEN HARVEY,Class Schedule
+3D Printing Lab,Monday,13:30,16:00,CE0071 - GANTE DONNA,Class Schedule
+3D Printing Lab,Monday,17:00,19:40,CE0067 - MATEO IRINEO,Class Schedule
+3D Printing Lab,Wednesday,08:00,10:50,ECE0059/IT062 - GAMARA REX PAOLO,Class Schedule
+3D Printing Lab,Wednesday,11:00,12:50,CS0103 - RAMIREZ RAMIR,Class Schedule
+3D Printing Lab,Wednesday,13:00,15:40,CE0067 - TELAN JON ARNEL,Class Schedule
+3D Printing Lab,Wednesday,17:00,19:40,CE0067 - TELAN JON ARNEL,Class Schedule
+3D Printing Lab,Thursday,07:00,08:50,CS0103 - BALOCON OWEN HARVEY,Class Schedule
+3D Printing Lab,Thursday,09:00,10:50,CS0103 - DIZON RICHARD,Class Schedule
+3D Printing Lab,Thursday,11:00,12:50,IT0027 - VICENTE HEINTJE,Class Schedule
+3D Printing Lab,Thursday,13:00,14:50,IT0027 - VICENTE HEINTJE,Class Schedule
+3D Printing Lab,Thursday,15:00,16:50,IT0027 - RAMOS RONEL F,Class Schedule
+3D Printing Lab,Thursday,17:00,18:50,IT0027 - RAMOS RONEL F,Class Schedule
+3D Printing Lab,Saturday,13:00,14:50,IT0027 - RAMOS RONEL F,Class Schedule
+3D Printing Lab,Saturday,15:00,16:50,IT0027 - RAMOS RONEL F,Class Schedule
+Lounge 1,Monday,13:00,14:50,CCS0103 - MAJADAS VALERIE VANESSA,Class Schedule
+Lounge 1,Wednesday,07:00,08:50,CCS0103 - ROLDAN EDWARDO MIGUEL,Class Schedule
+Lounge 1,Saturday,09:00,10:50,CCS0103 - MAGCUAO JUAN PAULO H,Class Schedule
+Lounge 1,Saturday,11:00,12:50,CCS0103 - CAMPO MARIBEL,Class Schedule
+Lounge 2,Tuesday,13:00,14:50,CCS0103 - LETEGIO PATRICIA JEAN,Class Schedule
+Lounge 3,Wednesday,11:00,12:50,CCS0103 - SANCHEZ MARILYN,Class Schedule

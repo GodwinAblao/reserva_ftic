@@ -64,6 +64,31 @@ class SeedFacilitiesCommand extends Command
                 'capacity' => 150,
                 'description' => 'Spacious lounge area perfect for networking, informal gatherings, and social events.',
             ],
+            [
+                'name' => '3D Printing Lab',
+                'capacity' => 20,
+                'description' => '3D Printing Laboratory equipped with modern 3D printers for prototyping and design projects.',
+            ],
+            [
+                'name' => 'Lounge 1',
+                'capacity' => 30,
+                'description' => 'Lounge Area Section 1 for small group discussions and casual meetings.',
+            ],
+            [
+                'name' => 'Lounge 2',
+                'capacity' => 30,
+                'description' => 'Lounge Area Section 2 for collaborative work and relaxation.',
+            ],
+            [
+                'name' => 'Lounge 3',
+                'capacity' => 30,
+                'description' => 'Lounge Area Section 3 for study groups and informal gatherings.',
+            ],
+            [
+                'name' => 'Lounge 4',
+                'capacity' => 30,
+                'description' => 'Lounge Area Section 4 for networking and social events.',
+            ],
         ];
 
         $facilityRepository = $this->entityManager->getRepository(Facility::class);
@@ -85,6 +110,21 @@ class SeedFacilitiesCommand extends Command
         }
 
         $this->entityManager->flush();
+
+        // Set up parent-child relationships
+        $loungeArea = $facilityRepository->findOneBy(['name' => 'Lounge Area']);
+        if ($loungeArea) {
+            $loungeChildren = ['Lounge 1', 'Lounge 2', 'Lounge 3', 'Lounge 4'];
+            foreach ($loungeChildren as $childName) {
+                $child = $facilityRepository->findOneBy(['name' => $childName]);
+                if ($child && !$child->getParent()) {
+                    $loungeArea->addChild($child);
+                    $io->success("Set $childName as child of Lounge Area");
+                }
+            }
+            $this->entityManager->flush();
+        }
+
         $io->success('All facilities have been seeded successfully!');
 
         return Command::SUCCESS;

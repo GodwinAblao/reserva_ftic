@@ -3,10 +3,13 @@
 namespace App\Controller;
 
 use App\Entity\Facility;
+use App\Entity\FacilityScheduleBlock;
 use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
+use App\Repository\FacilityScheduleBlockRepository;
 use App\Repository\ReservationRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -130,13 +133,17 @@ class SuperAdminReservationController extends AbstractController
 
     #[Route('/calendar', name: 'admin_calendar')]
     public function calendar(
+        Request $request,
         ReservationRepository $reservationRepo,
         FacilityRepository $facilityRepo
     ): Response {
         $facilities = $facilityRepo->findAll();
+        $initialDate = $request->query->get('date');
+        $parsedInitialDate = $initialDate ? \DateTime::createFromFormat('!Y-m-d', $initialDate) : null;
         
         return $this->render('super_admin/calendar.html.twig', [
             'facilities' => $facilities,
+            'initialDate' => $parsedInitialDate ? $parsedInitialDate->format('Y-m-d') : null,
         ]);
     }
 
@@ -144,57 +151,325 @@ class SuperAdminReservationController extends AbstractController
     public function calendarData(
         Request $request,
         ReservationRepository $reservationRepo,
-        FacilityRepository $facilityRepo
+        FacilityRepository $facilityRepo,
+        FacilityScheduleBlockRepository $blockRepo
     ): JsonResponse {
         $start = $request->query->get('start');
         $end = $request->query->get('end');
         $facilityId = $request->query->get('facility');
         $status = $request->query->get('status');
 
-        // Build query
-        $qb = $reservationRepo->createQueryBuilder('r')
-            ->leftJoin('r.facility', 'f')
-            ->addSelect('f')
-            ->where('r.reservationDate BETWEEN :start AND :end')
-            ->setParameter('start', new \DateTime($start))
-            ->setParameter('end', new \DateTime($end))
-            ->orderBy('r.reservationDate', 'ASC')
-            ->addOrderBy('r.reservationStartTime', 'ASC');
-
-        if ($facilityId) {
-            $qb->andWhere('f.id = :facilityId')
-               ->setParameter('facilityId', $facilityId);
+        if (!$start || !$end) {
+            return $this->json(['reservations' => []]);
         }
 
-        if ($status) {
-            $qb->andWhere('r.status = :status')
-               ->setParameter('status', $status);
+        $data = [];
+        $startDate = new \DateTime($start);
+        $endDate = new \DateTime($end);
+
+        // Only fetch reservations if not filtering by block-only status
+        if (!$status || !in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Maintenance'], true)) {
+            $qb = $reservationRepo->createQueryBuilder('r')
+                ->select('r.id', 'r.name', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
+                ->innerJoin('r.facility', 'f')
+                ->where('r.reservationDate BETWEEN :start AND :end')
+                ->setParameter('start', $startDate)
+                ->setParameter('end', $endDate)
+                ->orderBy('r.reservationDate', 'ASC')
+                ->addOrderBy('r.reservationStartTime', 'ASC');
+
+            if ($facilityId) {
+                $qb->andWhere('f.id = :facilityId')
+                   ->setParameter('facilityId', (int) $facilityId);
+            }
+
+            if ($status) {
+                $qb->andWhere('r.status = :status')
+                   ->setParameter('status', $status);
+            }
+
+            $reservations = $qb->getQuery()->getArrayResult();
+
+            foreach ($reservations as $r) {
+                $data[] = [
+                    'id' => $r['id'],
+                    'name' => $r['name'],
+                    'email' => $r['email'],
+                    'contact' => $r['contact'],
+                    'reservationDate' => $r['reservationDate']->format('Y-m-d'),
+                    'reservationStartTime' => $r['reservationStartTime']->format('H:i'),
+                    'reservationEndTime' => $r['reservationEndTime']->format('H:i'),
+                    'capacity' => $r['capacity'],
+                    'purpose' => $r['purpose'],
+                    'status' => $r['status'],
+                    'isBlock' => false,
+                    'facility' => [
+                        'id' => $r['facilityId'],
+                        'name' => $r['facilityName'],
+                        'capacity' => $r['facilityCapacity'],
+                    ],
+                ];
+            }
         }
 
-        $reservations = $qb->getQuery()->getResult();
-
-        // Format data
-        $data = array_map(function($reservation) {
-            return [
-                'id' => $reservation->getId(),
-                'name' => $reservation->getName(),
-                'email' => $reservation->getEmail(),
-                'contact' => $reservation->getContact(),
-                'reservationDate' => $reservation->getReservationDate()->format('Y-m-d'),
-                'reservationStartTime' => $reservation->getReservationStartTime()->format('H:i'),
-                'reservationEndTime' => $reservation->getReservationEndTime()->format('H:i'),
-                'capacity' => $reservation->getCapacity(),
-                'purpose' => $reservation->getPurpose(),
-                'status' => $reservation->getStatus(),
-                'facility' => [
-                    'id' => $reservation->getFacility()->getId(),
-                    'name' => $reservation->getFacility()->getName(),
-                    'capacity' => $reservation->getFacility()->getCapacity(),
-                ],
+        // Fetch schedule blocks
+        $blockFacility = $facilityId ? $facilityRepo->find((int) $facilityId) : null;
+        $blockType = $status && in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Maintenance'], true) ? $status : null;
+        $blocks = $blockRepo->findBetween($startDate, $endDate, $blockFacility, $blockType);
+        
+        foreach ($blocks as $block) {
+            $facility = $block->getFacility();
+            if ($facilityId && $facility->getId() != $facilityId) {
+                continue;
+            }
+            $data[] = [
+                'id' => 'block_' . $block->getId(),
+                'name' => $block->getTitle(),
+                'email' => '',
+                'contact' => '',
+                'purpose' => $block->getNotes(),
+                'status' => $block->getType() ?: 'Class Schedule',
+                'capacity' => 0,
+                'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
+                'reservationStartTime' => $block->getStartTime()->format('H:i'),
+                'reservationEndTime' => $block->getEndTime()->format('H:i'),
+                'facility' => ['id' => $facility->getId(), 'name' => $facility->getName(), 'capacity' => $facility->getCapacity()],
+                'isBlock' => true,
             ];
-        }, $reservations);
+        }
 
         return $this->json(['reservations' => $data]);
+    }
+
+    #[Route('/calendar/block', name: 'admin_calendar_block', methods: ['POST'])]
+    public function createBlock(
+        Request $request,
+        FacilityRepository $facilityRepo,
+        ReservationRepository $reservationRepo,
+        EntityManagerInterface $em
+    ): Response {
+        $isAjax = $request->isXmlHttpRequest();
+
+        if (!$this->isCsrfTokenValid('manual_schedule_block', (string) $request->request->get('_token'))) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Invalid security token. Please refresh the page and try again.'], Response::HTTP_FORBIDDEN);
+            }
+
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $facility = $facilityRepo->find($request->request->get('facility'));
+        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
+        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+
+        if (!$facility || !$date || !$start || !$end || $end <= $start) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Invalid schedule block data. Check facility, date, start time, and end time.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'Invalid schedule block data.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
+        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
+        if ($start < $dayStart || $end > $dayEnd) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Schedule blocks must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'Schedule blocks must be between 7:00 AM and 8:00 PM.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        if ($reservationRepo->isTimeRangeBooked($facility, $date, $start, $end, null, ['Approved', 'Pending', 'Suggested'])) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Cannot add block: this time range already has a reservation, class schedule, or another block.'], Response::HTTP_CONFLICT);
+            }
+
+            $this->addFlash('error', 'Cannot add block: this time range already has a reservation, class schedule, or another block.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $type = (string) $request->request->get('type', 'Manual');
+        if (!in_array($type, ['Manual', 'Blocked', 'Maintenance'], true)) {
+            $type = 'Manual';
+        }
+
+        $block = null;
+        $em->getConnection()->beginTransaction();
+        try {
+            if ($reservationRepo->isTimeRangeBooked($facility, $date, $start, $end, null, ['Approved', 'Pending', 'Suggested'])) {
+                throw new \RuntimeException('Cannot add block: this time range was just reserved or blocked by another request.');
+            }
+
+            $block = new FacilityScheduleBlock();
+            $block->setFacility($facility);
+            $block->setBlockDate($date);
+            $block->setStartTime($start);
+            $block->setEndTime($end);
+            $block->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable');
+            $block->setType($type);
+            $block->setNotes($request->request->get('notes'));
+            $block->setSource('Manual Entry');
+            $em->persist($block);
+            $em->flush();
+            $em->getConnection()->commit();
+        } catch (\Throwable $exception) {
+            $em->getConnection()->rollBack();
+
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => $exception->getMessage()], Response::HTTP_CONFLICT);
+            }
+
+            $this->addFlash('error', $exception->getMessage());
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $message = 'Schedule block added successfully. The selected time is now unavailable for reservations.';
+
+        if ($isAjax) {
+            return $this->json([
+                'success' => true,
+                'message' => $message,
+                'block' => $this->formatScheduleBlockForCalendar($block),
+            ]);
+        }
+
+        $this->addFlash('success', $message);
+        return $this->redirectToRoute('admin_calendar');
+    }
+
+    #[Route('/calendar/block/{id}/update', name: 'admin_calendar_block_update', methods: ['POST'])]
+    public function updateBlock(
+        FacilityScheduleBlock $block,
+        Request $request,
+        FacilityRepository $facilityRepo,
+        ReservationRepository $reservationRepo,
+        FacilityScheduleBlockRepository $blockRepo,
+        EntityManagerInterface $em
+    ): Response {
+        $isAjax = $request->isXmlHttpRequest();
+
+        if (!$this->isCsrfTokenValid('manual_schedule_block', (string) $request->request->get('_token'))) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Invalid security token. Please refresh the page and try again.'], Response::HTTP_FORBIDDEN);
+            }
+
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if ($block->getType() === 'Class Schedule') {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Imported class schedules cannot be edited here. Re-import the schedule instead.'], Response::HTTP_FORBIDDEN);
+            }
+
+            $this->addFlash('error', 'Imported class schedules cannot be edited here. Re-import the schedule instead.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $facility = $facilityRepo->find($request->request->get('facility'));
+        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
+        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+
+        if (!$facility || !$date || !$start || !$end || $end <= $start) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Invalid schedule block data. Check facility, date, start time, and end time.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'Invalid schedule block data.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
+        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
+        if ($start < $dayStart || $end > $dayEnd) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Schedule blocks must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'Schedule blocks must be between 7:00 AM and 8:00 PM.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $reservationConflict = $this->reservationConflictExists($reservationRepo, $facility, $date, $start, $end);
+        $blockConflict = $blockRepo->isBlocked($facility, $date, $start, $end, $block->getId());
+
+        if ($reservationConflict || $blockConflict) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Cannot update block: this time range conflicts with a reservation, class schedule, or another block.'], Response::HTTP_CONFLICT);
+            }
+
+            $this->addFlash('error', 'Cannot update block: this time range conflicts with a reservation, class schedule, or another block.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $type = (string) $request->request->get('type', 'Manual');
+        if (!in_array($type, ['Manual', 'Blocked', 'Maintenance'], true)) {
+            $type = 'Manual';
+        }
+
+        $block->setFacility($facility);
+        $block->setBlockDate($date);
+        $block->setStartTime($start);
+        $block->setEndTime($end);
+        $block->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable');
+        $block->setType($type);
+        $block->setNotes($request->request->get('notes'));
+        $em->flush();
+
+        $message = 'Schedule block updated successfully. Reservation availability has been refreshed.';
+
+        if ($isAjax) {
+            return $this->json([
+                'success' => true,
+                'message' => $message,
+                'block' => $this->formatScheduleBlockForCalendar($block),
+            ]);
+        }
+
+        $this->addFlash('success', $message);
+        return $this->redirectToRoute('admin_calendar');
+    }
+
+    #[Route('/calendar/block/{id}/delete', name: 'admin_calendar_block_delete', methods: ['POST'])]
+    public function deleteBlock(
+        FacilityScheduleBlock $block,
+        Request $request,
+        EntityManagerInterface $em
+    ): Response {
+        $isAjax = $request->isXmlHttpRequest();
+
+        if (!$this->isCsrfTokenValid('manual_schedule_block_delete', (string) $request->request->get('_token'))) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Invalid security token. Please refresh the page and try again.'], Response::HTTP_FORBIDDEN);
+            }
+
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if ($block->getType() === 'Class Schedule') {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Imported class schedules cannot be deleted one by one here. Use Delete Imported Schedule instead.'], Response::HTTP_FORBIDDEN);
+            }
+
+            $this->addFlash('error', 'Imported class schedules cannot be deleted one by one here. Use Delete Imported Schedule instead.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $em->remove($block);
+        $em->flush();
+
+        $message = 'Schedule block deleted successfully. The time slot is available again if no other conflict exists.';
+
+        if ($isAjax) {
+            return $this->json(['success' => true, 'message' => $message]);
+        }
+
+        $this->addFlash('success', $message);
+        return $this->redirectToRoute('admin_calendar');
     }
 
     #[Route('/reservations/{id}/details', name: 'admin_reservation_details')]
@@ -283,5 +558,438 @@ class SuperAdminReservationController extends AbstractController
         $this->addFlash('success', 'Reservation updated successfully.');
 
         return $this->redirectToRoute('admin_calendar');
+    }
+
+    #[Route('/calendar/import/delete', name: 'admin_calendar_import_delete', methods: ['POST'])]
+    public function deleteImportedSchedule(
+        Request $request,
+        FacilityScheduleBlockRepository $blockRepo,
+        EntityManagerInterface $em
+    ): Response {
+        $isAjax = $request->isXmlHttpRequest();
+
+        if (!$this->isCsrfTokenValid('delete_imported_schedule', (string) $request->request->get('_token'))) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Invalid security token. Please refresh the page and try again.'], Response::HTTP_FORBIDDEN);
+            }
+
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $count = $blockRepo->createQueryBuilder('b')
+            ->select('COUNT(b.id)')
+            ->where('b.type = :type')
+            ->setParameter('type', 'Class Schedule')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $blockRepo->deleteByType('Class Schedule');
+        $em->flush();
+
+        $message = "Deleted $count imported class schedule block(s).";
+
+        if ($isAjax) {
+            return $this->json([
+                'success' => true,
+                'message' => $message,
+                'deleted' => (int) $count,
+            ]);
+        }
+
+        $this->addFlash('success', $message);
+
+        return $this->redirectToRoute('admin_calendar');
+    }
+
+    #[Route('/calendar/import', name: 'admin_calendar_import', methods: ['POST'])]
+    public function importSchedule(
+        Request $request,
+        FacilityRepository $facilityRepo,
+        FacilityScheduleBlockRepository $blockRepo,
+        EntityManagerInterface $em
+    ): Response {
+        $file = $request->files->get('schedule_file');
+        $pasteData = trim((string) $request->request->get('schedule_paste', ''));
+        $isAjax = $request->isXmlHttpRequest();
+
+        if (!$file instanceof UploadedFile && $pasteData === '') {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'Please upload a CSV file or paste schedule data.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'Please upload a CSV file or paste schedule data.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $rows = $this->readScheduleRows($file, $pasteData);
+        if ($rows === []) {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'No schedule rows were found in the uploaded data.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'No schedule rows were found in the uploaded data.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $blockRepo->deleteByType('Class Schedule');
+        $em->flush();
+
+        $created = 0;
+        $processed = 0;
+        $errors = [];
+        $sourceName = $file ? $file->getClientOriginalName() : 'Pasted CSV Data';
+        $seen = [];
+        $firstCreatedDate = null;
+
+        $row = 0;
+        foreach ($rows as $data) {
+            $row++;
+            $data = array_map(static fn ($value) => trim((string) $value), $data);
+
+            if ($this->isScheduleHeaderRow($data)) {
+                continue;
+            }
+
+            [$facilityName, $dateStr, $startStr, $endStr, $title, $type] = array_pad($data, 6, '');
+
+            if (empty($facilityName) || empty($dateStr) || empty($startStr) || empty($endStr)) {
+                $errors[] = "Row $row: Missing required fields.";
+                continue;
+            }
+
+            $processed++;
+            $facility = $this->findFacilityByName($facilityRepo, trim($facilityName));
+
+            if (!$facility) {
+                $errors[] = "Row $row: Facility '$facilityName' not found.";
+                continue;
+            }
+
+            $dates = $this->parseScheduleDates($dateStr);
+            $start = $this->parseScheduleTime($startStr);
+            $end = $this->parseScheduleTime($endStr);
+
+            if ($dates === [] || !$start || !$end) {
+                $errors[] = "Row $row: Invalid date or time format.";
+                continue;
+            }
+
+            if ($end <= $start) {
+                $errors[] = "Row $row: End time must be after start time.";
+                continue;
+            }
+
+            foreach ($dates as $date) {
+                $key = implode('|', [
+                    $facility->getId(),
+                    $date->format('Y-m-d'),
+                    $start->format('H:i'),
+                    $end->format('H:i'),
+                    trim($title) ?: 'Class Schedule',
+                ]);
+
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+
+                $block = new FacilityScheduleBlock();
+                $block->setFacility($facility);
+                $block->setTitle(trim($title) ?: 'Class Schedule');
+                $block->setType('Class Schedule');
+                $block->setBlockDate($date);
+                $block->setStartTime(clone $start);
+                $block->setEndTime(clone $end);
+                $block->setSource($sourceName);
+                $block->setScheduleIdentifier(sha1($key));
+                $block->setNotes('Imported class schedule');
+                $em->persist($block);
+                $created++;
+
+                if ($firstCreatedDate === null || $date < $firstCreatedDate) {
+                    $firstCreatedDate = clone $date;
+                }
+
+                if ($created % 100 === 0) {
+                    $em->flush();
+                }
+            }
+        }
+
+        $em->flush();
+
+        $message = $created > 0
+            ? "Schedule sync complete. Replaced old class schedules and created $created blocking schedule entries from $processed imported row(s)."
+            : 'No class schedule blocks were created.';
+        $warnings = [];
+        $today = new \DateTimeImmutable('today');
+        $weekStart = $today->modify('monday this week');
+        $weekEnd = $weekStart->modify('+6 days');
+
+        if ($created > 0 && $firstCreatedDate && ($firstCreatedDate->format('Y-m-d') < $weekStart->format('Y-m-d') || $firstCreatedDate->format('Y-m-d') > $weekEnd->format('Y-m-d'))) {
+            $warnings[] = 'Imported schedules are not in the current week, so the calendar opened the imported schedule week.';
+        }
+
+        if ($isAjax) {
+            return $this->json([
+                'success' => $created > 0,
+                'message' => $message,
+                'warnings' => array_slice(array_merge($warnings, $errors), 0, 10),
+                'date' => $firstCreatedDate ? $firstCreatedDate->format('Y-m-d') : null,
+                'created' => $created,
+                'processed' => $processed,
+            ], $created > 0 ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($created > 0) {
+            $this->addFlash('success', $message);
+        } else {
+            $this->addFlash('error', $message);
+        }
+
+        foreach ($warnings as $warning) {
+            $this->addFlash('warning', $warning);
+        }
+
+        foreach (array_slice($errors, 0, 10) as $error) {
+            $this->addFlash('warning', $error);
+        }
+
+        return $this->redirectToRoute('admin_calendar', $firstCreatedDate ? ['date' => $firstCreatedDate->format('Y-m-d')] : []);
+    }
+
+    private function formatScheduleBlockForCalendar(FacilityScheduleBlock $block): array
+    {
+        $facility = $block->getFacility();
+
+        return [
+            'id' => 'block_' . $block->getId(),
+            'name' => $block->getTitle(),
+            'email' => '',
+            'contact' => '',
+            'purpose' => $block->getNotes(),
+            'status' => $block->getType() ?: 'Manual',
+            'capacity' => 0,
+            'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
+            'reservationStartTime' => $block->getStartTime()->format('H:i'),
+            'reservationEndTime' => $block->getEndTime()->format('H:i'),
+            'facility' => [
+                'id' => $facility->getId(),
+                'name' => $facility->getName(),
+                'capacity' => $facility->getCapacity(),
+            ],
+            'isBlock' => true,
+        ];
+    }
+
+    private function reservationConflictExists(
+        ReservationRepository $reservationRepo,
+        Facility $facility,
+        \DateTimeInterface $date,
+        \DateTimeInterface $startTime,
+        \DateTimeInterface $endTime
+    ): bool {
+        $startOfDay = \DateTime::createFromInterface($date)->setTime(0, 0, 0);
+        $endOfDay = \DateTime::createFromInterface($date)->setTime(23, 59, 59);
+
+        return (int) $reservationRepo->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->andWhere('r.facility = :facility')
+            ->andWhere('r.reservationDate BETWEEN :startOfDay AND :endOfDay')
+            ->andWhere('r.status IN (:statuses)')
+            ->andWhere('r.reservationStartTime < :endTime')
+            ->andWhere('r.reservationEndTime > :startTime')
+            ->setParameter('facility', $facility)
+            ->setParameter('startOfDay', $startOfDay)
+            ->setParameter('endOfDay', $endOfDay)
+            ->setParameter('statuses', ['Approved', 'Pending', 'Suggested'])
+            ->setParameter('startTime', $startTime->format('H:i:s'))
+            ->setParameter('endTime', $endTime->format('H:i:s'))
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
+    }
+
+    private function readScheduleRows(?UploadedFile $file, string $pasteData): array
+    {
+        $rows = [];
+
+        if ($file instanceof UploadedFile) {
+            $handle = fopen($file->getPathname(), 'r');
+            if ($handle === false) {
+                return [];
+            }
+
+            while (($data = fgetcsv($handle)) !== false) {
+                if ($data !== [null] && $data !== false) {
+                    $rows[] = $data;
+                }
+            }
+
+            fclose($handle);
+            return $rows;
+        }
+
+        foreach (explode("\n", str_replace("\r", '', $pasteData)) as $line) {
+            if (trim($line) !== '') {
+                $rows[] = str_getcsv($line);
+            }
+        }
+
+        return $rows;
+    }
+
+    private function isScheduleHeaderRow(array $data): bool
+    {
+        $first = strtolower(trim((string) ($data[0] ?? '')));
+        $second = strtolower(trim((string) ($data[1] ?? '')));
+
+        return $first === 'facility' && in_array($second, ['date', 'day'], true);
+    }
+
+    private function parseScheduleDates(string $value): array
+    {
+        $normalized = strtolower(trim($value));
+        $dayMap = [
+            'monday' => 0,
+            'mon' => 0,
+            'tuesday' => 1,
+            'tue' => 1,
+            'wednesday' => 2,
+            'wed' => 2,
+            'thursday' => 3,
+            'thu' => 3,
+            'friday' => 4,
+            'fri' => 4,
+            'saturday' => 5,
+            'sat' => 5,
+            'sunday' => 6,
+            'sun' => 6,
+        ];
+
+        if (isset($dayMap[$normalized])) {
+            $today = new \DateTimeImmutable('today');
+            $weekStart = $today->modify('monday this week');
+            $dates = [];
+
+            for ($week = 0; $week < 18; $week++) {
+                $target = $weekStart
+                    ->modify('+' . $week . ' weeks')
+                    ->modify('+' . $dayMap[$normalized] . ' days');
+                $dates[] = \DateTime::createFromImmutable($target);
+            }
+
+            return $dates;
+        }
+
+        $date = \DateTime::createFromFormat('!Y-m-d', trim($value));
+        if ($date && $date->format('Y-m-d') === trim($value)) {
+            return [$date];
+        }
+
+        return [];
+    }
+
+    private function parseScheduleTime(string $value): ?\DateTimeInterface
+    {
+        $value = trim($value);
+
+        foreach (['!H:i', '!H:i:s', '!g:i A', '!h:i A'] as $format) {
+            $time = \DateTime::createFromFormat($format, $value);
+            if ($time instanceof \DateTimeInterface) {
+                return $time;
+            }
+        }
+
+        return null;
+    }
+
+    private function findFacilityByName(FacilityRepository $facilityRepo, string $name): ?Facility
+    {
+        // Try exact match first
+        $facility = $facilityRepo->findOneBy(['name' => $name]);
+        if ($facility) return $facility;
+
+        // Try case-insensitive exact match
+        $facility = $facilityRepo->createQueryBuilder('f')
+            ->where('LOWER(f.name) = LOWER(:name)')
+            ->setParameter('name', $name)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        if ($facility) return $facility;
+
+        // Try LIKE match (partial)
+        $facility = $facilityRepo->createQueryBuilder('f')
+            ->where('f.name LIKE :name')
+            ->setParameter('name', '%' . $name . '%')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        if ($facility) return $facility;
+
+        // Handle abbreviation patterns like "PR 1" -> "Presentation Room 1"
+        $normalized = strtolower(trim($name));
+
+        // Pattern: PR 1, PR1, PR-1 -> Presentation Room 1
+        if (preg_match('/^pr[\s\-]?(\d+)$/i', $name, $matches)) {
+            $num = $matches[1];
+            $facility = $facilityRepo->createQueryBuilder('f')
+                ->where('LOWER(f.name) LIKE :pattern1')
+                ->orWhere('LOWER(f.name) LIKE :pattern2')
+                ->setParameter('pattern1', '%presentation room ' . $num . '%')
+                ->setParameter('pattern2', '%pr ' . $num . '%')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+            if ($facility) return $facility;
+        }
+
+        // Pattern: CS Project Room -> CS Project Room (common variations)
+        if (str_contains($normalized, 'cs') && str_contains($normalized, 'project')) {
+            $facility = $facilityRepo->createQueryBuilder('f')
+                ->where('LOWER(f.name) LIKE :pattern')
+                ->setParameter('pattern', '%cs%project%room%')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+            if ($facility) return $facility;
+        }
+
+        // Pattern: 3D Printing -> 3D Printing Lab or similar
+        if (str_contains($normalized, '3d') && str_contains($normalized, 'print')) {
+            $facility = $facilityRepo->createQueryBuilder('f')
+                ->where('LOWER(f.name) LIKE :pattern1')
+                ->orWhere('LOWER(f.name) LIKE :pattern2')
+                ->setParameter('pattern1', '%3d%print%')
+                ->setParameter('pattern2', '%3d%lab%')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+            if ($facility) return $facility;
+        }
+
+        // Pattern: Lounge 1, Lounge 2, Lounge 3, Lounge 4
+        if (preg_match('/^lounge\s*(\d+)$/i', $name, $matches)) {
+            $num = $matches[1];
+            $facility = $facilityRepo->createQueryBuilder('f')
+                ->where('LOWER(f.name) LIKE :pattern')
+                ->setParameter('pattern', '%lounge% ' . $num . '%')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+            if ($facility) return $facility;
+        }
+
+        // Try reverse LIKE (facility name contained in search name)
+        $allFacilities = $facilityRepo->findAll();
+        foreach ($allFacilities as $f) {
+            $facilityName = strtolower($f->getName());
+            if (str_contains($normalized, $facilityName) || str_contains($facilityName, $normalized)) {
+                return $f;
+            }
+        }
+
+        return null;
     }
 }

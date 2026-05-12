@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\FacilityRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -32,6 +34,24 @@ class Facility
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $image = null;
 
+    /**
+     * @var Collection<int, FacilityImage>
+     */
+    #[ORM\OneToMany(mappedBy: 'facility', targetEntity: FacilityImage::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
+    private Collection $images;
+
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'children')]
+    #[ORM\JoinColumn(name: 'parent_id', referencedColumnName: 'id', nullable: true, onDelete: 'CASCADE')]
+    private ?Facility $parent = null;
+
+    /**
+     * @var Collection<int, Facility>
+     */
+    #[ORM\OneToMany(mappedBy: 'parent', targetEntity: self::class)]
+    #[ORM\OrderBy(['name' => 'ASC'])]
+    private Collection $children;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -42,6 +62,8 @@ class Facility
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
+        $this->images = new ArrayCollection();
+        $this->children = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -101,6 +123,33 @@ class Facility
         return $this;
     }
 
+    /**
+     * @return Collection<int, FacilityImage>
+     */
+    public function getImages(): Collection
+    {
+        return $this->images;
+    }
+
+    public function addImage(FacilityImage $image): self
+    {
+        if (!$this->images->contains($image)) {
+            $this->images->add($image);
+            $image->setFacility($this);
+        }
+
+        return $this;
+    }
+
+    public function removeImage(FacilityImage $image): self
+    {
+        if ($this->images->removeElement($image) && $image->getFacility() === $this) {
+            $image->setFacility(null);
+        }
+
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -109,5 +158,43 @@ class Facility
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function getParent(): ?Facility
+    {
+        return $this->parent;
+    }
+
+    public function setParent(?Facility $parent): self
+    {
+        $this->parent = $parent;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Facility>
+     */
+    public function getChildren(): Collection
+    {
+        return $this->children;
+    }
+
+    public function addChild(Facility $child): self
+    {
+        if (!$this->children->contains($child)) {
+            $this->children->add($child);
+            $child->setParent($this);
+        }
+        return $this;
+    }
+
+    public function removeChild(Facility $child): self
+    {
+        if ($this->children->removeElement($child)) {
+            if ($child->getParent() === $this) {
+                $child->setParent(null);
+            }
+        }
+        return $this;
     }
 }

@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
+use App\Repository\FacilityScheduleBlockRepository;
 use App\Repository\UserRepository;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +29,7 @@ public function reserve(
         Facility $facility,
         Request $request,
         ReservationRepository $reservationRepo,
+        FacilityScheduleBlockRepository $blockRepo,
         EntityManagerInterface $em,
         MailerInterface $mailer,
         UserRepository $userRepository
@@ -46,7 +48,6 @@ public function reserve(
             $capacity = (int)$request->request->get('capacity');
             $purpose = $request->request->get('purpose');
 
-            // Validate time range is between 8 AM and 5 PM
             $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
             $endTime = \DateTime::createFromFormat('H:i', $endTimeStr);
             if (!$startTime || !$endTime) {
@@ -56,21 +57,20 @@ public function reserve(
                 );
             }
 
-            $dayStart = \DateTime::createFromFormat('H:i', '08:00');
-            $dayEnd = \DateTime::createFromFormat('H:i', '17:00');
+            $dayStart = \DateTime::createFromFormat('H:i', '07:00');
+            $dayEnd = \DateTime::createFromFormat('H:i', '20:00');
             if ($startTime < $dayStart || $endTime > $dayEnd || $endTime <= $startTime) {
                 return $this->json(
-                    ['error' => 'Reservation time must be between 8:00 AM and 5:00 PM'],
+                    ['error' => 'Reservation time must be between 7:00 AM and 8:00 PM'],
                     Response::HTTP_BAD_REQUEST
                 );
             }
 
-            // Enforce 15-minute steps
             $startMinutes = ((int)$startTime->format('H')) * 60 + (int)$startTime->format('i');
             $endMinutes = ((int)$endTime->format('H')) * 60 + (int)$endTime->format('i');
-            if (($startMinutes % 15 !== 0) || ($endMinutes % 15 !== 0)) {
+            if (($startMinutes % 10 !== 0) || ($endMinutes % 10 !== 0)) {
                 return $this->json(
-                    ['error' => 'Please select times in 15-minute intervals'],
+                    ['error' => 'Please select times in 10-minute intervals'],
                     Response::HTTP_BAD_REQUEST
                 );
             }
@@ -85,6 +85,13 @@ public function reserve(
 
             // Check if time slot is already booked
             $date = \DateTime::createFromFormat('Y-m-d', $dateStr);
+            if (!$date) {
+                return $this->json(
+                    ['error' => 'Please select a valid reservation date'],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+
             if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested'])) {
                 // Find alternative facilities
                 $alternatives = $reservationRepo->findAvailableAlternatives(
@@ -97,7 +104,7 @@ public function reserve(
 
                 return $this->json(
                     [
-                        'error' => 'This time range is already booked. Please choose another time or facility.',
+                        'error' => 'This facility already has a reservation or class scheduled during that time. Please choose another time or facility.',
                         'alternatives' => array_map(fn($alt) => [
                             'id' => $alt->getId(),
                             'name' => $alt->getName(),
@@ -158,12 +165,19 @@ public function reserve(
             $date = (new \DateTime())->modify("+$i days");
             $dateStr = $date->format('Y-m-d');
             $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
+            $blockedRanges = array_map(
+                fn($block) => [
+                    'start' => $block->getStartTime(),
+                    'end' => $block->getEndTime(),
+                ],
+                $blockRepo->findForDate($facility, $date)
+            );
             $bookedTimes[$dateStr] = array_map(
                 fn($range) => [
                     'start' => $range['start']->format('H:i'),
                     'end' => $range['end']->format('H:i'),
                 ],
-                $ranges
+                array_merge($ranges, $blockedRanges)
             );
             $pendingRanges = $reservationRepo->getPendingRangesForDate($facility, $date);
             $pendingTimes[$dateStr] = array_map(
@@ -192,6 +206,56 @@ public function reserve(
         ]);
     }
 
+    #[Route('/{id}/availability', name: 'facility_reserve_availability', methods: ['GET'])]
+    public function availability(
+        Facility $facility,
+        Request $request,
+        ReservationRepository $reservationRepo,
+        FacilityScheduleBlockRepository $blockRepo
+    ): JsonResponse {
+        $days = max(1, min(90, (int) $request->query->get('days', 30)));
+        $startDate = \DateTime::createFromFormat('!Y-m-d', (string) $request->query->get('start'));
+        if (!$startDate) {
+            $startDate = new \DateTime('today');
+        }
+
+        $bookedTimes = [];
+        $pendingTimes = [];
+
+        for ($i = 0; $i < $days; $i++) {
+            $date = (clone $startDate)->modify("+$i days");
+            $dateStr = $date->format('Y-m-d');
+            $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
+            $blockedRanges = array_map(
+                fn($block) => [
+                    'start' => $block->getStartTime(),
+                    'end' => $block->getEndTime(),
+                ],
+                $blockRepo->findForDate($facility, $date)
+            );
+            $bookedTimes[$dateStr] = array_map(
+                fn($range) => [
+                    'start' => $range['start']->format('H:i'),
+                    'end' => $range['end']->format('H:i'),
+                ],
+                array_merge($ranges, $blockedRanges)
+            );
+            $pendingRanges = $reservationRepo->getPendingRangesForDate($facility, $date);
+            $pendingTimes[$dateStr] = array_map(
+                fn($range) => [
+                    'start' => $range['start']->format('H:i'),
+                    'end' => $range['end']->format('H:i'),
+                ],
+                $pendingRanges
+            );
+        }
+
+        return $this->json([
+            'bookedTimes' => $bookedTimes,
+            'pendingTimes' => $pendingTimes,
+        ]);
+    }
+
     #[Route('/check-availability', name: 'check_availability', methods: ['POST'])]
     public function checkAvailability(
         Request $request,
@@ -216,7 +280,7 @@ public function reserve(
             return $this->json(['available' => false, 'error' => 'Invalid date or time format']);
         }
 
-        $available = !$reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime);
+        $available = !$reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested']);
 
         return $this->json(['available' => $available]);
     }

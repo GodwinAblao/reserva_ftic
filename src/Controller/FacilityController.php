@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Facility;
+use App\Entity\FacilityImage;
 use App\Repository\FacilityRepository;
+use App\Repository\FacilityImageRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -57,6 +59,7 @@ class FacilityController extends AbstractController
                 }
             }
 
+            $this->handleMultipleImageUploads($request, $facility);
             $facilityRepository->save($facility, true);
 
             $this->addFlash('success', 'Facility created successfully!');
@@ -87,6 +90,7 @@ class FacilityController extends AbstractController
                 }
             }
 
+            $this->handleMultipleImageUploads($request, $facility);
             $facilityRepository->save($facility, true);
 
             $this->addFlash('success', 'Facility updated successfully!');
@@ -120,6 +124,40 @@ class FacilityController extends AbstractController
         return $this->redirectToRoute('app_facility_management');
     }
 
+    #[Route('/{id}/images/reorder', name: 'app_facility_images_reorder', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function reorderImages(Request $request, Facility $facility, FacilityImageRepository $imageRepository): Response
+    {
+        $positions = $request->request->all('positions');
+
+        foreach ($facility->getImages() as $image) {
+            $imageId = (string) $image->getId();
+            if (isset($positions[$imageId])) {
+                $image->setPosition((int) $positions[$imageId]);
+                $imageRepository->save($image);
+            }
+        }
+
+        $imageRepository->getEntityManager()->flush();
+        $this->addFlash('success', 'Facility image order updated.');
+
+        return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
+    }
+
+    #[Route('/images/{id}/delete', name: 'app_facility_image_delete', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function deleteImage(Request $request, FacilityImage $image, FacilityImageRepository $imageRepository): Response
+    {
+        $facilityId = $image->getFacility()?->getId();
+
+        if ($this->isCsrfTokenValid('delete_image' . $image->getId(), (string) $request->request->get('_token'))) {
+            $imageRepository->remove($image, true);
+            $this->addFlash('success', 'Facility image removed.');
+        }
+
+        return $this->redirectToRoute('app_facility_edit', ['id' => $facilityId]);
+    }
+
     private function handleImageUpload(UploadedFile $file): ?string
     {
         try {
@@ -131,6 +169,35 @@ class FacilityController extends AbstractController
             $this->addFlash('error', 'Failed to upload image: ' . $e->getMessage());
 
             return null;
+        }
+    }
+
+    private function handleMultipleImageUploads(Request $request, Facility $facility): void
+    {
+        $uploadedFiles = $request->files->all('images');
+        if (!is_array($uploadedFiles)) {
+            return;
+        }
+
+        $position = $facility->getImages()->count();
+        foreach ($uploadedFiles as $uploadedFile) {
+            if (!$uploadedFile instanceof UploadedFile) {
+                continue;
+            }
+
+            $imagePath = $this->handleImageUpload($uploadedFile);
+            if (!$imagePath) {
+                continue;
+            }
+
+            $image = new FacilityImage();
+            $image->setPath($imagePath);
+            $image->setPosition($position++);
+            $facility->addImage($image);
+
+            if (!$facility->getImage()) {
+                $facility->setImage($imagePath);
+            }
         }
     }
 }

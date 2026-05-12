@@ -3,7 +3,10 @@
 {% block content %}
 <div class="content-header">
     <h2>Facility Management</h2>
-    <a href="{{ path('app_facility_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, var(--feu-green) 0%, var(--feu-green-light) 100%); color: white; font-weight: 700;">+ Add New Facility</a>
+    <div style="display: flex; gap: 12px;">
+        <a href="{{ path('admin_calendar') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--feu-green); background: white; color: var(--feu-green); font-weight: 700; cursor: pointer;">📅 Calendar View</a>
+        <a href="{{ path('app_facility_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, var(--feu-green) 0%, var(--feu-green-light) 100%); color: white; font-weight: 700;">+ Add New Facility</a>
+    </div>
 </div>
 
 {% if app.flashes('success') %}

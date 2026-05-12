@@ -35,6 +35,28 @@
                 <input type="file" id="image" name="image" accept="image/*">
             </div>
 
+            <div class="form-group">
+                <label for="images">Add Gallery Images</label>
+                <input type="file" id="images" name="images[]" accept="image/*" multiple>
+            </div>
+
+            {% if facility.images|length > 0 %}
+                <div class="form-group">
+                    <label>Gallery Management</label>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:12px;">
+                        {% for image in facility.images %}
+                            <div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px;">
+                                <img src="{{ image.path }}" alt="{{ facility.name }}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;">
+                                <form action="{{ path('app_facility_image_delete', {id: image.id}) }}" method="POST" onsubmit="return confirm('Remove this image?');" style="margin-top:8px;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_image' ~ image.id) }}">
+                                    <button type="submit" class="btn-secondary" style="width:100%;">Remove</button>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
             <div style="display: flex; gap: 12px;">
                 <button type="submit" class="btn-primary">Update Facility</button>
                 <a href="{{ path('app_facility_management') }}" class="btn-secondary">Cancel</a>

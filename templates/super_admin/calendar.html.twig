@@ -30,6 +30,11 @@
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Class Schedule">Class Schedule</option>
+                    <option value="Blocked">Blocked</option>
+                    <option value="Manual">Manual</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Imported">Imported</option>
                 </select>
             </div>
 
@@ -55,12 +60,120 @@
         </div>
     </div>
 
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px; margin-bottom:20px;">
+        <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" style="background:white; padding:20px; border-radius:18px; box-shadow:0 20px 40px rgba(12, 30, 20, 0.08); border:1px solid rgba(11, 93, 58, 0.08);">
+            <h3 style="margin-top:0; color:#004d26;">Import Class Schedule</h3>
+            <p style="color:#6b7280; font-size:0.85rem; margin-bottom:12px;">Format: facility,day,start,end,title,type. Day: Monday-Sunday. Time: HH:MM.</p>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Upload CSV</label>
+                <input type="file" name="schedule_file" accept=".csv,text/csv" style="display:block; width:100%;">
+            </div>
+            
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:4px;">Or Paste Schedule Data</label>
+                <textarea name="schedule_paste" placeholder="facility,day,start,end,title,type" style="width:100%; height:80px; padding:8px; border:1px solid #d1d5db; border-radius:8px; font-family:monospace; font-size:0.85rem;"></textarea>
+            </div>
+
+            <p style="font-size:0.8rem; color:#ef4444; font-weight:600;">Importing replaces the previous Class Schedule blocks automatically.</p>
+
+            <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="btn" style="width:auto; padding:6px 10px; margin-bottom:8px; background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-size:0.78rem;">Delete Imported Schedule</button>
+            <button type="submit" id="scheduleImportSubmit" class="btn btn-primary" style="width:100%;">Import & Sync Schedule</button>
+            <div id="scheduleImportMessage" class="schedule-import-message" style="display:none;"></div>
+            <div id="scheduleDeleteMessage" class="schedule-import-message" style="display:none;"></div>
+        </form>
+
+        <form id="manualBlockForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" style="background:white; padding:20px; border-radius:18px; box-shadow:0 20px 40px rgba(12, 30, 20, 0.08); border:1px solid rgba(11, 93, 58, 0.08);">
+            <h3 style="margin-top:0; color:#004d26;">Manual Schedule Block</h3>
+            <input type="hidden" name="_token" value="{{ csrf_token('manual_schedule_block') }}">
+            <input type="hidden" id="manualBlockId" name="block_id" value="">
+            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+                <select name="facility" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                    <option value="">Select Facility</option>
+                    {% for facility in facilities %}
+                        <option value="{{ facility.id }}">{{ facility.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="date" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                <input type="time" name="start_time" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                <input type="time" name="end_time" required style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                <input type="text" name="title" placeholder="Title" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                <select name="type" style="padding:10px; border:1px solid #d1d5db; border-radius:8px;">
+                    <option value="Manual">Manual</option>
+                    <option value="Blocked">Blocked</option>
+                    <option value="Maintenance">Maintenance</option>
+                </select>
+            </div>
+            <textarea name="notes" placeholder="Notes" style="width:100%; margin:10px 0; padding:10px; border:1px solid #d1d5db; border-radius:8px;"></textarea>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button type="submit" id="manualBlockSubmit" class="btn btn-primary">Add Block</button>
+                <button type="button" id="manualBlockCancelEdit" class="btn btn-secondary" style="display:none;">Cancel Edit</button>
+            </div>
+            <div id="manualBlockMessage" class="schedule-import-message" style="display:none;"></div>
+        </form>
+    </div>
     <!-- Calendar Grid -->
     <div style="display: block !important; background: white !important; padding: 0 !important; border-radius: 18px !important; box-shadow: 0 20px 40px rgba(12, 30, 20, 0.08) !important; border: 1px solid rgba(11, 93, 58, 0.08) !important; visibility: visible !important; opacity: 1 !important; overflow: auto !important; position: relative !important; z-index: 10 !important;">
+        <div id="calendarStatus" class="calendar-status calendar-status-loading">
+            <span class="calendar-spinner"></span>
+            <span id="calendarStatusText">Loading calendar schedules...</span>
+            <button type="button" id="calendarRetryBtn" class="calendar-retry-btn" style="display:none;">Retry</button>
+        </div>
         <div id="calendarView" style="display: block !important; min-height: 600px !important; visibility: visible !important; opacity: 1 !important;">
-            <div style="text-align: center; padding: 40px; color: #6b7280; font-size: 1.1rem;">Loading calendar...</div>
+            <!-- Grid renders immediately via inline script below -->
         </div>
     </div>
+
+    <script>
+        // Render calendar grid immediately without waiting for full script load
+        (function() {
+            const today = new Date();
+            const day = today.getDay();
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - day + (day === 0 ? -6 : 1));
+            const calendarStartHour = 7;
+            const calendarEndHour = 20;
+            const calendarHourHeight = 60;
+
+            function formatTime(h, m) {
+                const period = h >= 12 ? 'PM' : 'AM';
+                const displayHour = h > 12 ? h - 12 : h;
+                return displayHour + ':' + m + ' ' + period;
+            }
+
+            function generateTimeSlots() {
+                const slots = [];
+                for (let hour = calendarStartHour; hour < calendarEndHour; hour++) {
+                    slots.push({ time: String(hour).padStart(2, '0') + ':00', label: formatTime(hour, '00') });
+                }
+                return slots;
+            }
+
+            const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+            const timeSlots = generateTimeSlots();
+
+            let html = '<div class="week-view">';
+            html += '<div class="time-column"><div class="day-header" style="background: transparent; color: #6b7280;">Time</div>';
+            timeSlots.forEach(slot => {
+                html += '<div class="time-slot" style="height:' + calendarHourHeight + 'px;">' + slot.label + '</div>';
+            });
+            html += '</div>';
+
+            for (let i = 0; i < 7; i++) {
+                html += '<div class="day-column">';
+                html += '<div class="day-header"><div class="day-name">' + days[i] + '</div></div>';
+                html += '<div class="day-body">';
+                timeSlots.forEach(() => {
+                    html += '<div class="time-slot" style="height:' + calendarHourHeight + 'px;"></div>';
+                });
+                html += '</div></div>';
+            }
+            html += '</div>';
+
+            document.getElementById('calendarView').innerHTML = html;
+        })();
+    </script>
 
     <!-- Event Details Modal -->
     <div id="eventModal" class="modal">
@@ -72,6 +185,18 @@
             </div>
             <div id="modalActions" class="modal-actions">
                 <!-- Buttons populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteScheduleModal" class="delete-schedule-modal">
+        <div class="delete-schedule-dialog">
+            <div class="delete-schedule-icon">!</div>
+            <h3>Delete Imported Schedule?</h3>
+            <p>This will permanently delete the whole imported class schedule from the calendar. Reservations and manual blocks will not be deleted.</p>
+            <div class="delete-schedule-actions">
+                <button type="button" id="cancelDeleteSchedule" class="delete-schedule-cancel">Cancel</button>
+                <button type="button" id="confirmDeleteSchedule" class="delete-schedule-confirm">Yes, Delete Schedule</button>
             </div>
         </div>
     </div>
@@ -198,6 +323,80 @@
         font-size: 1.1rem;
     }
 
+    .calendar-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .calendar-status-loading {
+        color: #065f46;
+        background: #ecfdf5;
+    }
+
+    .calendar-status-success {
+        color: #166534;
+        background: #dcfce7;
+    }
+
+    .calendar-status-error {
+        color: #991b1b;
+        background: #fef2f2;
+    }
+
+    .calendar-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(6, 95, 70, 0.2);
+        border-top-color: #047857;
+        border-radius: 999px;
+        animation: calendar-spin 0.8s linear infinite;
+    }
+
+    .calendar-status-success .calendar-spinner,
+    .calendar-status-error .calendar-spinner {
+        display: none;
+    }
+
+    .calendar-retry-btn {
+        border: 1px solid #991b1b;
+        background: white;
+        color: #991b1b;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .schedule-import-message {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .schedule-import-message.success {
+        color: #166534;
+        background: #dcfce7;
+    }
+
+    .schedule-import-message.error {
+        color: #991b1b;
+        background: #fee2e2;
+    }
+
+    @keyframes calendar-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
     /* Week View */
     .week-view {
         display: grid;
@@ -212,6 +411,7 @@
 
     .time-slot {
         height: 60px;
+        box-sizing: border-box;
         border-bottom: 1px solid #e5e7eb;
         padding: 0.5rem;
         font-size: 0.75rem;
@@ -263,6 +463,7 @@
         overflow: hidden;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         border-left: 4px solid;
+        box-sizing: border-box;
     }
 
     .event-block:hover {
@@ -287,6 +488,26 @@
         background: #fef2f2;
         border-left-color: #ef4444;
         color: #7f1d1d;
+    }
+
+    .event-block.classschedule,
+    .event-block.imported {
+        background: #eff6ff;
+        border-left-color: #3b82f6;
+        color: #1e3a8a;
+    }
+
+    .event-block.blocked,
+    .event-block.manual {
+        background: #fef2f2;
+        border-left-color: #dc2626;
+        color: #7f1d1d;
+    }
+
+    .event-block.maintenance {
+        background: #f5f3ff;
+        border-left-color: #7c3aed;
+        color: #4c1d95;
     }
 
     .event-title {
@@ -337,6 +558,23 @@
         color: white;
     }
 
+    .event-status.manual,
+    .event-status.blocked {
+        background: #dc2626;
+        color: white;
+    }
+
+    .event-status.classschedule,
+    .event-status.imported {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .event-status.maintenance {
+        background: #7c3aed;
+        color: white;
+    }
+
     /* Day View */
     .day-view {
         display: grid;
@@ -355,6 +593,7 @@
     
     .day-view .time-slot {
         height: 60px;
+        box-sizing: border-box;
         border-bottom: 1px solid #e5e7eb;
         padding: 0.5rem;
         font-size: 0.875rem;
@@ -433,6 +672,96 @@
 
     .modal-close:hover {
         color: #374151;
+    }
+
+    .delete-schedule-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(15, 23, 42, 0.58);
+        backdrop-filter: blur(4px);
+    }
+
+    .delete-schedule-modal.is-open {
+        display: flex;
+    }
+
+    .delete-schedule-dialog {
+        width: min(440px, 100%);
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        animation: deleteModalIn 0.18s ease-out;
+    }
+
+    .delete-schedule-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 1rem;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #991b1b;
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        font-size: 1.6rem;
+        font-weight: 800;
+    }
+
+    .delete-schedule-dialog h3 {
+        margin: 0 0 0.75rem;
+        color: #111827;
+        font-size: 1.35rem;
+    }
+
+    .delete-schedule-dialog p {
+        margin: 0;
+        color: #6b7280;
+        line-height: 1.55;
+        font-size: 0.95rem;
+    }
+
+    .delete-schedule-actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+
+    .delete-schedule-actions button {
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .delete-schedule-cancel {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .delete-schedule-confirm {
+        background: #dc2626;
+        color: white;
+    }
+
+    @keyframes deleteModalIn {
+        from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 
     #modalTitle {
@@ -520,6 +849,21 @@
         background: #0284c7;
     }
 
+    .btn-delete {
+        background: #dc2626;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-left: 0.5rem;
+    }
+
+    .btn-delete:hover {
+        background: #b91c1c;
+    }
+
     .no-events {
         padding: 3rem;
         text-align: center;
@@ -529,443 +873,687 @@
 
 <script>
     const today = new Date();
-    let currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const initialCalendarDate = '{{ initialDate|default('')|e('js') }}';
+    let currentDate = initialCalendarDate
+        ? parseDateOnly(initialCalendarDate)
+        : new Date(today.getFullYear(), today.getMonth(), today.getDate());
     let viewMode = 'week';
-    let facilities = {{ facilities|json_encode|raw }};
     let selectedFacility = '';
     let selectedStatus = '';
+    let calendarRequestId = 0;
+    let calendarAbortController = null;
+    let calendarStatusHideTimer = null;
+    const calendarEventsCache = new Map();
+    const calendarStartHour = 7;
+    const calendarEndHour = 20;
+    const calendarHourHeight = 60;
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Event listeners
         document.getElementById('prevDate').addEventListener('click', () => navigateDate(-1));
         document.getElementById('nextDate').addEventListener('click', () => navigateDate(1));
         document.getElementById('todayBtn').addEventListener('click', () => {
-            const today = new Date();
-            currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            currentDate = new Date();
             renderCalendar();
         });
-
         document.getElementById('viewMode').addEventListener('change', (e) => {
             viewMode = e.target.value;
-            // Normalize currentDate to midnight when switching views
-            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
             renderCalendar();
         });
-
         document.getElementById('facilityFilter').addEventListener('change', (e) => {
             selectedFacility = e.target.value;
             renderCalendar();
         });
-
         document.getElementById('statusFilter').addEventListener('change', (e) => {
             selectedStatus = e.target.value;
             renderCalendar();
         });
-
-        // Modal close
         document.querySelector('.modal-close').addEventListener('click', closeModal);
         window.addEventListener('click', (e) => {
             if (e.target.id === 'eventModal') closeModal();
+            if (e.target.id === 'deleteScheduleModal') closeDeleteScheduleModal();
         });
-
+        document.getElementById('calendarRetryBtn').addEventListener('click', () => renderCalendar(true));
+        document.getElementById('scheduleImportForm').addEventListener('submit', importScheduleInBackground);
+        document.getElementById('manualBlockForm').addEventListener('submit', saveManualBlockInBackground);
+        document.getElementById('manualBlockCancelEdit').addEventListener('click', resetManualBlockForm);
+        document.getElementById('scheduleDeleteSubmit').addEventListener('click', openDeleteScheduleModal);
+        document.getElementById('cancelDeleteSchedule').addEventListener('click', closeDeleteScheduleModal);
+        document.getElementById('confirmDeleteSchedule').addEventListener('click', deleteImportedScheduleInBackground);
+        window.addEventListener('focus', () => renderCalendar(true));
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) renderCalendar(true);
+        });
+        window.setInterval(() => {
+            if (!document.hidden) renderCalendar(true);
+        }, 30000);
         renderCalendar();
     });
 
-    function navigateDate(direction) {
-        // Create a new date to avoid mutation issues
-        const newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-        
-        if (viewMode === 'week') {
-            newDate.setDate(newDate.getDate() + (direction * 7));
-        } else {
-            newDate.setDate(newDate.getDate() + direction);
+    async function importScheduleInBackground(event) {
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const submitButton = document.getElementById('scheduleImportSubmit');
+        const messageBox = document.getElementById('scheduleImportMessage');
+        const originalText = submitButton.textContent;
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Importing and syncing...';
+        showImportMessage('Uploading schedule and rebuilding calendar blocks...', 'success');
+        setCalendarStatus('Importing schedule. Calendar will refresh automatically...', 'loading', false);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Schedule import failed.');
+            }
+
+            if (data.date) {
+                currentDate = parseDateOnly(data.date);
+                window.history.replaceState(null, '', `${window.location.pathname}?date=${data.date}`);
+            }
+
+            calendarEventsCache.clear();
+            showImportMessage(data.message, 'success');
+            setCalendarStatus('Schedule imported. Loading new calendar blocks now...', 'loading', false);
+            await renderCalendar(true);
+
+            if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                showImportMessage(`${data.message} ${data.warnings.slice(0, 3).join(' ')}`, 'success');
+            }
+        } catch (error) {
+            showImportMessage(error.message || 'Schedule import failed.', 'error');
+            setCalendarStatus('Schedule import failed. Fix the CSV and try again.', 'error', false);
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
         }
-        
-        currentDate = newDate;
+
+        function showImportMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = 'schedule-import-message ' + type;
+            messageBox.style.display = 'block';
+        }
+    }
+
+    async function saveManualBlockInBackground(event) {
+        event.preventDefault();
+
+        const form = event.currentTarget;
+        const submitButton = document.getElementById('manualBlockSubmit');
+        const messageBox = document.getElementById('manualBlockMessage');
+        const originalText = submitButton.textContent;
+        let savedSuccessfully = false;
+        const blockId = document.getElementById('manualBlockId').value;
+        const actionUrl = blockId ? `/super-admin/calendar/block/${blockId}/update` : form.dataset.createUrl;
+
+        submitButton.disabled = true;
+        submitButton.textContent = blockId ? 'Updating...' : 'Adding...';
+        showManualBlockMessage(blockId ? 'Updating schedule block...' : 'Adding schedule block...', 'success');
+        setCalendarStatus(blockId ? 'Updating blocked schedule...' : 'Adding blocked schedule...', 'loading', false);
+
+        try {
+            const response = await fetch(actionUrl, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Schedule block save failed.');
+            }
+
+            if (data.block && data.block.reservationDate) {
+                currentDate = parseDateOnly(data.block.reservationDate);
+            }
+
+            calendarEventsCache.clear();
+            showManualBlockMessage(data.message, 'success');
+            savedSuccessfully = true;
+            resetManualBlockForm(false);
+            setCalendarStatus('Schedule block saved. Refreshing calendar and availability...', 'loading', false);
+            await renderCalendar(true);
+        } catch (error) {
+            showManualBlockMessage(error.message || 'Schedule block save failed.', 'error');
+            setCalendarStatus('Could not save schedule block. Resolve conflicts and try again.', 'error', false);
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = savedSuccessfully ? 'Add Block' : originalText;
+        }
+
+        function showManualBlockMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = 'schedule-import-message ' + type;
+            messageBox.style.display = 'block';
+        }
+    }
+
+    function resetManualBlockForm(clearMessage = true) {
+        const form = document.getElementById('manualBlockForm');
+        form.reset();
+        form.action = form.dataset.createUrl;
+        document.getElementById('manualBlockId').value = '';
+        document.getElementById('manualBlockSubmit').textContent = 'Add Block';
+        document.getElementById('manualBlockCancelEdit').style.display = 'none';
+
+        if (clearMessage) {
+            document.getElementById('manualBlockMessage').style.display = 'none';
+        }
+    }
+
+    function openDeleteScheduleModal() {
+        document.getElementById('deleteScheduleModal').classList.add('is-open');
+        playDeleteWarningSound();
+    }
+
+    function closeDeleteScheduleModal() {
+        document.getElementById('deleteScheduleModal').classList.remove('is-open');
+    }
+
+    function playDeleteWarningSound() {
+        playDeleteWarningAudioElement();
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) {
+            return;
+        }
+
+        const audioContext = window.deleteScheduleAudioContext || new AudioContext();
+        window.deleteScheduleAudioContext = audioContext;
+
+        const playTone = (frequency, startTime, duration) => {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(frequency, startTime);
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.22, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+            oscillator.connect(gain);
+            gain.connect(audioContext.destination);
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration);
+        };
+
+        const startSound = () => {
+            const now = audioContext.currentTime;
+            playTone(880, now, 0.14);
+            playTone(660, now + 0.18, 0.18);
+        };
+
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(startSound).catch(() => {});
+            return;
+        }
+
+        startSound();
+    }
+
+    function playDeleteWarningAudioElement() {
+        try {
+            const audio = new Audio('data:audio/wav;base64,UklGRqQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YYAAAACAgICAgICAgICAgICAgICAgICAgICAhoyKv9j/2L+MhYCAgICAgICAhpOqweDn6uDQsoqAgICAgICAhY+drMzp8vby2MWkgICAgICAhImXp7Tn38+3n5OFgYCAgICAhI6lx9De3syupYmAgICAgICAg4mVrLXf5O/o0rSLgICAgICAgICGjIq/2P/Yv4yFgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==');
+            audio.volume = 0.75;
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        } catch (error) {}
+    }
+
+    async function deleteImportedScheduleInBackground() {
+        const submitButton = document.getElementById('scheduleDeleteSubmit');
+        const confirmButton = document.getElementById('confirmDeleteSchedule');
+        const messageBox = document.getElementById('scheduleDeleteMessage');
+        const originalText = submitButton.textContent;
+        const originalConfirmText = confirmButton.textContent;
+        const formData = new FormData();
+        formData.append('_token', submitButton.dataset.token);
+
+        submitButton.disabled = true;
+        confirmButton.disabled = true;
+        submitButton.textContent = 'Deleting...';
+        confirmButton.textContent = 'Deleting...';
+        showDeleteMessage('Deleting imported class schedules...', 'success');
+        setCalendarStatus('Deleting imported class schedules...', 'loading', false);
+
+        try {
+            const response = await fetch(submitButton.dataset.deleteUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Delete failed.');
+            }
+
+            calendarEventsCache.clear();
+            closeDeleteScheduleModal();
+            showDeleteMessage(data.message, 'success');
+            setCalendarStatus('Imported schedule deleted. Reloading calendar...', 'loading', false);
+            await renderCalendar(true);
+        } catch (error) {
+            showDeleteMessage(error.message || 'Delete failed.', 'error');
+            setCalendarStatus('Could not delete imported schedule. Try again.', 'error', false);
+        } finally {
+            submitButton.disabled = false;
+            confirmButton.disabled = false;
+            submitButton.textContent = originalText;
+            confirmButton.textContent = originalConfirmText;
+        }
+
+        function showDeleteMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.className = 'schedule-import-message ' + type;
+            messageBox.style.display = 'block';
+        }
+    }
+
+    function navigateDate(direction) {
+        const next = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        next.setDate(next.getDate() + (viewMode === 'week' ? direction * 7 : direction));
+        currentDate = next;
         renderCalendar();
     }
 
-    async function renderCalendar() {
-        updateDateDisplay();
-        
-        const startDate = getStartDate();
-        const endDate = getEndDate();
-        
-        // Fetch reservations
-        const reservations = await fetchReservations(startDate, endDate);
-        
-        const container = document.getElementById('calendarView');
-        
-        if (viewMode === 'week') {
-            container.innerHTML = renderWeekView(reservations, startDate);
-        } else {
-            container.innerHTML = renderDayView(reservations, currentDate);
+    function parseDateOnly(value) {
+        const parts = value.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) {
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate());
         }
 
-        // Add click handlers to events
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    async function renderCalendar(forceRefresh = false) {
+        updateDateDisplay();
+        const startDate = getStartDate();
+        const endDate = getEndDate();
+        const container = document.getElementById('calendarView');
+        const renderMode = viewMode;
+        const renderDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        const requestId = ++calendarRequestId;
+        const cacheKey = getCalendarCacheKey(startDate, endDate, renderDate, renderMode);
+        const cachedEvents = calendarEventsCache.get(cacheKey);
+
+        if (cachedEvents) {
+            renderCalendarEvents(cachedEvents, startDate, renderDate, renderMode);
+            setCalendarStatus('Refreshing calendar data in real time...', 'loading', false);
+        } else {
+            container.innerHTML = renderMode === 'week'
+                ? renderWeekView([], startDate)
+                : renderDayView([], renderDate);
+            setCalendarStatus('Loading calendar schedules and reservations...', 'loading', false);
+        }
+
+        if (calendarAbortController) {
+            calendarAbortController.abort();
+        }
+
+        calendarAbortController = new AbortController();
+        const activeController = calendarAbortController;
+        const slowTimer = window.setTimeout(() => {
+            if (requestId === calendarRequestId) {
+                setCalendarStatus('Still loading live calendar data... please wait.', 'loading', false);
+            }
+        }, 2500);
+        const timeoutTimer = window.setTimeout(() => {
+            if (activeController === calendarAbortController) {
+                activeController.abort();
+            }
+        }, 15000);
+
+        try {
+            const events = await fetchReservations(startDate, endDate, activeController.signal);
+            window.clearTimeout(slowTimer);
+            window.clearTimeout(timeoutTimer);
+
+            if (requestId !== calendarRequestId) {
+                return;
+            }
+
+            calendarEventsCache.set(cacheKey, events);
+            renderCalendarEvents(events, startDate, renderDate, renderMode);
+            setCalendarStatus(`Loaded ${events.length} calendar item${events.length === 1 ? '' : 's'} successfully.`, 'success', false);
+        } catch (error) {
+            window.clearTimeout(slowTimer);
+            window.clearTimeout(timeoutTimer);
+
+            if (requestId !== calendarRequestId) {
+                return;
+            }
+
+            if (cachedEvents) {
+                renderCalendarEvents(cachedEvents, startDate, renderDate, renderMode);
+                setCalendarStatus('Live refresh failed. Showing the last loaded calendar data.', 'error', true);
+                return;
+            }
+
+            container.innerHTML = renderMode === 'week'
+                ? renderWeekView([], startDate)
+                : renderDayView([], renderDate);
+            setCalendarStatus('Calendar data did not load. Click Retry to load it again.', 'error', true);
+        }
+    }
+
+    function renderCalendarEvents(events, startDate, renderDate, renderMode) {
+        const container = document.getElementById('calendarView');
+        container.innerHTML = renderMode === 'week'
+            ? renderWeekView(events, startDate)
+            : renderDayView(events, renderDate);
+        bindEventBlocks();
+    }
+
+    function bindEventBlocks() {
         document.querySelectorAll('.event-block').forEach(el => {
-            el.addEventListener('click', () => openEventModal(el.dataset.reservationId));
+            el.addEventListener('click', () => openEventModal(el));
         });
     }
 
-    function getStartDate() {
-        if (viewMode === 'week') {
-            const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-            const day = date.getDay();
-            const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Monday
-            date.setDate(diff);
-            return date;
+    function getCalendarCacheKey(startDate, endDate, renderDate, renderMode) {
+        return [
+            renderMode,
+            formatDateForAPI(startDate),
+            formatDateForAPI(endDate),
+            formatDateForAPI(renderDate),
+            selectedFacility || 'all',
+            selectedStatus || 'all',
+        ].join('|');
+    }
+
+    function setCalendarStatus(message, type, showRetry) {
+        const status = document.getElementById('calendarStatus');
+        const text = document.getElementById('calendarStatusText');
+        const retry = document.getElementById('calendarRetryBtn');
+
+        if (!status || !text || !retry) {
+            return;
         }
-        return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+
+        window.clearTimeout(calendarStatusHideTimer);
+        status.style.display = 'flex';
+        status.className = 'calendar-status calendar-status-' + type;
+        text.textContent = message;
+        retry.style.display = showRetry ? 'inline-block' : 'none';
+
+        if (type === 'success') {
+            calendarStatusHideTimer = window.setTimeout(() => {
+                status.style.display = 'none';
+            }, 2500);
+        }
+    }
+
+    function getStartDate() {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        if (viewMode === 'week') {
+            const day = date.getDay();
+            date.setDate(date.getDate() - day + (day === 0 ? -6 : 1));
+        }
+        return date;
     }
 
     function getEndDate() {
         const start = getStartDate();
-        if (viewMode === 'week') {
-            const end = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-            end.setDate(end.getDate() + 6);
-            return end;
-        }
-        // For day view, return the same day
-        return new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        const end = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        if (viewMode === 'week') end.setDate(end.getDate() + 6);
+        return end;
     }
 
     function updateDateDisplay() {
         const display = document.getElementById('currentDateDisplay');
-        if (viewMode === 'week') {
-            const start = getStartDate();
-            const end = getEndDate();
-            display.textContent = `${formatDate(start)} - ${formatDate(end)}`;
-        } else {
-            display.textContent = formatDate(currentDate);
-        }
+        display.textContent = viewMode === 'week'
+            ? 'Weekly Schedule - Monday to Sunday'
+            : `Daily Schedule - ${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}`;
     }
 
     function formatDate(date) {
-        return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
-        });
-    }
-
-    async function fetchReservations(startDate, endDate) {
-        try {
-            const params = new URLSearchParams({
-                start: formatDateForAPI(startDate),
-                end: formatDateForAPI(endDate),
-                facility: selectedFacility,
-                status: selectedStatus
-            });
-
-            const response = await fetch(`/super-admin/calendar/data?${params}`);
-            
-            if (!response.ok) {
-                console.error('Failed to fetch reservations:', response.status);
-                return [];
-            }
-            
-            const data = await response.json();
-            return data.reservations || [];
-        } catch (error) {
-            console.error('Error fetching reservations:', error);
-            return [];
-        }
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
 
     function formatDateForAPI(date) {
-        // Format date as YYYY-MM-DD in local timezone (not UTC)
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     }
 
-    function renderWeekView(reservations, startDate) {
-        const days = [];
-        for (let i = 0; i < 7; i++) {
+    async function fetchReservations(startDate, endDate, signal) {
+        const params = new URLSearchParams({ start: formatDateForAPI(startDate), end: formatDateForAPI(endDate), facility: selectedFacility, status: selectedStatus });
+        const response = await fetch(`/super-admin/calendar/data?${params}`, { cache: 'no-store', signal });
+        if (!response.ok) {
+            throw new Error('Calendar data request failed.');
+        }
+        const data = await response.json();
+        return data.reservations || [];
+    }
+
+    function formatSlotLabel(h, m) {
+        const period = h >= 12 ? 'PM' : 'AM';
+        const displayHour = h > 12 ? h - 12 : h;
+        return displayHour + ':' + m + ' ' + period;
+    }
+
+    function generateTimeSlots() {
+        const slots = [];
+        for (let hour = calendarStartHour; hour < calendarEndHour; hour++) {
+            slots.push({ time: `${String(hour).padStart(2, '0')}:00`, label: formatSlotLabel(hour, '00') });
+        }
+        return slots;
+    }
+
+    function minutesFromCalendarStart(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return (hours * 60 + minutes) - (calendarStartHour * 60);
+    }
+
+    function calendarMinutesToPixels(minutes) {
+        return minutes * (calendarHourHeight / 60);
+    }
+
+    function renderWeekView(events, startDate) {
+        const days = Array.from({ length: 7 }, (_, i) => {
             const day = new Date(startDate);
-            day.setDate(day.getDate() + i);
-            days.push(day);
-        }
-
+            day.setDate(startDate.getDate() + i);
+            return day;
+        });
         let html = '<div class="week-view">';
-        
-        // Time column
-        html += '<div class="time-column">';
-        html += '<div class="day-header" style="background: transparent; color: #6b7280;">Time</div>';
-        for (let hour = 8; hour <= 17; hour++) {
-            html += `<div class="time-slot">${formatHour(hour)}</div>`;
-        }
+        const timeSlots = generateTimeSlots();
+        html += '<div class="time-column"><div class="day-header" style="background: transparent; color: #6b7280;">Time</div>';
+        timeSlots.forEach(slot => html += `<div class="time-slot" style="height:${calendarHourHeight}px;">${slot.label}</div>`);
         html += '</div>';
-
-        // Day columns
         days.forEach(day => {
-            // Normalize the date for comparison
-            const targetDate = new Date(day.getFullYear(), day.getMonth(), day.getDate());
-            
-            const dayReservations = reservations.filter(r => {
-                // Parse date string properly to avoid timezone issues
-                const dateParts = r.reservationDate.split('-');
-                const normalizedReservationDate = new Date(
-                    parseInt(dateParts[0]), 
-                    parseInt(dateParts[1]) - 1, 
-                    parseInt(dateParts[2])
-                );
-                return normalizedReservationDate.getTime() === targetDate.getTime();
-            });
-
-            html += '<div class="day-column">';
-            html += `<div class="day-header">
-                <div class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                <div class="day-date">${day.getDate()}</div>
-            </div>`;
-
-            html += '<div class="day-body">';
-
-            // Time slots
-            for (let hour = 8; hour <= 17; hour++) {
-                html += `<div class="time-slot"></div>`;
-            }
-
-            // Events - simple rendering with cascading for overlaps
-            dayReservations.forEach((reservation, index) => {
-                html += renderEventBlockCascade(reservation, index, dayReservations.length);
-            });
-
-            html += '</div>'; // Close day-body
-            html += '</div>'; // Close day-column
+            const dateKey = formatDateForAPI(day);
+            const dayEvents = events.filter(event => event.reservationDate === dateKey);
+            html += `<div class="day-column"><div class="day-header"><div class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div></div><div class="day-body">`;
+            timeSlots.forEach(() => html += `<div class="time-slot" style="height:${calendarHourHeight}px;"></div>`);
+            dayEvents.forEach((event, index) => html += renderEventBlock(event, index, dayEvents.length));
+            html += '</div></div>';
         });
+        return html + '</div>';
+    }
 
-        html += '</div>';
+    function renderDayView(events, date) {
+        const dateKey = formatDateForAPI(date);
+        const dayEvents = events.filter(event => event.reservationDate === dateKey);
+        let html = '<div class="day-view"><div class="time-column">';
+        const timeSlots = generateTimeSlots();
+        timeSlots.forEach(slot => html += `<div class="time-slot" style="height:${calendarHourHeight}px;">${slot.label}</div>`);
+        html += '</div><div class="day-column"><div class="day-body">';
+        timeSlots.forEach(() => html += `<div class="time-slot" style="height:${calendarHourHeight}px;"></div>`);
+        dayEvents.forEach((event, index) => html += renderEventBlock(event, index, dayEvents.length));
+        html += '</div></div></div>';
+        if (dayEvents.length === 0) html += '<div class="no-events">No schedules for this date</div>';
         return html;
     }
 
-    function renderDayView(reservations, date) {
-        // Normalize the date for comparison (remove time component)
-        const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        
-        const dayReservations = reservations.filter(r => {
-            // Parse date string properly to avoid timezone issues
-            const dateParts = r.reservationDate.split('-');
-            const normalizedReservationDate = new Date(
-                parseInt(dateParts[0]), 
-                parseInt(dateParts[1]) - 1, 
-                parseInt(dateParts[2])
-            );
-            return normalizedReservationDate.getTime() === targetDate.getTime();
-        });
+    function renderEventBlock(event, index, total) {
+        const dayStart = 0;
+        const dayEnd = (calendarEndHour - calendarStartHour) * 60;
+        const startMinutes = minutesFromCalendarStart(event.reservationStartTime);
+        const endMinutes = minutesFromCalendarStart(event.reservationEndTime);
+        const visibleStart = Math.max(startMinutes, dayStart);
+        const visibleEnd = Math.min(endMinutes, dayEnd);
+        const top = calendarMinutesToPixels(visibleStart);
+        const height = Math.max(calendarMinutesToPixels(visibleEnd - visibleStart), 24);
+        const status = event.status.toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const offset = (index % Math.min(total, 4)) * 10;
+        const width = `calc(100% - ${Math.min(total - 1, 3) * 10}px)`;
+        const safeName = escapeHtml(event.name);
+        const safeFacility = escapeHtml(event.facility.name);
+        const safeStatus = escapeHtml(event.status);
+        const safePurpose = escapeHtml(event.purpose || '');
+        const safeEmail = escapeHtml(event.email || '');
+        const safeContact = escapeHtml(event.contact || '');
+        const safeCapacity = event.capacity || 0;
+        const safeFacilityCapacity = event.facility.capacity || 0;
+        const safeFacilityId = event.facility.id || '';
+        const isBlock = event.isBlock ? '1' : '0';
+        const blockId = isBlock === '1' ? String(event.id).replace('block_', '') : '';
+        const timeDisplay = formatEventTime(event.reservationStartTime) + ' - ' + formatEventTime(event.reservationEndTime);
 
-        let html = '<div class="day-view">';
-        
-        // Time column
-        html += '<div class="time-column">';
-        for (let hour = 8; hour <= 17; hour++) {
-            html += `<div class="time-slot">${formatHour(hour)}</div>`;
+        return '<div class="event-block ' + status + '" style="top:' + top + 'px; height:' + height + 'px; left:' + offset + 'px; width:' + width + '; right:auto;"' +
+            ' data-id="' + event.id + '"' +
+            ' data-block-id="' + blockId + '"' +
+            ' data-is-block="' + isBlock + '"' +
+            ' data-title="' + safeName + '"' +
+            ' data-facility="' + safeFacility + '"' +
+            ' data-facility-id="' + safeFacilityId + '"' +
+            ' data-status="' + safeStatus + '"' +
+            ' data-date="' + event.reservationDate + '"' +
+            ' data-start="' + event.reservationStartTime + '"' +
+            ' data-end="' + event.reservationEndTime + '"' +
+            ' data-purpose="' + safePurpose + '"' +
+            ' data-email="' + safeEmail + '"' +
+            ' data-contact="' + safeContact + '"' +
+            ' data-capacity="' + safeCapacity + '"' +
+            ' data-facility-capacity="' + safeFacilityCapacity + '">' +
+            '<div class="event-title">' + safeFacility + '</div>' +
+            '<div class="event-requester">' + safeName + '</div>' +
+            '<div class="event-time">' + timeDisplay + '</div>' +
+            '<span class="event-status ' + status + '">' + safeStatus + '</span>' +
+            '</div>';
+    }
+
+    function openEventModal(element) {
+        const data = element.dataset;
+        document.getElementById('modalTitle').textContent = `${data.facility} - ${data.status}`;
+        const details = data.isBlock === '1'
+            ? [['Title', data.title], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Notes', data.purpose || 'None']]
+            : [['Requester', data.title], ['Email', data.email], ['Contact', data.contact], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Attendees', `${data.capacity} / ${data.facilityCapacity}`], ['Purpose', data.purpose || 'None']];
+        document.getElementById('modalBody').innerHTML = details.map(([label, value]) => `<div class="detail-row"><span class="detail-label">${label}:</span><span class="detail-value">${value}</span></div>`).join('');
+        if (data.isBlock === '1' && data.status !== 'Class Schedule') {
+            document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;
+        } else {
+            document.getElementById('modalActions').innerHTML = data.isBlock === '1' ? '' : `<a href="/super-admin/reservations/${data.id}/edit" class="btn-edit">Edit</a>`;
         }
-        html += '</div>';
+        document.getElementById('eventModal').dataset.activeBlock = data.blockId || '';
+        document.getElementById('eventModal').dataset.activeFacilityId = data.facilityId || '';
+        document.getElementById('eventModal').dataset.activeDate = data.date || '';
+        document.getElementById('eventModal').dataset.activeStart = data.start || '';
+        document.getElementById('eventModal').dataset.activeEnd = data.end || '';
+        document.getElementById('eventModal').dataset.activeTitle = data.title || '';
+        document.getElementById('eventModal').dataset.activeStatus = data.status || 'Manual';
+        document.getElementById('eventModal').dataset.activePurpose = data.purpose || '';
+        document.getElementById('eventModal').style.display = 'block';
+    }
 
-        // Events column
-        html += '<div class="day-column">';
-        html += '<div class="day-body">';
-        
-        // Time slot backgrounds
-        for (let hour = 8; hour <= 17; hour++) {
-            html += `<div class="time-slot"></div>`;
+    function editManualBlockFromModal() {
+        const modal = document.getElementById('eventModal');
+        const form = document.getElementById('manualBlockForm');
+        const blockId = modal.dataset.activeBlock;
+
+        if (!blockId) {
+            return;
         }
 
-        // Add events with cascade effect
-        dayReservations.forEach((reservation, index) => {
-            html += renderEventBlockCascade(reservation, index, dayReservations.length);
-        });
+        document.getElementById('manualBlockId').value = blockId;
+        form.elements.facility.value = modal.dataset.activeFacilityId;
+        form.elements.date.value = modal.dataset.activeDate;
+        form.elements.start_time.value = modal.dataset.activeStart;
+        form.elements.end_time.value = modal.dataset.activeEnd;
+        form.elements.title.value = modal.dataset.activeTitle;
+        form.elements.type.value = ['Manual', 'Blocked', 'Maintenance'].includes(modal.dataset.activeStatus) ? modal.dataset.activeStatus : 'Manual';
+        form.elements.notes.value = modal.dataset.activePurpose;
+        document.getElementById('manualBlockSubmit').textContent = 'Update Block';
+        document.getElementById('manualBlockCancelEdit').style.display = 'inline-block';
+        document.getElementById('manualBlockMessage').style.display = 'none';
+        closeModal();
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
-        html += '</div>'; // Close day-body
-        html += '</div>'; // Close day-column
-        html += '</div>'; // Close day-view
+    async function deleteManualBlockFromModal() {
+        const modal = document.getElementById('eventModal');
+        const blockId = modal.dataset.activeBlock;
 
-        // Show message if no reservations
-        if (dayReservations.length === 0) {
-            html += '<div class="no-events">No reservations for this date</div>';
+        if (!blockId || !window.confirm('Delete this manual schedule block? This time slot will become available if no other conflict exists.')) {
+            return;
         }
 
-        return html;
-    }
+        const formData = new FormData();
+        formData.append('_token', document.getElementById('manualBlockForm').dataset.deleteToken);
+        setCalendarStatus('Deleting manual schedule block...', 'loading', false);
 
-    function renderEventBlock(reservation) {
-        const startTime = new Date('2000-01-01 ' + reservation.reservationStartTime);
-        const endTime = new Date('2000-01-01 ' + reservation.reservationEndTime);
-        
-        const startHour = startTime.getHours() + startTime.getMinutes() / 60;
-        const endHour = endTime.getHours() + endTime.getMinutes() / 60;
-        
-        const top = (startHour - 8) * 60;
-        const height = (endHour - startHour) * 60;
-
-        const status = reservation.status.toLowerCase();
-
-        return `
-            <div class="event-block ${status}" 
-                 style="top: ${top}px; height: ${height}px;"
-                 data-reservation-id="${reservation.id}">
-                <div class="event-title">${reservation.facility.name}</div>
-                <div class="event-requester">${reservation.name}</div>
-                <div class="event-time">${formatTime(reservation.reservationStartTime)} - ${formatTime(reservation.reservationEndTime)}</div>
-                <span class="event-status ${status}">${reservation.status}</span>
-            </div>
-        `;
-    }
-    
-    function renderEventBlockWithPosition(reservation, columnIndex, totalColumns) {
-        const startTime = new Date('2000-01-01 ' + reservation.reservationStartTime);
-        const endTime = new Date('2000-01-01 ' + reservation.reservationEndTime);
-        
-        const startHour = startTime.getHours() + startTime.getMinutes() / 60;
-        const endHour = endTime.getHours() + endTime.getMinutes() / 60;
-        
-        const top = (startHour - 8) * 60;
-        const height = (endHour - startHour) * 60;
-
-        const status = reservation.status.toLowerCase();
-
-        return `
-            <div class="event-block ${status}" 
-                 style="top: ${top}px; height: ${height}px;"
-                 data-reservation-id="${reservation.id}">
-                <div class="event-title">${reservation.facility.name}</div>
-                <div class="event-requester">${reservation.name}</div>
-                <div class="event-time">${formatTime(reservation.reservationStartTime)} - ${formatTime(reservation.reservationEndTime)}</div>
-                <span class="event-status ${status}">${reservation.status}</span>
-            </div>
-        `;
-    }
-
-    function renderEventBlockCascade(reservation, index, total) {
-        const startTime = new Date('2000-01-01 ' + reservation.reservationStartTime);
-        const endTime = new Date('2000-01-01 ' + reservation.reservationEndTime);
-        
-        const startHour = startTime.getHours() + startTime.getMinutes() / 60;
-        const endHour = endTime.getHours() + endTime.getMinutes() / 60;
-        
-        const top = (startHour - 8) * 60;
-        const height = (endHour - startHour) * 60;
-
-        const status = reservation.status.toLowerCase();
-
-        const maxOffset = Math.min(total - 1, 3);
-        const offsetStep = 10;
-        const offset = (index % (maxOffset + 1)) * offsetStep;
-        const width = `calc(100% - ${maxOffset * offsetStep}px)`;
-
-        return `
-            <div class="event-block ${status}" 
-                 style="top: ${top}px; height: ${height}px; left: ${offset}px; width: ${width}; right: auto;"
-                 data-reservation-id="${reservation.id}">
-                <div class="event-title">${reservation.facility.name}</div>
-                <div class="event-requester">${reservation.name}</div>
-                <div class="event-time">${formatTime(reservation.reservationStartTime)} - ${formatTime(reservation.reservationEndTime)}</div>
-                <span class="event-status ${status}">${reservation.status}</span>
-            </div>
-        `;
-    }
-
-    function formatHour(hour) {
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour > 12 ? hour - 12 : hour;
-        return `${displayHour}:00 ${ampm}`;
-    }
-
-    function formatTime(timeStr) {
-        const time = new Date('2000-01-01 ' + timeStr);
-        return time.toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-        });
-    }
-
-    async function openEventModal(reservationId) {
         try {
-            const response = await fetch(`/super-admin/reservations/${reservationId}/details`);
-            const reservation = await response.json();
+            const response = await fetch(`/super-admin/calendar/block/${blockId}/delete`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json();
 
-            document.getElementById('modalTitle').textContent = `${reservation.facility.name} - ${reservation.status}`;
-
-            const modalBody = document.getElementById('modalBody');
-            modalBody.innerHTML = `
-                <div class="detail-row">
-                    <span class="detail-label">Requester:</span>
-                    <span class="detail-value">${reservation.name}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Email:</span>
-                    <span class="detail-value">${reservation.email}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Contact:</span>
-                    <span class="detail-value">${reservation.contact}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Date:</span>
-                    <span class="detail-value">${new Date(reservation.reservationDate).toLocaleDateString()}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Time:</span>
-                    <span class="detail-value">${formatTime(reservation.reservationStartTime)} - ${formatTime(reservation.reservationEndTime)}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Attendees:</span>
-                    <span class="detail-value">${reservation.capacity} / ${reservation.facility.capacity}</span>
-                </div>
-                ${reservation.purpose ? `
-                <div class="detail-row">
-                    <span class="detail-label">Purpose:</span>
-                    <span class="detail-value">${reservation.purpose}</span>
-                </div>
-                ` : ''}
-            `;
-
-            const modalActions = document.getElementById('modalActions');
-            let actionsHtml = `
-                <a href="/super-admin/reservations/${reservation.id}/edit" class="btn-edit">Edit</a>
-            `;
-
-            if (reservation.status === 'Pending') {
-                actionsHtml += `
-                    <form method="POST" action="/super-admin/reservations/${reservation.id}/approve" style="display: inline;">
-                        <button type="submit" class="btn-approve">Approve</button>
-                    </form>
-                    <button type="button" class="btn-reject" onclick="openRejectModal(${reservation.id})">Reject</button>
-                `;
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Delete failed.');
             }
 
-            modalActions.innerHTML = actionsHtml;
-
-            document.getElementById('eventModal').style.display = 'block';
+            closeModal();
+            calendarEventsCache.clear();
+            showManualBlockToast(data.message, 'success');
+            setCalendarStatus('Manual block deleted. Refreshing calendar and availability...', 'loading', false);
+            await renderCalendar(true);
         } catch (error) {
-            console.error('Error loading reservation details:', error);
+            showManualBlockToast(error.message || 'Delete failed.', 'error');
+            setCalendarStatus('Could not delete manual block. Try again.', 'error', false);
         }
+    }
+
+    function showManualBlockToast(message, type) {
+        const messageBox = document.getElementById('manualBlockMessage');
+        messageBox.textContent = message;
+        messageBox.className = 'schedule-import-message ' + type;
+        messageBox.style.display = 'block';
     }
 
     function closeModal() {
         document.getElementById('eventModal').style.display = 'none';
     }
 
-    function openRejectModal(reservationId) {
-        const reason = prompt('Enter rejection reason:');
-        if (reason) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/super-admin/reservations/${reservationId}/reject`;
+    function formatHour(hour) {
+        return `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
+    }
 
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'reason';
-            input.value = reason;
+    function formatEventTime(timeStr) {
+        return new Date('2000-01-01 ' + timeStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
 
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        }
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[character]));
     }
 </script>
 {% endblock %}

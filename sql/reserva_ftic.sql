@@ -3,6 +3,8 @@ USE reserva_ftic;
 
 START TRANSACTION;
 
+DROP TABLE IF EXISTS `facility_image`;
+DROP TABLE IF EXISTS `facility_schedule_block`;
 DROP TABLE IF EXISTS `reservation`;
 DROP TABLE IF EXISTS `mentoring_appointment`;
 DROP TABLE IF EXISTS `mentor_custom_request`;
@@ -14,6 +16,7 @@ DROP TABLE IF EXISTS `notifications`;
 DROP TABLE IF EXISTS `facility`;
 DROP TABLE IF EXISTS `messenger_messages`;
 DROP TABLE IF EXISTS `user`;
+DROP TABLE IF EXISTS `doctrine_migration_versions`;
 
 CREATE TABLE IF NOT EXISTS `user` (
 	`id` INT AUTO_INCREMENT NOT NULL,
@@ -205,6 +208,42 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 	CONSTRAINT FK_16C413C5A76ED395 FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
 
+CREATE TABLE IF NOT EXISTS `facility_image` (
+	`id` INT AUTO_INCREMENT NOT NULL,
+	`facility_id` INT NOT NULL,
+	`path` VARCHAR(255) NOT NULL,
+	`caption` VARCHAR(255) DEFAULT NULL,
+	`position` INT NOT NULL DEFAULT 0,
+	`created_at` DATETIME NOT NULL,
+	INDEX IDX_39CDA0059F7E4405 (`facility_id`),
+	PRIMARY KEY(`id`),
+	CONSTRAINT FK_39CDA0059F7E4405 FOREIGN KEY (`facility_id`) REFERENCES `facility` (`id`) ON DELETE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS `facility_schedule_block` (
+	`id` INT AUTO_INCREMENT NOT NULL,
+	`facility_id` INT NOT NULL,
+	`title` VARCHAR(255) NOT NULL,
+	`type` VARCHAR(50) NOT NULL,
+	`block_date` DATE NOT NULL,
+	`start_time` TIME NOT NULL,
+	`end_time` TIME NOT NULL,
+	`source` VARCHAR(255) DEFAULT NULL,
+	`notes` LONGTEXT DEFAULT NULL,
+	`created_at` DATETIME NOT NULL,
+	INDEX IDX_77E5F95D9F7E4405 (`facility_id`),
+	INDEX `facility_schedule_block_lookup_idx` (`facility_id`, `block_date`, `start_time`, `end_time`),
+	PRIMARY KEY(`id`),
+	CONSTRAINT FK_77E5F95D9F7E4405 FOREIGN KEY (`facility_id`) REFERENCES `facility` (`id`) ON DELETE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
+
+CREATE TABLE IF NOT EXISTS `doctrine_migration_versions` (
+	`version` VARCHAR(191) NOT NULL,
+	`executed_at` DATETIME DEFAULT NULL,
+	`execution_time` INT DEFAULT NULL,
+	PRIMARY KEY(`version`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
+
 CREATE TABLE IF NOT EXISTS `messenger_messages` (
 	`id` BIGINT AUTO_INCREMENT NOT NULL,
 	`body` LONGTEXT NOT NULL,
@@ -233,5 +272,21 @@ INSERT INTO `facility` (`name`, `capacity`, `description`, `image`, `created_at`
 
 INSERT INTO `mentor_profile` (`user_id`, `display_name`, `specialization`, `bio`, `engagement_points`, `created_at`) VALUES
 	(3, 'Faculty Tester', 'Faculty Mentor', 'Automatically added faculty mentor for testing.', 0, NOW());
+
+INSERT INTO `doctrine_migration_versions` (`version`, `executed_at`, `execution_time`) VALUES
+	('DoctrineMigrations\\Version20260221184810', NOW(), 100),
+	('DoctrineMigrations\\Version20260222000000', NOW(), 100),
+	('DoctrineMigrations\\Version20260222090000', NOW(), 100),
+	('DoctrineMigrations\\Version20260222120000', NOW(), 100),
+	('DoctrineMigrations\\Version20260428143000', NOW(), 100),
+	('DoctrineMigrations\\Version20260428150000', NOW(), 100),
+	('DoctrineMigrations\\Version20260501102253', NOW(), 100),
+	('DoctrineMigrations\\Version20260501104423', NOW(), 100),
+	('DoctrineMigrations\\Version20260508145037', NOW(), 100),
+	('DoctrineMigrations\\Version20260509084221', NOW(), 100),
+	('DoctrineMigrations\\Version20260509150000', NOW(), 100),
+	('DoctrineMigrations\\Version20260509220000', NOW(), 100),
+	('DoctrineMigrations\\Version20260510010000', NOW(), 100),
+	('DoctrineMigrations\\Version20260512130000', NOW(), 100);
 
 COMMIT;

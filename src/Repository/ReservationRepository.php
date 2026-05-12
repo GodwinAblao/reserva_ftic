@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Reservation;
 use App\Entity\User;
 use App\Entity\Facility;
+use App\Entity\FacilityScheduleBlock;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -88,14 +89,16 @@ class ReservationRepository extends ServiceEntityRepository
             ->andWhere('r.facility = :facility')
             ->andWhere('r.reservationDate BETWEEN :startOfDay AND :endOfDay')
             ->andWhere('r.status IN (:statuses)')
-            ->andWhere('r.reservationStartTime < :endTime')
-            ->andWhere('r.reservationEndTime > :startTime')
             ->setParameter('facility', $facility)
             ->setParameter('startOfDay', $startOfDay)
             ->setParameter('endOfDay', $endOfDay)
-            ->setParameter('statuses', $statuses)
-            ->setParameter('startTime', $startTime)
-            ->setParameter('endTime', $endTime);
+            ->setParameter('statuses', $statuses);
+
+        // Precise time overlap check for reservations
+        $qb->andWhere('r.reservationStartTime < :endTime')
+           ->andWhere('r.reservationEndTime > :startTime')
+           ->setParameter('startTime', $startTime->format('H:i:s'))
+           ->setParameter('endTime', $endTime->format('H:i:s'));
 
         // Exclude the current reservation if provided (for updates)
         if ($excludeReservationId !== null) {
@@ -105,7 +108,13 @@ class ReservationRepository extends ServiceEntityRepository
 
         $count = $qb->getQuery()->getSingleScalarResult();
 
-        return $count > 0;
+        if ($count > 0) {
+            return true;
+        }
+
+        return $this->getEntityManager()
+            ->getRepository(FacilityScheduleBlock::class)
+            ->isBlocked($facility, $date, $startTime, $endTime);
     }
 
     /**
@@ -214,7 +223,11 @@ class ReservationRepository extends ServiceEntityRepository
                 ->getQuery()
                 ->getSingleScalarResult();
 
-            if ($bookingCount === 0) {
+            $blocked = $this->getEntityManager()
+                ->getRepository(FacilityScheduleBlock::class)
+                ->isBlocked($facility, $date, $startTime, $endTime);
+
+            if ($bookingCount === 0 && !$blocked) {
                 $alternatives[] = $facility;
             }
         }
