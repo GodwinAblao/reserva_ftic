@@ -232,6 +232,7 @@ CREATE TABLE IF NOT EXISTS `facility_schedule_block` (
 	`start_time` TIME NOT NULL,
 	`end_time` TIME NOT NULL,
 	`source` VARCHAR(255) DEFAULT NULL,
+	`schedule_identifier` VARCHAR(255) DEFAULT NULL,
 	`notes` LONGTEXT DEFAULT NULL,
 	`created_at` DATETIME NOT NULL,
 	INDEX IDX_77E5F95D9F7E4405 (`facility_id`),
@@ -292,6 +293,7 @@ INSERT INTO `doctrine_migration_versions` (`version`, `executed_at`, `execution_
 	('DoctrineMigrations\\Version20260510010000', NOW(), 100),
 	('DoctrineMigrations\\Version20260512073552', NOW(), 100),
 	('DoctrineMigrations\\Version20260512082900', NOW(), 100),
-	('DoctrineMigrations\\Version20260512130000', NOW(), 100);
+	('DoctrineMigrations\\Version20260512130000', NOW(), 100),
+	('DoctrineMigrations\\Version20261202000000', NOW(), 100);
 
 COMMIT;
