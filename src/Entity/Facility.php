@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\FacilityRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -32,6 +34,13 @@ class Facility
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $image = null;
 
+    /**
+     * @var Collection<int, FacilityImage>
+     */
+    #[ORM\OneToMany(mappedBy: 'facility', targetEntity: FacilityImage::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
+    private Collection $images;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -42,6 +51,7 @@ class Facility
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
+        $this->images = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -97,6 +107,33 @@ class Facility
     {
         $this->image = $image;
         $this->updatedAt = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, FacilityImage>
+     */
+    public function getImages(): Collection
+    {
+        return $this->images;
+    }
+
+    public function addImage(FacilityImage $image): self
+    {
+        if (!$this->images->contains($image)) {
+            $this->images->add($image);
+            $image->setFacility($this);
+        }
+
+        return $this;
+    }
+
+    public function removeImage(FacilityImage $image): self
+    {
+        if ($this->images->removeElement($image) && $image->getFacility() === $this) {
+            $image->setFacility(null);
+        }
 
         return $this;
     }
