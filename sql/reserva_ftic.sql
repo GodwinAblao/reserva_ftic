@@ -42,10 +42,13 @@ CREATE TABLE IF NOT EXISTS `facility` (
 	`name` VARCHAR(255) NOT NULL,
 	`capacity` INT NOT NULL,
 	`description` LONGTEXT DEFAULT NULL,
+	`parent_id` INT DEFAULT NULL,
 	`image` VARCHAR(255) DEFAULT NULL,
 	`created_at` DATETIME NOT NULL,
 	`updated_at` DATETIME NOT NULL,
-	PRIMARY KEY(`id`)
+	INDEX IDX_9DFB30D727ACA70 (`parent_id`),
+	PRIMARY KEY(`id`),
+	CONSTRAINT fk_facility_parent FOREIGN KEY (`parent_id`) REFERENCES `facility` (`id`) ON DELETE CASCADE
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE `utf8mb4_unicode_ci` ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS `mentor_profile` (
@@ -287,6 +290,8 @@ INSERT INTO `doctrine_migration_versions` (`version`, `executed_at`, `execution_
 	('DoctrineMigrations\\Version20260509150000', NOW(), 100),
 	('DoctrineMigrations\\Version20260509220000', NOW(), 100),
 	('DoctrineMigrations\\Version20260510010000', NOW(), 100),
+	('DoctrineMigrations\\Version20260512073552', NOW(), 100),
+	('DoctrineMigrations\\Version20260512082900', NOW(), 100),
 	('DoctrineMigrations\\Version20260512130000', NOW(), 100);
 
 COMMIT;
