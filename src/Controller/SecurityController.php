@@ -48,7 +48,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
             'firstName' => '',
             'middleName' => '',
             'lastName' => '',
-            'institutionalEmail' => '',
+            'email' => '',
         ];
 
         if ($request->isMethod('POST')) {
@@ -56,7 +56,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 'firstName' => trim($request->request->get('firstName', '')),
                 'middleName' => trim($request->request->get('middleName', '')),
                 'lastName' => trim($request->request->get('lastName', '')),
-                'institutionalEmail' => trim($request->request->get('institutionalEmail', '')),
+                'email' => trim($request->request->get('email', '')),
             ];
             $password = $request->request->get('password', '');
             $passwordRepeat = $request->request->get('passwordRepeat', '');
@@ -73,16 +73,16 @@ public function register(Request $request, EntityManagerInterface $entityManager
             if ($data['lastName'] === '') {
                 $errors[] = 'Last name is required.';
             }
-            if (!filter_var($data['institutionalEmail'], FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'A valid institutional email is required.';
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'A valid email is required.';
             } else {
-                $institutionalLower = strtolower($data['institutionalEmail']);
+                $institutionalLower = strtolower($data['email']);
                 if (str_ends_with($institutionalLower, '@fit.edu.ph')) {
                     $roles = ['ROLE_STUDENT'];
                 } elseif (str_ends_with($institutionalLower, '@feutech.edu.ph')) {
                     $roles = ['ROLE_FACULTY'];
                 } else {
-                    $errors[] = 'Your institutional email must end with @fit.edu.ph or @feutech.edu.ph.';
+                    $errors[] = 'Your email must end with @fit.edu.ph or @feutech.edu.ph.';
                 }
             }
             if ($password === '') {
@@ -93,9 +93,9 @@ public function register(Request $request, EntityManagerInterface $entityManager
             }
 
             if (!$errors) {
-                $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['institutionalEmail']]);
+                $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
                 if ($existingUser) {
-                    $errors[] = 'This institutional email is already registered.';
+                    $errors[] = 'This email is already registered.';
                 }
             }
 
@@ -120,8 +120,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     'firstName' => $data['firstName'],
                     'middleName' => $data['middleName'] ?: null,
                     'lastName' => $data['lastName'],
-                    'email' => $data['institutionalEmail'],
-                    'institutionalEmail' => $data['institutionalEmail'],
+                    'email' => $data['email'],
                     'hashedPassword' => $hashedPassword,
                     'roles' => $roles,
                     'verificationCode' => $verificationCode,
@@ -137,7 +136,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $verificationEmail = (new Email())
                         ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
                         ->replyTo('hurstdale101@gmail.com')
-                        ->to($pendingData['institutionalEmail'])
+                        ->to($pendingData['email'])
                         ->subject('Reserva FTIC - Verify Your Registration')
                         ->text(sprintf('Hi %s %s, your Reserva FTIC verification code is %s. Enter it on the site to complete registration.', $data['firstName'], $data['lastName'], $verificationCode))
                         ->html($this->renderView('email/registration_verification.html.twig', [
@@ -146,14 +145,14 @@ public function register(Request $request, EntityManagerInterface $entityManager
                             'name' => $data['firstName'] . ' ' . $data['lastName'],
                         ]));
 
-                    $logger->info('Sending registration verification email', ['to' => $pendingData['institutionalEmail']]);
+                    $logger->info('Sending registration verification email', ['to' => $pendingData['email']]);
 
                     $mailer->send($verificationEmail);
 
-                    $logger->info('Registration verification email sent successfully', ['to' => $pendingData['institutionalEmail']]);
+                    $logger->info('Registration verification email sent successfully', ['to' => $pendingData['email']]);
                 } catch (\Exception $e) {
                     $logger->error('Failed to send registration verification email', [
-                        'to' => $pendingData['institutionalEmail'],
+                        'to' => $pendingData['email'],
                         'error' => $e->getMessage(),
                     ]);
                     $errors[] = 'Verification code email could not be sent: ' . $e->getMessage() . '. Please try again.';
@@ -237,7 +236,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $user->setLastName($pendingData['lastName']);
                     $user->setIdentification(null);
                     $user->setEmail($pendingData['email']);
-                    $user->setInstitutionalEmail($pendingData['institutionalEmail']);
+                    $user->setInstitutionalEmail(null);
                     $user->setPassword($pendingData['hashedPassword']);
                     $user->setRoles($pendingData['roles']);
                     $user->setIsVerified(true);  // Verified immediately
@@ -317,7 +316,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $verificationEmail = (new Email())
                         ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
                         ->replyTo('hurstdale101@gmail.com')
-                        ->to($pendingData['institutionalEmail'])
+                        ->to($pendingData['email'])
                         ->subject('Reserva FTIC - New Verification Code')
                         ->text(sprintf('Hi %s %s, your new Reserva FTIC verification code is %s.', $pendingData['firstName'], $pendingData['lastName'], $verificationCode))
                         ->html($this->renderView('email/registration_verification.html.twig', [
@@ -367,7 +366,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                         $verificationEmail = (new Email())
                             ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
                             ->replyTo('hurstdale101@gmail.com')
-                            ->to($user->getInstitutionalEmail())
+                            ->to($user->getEmail())
                             ->subject('Reserva FTIC - New Verification Code')
                             ->text(sprintf('Hi %s, your new Reserva FTIC verification code is %s.', $user->getFirstName() ?: $user->getEmail(), $verificationCode))
                             ->html($this->renderView('email/registration_verification.html.twig', [

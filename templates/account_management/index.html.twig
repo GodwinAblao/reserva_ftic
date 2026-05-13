@@ -41,6 +41,8 @@
                             <span class="pill-role">
                                 {% if 'ROLE_SUPER_ADMIN' in user.roles %}
                                     SUPER ADMIN
+                                {% elseif 'ROLE_ADMIN' in user.roles %}
+                                    ADMIN
                                 {% else %}
                                     USER
                                 {% endif %}

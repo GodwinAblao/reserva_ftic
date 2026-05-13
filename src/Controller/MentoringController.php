@@ -126,7 +126,7 @@ class MentoringController extends AbstractController
     }
 
     #[Route('/super-admin', name: 'mentoring_super-admin', methods: ['GET'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function admin(Request $request, EntityManagerInterface $em): Response
     {
         $this->ensureFacultyMentorProfiles($em);
@@ -151,7 +151,7 @@ class MentoringController extends AbstractController
     }
 
     #[Route('/admin/mentor-requests', name: 'mentoring_admin_requests', methods: ['GET'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function adminMentorRequests(Request $request, EntityManagerInterface $em): Response
     {
         $statusFilter = trim((string) $request->query->get('status', ''));
@@ -279,7 +279,7 @@ $extension = $file->getClientOriginalExtension();
     }
 
 #[Route('/admin/application/{id}/{decision}', name: 'mentoring_review_application', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function reviewApplication(MentorApplication $application, string $decision, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('review_mentor_application_' . $application->getId(), (string) $request->request->get('_token'))) {
@@ -356,7 +356,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/application/{id}/delete', name: 'mentoring_delete_application', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function deleteApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('delete_mentor_application_' . $application->getId(), (string) $request->request->get('_token'))) {
@@ -376,7 +376,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/mentor', name: 'mentoring_create_mentor', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function createMentor(Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('create_mentor', (string) $request->request->get('_csrf_token'))) {
@@ -419,7 +419,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/mentor/{id}/edit', name: 'mentoring_edit_mentor', methods: ['GET', 'POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function editMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
     {
         if ($request->isMethod('POST')) {
@@ -452,7 +452,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/mentor/{id}/delete', name: 'mentoring_delete_mentor', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function deleteMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('delete_mentor_' . $mentor->getId(), (string) $request->request->get('_token'))) {
@@ -485,7 +485,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/mentor/{id}/availability', name: 'mentoring_add_availability', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function addAvailability(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('mentor_availability_' . $mentor->getId(), (string) $request->request->get('_token'))) {
@@ -742,7 +742,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/mentor-request/{id}/respond', name: 'mentoring_admin_request_respond', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function respondToAssistanceRequest(MentorCustomRequest $mentorRequest, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
     {
         if (!$this->isCsrfTokenValid('mentor_assistance_respond_' . $mentorRequest->getId(), (string) $request->request->get('_token'))) {
@@ -932,7 +932,7 @@ $validUntil = $request->request->get('valid_until');
 
 
     #[Route('/admin/appointment/{id}/{status}', name: 'mentoring_update_status', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function updateStatus(MentoringAppointment $appointment, string $status, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('mentoring_status_' . $appointment->getId(), (string) $request->request->get('_token'))) {

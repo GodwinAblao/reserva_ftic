@@ -79,6 +79,7 @@
                 <select name="roles[]" id="roles" multiple required>
                     <option value="ROLE_STUDENT" {% if 'ROLE_STUDENT' in user.roles %}selected{% endif %}>Student</option>
                     <option value="ROLE_FACULTY" {% if 'ROLE_FACULTY' in user.roles %}selected{% endif %}>Faculty</option>
+                    <option value="ROLE_ADMIN" {% if 'ROLE_ADMIN' in user.roles %}selected{% endif %}>Admin</option>
                     <option value="ROLE_SUPER_ADMIN" {% if 'ROLE_SUPER_ADMIN' in user.roles %}selected{% endif %}>Super Admin</option>
                 </select>
             </div>

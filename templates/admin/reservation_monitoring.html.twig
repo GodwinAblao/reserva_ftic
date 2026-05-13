@@ -1,0 +1,77 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Reservation Monitoring | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h2>Facility Reservation Monitoring</h2>
+        <p class="muted">View reservation requests, statuses, and facility schedule tools.</p>
+    </div>
+    <div class="button-group">
+        <a class="btn-secondary" href="{{ path('admin_reservations') }}">Review Requests</a>
+        <a class="btn-secondary" href="{{ path('admin_calendar') }}">Modify Facility Schedule</a>
+    </div>
+</div>
+
+<div class="stats-grid admin-stats">
+    {% for status, total in statusCounts %}
+        <div class="stat-card">
+            <div class="stat-value">{{ total }}</div>
+            <div class="stat-label">{{ status }}</div>
+        </div>
+    {% else %}
+        <div class="card-panel">No reservation status data yet.</div>
+    {% endfor %}
+</div>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Reservation Requests</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Facility</th>
+                    <th>Requester</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reservation in reservations %}
+                    <tr>
+                        <td>{{ reservation.facility.name }}</td>
+                        <td>{{ reservation.name }}</td>
+                        <td>{{ reservation.reservationDate|date('M d, Y') }}</td>
+                        <td><span class="status-chip">{{ reservation.status }}</span></td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4">No reservations yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="card-panel">
+        <h3>Facility Load</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Facility</th>
+                    <th>Requests</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for facility, total in facilityCounts %}
+                    <tr>
+                        <td>{{ facility }}</td>
+                        <td>{{ total }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="2">No facility data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

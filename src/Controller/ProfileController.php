@@ -45,8 +45,6 @@ class ProfileController extends AbstractController
                 $firstName = $request->request->get('first_name');
                 $middleName = $request->request->get('middle_name');
                 $lastName = $request->request->get('last_name');
-                $identification = $request->request->get('identification');
-                $institutionalEmail = $request->request->get('institutional_email');
                 $degree = $request->request->get('degree');
                 $degreeName = $request->request->get('degree_name');
                 $email = $request->request->get('email');
@@ -56,8 +54,6 @@ class ProfileController extends AbstractController
                 $user->setFirstName($firstName);
                 $user->setMiddleName($middleName);
                 $user->setLastName($lastName);
-                $user->setIdentification($identification);
-                $user->setInstitutionalEmail($institutionalEmail);
                 $user->setDegree($degree);
                 $user->setDegreeName($degreeName);
                 if ($email) $user->setEmail($email);

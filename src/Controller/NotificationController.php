@@ -31,16 +31,16 @@ class NotificationController extends AbstractController
         $data = array_map(function(Notification $n) {
             // compute a link appropriate to the notification and the current user's roles
             $link = '#';
-            if ($n->getType() === 'mentor_assistance' && $this->isGranted('ROLE_SUPER_ADMIN')) {
+            if ($n->getType() === 'mentor_assistance' && $this->isGranted('ROLE_ADMIN')) {
                 $link = $this->generateUrl('mentoring_admin_requests');
             } elseif (str_starts_with($n->getType(), 'mentor')) {
-                if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                if ($this->isGranted('ROLE_ADMIN')) {
                     $link = $this->generateUrl('mentoring_super-admin');
                 } else {
                     $link = $this->generateUrl('mentoring_index');
                 }
             } elseif ($n->getType() === 'reservation') {
-                if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                if ($this->isGranted('ROLE_ADMIN')) {
                     $link = $this->generateUrl('admin_reservations');
                 } else {
                     $link = $this->generateUrl('user_reservations');

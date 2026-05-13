@@ -1,0 +1,104 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Mentorship Coordination | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h2>Mentorship Coordination</h2>
+        <p class="muted">Review mentoring requests, assign mentors, and monitor sessions.</p>
+    </div>
+    <a class="btn-secondary" href="{{ path('mentoring_super-admin') }}">Open Coordination Tools</a>
+</div>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Review Mentoring Requests</h3>
+        <div class="compact-list">
+            {% for request in requests %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ request.fullName ?: request.student.email }}</strong>
+                        <p>{{ request.preferredExpertise ?: request.mentorProfile.displayName|default('General mentoring') }}</p>
+                    </div>
+                    <span class="status-chip">{{ request.status }}</span>
+                </div>
+            {% else %}
+                <p class="muted">No mentoring requests yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card-panel">
+        <h3>Assign Mentor To Mentee</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Mentor</th>
+                    <th>Expertise</th>
+                    <th>Sessions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mentor in mentors %}
+                    <tr>
+                        <td>{{ mentor.displayName }}</td>
+                        <td>{{ mentor.specialization }}</td>
+                        <td>{{ mentor.engagementPoints }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3">No mentors yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+<section class="card-panel">
+    <h3>Monitor Mentoring Session</h3>
+    <table class="accounts-table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Mentor</th>
+                <th>Schedule</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for appointment in appointments %}
+                <tr>
+                    <td>{{ appointment.student.email }}</td>
+                    <td>{{ appointment.mentor.displayName }}</td>
+                    <td>{{ appointment.scheduledAt|date('M d, Y h:i A') }}</td>
+                    <td><span class="status-chip">{{ appointment.status }}</span></td>
+                </tr>
+            {% else %}
+                <tr><td colspan="4">No mentoring sessions yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card-panel">
+    <h3>Most Requested Experties</h3>
+    <table class="accounts-table">
+        <thead>
+            <tr>
+                <th>Expertise</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expertise, total in topExpertise %}
+                <tr>
+                    <td>{{ expertise }}</td>
+                    <td>{{ total }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="2">No expertise requests yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

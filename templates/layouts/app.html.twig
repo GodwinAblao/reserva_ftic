@@ -30,6 +30,19 @@
                 <a class="nav-link {{ app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_super-admin') }}">
                     Mentoring
                 </a>
+                {% elseif is_granted('ROLE_ADMIN') %}
+                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_home' ? 'active' : '' }}" href="{{ path('admin_home') }}">
+                    Admin Dashboard
+                </a>
+                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_reservation_monitoring' or app.request.attributes.get('_route') starts with 'admin_calendar' or app.request.attributes.get('_route') == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_reservation_monitoring') }}">
+                    Reservation Monitoring
+                </a>
+                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_mentorship_coordination' or app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('admin_mentorship_coordination') }}">
+                    Mentorship Coordination
+                </a>
+                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_reports' or app.request.attributes.get('_route') starts with 'analytics_' ? 'active' : '' }}" href="{{ path('admin_reports') }}">
+                    Reports
+                </a>
                 {% else %}
                 <a class="nav-link {{ app.request.attributes.get('_route') == 'app_facility_index' ? 'active' : '' }}" href="{{ path('app_facility_index') }}">
                     Facility
@@ -49,7 +62,7 @@
 
 <div class="sidebar-footer">
                 <div class="pill-role">
-                    {{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : 'USER' }}
+                    {{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : (is_granted('ROLE_ADMIN') ? 'ADMIN' : 'USER') }}
                 </div>
                 <div>Signed in as {{ app.user ? app.user.userIdentifier : 'Guest' }}</div>
                 <div><a href="{{ path('app_logout') }}" data-clear-notification-session>Log out</a></div>

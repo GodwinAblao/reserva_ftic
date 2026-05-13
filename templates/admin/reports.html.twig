@@ -1,0 +1,120 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Admin Reports | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h2>Reports</h2>
+        <p class="muted">Generate and download operational reports for reservations and mentoring.</p>
+    </div>
+    <div class="button-group">
+        <a class="btn-secondary" href="{{ path('admin_reports_download', {type: 'reservations'}) }}">Download Reservations CSV</a>
+        <a class="btn-secondary" href="{{ path('admin_reports_download', {type: 'mentoring'}) }}">Download Mentoring CSV</a>
+        <a class="btn-secondary" href="{{ path('analytics_dashboard') }}">Open Analytics</a>
+    </div>
+</div>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Reservation Summaries</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for status, total in reservationStatusCounts %}
+                    <tr>
+                        <td>{{ status }}</td>
+                        <td>{{ total }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="2">No reservation data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="card-panel">
+        <h3>Mentoring</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Record</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for status, total in mentoringStatusCounts.appointments %}
+                    <tr>
+                        <td>Session</td>
+                        <td>{{ status }}</td>
+                        <td>{{ total }}</td>
+                    </tr>
+                {% endfor %}
+                {% for status, total in mentoringStatusCounts.requests %}
+                    <tr>
+                        <td>Request</td>
+                        <td>{{ status }}</td>
+                        <td>{{ total }}</td>
+                    </tr>
+                {% else %}
+                    {% if mentoringStatusCounts.appointments is empty %}
+                        <tr><td colspan="3">No mentoring data yet.</td></tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Most Requested Experties</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Expertise</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expertise, total in topExpertise %}
+                    <tr>
+                        <td>{{ expertise }}</td>
+                        <td>{{ total }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="2">No expertise data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="card-panel">
+        <h3>Function Coverage</h3>
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Area</th>
+                    <th>Priority</th>
+                    <th>Weight</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for module in modules %}
+                    <tr>
+                        <td>{{ module.area }}</td>
+                        <td><span class="priority-chip priority-{{ module.priority|lower }}">{{ module.priority }}</span></td>
+                        <td>{{ module.weight }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

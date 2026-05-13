@@ -15,7 +15,9 @@ class DashboardController extends AbstractController
     public function index(ReservationRepository $reservationRepo): Response
     {
         $user = $this->getUser();
-        $reservations = $user ? $reservationRepo->findByUser($user) : [];
+        $reservationRows = $this->isGranted('ROLE_ADMIN')
+            ? $reservationRepo->findBy([], ['reservationDate' => 'DESC'])
+            : ($user ? $reservationRepo->findByUser($user) : []);
 
         // Categorize reservations by status
         $categorized = [
@@ -26,7 +28,7 @@ class DashboardController extends AbstractController
             'Cancelled' => [],
         ];
 
-        foreach ($reservations as $reservation) {
+        foreach ($reservationRows as $reservation) {
             $status = $reservation->getStatus();
             if (isset($categorized[$status])) {
                 $categorized[$status][] = $reservation;
@@ -35,6 +37,7 @@ class DashboardController extends AbstractController
 
         return $this->render('dashboard/index.html.twig', [
             'reservations' => $categorized,
+            'dashboardScope' => $this->isGranted('ROLE_ADMIN') ? 'admin' : 'user',
         ]);
     }
 }

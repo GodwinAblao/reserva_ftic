@@ -1,0 +1,99 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Admin Dashboard | Reserva FTIC{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div>
+        <h2>Admin Dashboard</h2>
+        <p class="muted">Operational view for admin@fit.edu.ph.</p>
+    </div>
+    <span class="pill-role">ADMIN</span>
+</div>
+
+<div class="admin-actions">
+    <a class="btn-secondary" href="{{ path('app_profile') }}">User Profile</a>
+    <a class="btn-secondary" href="{{ path('admin_reservation_monitoring') }}">Facility Reservation Monitoring</a>
+    <a class="btn-secondary" href="{{ path('admin_mentorship_coordination') }}">Mentorship Coordination</a>
+    <a class="btn-secondary" href="{{ path('admin_reports') }}">Reports</a>
+</div>
+
+<div class="stats-grid admin-stats">
+    <div class="stat-card">
+        <div class="stat-value">{{ reservationStatusCounts|reduce((sum, total) => sum + total, 0) }}</div>
+        <div class="stat-label">Reserved Facilities</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ mentoringStatusCounts.appointments|reduce((sum, total) => sum + total, 0) }}</div>
+        <div class="stat-label">Mentoring Sessions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ reservationStatusCounts.Pending|default(0) }}</div>
+        <div class="stat-label">Pending Reservations</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ mentoringStatusCounts.requests.Pending|default(0) + mentoringStatusCounts.requests.pending|default(0) }}</div>
+        <div class="stat-label">Mentor Requests</div>
+    </div>
+</div>
+
+<div class="module-grid">
+    <section class="card-panel">
+        <h3>Reserved Facility</h3>
+        <div class="compact-list">
+            {% for reservation in upcomingReservations %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ reservation.facility.name }}</strong>
+                        <p>{{ reservation.name }} - {{ reservation.reservationDate|date('M d, Y') }}</p>
+                    </div>
+                    <span class="status-chip">{{ reservation.status }}</span>
+                </div>
+            {% else %}
+                <p class="muted">No approved reservations yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card-panel">
+        <h3>Mentoring Session</h3>
+        <div class="compact-list">
+            {% for session in upcomingMentoringSessions %}
+                <div class="list-row">
+                    <div>
+                        <strong>{{ session.mentor.displayName }}</strong>
+                        <p>{{ session.student.email }} - {{ session.scheduledAt|date('M d, Y h:i A') }}</p>
+                    </div>
+                    <span class="status-chip">{{ session.status }}</span>
+                </div>
+            {% else %}
+                <p class="muted">No mentoring sessions yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<section class="card-panel">
+    <h3>Admin Functions</h3>
+    <table class="accounts-table">
+        <thead>
+            <tr>
+                <th>Area</th>
+                <th>Priority</th>
+                <th>Function</th>
+                <th>Weight</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for module in modules %}
+                <tr>
+                    <td>{{ module.area }}</td>
+                    <td><span class="priority-chip priority-{{ module.priority|lower }}">{{ module.priority }}</span></td>
+                    <td>{{ module.task }}</td>
+                    <td>{{ module.weight }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

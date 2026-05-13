@@ -18,7 +18,7 @@
             {% elseif applications|length > 0 %}
                 <button type="button" class="btn-secondary" disabled>Application Pending</button>
             {% endif %}
-            {% if is_granted('ROLE_SUPER_ADMIN') %}
+            {% if is_granted('ROLE_ADMIN') %}
                 <a href="{{ path('mentoring_super-admin') }}" class="btn-primary">Manage Mentoring</a>
             {% endif %}
         </div>

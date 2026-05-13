@@ -160,24 +160,47 @@ public function reserve(
         // Get booked times for calendar
         $bookedTimes = [];
         $pendingTimes = [];
+        $classTimes = [];
         $startDate = new \DateTime();
         for ($i = 0; $i < 30; $i++) {
             $date = (new \DateTime())->modify("+$i days");
             $dateStr = $date->format('Y-m-d');
             $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
-            $blockedRanges = array_map(
-                fn($block) => [
-                    'start' => $block->getStartTime(),
-                    'end' => $block->getEndTime(),
-                ],
-                $blockRepo->findForDate($facility, $date)
-            );
             $bookedTimes[$dateStr] = array_map(
                 fn($range) => [
                     'start' => $range['start']->format('H:i'),
                     'end' => $range['end']->format('H:i'),
                 ],
-                array_merge($ranges, $blockedRanges)
+                $ranges
+            );
+            // Separate class schedules from other blocks
+            $allBlocks = $blockRepo->findForDate($facility, $date);
+            $classBlocks = array_filter($allBlocks, fn($block) => $block->getType() === 'Class Schedule');
+            $otherBlocks = array_filter($allBlocks, fn($block) => $block->getType() !== 'Class Schedule');
+            
+            $classTimes[$dateStr] = array_map(
+                fn($block) => [
+                    'start' => $block->getStartTime()->format('H:i'),
+                    'end' => $block->getEndTime()->format('H:i'),
+                ],
+                array_values($classBlocks)
+            );
+            $blockedRanges = array_map(
+                fn($block) => [
+                    'start' => $block->getStartTime(),
+                    'end' => $block->getEndTime(),
+                ],
+                array_values($otherBlocks)
+            );
+            $bookedTimes[$dateStr] = array_merge(
+                $bookedTimes[$dateStr],
+                array_map(
+                    fn($range) => [
+                        'start' => $range['start']->format('H:i'),
+                        'end' => $range['end']->format('H:i'),
+                    ],
+                    $blockedRanges
+                )
             );
             $pendingRanges = $reservationRepo->getPendingRangesForDate($facility, $date);
             $pendingTimes[$dateStr] = array_map(
@@ -201,6 +224,7 @@ public function reserve(
             'facility' => $facility,
             'bookedTimes' => json_encode($bookedTimes),
             'pendingTimes' => json_encode($pendingTimes),
+            'classTimes' => json_encode($classTimes),
             'userEmail' => $userEmail,
             'userName' => $userName,
         ]);
@@ -221,17 +245,29 @@ public function reserve(
 
         $bookedTimes = [];
         $pendingTimes = [];
+        $classTimes = [];
 
         for ($i = 0; $i < $days; $i++) {
             $date = (clone $startDate)->modify("+$i days");
             $dateStr = $date->format('Y-m-d');
             $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
+            $allBlocks = $blockRepo->findForDate($facility, $date);
+            $classBlocks = array_filter($allBlocks, fn($block) => $block->getType() === 'Class Schedule');
+            $otherBlocks = array_filter($allBlocks, fn($block) => $block->getType() !== 'Class Schedule');
+            
+            $classTimes[$dateStr] = array_map(
+                fn($block) => [
+                    'start' => $block->getStartTime()->format('H:i'),
+                    'end' => $block->getEndTime()->format('H:i'),
+                ],
+                array_values($classBlocks)
+            );
             $blockedRanges = array_map(
                 fn($block) => [
                     'start' => $block->getStartTime(),
                     'end' => $block->getEndTime(),
                 ],
-                $blockRepo->findForDate($facility, $date)
+                array_values($otherBlocks)
             );
             $bookedTimes[$dateStr] = array_map(
                 fn($range) => [
@@ -253,6 +289,7 @@ public function reserve(
         return $this->json([
             'bookedTimes' => $bookedTimes,
             'pendingTimes' => $pendingTimes,
+            'classTimes' => $classTimes,
         ]);
     }
 

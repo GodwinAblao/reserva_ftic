@@ -45,6 +45,10 @@
                     <span>Booked</span>
                 </div>
                 <div class="legend-item">
+                    <div class="slot class"></div>
+                    <span>Class</span>
+                </div>
+                <div class="legend-item">
                     <div class="slot pending"></div>
                     <span>Pending</span>
                 </div>
@@ -288,6 +292,13 @@
         cursor: not-allowed;
     }
 
+    .time-slot.class {
+        background: #e8d5f7;
+        border-color: #9b59b6;
+        color: #6c3483;
+        cursor: not-allowed;
+    }
+
     .time-slot.pending {
         background: #d9edf7;
         border-color: #5bc0de;
@@ -332,6 +343,11 @@
     .legend-item .slot.booked {
         background: #fff3cd;
         border-color: #ffc107;
+    }
+
+    .legend-item .slot.class {
+        background: #e8d5f7;
+        border-color: #9b59b6;
     }
 
     .legend-item .slot.pending {
@@ -573,6 +589,17 @@
         }
         return raw || {};
     })();
+    let classTimesData = (() => {
+        const raw = {{ classTimes|raw }};
+        if (typeof raw === 'string') {
+            try {
+                return JSON.parse(raw);
+            } catch (error) {
+                return {};
+            }
+        }
+        return raw || {};
+    })();
     let currentMonth = new Date();
     let selectedDate = null;
     let selectedStartTime = null;
@@ -611,7 +638,22 @@
 
         // Form submission
         form.addEventListener('submit', submitReservation);
-        window.setInterval(() => refreshAvailabilityData(false), 15000);
+
+        // Auto-refresh every 15 seconds
+        window.setInterval(() => {
+            if (!document.hidden) {
+                refreshAvailabilityData(false);
+            }
+        }, 15000);
+
+        // Refresh when tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                refreshAvailabilityData(false);
+            }
+        });
+
+        // Refresh when window gains focus
         window.addEventListener('focus', () => refreshAvailabilityData(false));
     }
 
@@ -680,7 +722,10 @@
                 cell.classList.add('past');
             } else {
                 const dateStr = formatLocalDate(date);
-                if (bookedTimesData[dateStr] && bookedTimesData[dateStr].length > 0) {
+                const hasBooking = (bookedTimesData[dateStr] && bookedTimesData[dateStr].length > 0) ||
+                                   (classTimesData[dateStr] && classTimesData[dateStr].length > 0) ||
+                                   (pendingTimesData[dateStr] && pendingTimesData[dateStr].length > 0);
+                if (hasBooking) {
                     cell.classList.add('has-booking');
                 }
 
@@ -715,6 +760,7 @@
         const dateStr = formatLocalDate(date);
         const bookedRanges = bookedTimesData[dateStr] || [];
         const pendingRanges = pendingTimesData[dateStr] || [];
+        const classRanges = classTimesData[dateStr] || [];
         
         // Fixed 50-minute interval logic: 7:00, 7:50, 8:00, 8:50...
         const slots = [];
@@ -730,7 +776,11 @@
             slot.className = 'time-slot';
             slot.textContent = timeStr;
 
-            if (isTimeBooked(timeStr, bookedRanges)) {
+            if (isTimeBooked(timeStr, classRanges)) {
+                slot.classList.add('class');
+                slot.disabled = true;
+                slot.title = 'This time range has a scheduled class';
+            } else if (isTimeBooked(timeStr, bookedRanges)) {
                 slot.classList.add('booked');
                 slot.disabled = true;
                 slot.title = 'This time range is booked';
@@ -950,6 +1000,7 @@
         const ranges = [
             ...(bookedTimesData[dateStr] || []),
             ...(pendingTimesData[dateStr] || []),
+            ...(classTimesData[dateStr] || []),
         ];
 
         return ranges.some(range => selectedStart < timeToMinutes(range.end) && selectedEnd > timeToMinutes(range.start));
@@ -979,6 +1030,7 @@
             const data = await response.json();
             bookedTimesData = data.bookedTimes || {};
             pendingTimesData = data.pendingTimes || {};
+            classTimesData = data.classTimes || {};
             renderCalendar();
 
             if (selectedDate) {

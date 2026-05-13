@@ -10,6 +10,9 @@ security:
                 class: App\Entity\User
                 property: email
 
+    role_hierarchy:
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+
     firewalls:
         dev:
             # Ensure dev tools and static assets are always allowed
@@ -39,6 +42,9 @@ security:
         - { path: ^/verify-registration/resend, roles: PUBLIC_ACCESS }
         - { path: ^/logout, roles: PUBLIC_ACCESS }
         - { path: ^/account-manager, roles: ROLE_SUPER_ADMIN }
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/super-admin, roles: ROLE_ADMIN }
+        - { path: ^/analytics, roles: ROLE_ADMIN }
         - { path: ^/dashboard, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/profile, roles: IS_AUTHENTICATED_FULLY }
 

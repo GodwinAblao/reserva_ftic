@@ -8,6 +8,8 @@
         <div class="pill-role">
             {% if is_granted('ROLE_SUPER_ADMIN') %}
                 SUPER ADMIN
+            {% elseif is_granted('ROLE_ADMIN') %}
+                ADMIN
             {% elseif is_granted('ROLE_FACULTY') %}
                 FACULTY
             {% elseif is_granted('ROLE_STUDENT') %}
@@ -107,7 +109,11 @@
         {% if reservations['Approved']|length == 0 and reservations['Pending']|length == 0 
             and reservations['Suggested']|length == 0 %}
             <div class="card-panel empty-state">
-                <p>No reservations yet. <a href="{{ path('app_facility_index') }}" class="link-button">Browse facilities</a> to make your first reservation.</p>
+                {% if dashboardScope|default('user') == 'admin' %}
+                    <p>No reservation records yet.</p>
+                {% else %}
+                    <p>No reservations yet. <a href="{{ path('app_facility_index') }}" class="link-button">Browse facilities</a> to make your first reservation.</p>
+                {% endif %}
             </div>
         {% endif %}
     {% endif %}
