@@ -1229,6 +1229,12 @@
                 return;
             }
 
+            // Debug logging
+            console.log('Calendar data loaded:', events.length, 'events');
+            console.log('Events:', events);
+            console.log('Current status filter:', selectedStatus);
+            console.log('Date range:', formatDateForAPI(startDate), 'to', formatDateForAPI(endDate));
+
             calendarEventsCache.set(cacheKey, events);
             renderCalendarEvents(events, startDate, renderDate, renderMode);
             setCalendarStatus(`Loaded ${events.length} calendar item${events.length === 1 ? '' : 's'} successfully.`, 'success', false);

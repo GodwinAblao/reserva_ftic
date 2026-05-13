@@ -13,16 +13,6 @@
 
     <div class="card-panel">
         <form method="post" enctype="multipart/form-data" style="max-width: 600px;">
-            <div class="form-group">
-                <label for="identification">Identification</label>
-                <input type="text" name="identification" id="identification" value="{{ user.identification }}" placeholder="Student/Employee ID">
-            </div>
-
-            <div class="form-group">
-                <label for="institutional_email">Institutional Email</label>
-                <input type="email" name="institutional_email" id="institutional_email" value="{{ user.institutionalEmail }}" placeholder="user@fit.edu.ph">
-            </div>
-
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                 <div class="form-group">
                     <label for="first_name">First Name</label>

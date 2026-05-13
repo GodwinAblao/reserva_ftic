@@ -27,6 +27,11 @@ doctrine:
         controller_resolver:
             auto_mapping: false
 
+when@dev:
+    doctrine:
+        orm:
+            auto_generate_proxy_classes: 2  # File-based proxy generation for Windows compatibility
+
 when@test:
     doctrine:
         dbal:

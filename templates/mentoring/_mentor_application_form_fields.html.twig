@@ -70,10 +70,16 @@
         <textarea name="supportingDescription" id="mentor_supportingDescription" class="form-input" rows="4" placeholder="Share your strengths, experience, and why you want to mentor other students." required></textarea>
     </div>
     <div class="form-group">
-        <label for="mentor_proofOfExpertise">Proof of Expertise (optional)</label>
+        <label for="mentor_proofOfExpertise">
+            Proof of Expertise
+            <span class="required">*</span>
+        </label>
         <div class="file-upload-wrapper">
-            <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" class="file-input" multiple accept=".jpg,.jpeg,.png,.pdf">
-            <div class="file-upload-hint">Accepted formats: JPG, PNG, PDF. Max 5MB per file. You can select multiple files.</div>
+            <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" class="file-input" multiple accept=".jpg,.jpeg,.png,.pdf" required>
+            <div class="file-upload-hint">
+                <strong class="required-text">At least one file is required.</strong>
+                Accepted formats: JPG, PNG, PDF. Max 5MB per file. You can select multiple files.
+            </div>
         </div>
     </div>
 </div>

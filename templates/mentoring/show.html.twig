@@ -51,7 +51,7 @@
                     </div>
                     <div class="credential-item">
                         <span class="credential-label">Contact</span>
-                        <span class="credential-value">{{ user.institutionalEmail ?: user.email }}</span>
+                        <span class="credential-value">{{ user.email }}</span>
                     </div>
                 </div>
 
@@ -72,7 +72,7 @@
 
         {% if canSendCustomRequest %}
             <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form">
-                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}" id="custom_request_token">
             
             <div class="form-section">
                 <label for="custom_message" class="form-label">
@@ -359,64 +359,27 @@
         const charCount = document.getElementById('char-count');
         const customRequestForm = document.querySelector('.custom-request-form');
         const submitButton = document.getElementById('submitCustomRequest');
-        
+
+        console.log('Custom request form elements:', {
+            textarea: !!textarea,
+            charCount: !!charCount,
+            customRequestForm: !!customRequestForm,
+            submitButton: !!submitButton
+        });
+
         if (textarea && charCount) {
             function updateCharCount() {
                 charCount.textContent = textarea.value.length;
             }
-            
+
             textarea.addEventListener('input', updateCharCount);
             textarea.addEventListener('change', updateCharCount);
         }
 
-        // Handle custom request form submission
+        // Regular form submission (no AJAX to avoid JavaScript errors)
         if (customRequestForm && submitButton) {
-            customRequestForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                // Add loading state to button
-                submitButton.classList.add('submit-loading');
-                submitButton.disabled = true;
-
-                try {
-                    const formData = new FormData(customRequestForm);
-                    const response = await fetch(customRequestForm.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    // Remove loading state
-                    submitButton.classList.remove('submit-loading');
-                    submitButton.disabled = false;
-
-                    if (response.ok) {
-                        // Show success modal
-                        showSuccessModal();
-                        
-                        // Reset form
-                        customRequestForm.reset();
-                        if (charCount) charCount.textContent = '0';
-                        
-                        // Auto-close modal after 4 seconds and redirect
-                        setTimeout(() => {
-                            closeSuccessModal();
-                            // Optional: refresh page to show updated requests
-                            window.location.reload();
-                        }, 4000);
-                    } else {
-                        // Show error
-                        alert('An error occurred. Please try again.');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    submitButton.classList.remove('submit-loading');
-                    submitButton.disabled = false;
-                    alert('An error occurred. Please try again.');
-                }
-            });
+            console.log('Form and button found, using regular submission');
+            // Form will submit normally without AJAX interference
         }
     });
 

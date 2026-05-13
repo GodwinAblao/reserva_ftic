@@ -167,6 +167,9 @@ class SuperAdminReservationController extends AbstractController
         $startDate = new \DateTime($start);
         $endDate = new \DateTime($end);
 
+        // Debug logging
+        error_log("Calendar Data API called - Start: $start, End: $end, Facility: $facilityId, Status: $status");
+
         // Only fetch reservations if not filtering by block-only status
         if (!$status || !in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Maintenance'], true)) {
             $qb = $reservationRepo->createQueryBuilder('r')
@@ -190,6 +193,9 @@ class SuperAdminReservationController extends AbstractController
 
             $reservations = $qb->getQuery()->getArrayResult();
 
+            // Debug logging
+            error_log("Calendar Data API - Found " . count($reservations) . " reservations");
+
             foreach ($reservations as $r) {
                 $data[] = [
                     'id' => $r['id'],
@@ -212,31 +218,39 @@ class SuperAdminReservationController extends AbstractController
             }
         }
 
-        // Fetch schedule blocks
-        $blockFacility = $facilityId ? $facilityRepo->find((int) $facilityId) : null;
-        $blockType = $status && in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Maintenance'], true) ? $status : null;
-        $blocks = $blockRepo->findBetween($startDate, $endDate, $blockFacility, $blockType);
+        $reservationOnlyStatuses = ['Approved', 'Pending', 'Rejected'];
+        $blockStatuses = ['Class Schedule', 'Blocked', 'Manual', 'Maintenance', 'Imported'];
         
-        foreach ($blocks as $block) {
-            $facility = $block->getFacility();
-            if ($facilityId && $facility->getId() != $facilityId) {
-                continue;
+        // Only fetch blocks if no status filter, or if status is a block type
+        if (!$status || in_array($status, $blockStatuses, true)) {
+            $blockFacility = $facilityId ? $facilityRepo->find((int) $facilityId) : null;
+            $blockType = $status && in_array($status, $blockStatuses, true) ? $status : null;
+            $blocks = $blockRepo->findBetween($startDate, $endDate, $blockFacility, $blockType);
+            
+            foreach ($blocks as $block) {
+                $facility = $block->getFacility();
+                if ($facilityId && $facility->getId() != $facilityId) {
+                    continue;
+                }
+                $data[] = [
+                    'id' => 'block_' . $block->getId(),
+                    'name' => $block->getTitle(),
+                    'email' => '',
+                    'contact' => '',
+                    'purpose' => $block->getNotes(),
+                    'status' => $block->getType() ?: 'Class Schedule',
+                    'capacity' => 0,
+                    'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
+                    'reservationStartTime' => $block->getStartTime()->format('H:i'),
+                    'reservationEndTime' => $block->getEndTime()->format('H:i'),
+                    'facility' => ['id' => $facility->getId(), 'name' => $facility->getName(), 'capacity' => $facility->getCapacity()],
+                    'isBlock' => true,
+                ];
             }
-            $data[] = [
-                'id' => 'block_' . $block->getId(),
-                'name' => $block->getTitle(),
-                'email' => '',
-                'contact' => '',
-                'purpose' => $block->getNotes(),
-                'status' => $block->getType() ?: 'Class Schedule',
-                'capacity' => 0,
-                'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
-                'reservationStartTime' => $block->getStartTime()->format('H:i'),
-                'reservationEndTime' => $block->getEndTime()->format('H:i'),
-                'facility' => ['id' => $facility->getId(), 'name' => $facility->getName(), 'capacity' => $facility->getCapacity()],
-                'isBlock' => true,
-            ];
         }
+
+        // Debug logging
+        error_log("Calendar Data API - Returning " . count($data) . " total items (reservations + blocks)");
 
         return $this->json(['reservations' => $data]);
     }

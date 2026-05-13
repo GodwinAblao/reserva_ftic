@@ -234,9 +234,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     $user->setFirstName($pendingData['firstName']);
                     $user->setMiddleName($pendingData['middleName']);
                     $user->setLastName($pendingData['lastName']);
-                    $user->setIdentification(null);
                     $user->setEmail($pendingData['email']);
-                    $user->setInstitutionalEmail(null);
                     $user->setPassword($pendingData['hashedPassword']);
                     $user->setRoles($pendingData['roles']);
                     $user->setIsVerified(true);  // Verified immediately

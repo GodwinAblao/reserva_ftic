@@ -29,12 +29,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private string $password = '';
 
-    #[ORM\Column(length: 100, nullable: true)]
-    private ?string $identification = null;
-
-    #[ORM\Column(length: 180, nullable: true)]
-    private ?string $institutionalEmail = null;
-
     #[ORM\Column(type: 'boolean')]
     private bool $isVerified = false;
 
@@ -117,30 +111,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function eraseCredentials(): void
     {
-    }
-
-    public function getIdentification(): ?string
-    {
-        return $this->identification;
-    }
-
-    public function setIdentification(?string $identification): self
-    {
-        $this->identification = $identification;
-
-        return $this;
-    }
-
-    public function getInstitutionalEmail(): ?string
-    {
-        return $this->institutionalEmail;
-    }
-
-    public function setInstitutionalEmail(?string $institutionalEmail): self
-    {
-        $this->institutionalEmail = $institutionalEmail;
-
-        return $this;
     }
 
     public function isVerified(): bool

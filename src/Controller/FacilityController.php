@@ -29,7 +29,7 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/management', name: 'app_facility_management', methods: ['GET'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function management(FacilityRepository $facilityRepository): Response
     {
         $facilities = $facilityRepository->findAll();
@@ -40,7 +40,7 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/new', name: 'app_facility_new', methods: ['GET', 'POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function new(Request $request, FacilityRepository $facilityRepository): Response
     {
         $facility = new Facility();
@@ -73,7 +73,7 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'app_facility_edit', methods: ['GET', 'POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function edit(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
     {
         if ($request->isMethod('POST')) {
@@ -112,7 +112,7 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'app_facility_delete', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
     {
         if ($this->isCsrfTokenValid('delete' . $facility->getId(), $request->request->get('_token'))) {
@@ -125,7 +125,7 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/{id}/images/reorder', name: 'app_facility_images_reorder', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function reorderImages(Request $request, Facility $facility, FacilityImageRepository $imageRepository): Response
     {
         $positions = $request->request->all('positions');
@@ -145,7 +145,7 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/images/{id}/delete', name: 'app_facility_image_delete', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function deleteImage(Request $request, FacilityImage $image, FacilityImageRepository $imageRepository): Response
     {
         $facilityId = $image->getFacility()?->getId();

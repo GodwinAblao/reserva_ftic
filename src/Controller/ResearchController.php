@@ -32,7 +32,7 @@ class ResearchController extends AbstractController
             ->addSelect('u')
             ->orderBy('r.createdAt', 'DESC');
 
-        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
+        if (!$this->isGranted('ROLE_ADMIN')) {
             $qb->andWhere('r.visibility = :public OR r.author = :author')
                 ->setParameter('public', 'Public')
                 ->setParameter('author', $this->getUser());
@@ -57,7 +57,7 @@ class ResearchController extends AbstractController
             ->select('DISTINCT r.category')
             ->from(ResearchContent::class, 'r');
 
-        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
+        if (!$this->isGranted('ROLE_ADMIN')) {
             $categoriesQb->andWhere('r.visibility = :public OR r.author = :author')
                 ->setParameter('public', 'Public')
                 ->setParameter('author', $this->getUser());
@@ -78,7 +78,7 @@ class ResearchController extends AbstractController
     }
 
     #[Route('/new/{type}', name: 'research_new', methods: ['GET', 'POST'], defaults: ['type' => 'Article'], requirements: ['type' => 'Article|Research|News'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function new(Request $request, EntityManagerInterface $em, SluggerInterface $slugger, string $type = 'Article'): Response
     {
         if ($request->isMethod('POST')) {
@@ -137,7 +137,7 @@ class ResearchController extends AbstractController
     #[Route('/{id}/edit', name: 'research_edit', methods: ['GET', 'POST'])]
     public function edit(ResearchContent $item, Request $request, EntityManagerInterface $em): Response
     {
-        if (!$this->isGranted('ROLE_SUPER_ADMIN') && $item->getAuthor() !== $this->getUser()) {
+        if (!$this->isGranted('ROLE_ADMIN') && $item->getAuthor() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -174,7 +174,7 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
     }
 
     #[Route('/{id}/delete', name: 'research_delete', methods: ['POST'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(ResearchContent $item, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('research_delete_' . $item->getId(), (string) $request->request->get('_token'))) {
@@ -192,7 +192,7 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
     #[Route('/{id}', name: 'research_show', methods: ['GET'])]
     public function show(ResearchContent $item): Response
     {
-        if (!$this->isGranted('ROLE_SUPER_ADMIN') && $item->getVisibility() !== 'Public' && $item->getAuthor() !== $this->getUser()) {
+        if (!$this->isGranted('ROLE_ADMIN') && $item->getVisibility() !== 'Public' && $item->getAuthor() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 

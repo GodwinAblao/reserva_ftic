@@ -1,99 +1,796 @@
 {% extends 'layouts/app.html.twig' %}
 
-{% block title %}Admin Dashboard | Reserva FTIC{% endblock %}
+{% block title %}Dashboard | Reserva FTIC{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+    /* Professional Dashboard Styles */
+    .dashboard-container {
+        max-width: 1400px;
+    }
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .dashboard-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #111827;
+        letter-spacing: -0.025em;
+    }
+
+    .dashboard-subtitle {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .connection-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.875rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .connection-status.online {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .connection-status.connecting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .connection-status.offline {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .connection-status.online .status-dot {
+        background: #22c55e;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Stats Grid - Professional */
+    .stats-grid-pro {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card-pro {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .stat-card-pro:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+    }
+
+    .stat-card-pro::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .stat-card-pro.primary::before { background: #006633; }
+    .stat-card-pro.success::before { background: #059669; }
+    .stat-card-pro.warning::before { background: #d97706; }
+    .stat-card-pro.info::before { background: #0369a1; }
+
+    .stat-header-pro {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon-pro {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-card-pro.primary .stat-icon-pro { background: #ecfdf5; color: #006633; }
+    .stat-card-pro.success .stat-icon-pro { background: #ecfdf5; color: #059669; }
+    .stat-card-pro.warning .stat-icon-pro { background: #fffbeb; color: #d97706; }
+    .stat-card-pro.info .stat-icon-pro { background: #eff6ff; color: #0369a1; }
+
+    .stat-value-pro {
+        font-size: 1.875rem;
+        font-weight: 600;
+        color: #111827;
+        letter-spacing: -0.025em;
+    }
+
+    .stat-label-pro {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .stat-change-pro {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+
+    /* Module Grid */
+    .module-grid-pro {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .card-panel-pro {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+    }
+
+    .section-header-pro {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+    }
+
+    .section-title-pro {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111827;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Chart */
+    .chart-container-pro {
+        position: relative;
+        height: 240px;
+    }
+
+    /* Tabs */
+    .filter-tabs-pro {
+        display: flex;
+        gap: 0.25rem;
+        background: #f3f4f6;
+        padding: 0.25rem;
+        border-radius: 8px;
+    }
+
+    .filter-tab-pro {
+        padding: 0.5rem 0.875rem;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .filter-tab-pro:hover {
+        color: #374151;
+    }
+
+    .filter-tab-pro.active {
+        background: #ffffff;
+        color: #111827;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Activity Feed */
+    .activity-feed-pro {
+        max-height: 280px;
+        overflow-y: auto;
+    }
+
+    .activity-item-pro {
+        display: flex;
+        gap: 0.875rem;
+        padding: 0.875rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .activity-item-pro:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon-pro {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .activity-content-pro {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .activity-title-pro {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #111827;
+        margin-bottom: 0.125rem;
+    }
+
+    .activity-desc-pro {
+        font-size: 0.8125rem;
+        color: #6b7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .activity-time-pro {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        white-space: nowrap;
+    }
+
+    /* Status Badges */
+    .status-badge-pro {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.625rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-badge-pro.pending { background: #fef3c7; color: #92400e; }
+    .status-badge-pro.approved { background: #d1fae5; color: #065f46; }
+    .status-badge-pro.rejected { background: #fee2e2; color: #991b1b; }
+    .status-badge-pro.completed { background: #dbeafe; color: #1e40af; }
+
+    /* List */
+    .compact-list-pro {
+        margin-top: 1rem;
+    }
+
+    .list-row-pro {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.875rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .list-row-pro:last-child {
+        border-bottom: none;
+    }
+
+    .list-row-pro > div:first-child {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .list-row-pro strong {
+        font-weight: 500;
+        color: #111827;
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .list-row-pro p {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    /* Buttons */
+    .btn-icon-pro {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        background: #f3f4f6;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+    }
+
+    .btn-icon-pro:hover {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .admin-actions-pro {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-secondary-pro {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1rem;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.15s ease;
+    }
+
+    .btn-secondary-pro:hover {
+        background: #f9fafb;
+        border-color: #9ca3af;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+        font-size: 0.875rem;
+    }
+
+    /* Loading State */
+    .loading-skeleton {
+        background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+        background-size: 200% 100%;
+        animation: skeleton 1.5s infinite;
+        border-radius: 6px;
+    }
+
+    @keyframes skeleton {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .module-grid-pro {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid-pro {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="content-header">
+<!-- SVG Icons Definition -->
+<svg style="display: none;">
+    <defs>
+        <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+        </symbol>
+        <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </symbol>
+        <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </symbol>
+        <symbol id="icon-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </symbol>
+        <symbol id="icon-trending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+        </symbol>
+        <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </symbol>
+        <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </symbol>
+        <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+        </symbol>
+    </defs>
+</svg>
+
+<div class="dashboard-header">
     <div>
-        <h2>Admin Dashboard</h2>
-        <p class="muted">Operational view for admin@fit.edu.ph.</p>
+        <h1 class="dashboard-title">Dashboard</h1>
+        <p class="dashboard-subtitle" id="last-updated">Ready</p>
     </div>
-    <span class="pill-role">ADMIN</span>
-</div>
-
-<div class="admin-actions">
-    <a class="btn-secondary" href="{{ path('app_profile') }}">User Profile</a>
-    <a class="btn-secondary" href="{{ path('admin_reservation_monitoring') }}">Facility Reservation Monitoring</a>
-    <a class="btn-secondary" href="{{ path('admin_mentorship_coordination') }}">Mentorship Coordination</a>
-    <a class="btn-secondary" href="{{ path('admin_reports') }}">Reports</a>
-</div>
-
-<div class="stats-grid admin-stats">
-    <div class="stat-card">
-        <div class="stat-value">{{ reservationStatusCounts|reduce((sum, total) => sum + total, 0) }}</div>
-        <div class="stat-label">Reserved Facilities</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ mentoringStatusCounts.appointments|reduce((sum, total) => sum + total, 0) }}</div>
-        <div class="stat-label">Mentoring Sessions</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ reservationStatusCounts.Pending|default(0) }}</div>
-        <div class="stat-label">Pending Reservations</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ mentoringStatusCounts.requests.Pending|default(0) + mentoringStatusCounts.requests.pending|default(0) }}</div>
-        <div class="stat-label">Mentor Requests</div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="connection-status online" id="connection-status">
+            <span class="status-dot"></span>
+            <span id="connection-text">Live</span>
+        </div>
+        {% if is_granted('ROLE_SUPER_ADMIN') %}
+            <span class="pill-role">SUPERADMIN</span>
+        {% else %}
+            <span class="pill-role">ADMIN</span>
+        {% endif %}
     </div>
 </div>
 
-<div class="module-grid">
-    <section class="card-panel">
-        <h3>Reserved Facility</h3>
-        <div class="compact-list">
-            {% for reservation in upcomingReservations %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ reservation.facility.name }}</strong>
-                        <p>{{ reservation.name }} - {{ reservation.reservationDate|date('M d, Y') }}</p>
-                    </div>
-                    <span class="status-chip">{{ reservation.status }}</span>
-                </div>
-            {% else %}
-                <p class="muted">No approved reservations yet.</p>
-            {% endfor %}
+<!-- Stats Cards -->
+<div class="stats-grid-pro" id="stats-container">
+    <div class="stat-card-pro primary">
+        <div class="stat-header-pro">
+            <div class="stat-icon-pro">
+                <svg width="20" height="20"><use href="#icon-calendar"></use></svg>
+            </div>
+        </div>
+        <div class="stat-value-pro" id="stat-total-reservations">{{ initialData.reservations.total }}</div>
+        <div class="stat-label-pro">Total Reservations</div>
+        <div class="stat-change-pro" id="stat-today-reservations">{{ initialData.reservations.today }} today</div>
+    </div>
+    <div class="stat-card-pro success">
+        <div class="stat-header-pro">
+            <div class="stat-icon-pro">
+                <svg width="20" height="20"><use href="#icon-check"></use></svg>
+            </div>
+        </div>
+        <div class="stat-value-pro" id="stat-approved">{{ initialData.reservations.approved }}</div>
+        <div class="stat-label-pro">Approved</div>
+        <div class="stat-change-pro">{{ initialData.reservations.total > 0 ? (initialData.reservations.approved / initialData.reservations.total * 100)|round(1) : 0 }}% of total</div>
+    </div>
+    <div class="stat-card-pro warning">
+        <div class="stat-header-pro">
+            <div class="stat-icon-pro">
+                <svg width="20" height="20"><use href="#icon-clock"></use></svg>
+            </div>
+        </div>
+        <div class="stat-value-pro" id="stat-pending">{{ initialData.reservations.pending }}</div>
+        <div class="stat-label-pro">Pending</div>
+        <div class="stat-change-pro">Awaiting approval</div>
+    </div>
+    <div class="stat-card-pro info">
+        <div class="stat-header-pro">
+            <div class="stat-icon-pro">
+                <svg width="20" height="20"><use href="#icon-users"></use></svg>
+            </div>
+        </div>
+        <div class="stat-value-pro" id="stat-mentors">{{ initialData.mentoring.totalMentors }}</div>
+        <div class="stat-label-pro">Mentors</div>
+        <div class="stat-change-pro" id="stat-appointments">{{ initialData.mentoring.appointments.total }} appointments</div>
+    </div>
+</div>
+
+<div class="module-grid-pro">
+    <!-- Analytics Chart -->
+    <section class="card-panel-pro">
+        <div class="section-header-pro">
+            <h3 class="section-title-pro">
+                <svg width="18" height="18" style="color: #006633;"><use href="#icon-trending"></use></svg>
+                Analytics Overview
+            </h3>
+            <div class="filter-tabs-pro">
+                <button class="filter-tab-pro active" data-chart="reservations" onclick="loadChart('reservations')">Reservations</button>
+                <button class="filter-tab-pro" data-chart="mentoring" onclick="loadChart('mentoring')">Mentoring</button>
+            </div>
+        </div>
+        <div class="chart-container-pro">
+            <canvas id="analyticsChart"></canvas>
         </div>
     </section>
 
-    <section class="card-panel">
-        <h3>Mentoring Session</h3>
-        <div class="compact-list">
-            {% for session in upcomingMentoringSessions %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ session.mentor.displayName }}</strong>
-                        <p>{{ session.student.email }} - {{ session.scheduledAt|date('M d, Y h:i A') }}</p>
-                    </div>
-                    <span class="status-chip">{{ session.status }}</span>
+    <!-- Live Activity Feed -->
+    <section class="card-panel-pro">
+        <div class="section-header-pro">
+            <h3 class="section-title-pro">
+                <svg width="18" height="18" style="color: #006633;"><use href="#icon-activity"></use></svg>
+                Live Activity
+            </h3>
+            <button class="btn-icon-pro" onclick="clearActivity()" title="Clear activity">
+                <svg width="16" height="16"><use href="#icon-trash"></use></svg>
+            </button>
+        </div>
+        <div class="activity-feed-pro" id="activity-feed">
+            <div class="activity-item-pro">
+                <div class="activity-icon-pro">
+                    <svg width="16" height="16"><use href="#icon-check"></use></svg>
                 </div>
-            {% else %}
-                <p class="muted">No mentoring sessions yet.</p>
-            {% endfor %}
+                <div class="activity-content-pro">
+                    <div class="activity-title-pro">Dashboard ready</div>
+                    <div class="activity-desc-pro">Real-time updates are now active</div>
+                </div>
+                <div class="activity-time-pro">Just now</div>
+            </div>
         </div>
     </section>
 </div>
 
-<section class="card-panel">
-    <h3>Admin Functions</h3>
-    <table class="accounts-table">
-        <thead>
-            <tr>
-                <th>Area</th>
-                <th>Priority</th>
-                <th>Function</th>
-                <th>Weight</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for module in modules %}
-                <tr>
-                    <td>{{ module.area }}</td>
-                    <td><span class="priority-chip priority-{{ module.priority|lower }}">{{ module.priority }}</span></td>
-                    <td>{{ module.task }}</td>
-                    <td>{{ module.weight }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Upcoming Reservations -->
+<section class="card-panel-pro">
+    <div class="section-header-pro">
+        <h3 class="section-title-pro">
+            <svg width="18" height="18" style="color: #006633;"><use href="#icon-calendar"></use></svg>
+            Upcoming Reservations
+        </h3>
+    </div>
+    <div class="compact-list-pro">
+        {% for reservation in upcomingReservations %}
+            <div class="list-row-pro">
+                <div>
+                    <strong>{{ reservation.facility.name }}</strong>
+                    <p>{{ reservation.name }} &middot; {{ reservation.reservationDate|date('M d, Y') }}</p>
+                </div>
+                <span class="status-badge-pro {{ reservation.status|lower }}">{{ reservation.status }}</span>
+            </div>
+        {% else %}
+            <div class="empty-state">No approved reservations</div>
+        {% endfor %}
+    </div>
 </section>
+
+<!-- Upcoming Mentoring Sessions -->
+<section class="card-panel-pro">
+    <div class="section-header-pro">
+        <h3 class="section-title-pro">
+            <svg width="18" height="18" style="color: #006633;"><use href="#icon-users"></use></svg>
+            Mentoring Sessions
+        </h3>
+    </div>
+    <div class="compact-list-pro">
+        {% for session in upcomingMentoringSessions %}
+            <div class="list-row-pro">
+                <div>
+                    <strong>{{ session.mentor.displayName }}</strong>
+                    <p>{{ session.student.email }} &middot; {{ session.scheduledAt|date('M d, Y h:i A') }}</p>
+                </div>
+                <span class="status-badge-pro {{ session.status|lower }}">{{ session.status }}</span>
+            </div>
+        {% else %}
+            <div class="empty-state">No upcoming sessions</div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Quick Actions -->
+<div class="admin-actions-pro" style="margin-top: 2rem;">
+    <a class="btn-secondary-pro" href="{{ path('admin_reservation_monitoring') }}">
+        Reservation Monitoring
+        <svg width="16" height="16"><use href="#icon-arrow-right"></use></svg>
+    </a>
+    <a class="btn-secondary-pro" href="{{ path('admin_mentorship_coordination') }}">
+        Mentorship Coordination
+        <svg width="16" height="16"><use href="#icon-arrow-right"></use></svg>
+    </a>
+    <a class="btn-secondary-pro" href="{{ path('admin_reports') }}">
+        Reports
+        <svg width="16" height="16"><use href="#icon-arrow-right"></use></svg>
+    </a>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script>
+    // Dashboard JavaScript - Data loaded from server initially
+    const dashboardState = {
+        chart: null,
+        lastUpdate: new Date()
+    };
+
+    // Stats already loaded from server via initialData
+    const initialStats = {{ initialData|json_encode|raw }};
+
+    // Initialize when DOM is ready
+    function initDashboard() {
+        // Initialize chart
+        initChart();
+        
+        // Periodic refresh every 30 seconds
+        setInterval(refreshStats, 30000);
+    }
+
+    // Run initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    } else {
+        initDashboard();
+    }
+
+    async function refreshStats() {
+        if (document.hidden) return;
+
+        const currentRoute = '{{ app.request.attributes.get('_route') }}';
+        const apiRoute = currentRoute === 'admin_role_home' ? '{{ path('admin_role_api_stats') }}' : '{{ path('admin_api_stats') }}';
+
+        try {
+            const response = await fetch(apiRoute);
+            if (response.ok) {
+                const data = await response.json();
+                updateStats(data);
+                updateTimestamp();
+            }
+        } catch (e) {
+            // Silent fail
+        }
+    }
+
+    function updateStats(data) {
+        const els = {
+            total: document.getElementById('stat-total-reservations'),
+            today: document.getElementById('stat-today-reservations'),
+            approved: document.getElementById('stat-approved'),
+            pending: document.getElementById('stat-pending'),
+            mentors: document.getElementById('stat-mentors'),
+            appointments: document.getElementById('stat-appointments')
+        };
+        
+        if (els.total) els.total.textContent = data.reservations.total;
+        if (els.today) els.today.textContent = data.reservations.today + ' today';
+        if (els.approved) els.approved.textContent = data.reservations.approved;
+        if (els.pending) els.pending.textContent = data.reservations.pending;
+        if (els.mentors) els.mentors.textContent = data.mentoring.totalMentors;
+        if (els.appointments) els.appointments.textContent = data.mentoring.appointments.total + ' appointments';
+        
+        dashboardState.lastUpdate = new Date();
+    }
+
+    function updateTimestamp() {
+        const el = document.getElementById('last-updated');
+        const timeStr = dashboardState.lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (el) el.textContent = 'Updated ' + timeStr;
+    }
+
+    function addActivity(activity) {
+        const feed = document.getElementById('activity-feed');
+        if (!feed) return;
+        
+        const item = document.createElement('div');
+        item.className = 'activity-item-pro';
+        item.innerHTML = `
+            <div class="activity-icon-pro">
+                <svg width="16" height="16"><use href="#icon-${activity.type === 'reservation' ? 'calendar' : 'users'}"></use></svg>
+            </div>
+            <div class="activity-content-pro">
+                <div class="activity-title-pro">${activity.title}</div>
+                <div class="activity-desc-pro">${activity.message}</div>
+            </div>
+            <div class="activity-time-pro">Just now</div>
+        `;
+        feed.insertBefore(item, feed.firstChild);
+        while (feed.children.length > 10) feed.removeChild(feed.lastChild);
+    }
+
+    function clearActivity() {
+        const feed = document.getElementById('activity-feed');
+        if (feed) {
+            feed.innerHTML = `
+                <div class="activity-item-pro">
+                    <div class="activity-icon-pro">
+                        <svg width="16" height="16"><use href="#icon-check"></use></svg>
+                    </div>
+                    <div class="activity-content-pro">
+                        <div class="activity-title-pro">Activity cleared</div>
+                        <div class="activity-desc-pro">New activity will appear here</div>
+                    </div>
+                    <div class="activity-time-pro">Just now</div>
+                </div>
+            `;
+        }
+    }
+
+    function initChart() {
+        const canvas = document.getElementById('analyticsChart');
+        if (!canvas || typeof Chart === 'undefined') return;
+        
+        const ctx = canvas.getContext('2d');
+        dashboardState.chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false }
+                },
+                scales: { 
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                    x: { grid: { display: false } }
+                },
+                elements: {
+                    line: { tension: 0.4 },
+                    point: { radius: 0, hitRadius: 10, hoverRadius: 4 }
+                }
+            }
+        });
+        loadChart('reservations');
+    }
+
+    async function loadChart(type) {
+        if (!dashboardState.chart) return;
+        
+        document.querySelectorAll('[data-chart]').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.chart === type);
+        });
+        
+        try {
+            const response = await fetch('{{ path('admin_api_analytics') }}');
+            const data = await response.json();
+            
+            const labels = data.dailyStats.slice(-7).map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('en', { weekday: 'short' });
+            });
+            
+            const isReservations = type === 'reservations';
+            const chartData = data.dailyStats.slice(-7).map(d => isReservations ? d.reservations : d.mentoring);
+            const color = isReservations ? '#006633' : '#7c3aed';
+            
+            dashboardState.chart.data = {
+                labels: labels,
+                datasets: [{
+                    label: isReservations ? 'Reservations' : 'Mentoring',
+                    data: chartData,
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    fill: true,
+                    borderWidth: 2
+                }]
+            };
+            dashboardState.chart.update('none'); // No animation for faster render
+        } catch (e) {
+            // Silent fail
+        }
+    }
+</script>
 {% endblock %}

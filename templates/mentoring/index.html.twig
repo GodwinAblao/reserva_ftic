@@ -189,7 +189,7 @@
             <section class="card-panel" id="custom-requests">
                 <h3>Incoming Custom Requests</h3>
                 {% for request in incomingCustomRequests %}
-                    <div class="mentor-request-card {{ request.status == 'pending' ? 'is-pending' : '' }}">
+                    <div class="mentor-request-card {{ request.status == 'Pending' ? 'is-pending' : '' }}">
                         <div class="mentor-request-card__header">
                             <div>
                                 <strong>{{ request.student.firstName ?: request.student.email }}</strong>
@@ -208,8 +208,8 @@
                             </div>
                         {% endif %}
 
-                        {% if request.status == 'pending' %}
-                            <form method="post" action="{{ path('mentoring_custom_request_review', {'id': request.id}) }}" class="mentor-request-actions">
+                        {% if request.status == 'Pending' %}
+                            <form method="post" action="{{ path('mentoring_custom_request_review', {'id': request.id}) }}" class="mentor-request-actions" data-no-loading="true">
                                 <input type="hidden" name="_token" value="{{ csrf_token('custom_request_review_' ~ request.id) }}">
                                 <textarea name="mentor_response" class="form-input" rows="3" placeholder="Optional response to the student"></textarea>
                                 <div class="button-group">
@@ -491,6 +491,9 @@
         });
 
         document.querySelectorAll('form[data-loading-label]').forEach(form => {
+            if (form.dataset.noLoading === 'true') {
+                return; // Skip loading state for these forms
+            }
             form.addEventListener('submit', () => {
                 const button = form.querySelector('.js-loading-submit');
                 if (button) {
@@ -532,6 +535,14 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        /* Required field styling */
+        .required-text {
+            display: block;
+            color: #dc2626;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
         }
     </style>
 {% endblock %}

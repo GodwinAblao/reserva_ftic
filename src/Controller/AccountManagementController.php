@@ -32,7 +32,7 @@ class AccountManagementController extends AbstractController
     #[Route('', name: 'app_account_management')]
     public function index(UserRepository $userRepository): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $users = $userRepository->findAll();
 
@@ -44,7 +44,7 @@ class AccountManagementController extends AbstractController
     #[Route('/new', name: 'app_account_management_new')]
     public function new(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         if ($request->getMethod() === 'POST') {
             $token = $request->request->get('_csrf_token');
@@ -55,8 +55,6 @@ class AccountManagementController extends AbstractController
             $email = $request->request->get('email');
             $password = $request->request->get('password');
             $roles = (array) ($request->request->all()['roles'] ?? ['ROLE_STUDENT']);
-            $identification = $request->request->get('identification');
-            $institutionalEmail = $request->request->get('institutional_email');
             $firstName = $request->request->get('first_name');
             $middleName = $request->request->get('middle_name');
             $lastName = $request->request->get('last_name');
@@ -73,8 +71,6 @@ class AccountManagementController extends AbstractController
             $user->setEmail($email);
             $hashedPassword = $passwordHasher->hashPassword($user, $password);
             $user->setPassword($hashedPassword);
-            $user->setIdentification($identification);
-            $user->setInstitutionalEmail($institutionalEmail);
             $user->setFirstName($firstName);
             $user->setMiddleName($middleName);
             $user->setLastName($lastName);
@@ -125,7 +121,7 @@ class AccountManagementController extends AbstractController
     #[Route('/{id}', name: 'app_account_management_view')]
     public function view(User $user): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         return $this->render('account_management/view.html.twig', [
             'user' => $user,
@@ -135,7 +131,7 @@ class AccountManagementController extends AbstractController
     #[Route('/{id}/edit', name: 'app_account_management_edit')]
     public function edit(User $user, Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         if ($request->getMethod() === 'POST') {
             $token = $request->request->get('_csrf_token');
@@ -146,8 +142,6 @@ class AccountManagementController extends AbstractController
             $email = $request->request->get('email');
             $password = $request->request->get('password');
             $roles = (array) $request->request->all()['roles'] ?? [];
-            $identification = $request->request->get('identification');
-            $institutionalEmail = $request->request->get('institutional_email');
             $firstName = $request->request->get('first_name');
             $middleName = $request->request->get('middle_name');
             $lastName = $request->request->get('last_name');
@@ -163,8 +157,6 @@ class AccountManagementController extends AbstractController
                 $user->setPassword($hashedPassword);
             }
 
-            $user->setIdentification($identification);
-            $user->setInstitutionalEmail($institutionalEmail);
             $user->setFirstName($firstName);
             $user->setMiddleName($middleName);
             $user->setLastName($lastName);
@@ -228,7 +220,7 @@ class AccountManagementController extends AbstractController
         MentorProfileRepository $mentorProfileRepository
     ): Response
     {
-        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $token = $request->request->get('_csrf_token');
         if (!$csrfTokenManager->isTokenValid(new CsrfToken('delete_' . $user->getId(), $token))) {
@@ -296,6 +288,12 @@ class AccountManagementController extends AbstractController
             if (file_exists($profilePath)) {
                 unlink($profilePath);
             }
+        }
+
+        // Delete user's notifications
+        $notifications = $em->getRepository(\App\Entity\Notification::class)->findBy(['user' => $user]);
+        foreach ($notifications as $notification) {
+            $em->remove($notification);
         }
 
         $em->remove($user);

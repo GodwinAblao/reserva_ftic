@@ -190,8 +190,30 @@ class MentoringController extends AbstractController
         $highestEducation = trim((string) $request->request->get('highestEducation'));
         $supportingDescription = trim((string) $request->request->get('supportingDescription'));
         
-        // Handle file uploads (store as JSON array)
+        // Validation
+        if (!$user instanceof User || $email === '' || $specialization === '' || $firstName === '' || $lastName === '') {
+            $this->addFlash('error', 'Name, email, and specialization are required.');
+
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        // Validate proof of expertise is required
         $files = $request->files->get('proofOfExpertise');
+        $hasValidFiles = false;
+        if ($files) {
+            foreach ($files as $file) {
+                if ($file && $file->isValid()) {
+                    $hasValidFiles = true;
+                    break;
+                }
+            }
+        }
+        if (!$hasValidFiles) {
+            $this->addFlash('error', 'Proof of Expertise is required. Please upload at least one file (JPG, PNG, or PDF).');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        // Handle file uploads (store as JSON array)
         $proofFiles = [];
         if ($files) {
             foreach ($files as $file) {
@@ -207,8 +229,8 @@ class MentoringController extends AbstractController
                         $this->addFlash('error', 'File ' . $file->getClientOriginalName() . ' must be JPG, PNG, or PDF.');
                         return $this->redirectToRoute('mentoring_index');
                     }
-// Store file with proper extension
-$extension = $file->getClientOriginalExtension();
+                    // Store file with proper extension
+                    $extension = $file->getClientOriginalExtension();
                     if (empty($extension)) {
                         $extension = 'pdf';
                     }
@@ -218,13 +240,6 @@ $extension = $file->getClientOriginalExtension();
                     $proofFiles[] = $newFilename;
                 }
             }
-        }
-
-        // Validation
-        if (!$user instanceof User || $email === '' || $specialization === '' || $firstName === '' || $lastName === '') {
-            $this->addFlash('error', 'Name, email, and specialization are required.');
-
-            return $this->redirectToRoute('mentoring_index');
         }
 
         // Check for existing active application
@@ -561,7 +576,16 @@ $validUntil = $request->request->get('valid_until');
             throw $this->createAccessDeniedException('You must be logged in to send a mentoring request.');
         }
 
-        if ($profile->getUser() !== null && $profile->getUser()->getId() === $currentUser->getId()) {
+        if ($profile->getUser() === null) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'This mentor profile does not have an associated user account.'], Response::HTTP_BAD_REQUEST);
+            }
+            $this->addFlash('error', 'This mentor profile does not have an associated user account.');
+            return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
+        }
+
+        if ($profile->getUser()->getId() === $currentUser->getId()) {
             $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
             if ($isAjax) {
                 return new JsonResponse(['error' => 'You cannot send a custom request to your own mentor profile.'], Response::HTTP_FORBIDDEN);
@@ -583,10 +607,20 @@ $validUntil = $request->request->get('valid_until');
         $customRequest = new \App\Entity\MentorCustomRequest();
         $customRequest->setStudent($currentUser)
             ->setMentorProfile($profile)
-            ->setMessage($message);
+            ->setMessage($message)
+            ->setStatus('Pending');
 
-        $em->persist($customRequest);
-        $em->flush();
+        try {
+            $em->persist($customRequest);
+            $em->flush();
+        } catch (\Exception $e) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'Failed to save request: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            }
+            $this->addFlash('error', 'Failed to save request: ' . $e->getMessage());
+            return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
+        }
 
         $requestUrl = $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#custom-requests';
 
@@ -617,7 +651,6 @@ $validUntil = $request->request->get('valid_until');
                 'mentorName' => $profile->getDisplayName(),
                 'studentName' => $studentName,
                 'studentEmail' => $student->getEmail(),
-                'studentInstitutionalEmail' => $student->getInstitutionalEmail(),
                 'message' => $message,
                 'requestId' => $customRequest->getId(),
                 'requestUrl' => $requestUrl,
@@ -681,8 +714,13 @@ $validUntil = $request->request->get('valid_until');
             ->setMessage($message !== '' ? $message : 'No additional notes provided.')
             ->setStatus('Pending');
 
-        $em->persist($mentorRequest);
-        $em->flush();
+        try {
+            $em->persist($mentorRequest);
+            $em->flush();
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Failed to save mentor request: ' . $e->getMessage());
+            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        }
 
         $adminUrl = $this->generateUrl('mentoring_super-admin', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
         $admins = $em->getRepository(User::class)->findAdmins();
@@ -820,7 +858,7 @@ $validUntil = $request->request->get('valid_until');
             throw $this->createAccessDeniedException('You can only review your own mentoring requests.');
         }
 
-        if ($customRequest->getStatus() !== 'pending') {
+        if ($customRequest->getStatus() !== 'Pending') {
             $this->addFlash('error', 'This request has already been reviewed.');
 
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);

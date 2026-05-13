@@ -124,8 +124,7 @@ class ProfileController extends AbstractController
         }
 
         return $this->render('profile/index.html.twig', [
-            'mentorProfile' => $mentorProfile
+            'mentorProfile' => $mentorProfile,
         ]);
     }
 }
-

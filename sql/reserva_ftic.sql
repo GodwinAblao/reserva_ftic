@@ -26,8 +26,6 @@ CREATE TABLE IF NOT EXISTS `user` (
     `email` VARCHAR(180) NOT NULL,
     `roles` JSON NOT NULL,
     `password` VARCHAR(255) NOT NULL,
-    `identification` VARCHAR(100) DEFAULT NULL,
-    `institutional_email` VARCHAR(180) DEFAULT NULL,
     `is_verified` TINYINT(1) NOT NULL,
     `verification_code` VARCHAR(10) DEFAULT NULL,
     `first_name` VARCHAR(100) DEFAULT NULL,
@@ -301,8 +299,7 @@ CREATE TABLE IF NOT EXISTS `messenger_messages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `user`
-(`email`, `roles`, `password`, `identification`,
- `institutional_email`, `is_verified`, `verification_code`,
+(`email`, `roles`, `password`, `is_verified`, `verification_code`,
  `first_name`, `middle_name`, `last_name`,
  `degree`, `degree_name`, `profile_picture`)
 VALUES
@@ -310,8 +307,6 @@ VALUES
     'SuperAdmin@feutech.edu.ph',
     '["ROLE_SUPER_ADMIN", "ROLE_USER"]',
     '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq',
-    NULL,
-    NULL,
     1,
     NULL,
     NULL,
@@ -325,8 +320,6 @@ VALUES
     'admin@feutech.edu.ph',
     '["ROLE_ADMIN"]',
     '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq',
-    NULL,
-    NULL,
     1,
     NULL,
     'Admin',
@@ -340,8 +333,6 @@ VALUES
     'faculty.test@feutech.edu.ph',
     '["ROLE_FACULTY", "ROLE_USER"]',
     '$2y$10$v442gQr85NGBS6zxvVX8b.DjPSrhiURe1hKOpOzhz2O2HZkZqaYm6',
-    'FAC-TEST-001',
-    'faculty.test@feutech.edu.ph',
     1,
     NULL,
     'Faculty',
