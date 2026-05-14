@@ -12,29 +12,31 @@
     {% else %}
         <div class="facilities-grid">
             {% for facility in facilities %}
-                <div class="facility-card">
-                    <div class="facility-image-holder">
-                        {% if facility.image %}
-                            <img src="{{ facility.image }}" alt="{{ facility.name }}">
-                        {% else %}
-                            <div class="placeholder-image">
-                                <span>{{ facility.name | first }}</span>
-                            </div>
-                        {% endif %}
+                {% if facility.availableForReservation %}
+                    <div class="facility-card">
+                        <div class="facility-image-holder">
+                            {% if facility.image %}
+                                <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                            {% else %}
+                                <div class="placeholder-image">
+                                    <span>{{ facility.name | first }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="facility-details">
+                            <h3>{{ facility.name }}</h3>
+                            <p class="capacity">
+                                <strong>Capacity:</strong> {{ facility.capacity }} pax
+                            </p>
+                            {% if facility.description %}
+                                <p class="description">{{ facility.description }}</p>
+                            {% endif %}
+                            <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
+                                View Details
+                            </a>
+                        </div>
                     </div>
-                    <div class="facility-details">
-                        <h3>{{ facility.name }}</h3>
-                        <p class="capacity">
-                            <strong>Capacity:</strong> {{ facility.capacity }} pax
-                        </p>
-                        {% if facility.description %}
-                            <p class="description">{{ facility.description }}</p>
-                        {% endif %}
-                        <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
-                            View Details
-                        </a>
-                    </div>
-                </div>
+                {% endif %}
             {% endfor %}
         </div>
     {% endif %}

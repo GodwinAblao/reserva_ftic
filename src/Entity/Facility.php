@@ -55,6 +55,9 @@ class Facility
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(type: 'boolean')]
+    private bool $availableForReservation = true;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $updatedAt;
 
@@ -158,6 +161,19 @@ class Facility
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function isAvailableForReservation(): bool
+    {
+        return $this->availableForReservation;
+    }
+
+    public function setAvailableForReservation(bool $availableForReservation): self
+    {
+        $this->availableForReservation = $availableForReservation;
+        $this->updatedAt = new \DateTimeImmutable();
+
+        return $this;
     }
 
     public function getParent(): ?Facility

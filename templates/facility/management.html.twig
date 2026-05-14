@@ -38,10 +38,21 @@
                     {% if facility.description %}
                         <p class="desc">{{ facility.description | slice(0, 100) }}{% if facility.description | length > 100 %}...{% endif %}</p>
                     {% endif %}
+                    <div class="reservation-status">
+                        <span class="status-badge {% if facility.availableForReservation %}status-enabled{% else %}status-disabled{% endif %}">
+                            {% if facility.availableForReservation %}✓ Available for Reservation{% else %}✗ Disabled for Reservation{% endif %}
+                        </span>
+                    </div>
                 </div>
                 <div class="card-actions">
                     <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-link">View</a>
                     <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn-link">Edit</a>
+                    <form action="{{ path('app_facility_toggle_reservation', {id: facility.id}) }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('toggle_reservation_' ~ facility.id) }}">
+                        <button type="submit" class="btn-link {% if facility.availableForReservation %}btn-warning{% else %}btn-success{% endif %}">
+                            {% if facility.availableForReservation %}Disable Reservations{% else %}Enable Reservations{% endif %}
+                        </button>
+                    </form>
                     <form action="{{ path('app_facility_delete', {id: facility.id}) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
                         <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ facility.id) }}">
                         <button type="submit" class="btn-link btn-danger">Delete</button>
@@ -158,6 +169,46 @@
 
     .no-facilities a:hover {
         text-decoration: underline;
+    }
+
+    .reservation-status {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .status-enabled {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .status-disabled {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .btn-warning {
+        color: #f39c12 !important;
+    }
+
+    .btn-warning:hover {
+        color: #e67e22 !important;
+    }
+
+    .btn-success {
+        color: #27ae60 !important;
+    }
+
+    .btn-success:hover {
+        color: #229954 !important;
     }
 </style>
 {% endblock %}

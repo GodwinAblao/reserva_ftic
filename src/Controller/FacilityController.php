@@ -200,4 +200,20 @@ class FacilityController extends AbstractController
             }
         }
     }
+
+    #[Route('/{id}/toggle-reservation', name: 'app_facility_toggle_reservation', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function toggleReservation(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
+    {
+        if ($this->isCsrfTokenValid('toggle_reservation_' . $facility->getId(), $request->request->get('_token'))) {
+            $currentStatus = $facility->isAvailableForReservation();
+            $facility->setAvailableForReservation(!$currentStatus);
+            $facilityRepository->save($facility, true);
+
+            $status = $facility->isAvailableForReservation() ? 'enabled' : 'disabled';
+            $this->addFlash('success', 'Facility reservation status has been ' . $status . '.');
+        }
+
+        return $this->redirectToRoute('app_facility_management');
+    }
 }

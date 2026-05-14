@@ -38,6 +38,12 @@ public function reserve(
             return $this->redirectToRoute('app_login');
         }
 
+        // Check if facility is available for reservations
+        if (!$facility->isAvailableForReservation()) {
+            $this->addFlash('error', 'This facility is not available for reservations at this time.');
+            return $this->redirectToRoute('app_facility_index');
+        }
+
         if ($request->isMethod('POST')) {
             $name = $request->request->get('name');
             $email = $request->request->get('email');
