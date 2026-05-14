@@ -63,39 +63,7 @@
         </div>
     </section>
 
-    <div class="module-grid">
-        <section class="card-panel">
-            <h3>Request a Session</h3>
-            {% for slot in availability %}
-                <form method="post" action="{{ path('mentoring_request', {'id': slot.id}) }}" class="list-row">
-                    <input type="hidden" name="_token" value="{{ csrf_token('request_mentoring_' ~ slot.id) }}">
-                    <div>
-                        <strong>{{ slot.mentor.displayName }}</strong>
-                        <p>{{ slot.availableDate|date('M d, Y') }} {{ slot.startTime|date('h:i A') }} - {{ slot.endTime|date('h:i A') }}</p>
-                        <input name="topic" class="form-input" placeholder="Session topic">
-                    </div>
-                    <button class="btn-primary" type="submit">Request</button>
-                </form>
-            {% else %}
-                <p>Send a custom request below!</p>
-            {% endfor %}
-        </section>
 
-        <section class="card-panel">
-            <h3>My Sessions</h3>
-            {% for appointment in appointments %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ appointment.mentor.displayName }}</strong>
-                        <p>{{ appointment.scheduledAt|date('M d, Y h:i A') }} - {{ appointment.topic ?: 'No topic' }}</p>
-                    </div>
-                    <span class="status-badge">{{ appointment.status }}</span>
-                </div>
-            {% else %}
-                <p>No mentoring appointments yet.</p>
-            {% endfor %}
-        </section>
-    </div>
 
     <div class="module-grid">
         <section class="card-panel">
