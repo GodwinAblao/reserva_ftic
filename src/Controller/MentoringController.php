@@ -189,6 +189,7 @@ class MentoringController extends AbstractController
         $currentProfession = trim((string) $request->request->get('currentProfession'));
         $highestEducation = trim((string) $request->request->get('highestEducation'));
         $supportingDescription = trim((string) $request->request->get('supportingDescription'));
+        $availabilityTime = trim((string) $request->request->get('availabilityTime'));
         
         // Validation
         if (!$user instanceof User || $email === '' || $specialization === '' || $firstName === '' || $lastName === '') {
@@ -273,6 +274,7 @@ class MentoringController extends AbstractController
             ->setCurrentProfession($currentProfession ?: null)
             ->setHighestEducation($highestEducation ?: null)
             ->setSupportingDescription($supportingDescription ?: null)
+            ->setAvailabilityTime($availabilityTime ?: null)
             ->setProofOfExpertise($proofFiles ?: null)
             ->setStatus('Pending');
 

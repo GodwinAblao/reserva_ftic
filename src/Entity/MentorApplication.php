@@ -52,6 +52,9 @@ class MentorApplication
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $supportingDescription = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $availabilityTime = null;
+
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $proofOfExpertise = null;
 
@@ -110,6 +113,9 @@ class MentorApplication
 
     public function getSupportingDescription(): ?string { return $this->supportingDescription; }
     public function setSupportingDescription(?string $supportingDescription): self { $this->supportingDescription = $supportingDescription; $this->touch(); return $this; }
+
+    public function getAvailabilityTime(): ?string { return $this->availabilityTime; }
+    public function setAvailabilityTime(?string $availabilityTime): self { $this->availabilityTime = $availabilityTime; $this->touch(); return $this; }
 
     public function getProofOfExpertise(): ?array { return $this->proofOfExpertise; }
     public function setProofOfExpertise(?array $proofOfExpertise): self { $this->proofOfExpertise = $proofOfExpertise; $this->touch(); return $this; }
