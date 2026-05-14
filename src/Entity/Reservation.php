@@ -63,7 +63,7 @@ class Reservation
     private ?string $purpose = null;
 
     #[ORM\Column(length: 50)]
-    private string $status = 'Pending'; // Pending, Suggested, Approved, Rejected, Cancelled
+    private string $status = 'AwaitingFacilitySelection'; // AwaitingFacilitySelection, Pending, Suggested, Approved, Rejected, Cancelled
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $createdAt = null;

@@ -127,34 +127,26 @@ public function reserve(
             $reservation->setReservationEndTime($endTime);
             $reservation->setCapacity($capacity);
             $reservation->setPurpose($purpose);
-            $reservation->setStatus('Pending');
+            // Set initial status to AwaitingFacilitySelection - will be set to Pending after user selects facility
+            $reservation->setStatus('AwaitingFacilitySelection');
 
             $em->persist($reservation);
             $em->flush();
 
-            // Check if user's capacity is less than facility capacity - suggest alternatives
-            if ($capacity < $facility->getCapacity()) {
-                $alternatives = $reservationRepo->findAvailableAlternatives(
-                    $capacity,
-                    $date,
-                    $startTime,
-                    $endTime,
-                    $facility
-                );
+            // Always redirect to suggest alternatives to let user confirm facility choice
+            $alternatives = $reservationRepo->findAvailableAlternatives(
+                $capacity,
+                $date,
+                $startTime,
+                $endTime,
+                $facility
+            );
 
-                // If alternatives exist, return redirect URL
-                if (count($alternatives) > 0) {
-                    return $this->json([
-                        'success' => true,
-                        'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
-                    ]);
-                }
-            }
-
-// Send notification to super admin
-            $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
-
-            return $this->json(['success' => true, 'message' => 'Reservation submitted successfully! Your request is pending approval.']);
+            // Redirect to suggest alternatives page
+            return $this->json([
+                'success' => true,
+                'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
+            ]);
         }
 
         // Get booked times for calendar
@@ -528,7 +520,7 @@ public function reserve(
 
     #[Route('/reservations/{id}/select-alternative/{facilityId}', name: 'user_select_alternative', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
-public function selectAlternative(
+    public function selectAlternative(
         Reservation $reservation,
         int $facilityId,
         Request $request,
@@ -552,10 +544,11 @@ public function selectAlternative(
         }
 
         $reservation->setFacility($facility);
+        // Set status to Pending after user accepts an alternative facility
         $reservation->setStatus('Pending');
         $em->flush();
 
-// Send notification to super admin
+        // Send notification to super admin
         $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
 
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
@@ -581,6 +574,7 @@ public function selectAlternative(
             throw $this->createAccessDeniedException();
         }
 
+        // Set status to Pending after user chooses to keep original facility
         $reservation->setStatus('Pending');
         $em->flush();
 
