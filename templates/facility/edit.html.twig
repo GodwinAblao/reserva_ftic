@@ -30,14 +30,21 @@
                     <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; text-align: center;">
                         <img src="{{ facility.image }}" alt="{{ facility.name }}" style="max-width: 200px; max-height: 200px; margin-bottom: 10px; border-radius: 6px; display: block; margin-left: auto; margin-right: auto;">
                         <p style="margin: 0; color: #666; font-size: 12px;">Current Image</p>
+                        <form action="{{ path('app_facility_remove_main_image', {id: facility.id}) }}" method="POST" onsubmit="return confirm('Remove this facility image?');" style="display: inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('remove_main_image_' ~ facility.id) }}">
+                            <button type="submit" class="btn-secondary" style="margin-top: 8px; padding: 8px 16px;">Remove Image</button>
+                        </form>
                     </div>
                 {% endif %}
                 <input type="file" id="image" name="image" accept="image/*">
             </div>
 
             <div class="form-group">
-                <label for="images">Add Gallery Images</label>
-                <input type="file" id="images" name="images[]" accept="image/*" multiple>
+                <label for="images">Add Gallery Images <span style="color: #666; font-size: 12px;">(Maximum: 5 images)</span></label>
+                <p style="font-size: 12px; color: #666; margin: 5px 0;">
+                    Current gallery images: <span id="currentImageCount">{{ facility.images|length }}</span> / 5
+                </p>
+                <input type="file" id="images" name="images[]" accept="image/*" multiple onchange="validateGalleryImages(event)">
             </div>
 
             {% if facility.images|length > 0 %}
@@ -64,5 +71,26 @@
         </form>
     </div>
 
+    <script>
+        function validateGalleryImages(event) {
+            const maxImages = 5;
+            const currentImageCount = parseInt(document.getElementById('currentImageCount').textContent);
+            const fileInput = event.target;
+            const files = fileInput.files;
+            const allowedCount = maxImages - currentImageCount;
+
+            if (currentImageCount >= maxImages) {
+                alert('Gallery already contains the maximum of 5 images. Please remove some before adding new ones.');
+                fileInput.value = '';
+                return;
+            }
+
+            if (files.length > allowedCount) {
+                alert(`You can only add ${allowedCount} more image(s). Gallery has a maximum of ${maxImages} images.`);
+                fileInput.value = '';
+                return;
+            }
+        }
+    </script>
 
 {% endblock %}
