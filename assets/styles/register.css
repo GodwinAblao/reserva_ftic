@@ -98,6 +98,48 @@ body {
     height: auto;
 }
 
+.logo-side,
+.form-side {
+    transition: opacity 0.28s ease;
+}
+
+.logo-side.logo-fade-out,
+.form-side.form-fade-out {
+    opacity: 0;
+}
+
+.page-transition-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    background: rgba(255, 255, 255, 0.72);
+    z-index: 1300;
+}
+
+.page-transition-spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #16a34a;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    animation: page-transition-spin 0.75s linear infinite;
+}
+
+.page-transition-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #166534;
+}
+
+@keyframes page-transition-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* Form Side (Right) */
 .form-side {
     width: 50%;
@@ -173,7 +215,7 @@ body {
 .submit-button {
     width: 100%;
     height: 3rem;
-    background: linear-gradient(to right, #16a34a, #eab308); /* The requested gradient */
+    background:#16a34a;
     color: white;
     font-size: 1rem;
     font-weight: 500;

@@ -54,7 +54,7 @@
                     {% if is_granted('IS_AUTHENTICATED_FULLY') %}
                         <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn btn-reserve">Reserve Now</a>
                     {% else %}
-                        <a href="{{ path('app_login') }}" class="btn btn-reserve">Sign In to Reserve</a>
+                        <a href="{{ path('app_login') }}" class="btn btn-reserve" data-turbo="false" target="_self">Sign In to Reserve</a>
                     {% endif %}
                 </div>
             {% endif %}

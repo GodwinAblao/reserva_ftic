@@ -19,14 +19,14 @@
             </div>
 
             <nav class="header-nav">
-                <a href="{{ path('app_home') }}">Home</a>
-                <a href="{{ path('app_home') }}#about">About us</a>
-                <a href="{{ path('app_home') }}#faq">FAQ</a>
+                <a href="{{ path('app_home') }}" data-no-loading="true">Home</a>
+                <a href="{{ path('app_home') }}#about" data-no-loading="true">About us</a>
+                <a href="{{ path('app_home') }}#faq" data-no-loading="true">FAQ</a>
             </nav>
 
             <div class="header-auth">
-                <a href="{{ path('app_login') }}" class="btn-login">Login</a>
-                <a href="{{ path('app_register') }}" class="btn-signup">Sign in</a>
+                <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign in</a>
             </div>
         </div>
     </header>
@@ -49,7 +49,7 @@
                         Reserva simplifies room reservations, mentoring sessions, and access to FTIC research and innovation articles,
                         helping students and faculty stay organized, connected, and productive within the FEU Tech Innovation Center.
                     </p>
-                    <a class="btn-get-started" href="{{ path('app_register') }}">Get Started</a>
+                    <a class="btn-get-started" href="{{ path('app_register') }}" data-turbo="false" target="_self">Get Started</a>
                 </div>
             </div>
         </section>
@@ -91,7 +91,7 @@
                         <li>Encourage knowledge sharing and peer support</li>
                         <li>Promote a more active learning environment</li>
                     </ul>
-                    <a href="{{ path('app_register') }}" class="offer-link">Get Started &rarr;</a>
+                    <a href="{{ path('app_register') }}" class="offer-link" data-turbo="false" target="_self">Get Started &rarr;</a>
                 </article>
 
                 <article class="offer-card">
@@ -103,7 +103,7 @@
                         <li>Schedule consultations quickly and efficiently</li>
                         <li>Strengthen academic and professional growth</li>
                     </ul>
-                    <a href="{{ path('app_register') }}" class="offer-link">Get Started &rarr;</a>
+                    <a href="{{ path('app_register') }}" class="offer-link" data-turbo="false" target="_self">Get Started &rarr;</a>
                 </article>
             </div>
         </section>
@@ -257,7 +257,8 @@
                         event.ctrlKey ||
                         event.shiftKey ||
                         event.altKey ||
-                        link.target === '_blank'
+                        link.target === '_blank' ||
+                        link.dataset.noLoading === 'true'
                     ) {
                         return;
                     }

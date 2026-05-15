@@ -18,6 +18,17 @@ body.page-landing {
 .header {
     background-color: white;
     border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+}
+
+#home,
+#about,
+#faq,
+#facilities,
+#research {
+    scroll-margin-top: 90px;
 }
 
 .header-inner {

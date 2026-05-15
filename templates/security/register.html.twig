@@ -10,7 +10,7 @@
     <header class="header">
         <div class="header-inner">
             <div class="header-logo">
-                <a href="{{ path('app_home') }}">
+                <a href="{{ path('app_home') }}" data-logo-slide-link data-logo-slide-direction="left" data-turbo="false" target="_self">
                     <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
                 </a>
             </div>
@@ -22,8 +22,8 @@
             </nav>
 
             <div class="header-auth">
-                <a href="{{ path('app_login') }}" class="btn-login">Login</a>
-                <a href="{{ path('app_register') }}" class="btn-signup">Sign in</a>
+                <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign in</a>
             </div>
         </div>
     </header>
@@ -101,7 +101,7 @@
                     <div class="login-link-container">
                         <p class="login-text">
                             Already have an account?
-                            <a href="{{ path('app_login') }}" class="login-link">Sign in</a>
+                            <a href="{{ path('app_login') }}" class="login-link" data-turbo="false" target="_self">Sign in</a>
                         </p>
                     </div>
                 </form>
@@ -172,9 +172,26 @@
             font-size: 1rem;
             line-height: 1;
             color: #6b7280;
+            padding: 0.5rem;
+            z-index: 10;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .password-toggle:hover {
             color: #16a34a;
+        }
+        .password-eye {
+            pointer-events: none;
+        }
+        .password-input-wrapper input::-ms-reveal,
+        .password-input-wrapper input::-ms-clear {
+            display: none;
+        }
+        .password-input-wrapper input::-webkit-credentials-auto-fill-button {
+            visibility: hidden;
+            display: none !important;
         }
         .loading-spinner {
             display: inline-block;
@@ -318,7 +335,14 @@
 
         function initializePasswordToggles() {
             document.querySelectorAll('[data-password-toggle]').forEach(function(toggleButton) {
-                toggleButton.addEventListener('click', function() {
+                if (toggleButton.dataset.toggleBound === 'true') {
+                    return;
+                }
+
+                toggleButton.dataset.toggleBound = 'true';
+                toggleButton.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
                     const targetId = toggleButton.getAttribute('data-password-toggle');
                     const input = document.getElementById(targetId);
                     if (!input) {
@@ -335,6 +359,8 @@
             });
         }
 
+        document.addEventListener('DOMContentLoaded', initializePasswordToggles);
+        document.addEventListener('turbo:load', initializePasswordToggles);
         initializePasswordToggles();
 
         function startResendCooldown(seconds) {
@@ -513,5 +539,40 @@
                 }
             });
         });
+
+        let isLogoNavigating = false;
+        document.querySelectorAll('[data-logo-slide-link]').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                if (isLogoNavigating) return;
+                const logoSide = document.querySelector('.logo-side');
+                const formSide = document.querySelector('.form-side');
+                const transitionOverlay = document.getElementById('pageTransitionOverlay');
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+                e.preventDefault();
+                isLogoNavigating = true;
+                document.body.classList.add('is-page-transitioning');
+                if (transitionOverlay) {
+                    transitionOverlay.style.display = 'flex';
+                }
+                logoSide?.classList.remove('logo-fade-out');
+                formSide?.classList.remove('form-fade-out');
+                void formSide?.offsetWidth;
+
+                window.requestAnimationFrame(function() {
+                    logoSide?.classList.add('logo-fade-out');
+                    formSide?.classList.add('form-fade-out');
+                });
+
+                window.setTimeout(function() {
+                    window.location.href = link.href;
+                }, 280);
+            });
+        });
     </script>
+
+    <div id="pageTransitionOverlay" class="page-transition-overlay" style="display: none;" aria-hidden="true">
+        <span class="page-transition-spinner" aria-hidden="true"></span>
+        <span class="page-transition-text">Loading...</span>
+    </div>
 {% endblock %}

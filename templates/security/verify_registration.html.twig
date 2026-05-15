@@ -1,61 +1,79 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Verify Registration | Reserva FTIC{% endblock %}
+{% block title %}Verify Registration - Reserva{% endblock %}
 
-{% block body_class %}page-login{% endblock %}
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('styles/login.css') }}">
+{% endblock %}
+
 {% block body %}
-    <div class="login-card verify-card">
-        <div class="login-brand verify-card__header">
-            <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
-            <h1>Confirm your institutional email</h1>
-            <p>Enter the code we sent to your institutional address to complete registration.</p>
-        </div>
-
-        {% if errors is not empty %}
-            <div class="verify-alert verify-alert--error">
-                {% for error in errors %}
-                    <span>{{ error }}</span>
-                {% endfor %}
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <a href="{{ path('app_home') }}">
+                    <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
+                </a>
             </div>
-        {% endif %}
 
-        <div class="verify-summary">
-            <span class="verify-summary__label">Institutional email</span>
-            <strong>{{ data.email ?: 'Not available' }}</strong>
+            <nav class="header-nav">
+                <a href="{{ path('app_home') }}#about">About us</a>
+                <a href="{{ path('app_home') }}#faq">FAQ</a>
+            </nav>
+
+            <div class="header-auth">
+                <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign in</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="logo-side">
+            <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva Logo" class="logo-image" />
         </div>
 
-        <form method="post" action="{{ path('app_verify_registration') }}" data-turbo="false" class="verify-form">
-            <input type="hidden" name="email" value="{{ data.email }}">
+        <div class="form-side">
+            <div class="form-wrapper">
+                <div class="form-header">
+                    <h1 class="form-title">Verify Email</h1>
+                    <p class="form-subtitle">Confirm the code sent to your email</p>
+                </div>
 
-            <label class="verify-field" for="verificationCode">
-                <span>Verification code</span>
-                <input type="text" id="verificationCode" name="verificationCode" value="{{ data.verificationCode }}" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code" required>
-            </label>
+                {% if errors is not empty %}
+                    <div class="alert alert-danger" style="margin-bottom: 1rem; color: #dc2626;">
+                        {% for error in errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('verify_registration') }}">
+                <div class="verify-summary" style="margin-bottom: 1.5rem; padding: 1rem; background-color: #f3f4f6; border-radius: 0.5rem;">
+                    <span style="color: #6b7280; font-size: 0.875rem;">Email: <strong>{{ data.email ?: 'Not available' }}</strong></span>
+                </div>
 
-            <button class="verify-button verify-button--primary" type="submit">Verify account</button>
-        </form>
+                <form method="post" action="{{ path('app_verify_registration') }}" data-turbo="false" class="form">
+                    <input type="hidden" name="email" value="{{ data.email }}">
 
-        <div class="verify-divider"><span>Didn't receive it?</span></div>
+                    <div class="form-group">
+                        <label for="verificationCode" class="form-label">6-Digit Code</label>
+                        <input type="text" id="verificationCode" name="verificationCode" value="{{ data.verificationCode }}" class="form-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" required autofocus>
+                        <small style="color: #6b7280; font-size: 0.875rem; display: block; margin-top: 0.5rem;">Check your email (including spam) for the verification code.</small>
+                    </div>
 
-        <form
-            method="post"
-            action="{{ path('app_resend_verification_code') }}"
-            class="verify-resend"
-            data-controller="resend-cooldown"
-            data-resend-cooldown-remaining-value="{{ resendCooldownRemaining|default(0) }}"
-            data-resend-cooldown-label-value="Resend code"
-        >
-            <input type="hidden" name="email" value="{{ data.email }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('verify_registration') }}">
 
-            <button class="verify-button verify-button--secondary" type="submit" data-resend-cooldown-target="button">Resend code</button>
-            <p class="verify-resend__status" data-resend-cooldown-target="status"></p>
-        </form>
+                    <button type="submit" class="submit-button">Verify Account</button>
 
-        <p class="verify-footer">
-            Already verified? <a href="{{ path('app_login') }}" data-turbo="false" target="_self">Log in here</a>.
-        </p>
+                    <div class="login-link-container" style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 1rem;">
+                        <p class="login-text" style="margin-bottom: 0.75rem;">Didn't receive the code?</p>
+                        <form method="post" action="{{ path('app_resend_verification_code') }}" style="display: inline-block;">
+                            <input type="hidden" name="email" value="{{ data.email }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
+                            <button type="submit" class="login-link" style="background: none; border: none; cursor: pointer; color: #16a34a; font-weight: 600; text-decoration: none; padding: 0;">Resend code</button>
+                        </form>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 {% endblock %}

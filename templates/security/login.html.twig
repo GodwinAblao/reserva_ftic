@@ -10,7 +10,7 @@
     <header class="header">
         <div class="header-inner">
             <div class="header-logo">
-                <a href="{{ path('app_home') }}">
+                <a href="{{ path('app_home') }}" data-logo-slide-link data-logo-slide-direction="left" data-turbo="false" target="_self">
                     <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
                 </a>
             </div>
@@ -22,8 +22,8 @@
             </nav>
 
             <div class="header-auth">
-                <a href="{{ path('app_login') }}" class="btn-login">Login</a>
-                <a href="{{ path('app_register') }}" class="btn-signup">Sign in</a>
+                <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign in</a>
             </div>
         </div>
     </header>
@@ -48,7 +48,7 @@
                     <div class="alert alert-danger" style="margin-bottom: 1rem; color: #dc2626;">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
                 {% endif %}
 
-                <form class="form" method="post" action="{{ path('app_login') }}">
+                <form class="form" method="post" action="{{ path('app_login') }}" id="loginForm">
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" id="email" name="email" value="{{ last_username }}" class="form-input" required autofocus />
@@ -68,14 +68,14 @@
                         <a href="#" class="forgot-password-link" onclick="showForgotPassword(); return false;">Forgot password?</a>
                     </div>
 
-                    <button type="submit" class="submit-button">
+                    <button type="submit" class="submit-button" id="loginSubmitButton">
                         Sign in
                     </button>
 
                     <div class="signup-link-container">
                         <p class="signup-text">
                             You don't have an account?
-                            <a href="{{ path('app_register') }}" class="signup-link">Sign up</a>
+                            <a href="{{ path('app_register') }}" class="signup-link" data-turbo="false" target="_self">Sign up</a>
                         </p>
                     </div>
                 </form>
@@ -173,8 +173,23 @@
                 font-size: 1rem;
                 line-height: 1;
                 color: #6b7280;
+                padding: 0.5rem;
+                z-index: 10;
+                pointer-events: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             .password-toggle:hover { color: #16a34a; }
+            .password-eye { pointer-events: none; }
+            .password-input-wrapper input::-ms-reveal,
+            .password-input-wrapper input::-ms-clear {
+                display: none;
+            }
+            .password-input-wrapper input::-webkit-credentials-auto-fill-button {
+                visibility: hidden;
+                display: none !important;
+            }
         `;
         document.head.appendChild(styleTag);
     })();
@@ -208,6 +223,11 @@
 
     function initializePasswordToggles() {
         document.querySelectorAll('[data-password-toggle]').forEach(function(toggleButton) {
+            if (toggleButton.dataset.toggleBound === 'true') {
+                return;
+            }
+
+            toggleButton.dataset.toggleBound = 'true';
             toggleButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -224,7 +244,14 @@
         });
     }
 
+    document.addEventListener('DOMContentLoaded', initializePasswordToggles);
+    document.addEventListener('turbo:load', initializePasswordToggles);
     initializePasswordToggles();
+
+    document.getElementById('loginForm')?.addEventListener('submit', function() {
+        const loginSubmitButton = document.getElementById('loginSubmitButton');
+        setButtonLoading(loginSubmitButton, true, 'Signing in...');
+    });
 
     function showForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='flex'; document.getElementById('otpModal').style.display='none'; }
     function hideForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='none' }
@@ -392,27 +419,39 @@
         });
     });
 
+    let isLogoNavigating = false;
     document.querySelectorAll('[data-logo-slide-link]').forEach(function(link) {
         link.addEventListener('click', function(e) {
-            const logo = document.querySelector('.logo-image');
+            if (isLogoNavigating) return;
+            const logoSide = document.querySelector('.logo-side');
             const formSide = document.querySelector('.form-side');
-            if (!logo || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            const transitionOverlay = document.getElementById('pageTransitionOverlay');
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
             e.preventDefault();
-            const direction = link.dataset.logoSlideDirection || 'left';
-            logo.classList.remove('logo-slide-left', 'logo-slide-right');
+            isLogoNavigating = true;
+            document.body.classList.add('is-page-transitioning');
+            if (transitionOverlay) {
+                transitionOverlay.style.display = 'flex';
+            }
+            logoSide?.classList.remove('logo-fade-out');
             formSide?.classList.remove('form-fade-out');
-            void logo.offsetWidth;
-
-            logo.addEventListener('animationend', function() {
-                window.location.href = link.href;
-            }, { once: true });
+            void formSide?.offsetWidth;
 
             window.requestAnimationFrame(function() {
-                logo.classList.add('logo-slide-' + direction);
+                logoSide?.classList.add('logo-fade-out');
                 formSide?.classList.add('form-fade-out');
             });
+
+            window.setTimeout(function() {
+                window.location.href = link.href;
+            }, 280);
         });
     });
 </script>
+
+    <div id="pageTransitionOverlay" class="page-transition-overlay" style="display: none;" aria-hidden="true">
+        <span class="page-transition-spinner" aria-hidden="true"></span>
+        <span class="page-transition-text">Loading...</span>
+    </div>
 {% endblock %}

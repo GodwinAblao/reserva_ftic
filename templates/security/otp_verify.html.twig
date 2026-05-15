@@ -1,37 +1,70 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Verify OTP | Reserva FTIC{% endblock %}
+{% block title %}Verify OTP - Reserva{% endblock %}
 
-{% block body_class %}page-login{% endblock %}
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('styles/login.css') }}">
+{% endblock %}
 
 {% block body %}
-    <div class="login-card">
-        <div class="login-brand">
-            <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo">
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <a href="{{ path('app_home') }}">
+                    <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
+                </a>
+            </div>
+
+            <nav class="header-nav">
+                <a href="{{ path('app_home') }}#about">About us</a>
+                <a href="{{ path('app_home') }}#faq">FAQ</a>
+            </nav>
+
+            <div class="header-auth">
+                <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign in</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="logo-side">
+            <img src="{{ asset('images/R-Logo.png') }}" alt="Reserva Logo" class="logo-image" />
         </div>
 
-        <h2>Verify OTP</h2>
+        <div class="form-side">
+            <div class="form-wrapper">
+                <div class="form-header">
+                    <h1 class="form-title">Verify OTP</h1>
+                    <p class="form-subtitle">Enter the code we sent to your email</p>
+                </div>
 
-        {% if errors|length > 0 %}
-            <div class="alert alert-danger">
-                <ul>
-                    {% for error in errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
+                {% if errors|length > 0 %}
+                    <div class="alert alert-danger" style="margin-bottom: 1rem; color: #dc2626;">
+                        {% for error in errors %}
+                            {{ error }}{% if not loop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{{ path('app_otp_reset', {'token': token}) }}" data-turbo="false" class="form">
+                    <div class="form-group">
+                        <label for="otp" class="form-label">6-Digit OTP</label>
+                        <input type="text" id="otp" name="otp" value="{{ otp }}" class="form-input" maxlength="6" placeholder="000000" required autofocus>
+                        <small style="color: #6b7280; font-size: 0.875rem; display: block; margin-top: 0.5rem;">Check your email (including spam) for the OTP. Expires in 10 minutes.</small>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('otp_reset') }}">
+
+                    <button type="submit" class="submit-button">Verify OTP</button>
+
+                    <div class="login-link-container">
+                        <p class="login-text">
+                            <a href="{{ path('app_login') }}" class="login-link" data-turbo="false" target="_self">Back to Login</a>
+                        </p>
+                    </div>
+                </form>
             </div>
-        {% endif %}
-
-        <form method="post" action="{{ path('app_otp_reset', {'token': token}) }}" data-turbo="false">
-            <div class="form-group">
-                <label for="otp">6-Digit OTP</label>
-                <input type="text" id="otp" name="otp" value="{{ otp }}" maxlength="6" required autofocus>
-                <small>Check your email (including spam) for the OTP. Expires in 10 minutes.</small>
-            </div>
-
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token('otp_reset') }}">
-
-            <button class="btn-primary" type="submit">Verify OTP</button>
-        </form>
+        </div>
     </div>
 {% endblock %}
