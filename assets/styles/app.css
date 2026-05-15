@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700&display=swap');
 @import './mentoring.css';
 @import './profile.css';
+@import './leaderboard.css';
 
 :root {
     --feu-green: #006633;
@@ -109,10 +110,6 @@ body {
 
 .embedded-content iframe {
     min-height: 280px;
-}
-
-    font-size: 0.8rem;
-    font-weight: 700;
 }
 
 .forecast-bars {

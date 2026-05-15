@@ -1,0 +1,211 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}Mentor Leaderboard | Reserva FTIC{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('styles/leaderboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<canvas id="lb-confetti"></canvas>
+<div class="leaderboard-page">
+    <div class="leaderboard-hero">
+        <div class="leaderboard-hero-inner">
+            <h1>Mentor Leaderboard</h1>
+            <p>Recognizing our most engaged mentors and their contributions to the FTIC community.</p>
+        </div>
+    </div>
+
+    <div class="lb-stats">
+        <div class="lb-stat-card">
+            <div class="lb-stat-value">{{ totalMentors }}</div>
+            <div class="lb-stat-label">Mentors</div>
+        </div>
+        <div class="lb-stat-card">
+            <div class="lb-stat-value">{{ totalPoints }}</div>
+            <div class="lb-stat-label">Total Points</div>
+        </div>
+        <div class="lb-stat-card">
+            <div class="lb-stat-value">{{ mentors|length > 0 ? (totalPoints / totalMentors)|round(1) : 0 }}</div>
+            <div class="lb-stat-label">Avg Points</div>
+        </div>
+        <div class="lb-stat-card">
+            <div class="lb-stat-value">{{ specializations|length }}</div>
+            <div class="lb-stat-label">Specializations</div>
+        </div>
+    </div>
+
+    <form method="get" action="{{ path('app_leaderboard') }}" class="leaderboard-filters">
+        <input
+            type="text"
+            name="search"
+            value="{{ search }}"
+            placeholder="Search mentors, specializations..."
+            class="filter-input"
+            aria-label="Search mentors"
+        >
+        <select name="specialization" class="filter-select" aria-label="Filter by specialization">
+            <option value="">All Specializations</option>
+            {% for spec in specializations %}
+                <option value="{{ spec }}" {% if specializationFilter == spec %}selected{% endif %}>{{ spec }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="filter-btn">Filter</button>
+        {% if search or specializationFilter %}
+            <a href="{{ path('app_leaderboard') }}" class="filter-btn filter-btn-reset">Reset</a>
+        {% endif %}
+    </form>
+
+    {% if mentors|length > 0 %}
+        {% set maxPoints = mentors[0].engagementPoints %}
+
+        {% if topThree|length > 0 %}
+            <div class="lb-podium">
+                {% for mentor in topThree %}
+                    {% set rank = loop.index %}
+                    {% set user = mentor.user %}
+                    {% set rankClass = rank == 1 ? 'first' : (rank == 2 ? 'second' : 'third') %}
+                    {% set badgeClass = rank == 1 ? 'gold' : (rank == 2 ? 'silver' : 'bronze') %}
+                    {% set baseClass = badgeClass %}
+                    <div class="lb-podium-step">
+                        <div class="lb-podium-card {{ rankClass }}">
+                            {% if rank == 1 %}
+                                <div class="lb-crown">👑</div>
+                            {% endif %}
+                            <div class="lb-rank-badge {{ badgeClass }}">{{ rank }}</div>
+                            {% if user and user.profilePicture %}
+                                <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="{{ mentor.displayName }}" class="lb-podium-avatar">
+                            {% else %}
+                                <div class="lb-podium-avatar">{{ mentor.displayName|first|upper }}</div>
+                            {% endif %}
+                            <p class="lb-podium-name">{{ mentor.displayName }}</p>
+                            <span class="lb-podium-spec">{{ mentor.specialization }}</span>
+                            <div class="lb-podium-points">
+                                {{ mentor.engagementPoints }}
+                                <span>pts</span>
+                            </div>
+                        </div>
+                        <div class="lb-podium-base {{ baseClass }}">{{ rank == 1 ? 'Champion' : (rank == 2 ? 'Runner-up' : 'Third') }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if rest|length > 0 %}
+            <div class="lb-table-wrap">
+                <div class="lb-table-header">
+                    <h3>All Mentors</h3>
+                    <span class="lb-count">{{ rest|length }} ranked</span>
+                </div>
+                <table class="lb-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Mentor</th>
+                            <th>Specialization</th>
+                            <th>Points</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mentor in rest %}
+                            {% set rank = loop.index + 3 %}
+                            {% set user = mentor.user %}
+                            {% set pct = maxPoints > 0 ? ((mentor.engagementPoints / maxPoints) * 100)|round : 0 %}
+                            {% set pillClass = rank <= 5 ? 'top' : (rank <= 10 ? 'high' : 'normal') %}
+                            <tr>
+                                <td class="lb-cell-rank">
+                                    <span class="lb-rank-pill {{ pillClass }}">{{ rank }}</span>
+                                </td>
+                                <td>
+                                    <div class="lb-cell-user">
+                                        {% if user and user.profilePicture %}
+                                            <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="{{ mentor.displayName }}" class="lb-cell-avatar">
+                                        {% else %}
+                                            <div class="lb-cell-avatar">{{ mentor.displayName|first|upper }}</div>
+                                        {% endif %}
+                                        <div>
+                                            <div class="lb-cell-name">{{ mentor.displayName }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-size: 0.85rem; color: #6b7280; font-weight: 600;">{{ mentor.specialization }}</span>
+                                </td>
+                                <td class="lb-cell-points">{{ mentor.engagementPoints }}</td>
+                                <td>
+                                    <div class="lb-bar-track" aria-hidden="true">
+                                        <div class="lb-bar-fill" style="width: {{ pct }}%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="lb-empty">
+            <div class="lb-empty-icon">🏆</div>
+            <p>No mentors match your search.</p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+(function(){
+    const canvas = document.getElementById('lb-confetti');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+    window.addEventListener('resize', () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
+
+    const colors = ['#f5b800','#ffd700','#e6a000','#ffffff','#22c55e','#006633'];
+    const particles = [];
+    const count = 80;
+
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h - h,
+            r: Math.random() * 4 + 2,
+            d: Math.random() * count,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            tilt: Math.floor(Math.random() * 10) - 10,
+            tiltAngle: 0,
+            tiltAngleIncremental: (Math.random() * 0.07) + 0.05,
+            speed: Math.random() * 2 + 1
+        });
+    }
+
+    let angle = 0;
+    function draw() {
+        ctx.clearRect(0, 0, w, h);
+        angle += 0.01;
+        particles.forEach((p, i) => {
+            p.tiltAngle += p.tiltAngleIncremental;
+            p.y += (Math.cos(angle + p.d) + 3 + p.r / 2) / 2;
+            p.x += Math.sin(angle);
+            p.tilt = Math.sin(p.tiltAngle) * 15;
+
+            ctx.beginPath();
+            ctx.lineWidth = p.r / 2;
+            ctx.strokeStyle = p.color;
+            ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+            ctx.stroke();
+
+            if (p.y > h) {
+                p.x = Math.random() * w;
+                p.y = -20;
+                p.tilt = Math.floor(Math.random() * 10) - 10;
+            }
+        });
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();
+</script>
+{% endblock %}

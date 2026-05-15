@@ -40,7 +40,7 @@
     </span>
     <span>My Reservation</span>
 </a>
-<a class="nav-link" href="{{ path('mentoring_index') }}">
+<a class="nav-link {{ route == 'app_leaderboard' ? 'active' : '' }}" href="{{ path('app_leaderboard') }}">
     <span class="nav-link-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg>
     </span>
