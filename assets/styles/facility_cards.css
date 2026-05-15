@@ -1,0 +1,103 @@
+.facility-list-cards.facilities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.facility-list-cards .facility-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px var(--feu-shadow);
+    transition: all 0.3s;
+    cursor: pointer;
+    border: 1px solid rgba(0, 102, 51, 0.08);
+}
+
+.facility-list-cards .facility-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 102, 51, 0.15);
+}
+
+.facility-list-cards .facility-image-holder {
+    width: 100%;
+    height: 200px;
+    background: #f0f0f0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.facility-list-cards .facility-image-holder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.facility-list-cards .placeholder-image {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+    color: white;
+    font-weight: bold;
+}
+
+.facility-list-cards .facility-details {
+    padding: 20px;
+}
+
+.facility-list-cards .facility-details h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    color: var(--feu-ink);
+}
+
+.facility-list-cards .capacity {
+    margin: 8px 0;
+    font-size: 14px;
+    color: var(--feu-ink);
+}
+
+.facility-list-cards .description {
+    margin: 10px 0;
+    font-size: 13px;
+    color: #888;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.facility-list-cards .btn-view {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: var(--feu-green);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.facility-list-cards .btn-view:hover {
+    background: var(--feu-green-dark);
+    box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
+}
+
+.facility-list-empty.no-facilities {
+    text-align: center;
+    padding: 60px 20px;
+    background: rgba(0, 102, 51, 0.05);
+    border-radius: 12px;
+    color: #999;
+}

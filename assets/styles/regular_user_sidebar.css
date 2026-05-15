@@ -1,0 +1,123 @@
+.app-shell.regular-user-shell {
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 26px;
+    padding: 16px 14px 16px 12px;
+    background: #ffffff;
+}
+
+.sidebar.regular-user-sidebar {
+    min-height: calc(100vh - 32px);
+    height: auto;
+    width: 260px;
+    max-width: 100%;
+    top: 16px;
+    gap: 10px;
+    padding: 17px 12px 14px;
+    border-radius: 12px;
+    background:  #186e04;
+    box-shadow: 0 14px 24px rgba(26, 126, 0, 0.15);
+}
+
+.sidebar.regular-user-sidebar .sidebar-brand {
+    margin-bottom: 2px;
+}
+
+.sidebar.regular-user-sidebar .sidebar-brand img {
+    width: 100px;
+    height: auto;
+    display: block;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+}
+
+.regular-user-mail {
+    padding: 6px 8px 4px;
+    color: #f3fdf1;
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.01em;
+    word-break: break-word;
+}
+
+.sidebar.regular-user-sidebar .nav-list {
+    gap: 7px;
+    margin-top: 24px;
+}
+
+.sidebar.regular-user-sidebar .nav-link,
+.sidebar.regular-user-sidebar .regular-user-logout {
+    min-height: 25px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.11);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.sidebar.regular-user-sidebar .nav-link.active {
+    background: #ffffff;
+    color: #138f00;
+    transform: none;
+}
+
+.sidebar.regular-user-sidebar .nav-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: none;
+}
+
+.sidebar.regular-user-sidebar .nav-link-icon {
+    width: 12px;
+    height: 12px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 12px;
+}
+
+.sidebar.regular-user-sidebar .nav-link-icon svg {
+    width: 12px;
+    height: 12px;
+    display: block;
+}
+
+.sidebar.regular-user-sidebar .regular-user-logout {
+    margin-top: auto;
+    justify-content: flex-start;
+}
+
+.content-area.regular-user-content {
+    min-width: 0;
+    padding: 20px 26px 32px 0;
+}
+
+@media (max-width: 900px) {
+    .app-shell.regular-user-shell {
+        padding: 10px;
+        gap: 14px;
+    }
+
+    .sidebar.regular-user-sidebar {
+        min-height: auto;
+        width: 100%;
+    }
+
+    .sidebar.regular-user-sidebar .nav-list {
+        flex: 1 1 100%;
+    }
+
+    .sidebar.regular-user-sidebar .regular-user-logout {
+        margin-top: 0;
+    }
+
+    .content-area.regular-user-content {
+        padding: 18px 14px 28px;
+    }
+}

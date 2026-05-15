@@ -1,11 +1,16 @@
 {% extends 'base.html.twig' %}
 
 {% block body %}
-    <div class="app-shell">
-        <aside class="sidebar">
+    {% set is_regular_user = not is_granted('ROLE_SUPER_ADMIN') and not is_granted('ROLE_ADMIN') %}
+    <div class="app-shell {{ is_regular_user ? 'regular-user-shell' : '' }}">
+        <aside class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : '' }}">
             <div class="sidebar-brand">
                 <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
             </div>
+
+            {% if is_regular_user %}
+                <div class="regular-user-mail">{{ app.user ? app.user.userIdentifier : 'user@ftic.edu.ph' }}</div>
+            {% endif %}
 
             <nav class="nav-list">
                 {% if is_granted('ROLE_SUPER_ADMIN') %}
@@ -15,9 +20,6 @@
                 {% elseif is_granted('ROLE_ADMIN') %}
                 {# Dashboard link is in the ROLE_ADMIN section below #}
                 {% else %}
-                <a class="nav-link {{ app.request.attributes.get('_route') in ['app_dashboard', 'app_profile'] ? 'active' : '' }}" href="{{ path('app_dashboard') }}">
-                    Dashboard
-                </a>
                 {% endif %}
                 {% if is_granted('ROLE_SUPER_ADMIN') %}
                 <a class="nav-link {{ app.request.attributes.get('_route') in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
@@ -58,36 +60,24 @@
                     Reports
                 </a>
                 {% else %}
-                {# Regular User/Faculty Navigation #}
-                <a class="nav-link {{ app.request.attributes.get('_route') in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
-                    Profile
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'user_reservations' ? 'active' : '' }}" href="{{ path('user_reservations') }}">
-                    Reservations
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'app_facility_index' ? 'active' : '' }}" href="{{ path('app_facility_index') }}">
-                    Facilities
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_index') }}">
-                    Mentoring
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
-                    Research
-                </a>
+                {% include 'layouts/_regular_user_nav.html.twig' %}
                 {% endif %}
             </nav>
 
-
-<div class="sidebar-footer">
+            {% if is_regular_user %}
+                
+            {% else %}
+            <div class="sidebar-footer">
                 <div class="pill-role">
                     {{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : (is_granted('ROLE_ADMIN') ? 'ADMIN' : 'USER') }}
                 </div>
                 <div>Signed in as {{ app.user ? app.user.userIdentifier : 'Guest' }}</div>
                 <div><a href="{{ path('app_logout') }}" data-clear-notification-session>Log out</a></div>
             </div>
+            {% endif %}
         </aside>
 
-        <main class="content-area">
+        <main class="content-area {{ is_regular_user ? 'regular-user-content' : '' }}">
             {% block content %}{% endblock %}
         </main>
     </div>

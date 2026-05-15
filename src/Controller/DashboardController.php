@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Facility;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\Notification;
@@ -63,6 +64,12 @@ class DashboardController extends AbstractController
             ['createdAt' => 'DESC'],
             8
         );
+
+        $facilities = $em->getRepository(Facility::class)->findBy(
+            ['availableForReservation' => true],
+            ['id' => 'ASC'],
+            3
+        );
         
         $unreadCount = $em->getRepository(Notification::class)->createQueryBuilder('n')
             ->select('COUNT(n.id)')
@@ -88,6 +95,7 @@ class DashboardController extends AbstractController
             'notifications' => $notifications,
             'unreadCount' => $unreadCount,
             'stats' => $stats,
+            'facilities' => $facilities,
         ]);
     }
 }

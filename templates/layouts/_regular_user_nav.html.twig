@@ -1,0 +1,54 @@
+{% set route = app.request.attributes.get('_route') %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}">
+{% endblock %}
+
+<a class="nav-link {{ route == 'app_dashboard' ? 'active' : '' }}" href="{{ path('app_dashboard') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg>
+    </span>
+    <span>Dashboard</span>
+</a>
+<a class="nav-link {{ route in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg>
+    </span>
+    <span>Profile</span>
+</a>
+<a class="nav-link {{ route == 'app_facility_index' or route starts with 'facility_' or route starts with 'app_facility_view' ? 'active' : '' }}" href="{{ path('app_facility_index') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V7.5L12 3l9 4.5V20h-4v-7H7v7H3Zm6-2h6v-5H9v5Zm2-7h2V9h-2v2Z" fill="currentColor"/></svg>
+    </span>
+    <span>Facility</span>
+</a>
+<a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_index') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg>
+    </span>
+    <span>Mentoring</span>
+</a>
+<a class="nav-link {{ route starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 6.5V9l10-4.5L22 9V6.5L12 2Zm-7 9.2 7 3.15 7-3.15V18l-7 3-7-3V11.2Zm3 2.25v1.85l4 1.7 4-1.7v-1.85l-4 1.8-4-1.8Z" fill="currentColor"/></svg>
+    </span>
+    <span>Innovation Hub</span>
+</a>
+<a class="nav-link {{ route in ['user_reservations', 'cancel_reservation', 'accept_suggestion', 'decline_suggestion', 'user_suggest_facility', 'user_select_alternative', 'user_keep_original_facility'] ? 'active' : '' }}" href="{{ path('user_reservations') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>
+    </span>
+    <span>My Reservation</span>
+</a>
+<a class="nav-link" href="{{ path('mentoring_index') }}">
+    <span class="nav-link-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg>
+    </span>
+    <span>Leaderboard</span>
+</a>
+<a class="nav-link regular-user-logout" href="{{ path('app_logout') }}" data-clear-notification-session>
+    <span class="nav-link-icon">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17v-2h4V9h-4V7l-5 5 5 5Zm2-14a9 9 0 1 1 0 18h-1v-2h1a7 7 0 1 0 0-14h-1V3h1Z" fill="currentColor"/></svg>
+     </span>
+    <span>Logout</span>
+</a>
