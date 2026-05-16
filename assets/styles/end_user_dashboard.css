@@ -61,14 +61,6 @@
     min-width: 0;
 }
 
-.dashboard-page .dashboard-welcome h2 {
-    margin: 4px 0 18px;
-    color: #73a800;
-    font-size: 25px;
-    font-weight: 700;
-    letter-spacing: 0;
-}
-
 /* Summary stat cards */
 .dashboard-page .dashboard-stats-grid {
     display: grid;

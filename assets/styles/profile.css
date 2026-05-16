@@ -135,3 +135,70 @@
   }
 }
 
+/* Layout & Profile editor specific styles */
+.card-panel.profile-editor{
+  display:flex;
+  gap:32px;
+  align-items:flex-start;
+  padding:24px;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 6px 18px rgba(15,23,42,0.06);
+  flex-wrap:wrap;
+}
+
+.profile-summary{
+  width:260px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:12px;
+}
+
+.profile-picture-holder{
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  overflow:hidden;
+  background:#f3f4f6;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.profile-picture-holder img{width:100%;height:100%;object-fit:cover;display:block}
+.profile-placeholder svg{width:80px;height:80px;color:#9ca3af}
+
+.profile-summary h3{margin:0;font-size:1.25rem;color:#111827}
+.profile-summary p{margin:0;color:#6b7280}
+.role-badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.role-badge{background:#eef2ff;color:#1e3a8a;padding:6px 10px;border-radius:999px;font-size:12px}
+
+.profile-form{flex:1;min-width:320px}
+.profile-form-header{display:flex;justify-content:flex-start;margin-bottom:12px}
+.profile-tabs{display:inline-flex;gap:8px}
+.tab-btn{background:#fff;border:1px solid #e5e7eb;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;color:#374151}
+.tab-btn.active{background:#006633;color:#fff;border-color:#006633}
+
+.profile-main{flex:1;display:flex;flex-direction:column}
+.profile-form-header{order:0}
+.profile-form{order:1}
+
+.form-section{background:#fbfbfb;padding:16px;border-radius:8px}
+.muted{color:#6b7280;margin:4px 0 12px}
+.form-row{display:flex;gap:12px}
+.form-group{flex:1;display:flex;flex-direction:column}
+.form-group label{font-weight:600;margin-bottom:6px;color:#374151}
+.form-group input,.form-group select,.form-group textarea{padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;background:white}
+.btn-primary{background:#006633;color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;margin-top:12px}
+
+.mentor-section{margin-top:16px}
+
+@media (max-width:800px){
+  .card-panel.profile-editor{flex-direction:column;padding:16px}
+  .profile-summary{width:100%;flex-direction:row;text-align:left;align-items:center;gap:16px}
+  .profile-picture-holder{width:80px;height:80px}
+  .profile-form{width:100%}
+  .form-row{flex-direction:column}
+}
+

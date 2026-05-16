@@ -2,11 +2,12 @@
 
 {% block title %}Profile | Reserva FTIC{% endblock %}
 
-{% block content %}
-<div class="content-header">
-    <h1>Profile</h1>
-</div>
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ app.request.basepath }}/assets/styles/profile.css">
+{% endblock %}
 
+{% block content %}
 {% for message in app.flashes('success') %}
     <div class="alert alert-success">{{ message }}</div>
 {% endfor %}
@@ -41,9 +42,17 @@
         </div>
     </div>
 
-    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="profile-form">
+    <div class="profile-main">
+        <div class="profile-form-header">
+            <div class="profile-tabs">
+                <button type="button" class="tab-btn active">Personal Information</button>
+                <button type="button" class="tab-btn">Mentor Public Profile</button>
+            </div>
+        </div>
+
+        <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="profile-form" id="personalForm">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
-        
+
         <div class="form-section">
             <h3>Personal Information</h3>
             <p class="muted">Update your account details</p>
@@ -94,45 +103,76 @@
                 </div>
             </div>
 
-{% if is_granted('ROLE_MENTOR') and mentorProfile %}
-            <div class="mentor-section">
-                <h3>Mentor Public Profile</h3>
-                <p class="muted">This information is visible to all students</p>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Display Name</label>
-                        <input type="text" name="display_name" value="{{ mentorProfile.displayName }}" placeholder="How you want to be known">
-                    </div>
-                    <div class="form-group">
-                        <label>Specialization</label>
-                        <select name="specialization" class="form-input">
-                            <option value="">Select specialization...</option>
-                            <option value="BSITBA" {{ mentorProfile.specialization == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
-                            <option value="BSCS" {{ mentorProfile.specialization == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
-                            <option value="Software Engineering" {{ mentorProfile.specialization == 'Software Engineering' ? 'selected' : '' }}>Software Engineering</option>
-                            <option value="Data Science" {{ mentorProfile.specialization == 'Data Science' ? 'selected' : '' }}>Data Science</option>
-                            <option value="Cybersecurity" {{ mentorProfile.specialization == 'Cybersecurity' ? 'selected' : '' }}>Cybersecurity</option>
-                            <option value="Cloud Computing" {{ mentorProfile.specialization == 'Cloud Computing' ? 'selected' : '' }}>Cloud Computing</option>
-                            <option value="Web Development" {{ mentorProfile.specialization == 'Web Development' ? 'selected' : '' }}>Web Development</option>
-                            <option value="Mobile Development" {{ mentorProfile.specialization == 'Mobile Development' ? 'selected' : '' }}>Mobile Development</option>
-                            <option value="UI/UX Design" {{ mentorProfile.specialization == 'UI/UX Design' ? 'selected' : '' }}>UI/UX Design</option>
-                            <option value="Research" {{ mentorProfile.specialization == 'Research' ? 'selected' : '' }}>Research</option>
-                            <option value="Other" {{ mentorProfile.specialization == 'Other' ? 'selected' : '' }}>Other</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Bio / Description</label>
-                    <textarea name="bio" rows="4" placeholder="Tell students about your expertise, experience, and what you can help with...">{{ mentorProfile.bio }}</textarea>
-                </div>
-            </div>
-            {% endif %}
+            {# Mentor fields removed from personal form and moved to mentor form below #}
 
             <button type="submit" class="btn-primary">Save Personal Changes</button>
         </div>
     </form>
+
+    {% if is_granted('ROLE_MENTOR') and mentorProfile %}
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="profile-form mentor-form" id="mentorForm" style="display:none;">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
+        <div class="form-section">
+            <h3>Mentor Public Profile</h3>
+            <p class="muted">This information is visible to all students</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" name="display_name" value="{{ mentorProfile.displayName }}" placeholder="How you want to be known">
+                </div>
+                <div class="form-group">
+                    <label>Specialization</label>
+                    <select name="specialization" class="form-input">
+                        <option value="">Select specialization...</option>
+                        <option value="BSITBA" {{ mentorProfile.specialization == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
+                        <option value="BSCS" {{ mentorProfile.specialization == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
+                        <option value="Software Engineering" {{ mentorProfile.specialization == 'Software Engineering' ? 'selected' : '' }}>Software Engineering</option>
+                        <option value="Data Science" {{ mentorProfile.specialization == 'Data Science' ? 'selected' : '' }}>Data Science</option>
+                        <option value="Cybersecurity" {{ mentorProfile.specialization == 'Cybersecurity' ? 'selected' : '' }}>Cybersecurity</option>
+                        <option value="Cloud Computing" {{ mentorProfile.specialization == 'Cloud Computing' ? 'selected' : '' }}>Cloud Computing</option>
+                        <option value="Web Development" {{ mentorProfile.specialization == 'Web Development' ? 'selected' : '' }}>Web Development</option>
+                        <option value="Mobile Development" {{ mentorProfile.specialization == 'Mobile Development' ? 'selected' : '' }}>Mobile Development</option>
+                        <option value="UI/UX Design" {{ mentorProfile.specialization == 'UI/UX Design' ? 'selected' : '' }}>UI/UX Design</option>
+                        <option value="Research" {{ mentorProfile.specialization == 'Research' ? 'selected' : '' }}>Research</option>
+                        <option value="Other" {{ mentorProfile.specialization == 'Other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Bio / Description</label>
+                <textarea name="bio" rows="4" placeholder="Tell students about your expertise, experience, and what you can help with...">{{ mentorProfile.bio }}</textarea>
+            </div>
+            <button type="submit" class="btn-primary">Save Mentor Changes</button>
+        </div>
+    </form>
+    {% endif %}
+
+    </div>
+
+    <script>
+    (function(){
+        // Tab switching for profile page
+        const tabs = document.querySelectorAll('.tab-btn');
+        const personalForm = document.getElementById('personalForm');
+        const mentorForm = document.getElementById('mentorForm');
+        if (!tabs.length) return;
+        tabs.forEach(function(btn){
+            btn.addEventListener('click', function(){
+                tabs.forEach(b=>b.classList.remove('active'));
+                btn.classList.add('active');
+                if (btn.textContent.trim().toLowerCase().includes('mentor')){
+                    if (personalForm) personalForm.style.display = 'none';
+                    if (mentorForm) mentorForm.style.display = '';
+                } else {
+                    if (mentorForm) mentorForm.style.display = 'none';
+                    if (personalForm) personalForm.style.display = '';
+                }
+            });
+        });
+        // ensure default state: show personal
+        if (mentorForm) mentorForm.style.display = 'none';
+    })();
+    </script>
 </div>
 
 {% endblock %}
