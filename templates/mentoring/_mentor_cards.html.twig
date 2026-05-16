@@ -10,32 +10,28 @@
                         <span>{{ mentor.displayName|first|upper }}</span>
                     {% endif %}
                 </div>
-                <div>
-                    <h4>{{ mentor.displayName }}</h4>
-                    <p class="specialization-label">{{ mentor.specialization }}</p>
-                </div>
-            </div>
 
-            <div class="mentor-meta">
-                <div>
-                    <span>Education</span>
-                    <strong>{{ mentorUser.degreeName ?: mentorUser.degree ?: 'N/A' }}</strong>
-                </div>
-                <div>
-                    <span>Engagement</span>
-                    <strong class="engagement-badge">{{ mentor.engagementPoints }} pts</strong>
+                <div class="mentor-card-title-wrap">
+                    <h4>{{ mentor.displayName }}</h4>
+                    <p class="mentor-card-subtitle">{{ mentor.specialization ?: 'Faculty member' }}</p>
+
+                    <div class="mentor-card-tags">
+                        <span class="mentor-specialization-tag">{{ mentorUser.degreeName ?: mentorUser.degree ?: 'Education' }}</span>
+                        <span class="mentor-specialization-tag">{{ mentor.specialization ?: 'Mentorship' }}</span>
+                    </div>
                 </div>
             </div>
 
             {% if mentor.bio %}
                 <p class="mentor-description">{{ mentor.bio|slice(0, 140) ~ (mentor.bio|length > 140 ? '...' : '') }}</p>
+            {% else %}
+                <p class="mentor-description">No profile description provided.</p>
             {% endif %}
 
             <div class="mentor-card-footer">
                 <span class="contact-info">{{ mentorUser.email }}</span>
-                <div class="card-action">
-                    <span class="icon-arrow-right">→</span>
-                    <span class="action-label">View Profile</span>
+                <div>
+                    <span class="mentor-view-btn">View Profile</span>
                 </div>
             </div>
         </article>

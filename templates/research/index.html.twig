@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="content-header">
-    <h2>Research Repository</h2>
     {% if is_granted('ROLE_SUPER_ADMIN') %}
         <div class="button-group">
             <a href="{{ path('research_new', {'type': 'News'}) }}" class="btn-primary">Add Content News</a>
