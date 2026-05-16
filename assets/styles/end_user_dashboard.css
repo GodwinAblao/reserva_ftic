@@ -5,7 +5,7 @@
 
 .dashboard-page .app-shell.regular-user-shell {
     gap: 16px;
-    padding: 16px 14px 16px 12px;
+    padding: 102px 14px 16px 12px;
 }
 
 .dashboard-page .content-area.regular-user-content {
@@ -25,15 +25,6 @@
     width: 100%;
     max-width: none;
     margin: 0;
-}
-
-.dashboard-page .dashboard-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 4px 7px 8px;
-    margin-bottom: 16px;
-    border-bottom: 1px solid #eff1ea;
 }
 
 .dashboard-page .dashboard-topbar h1 {

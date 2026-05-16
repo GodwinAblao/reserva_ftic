@@ -2,7 +2,6 @@
 @import './mentoring.css';
 @import './profile.css';
 @import './leaderboard.css';
-
 :root {
     --feu-green: #006633;
     --feu-green-dark: #004d26;
@@ -24,6 +23,7 @@ body {
     color: var(--feu-ink);
     background-color: var(--feu-cream);
 }
+
 
 .module-grid,
 .research-grid {
@@ -110,7 +110,10 @@ body {
 
 .embedded-content iframe {
     min-height: 280px;
+     font-size: 0.8rem;
+    font-weight: 700;
 }
+
 
 .forecast-bars {
     display: grid;
@@ -546,11 +549,16 @@ a {
     min-height: 100vh;
     display: grid;
     grid-template-columns: 250px 1fr;
+    align-items: start;
     background:
         linear-gradient(180deg, rgba(11, 93, 58, 0.08) 0%, rgba(255, 255, 255, 0.9) 35%, #fff 100%);
 }
 
 .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
     background: linear-gradient(160deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
     color: #fff;
     padding: 28px 22px;
@@ -862,6 +870,10 @@ select:focus {
     }
 
     .sidebar {
+        position: static;
+        top: auto;
+        height: auto;
+        overflow: visible;
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: space-between;
