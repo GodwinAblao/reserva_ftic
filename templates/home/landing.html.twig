@@ -7,10 +7,11 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('styles/landing.css') }}">
+    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}">
 {% endblock %}
 
 {% block body %}
-     <header class="header">
+    <header class="header">
         <div class="header-inner">
             <div class="header-logo">
                 <a href="{{ path('app_home') }}">
@@ -43,6 +44,40 @@
                 </div>
             </div>
 
+            
+        </section>
+
+        <!-- Facility detail modal -->
+        <div id="facilityModal" class="facility-modal" style="display:none;">
+            <div class="facility-modal-overlay" data-close="true"></div>
+            <div class="facility-modal-dialog" role="dialog" aria-modal="true">
+                <button class="facility-modal-close" aria-label="Close">✕</button>
+                <div class="facility-view-content">
+                    <div class="facility-image-section" id="modalImageSection">
+                        <div class="modal-main-image-wrap">
+                            <img id="modalMainImage" src="" alt="" class="modal-main-image">
+                        </div>
+                        <div class="modal-thumbnail-strip" id="modalThumbnailStrip" aria-label="Facility images thumbnails"></div>
+                    </div>
+                    <div class="facility-info-section">
+                        <h1 id="modalFacilityName"></h1>
+                        <div class="info-box">
+                            <h3>Capacity</h3>
+                            <p class="capacity-value" id="modalCapacity"></p>
+                        </div>
+                        <div class="info-box" id="modalDescriptionBox" style="display:none;">
+                            <h3>Description</h3>
+                            <p id="modalDescription"></p>
+                        </div>
+                        <div class="user-actions">
+                            <a href="{{ path('app_register') }}" class="btn btn-reserve">Reserve Now</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="offers-section">
             <div class="description-section">
                 <div class="description-content">
                     <p class="description-text">
@@ -52,9 +87,6 @@
                     <a class="btn-get-started" href="{{ path('app_register') }}" data-turbo="false" target="_self">Get Started</a>
                 </div>
             </div>
-        </section>
-
-        <section class="offers-section">
             <h2 class="section-title">What we offer</h2>
 
             <div class="offers-grid">
@@ -111,53 +143,93 @@
         <section id="facilities" class="facilities-section">
             <h2 class="section-title">Facilities Overview</h2>
 
-            <div class="facilities-grid">
-                {% set facilities = [
-                    { name: 'Lounge', capacity: '150 pax', image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=500&h=320&fit=crop' },
-                    { name: 'Presentation Room 1', capacity: '40 pax', image: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=500&h=320&fit=crop' },
-                    { name: 'Presentation Room 2', capacity: '60 pax', image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500&h=320&fit=crop' },
-                    { name: 'Discussion Room 3', capacity: '6 pax', image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=500&h=320&fit=crop' },
-                    { name: 'Discussion Room 4', capacity: '8 pax', image: 'https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=500&h=320&fit=crop' },
-                    { name: 'Discussion Room 5', capacity: '8 pax', image: 'https://images.unsplash.com/photo-1568992688065-536aad8a12f6?w=500&h=320&fit=crop' },
-                    { name: 'CS Project Room', capacity: '48 pax', image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500&h=320&fit=crop' },
-                    { name: 'COE Project Room', capacity: '48 pax', image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=500&h=320&fit=crop' }
-                ] %}
-
-                {% for facility in facilities %}
-                    <article class="facility-card">
-                        <div class="facility-image">
-                            <img src="{{ facility.image }}" alt="{{ facility.name }}">
+            <div class="facility-list-cards facilities-grid">
+                    {% if facilities is empty %}
+                        <div class="facility-list-empty no-facilities">
+                            <p>No facilities available at the moment.</p>
                         </div>
-                        <div class="facility-info">
-                            <p class="facility-name">{{ facility.name }}</p>
-                            <p class="facility-capacity">({{ facility.capacity }})</p>
-                        </div>
-                    </article>
-                {% endfor %}
+                    {% else %}
+                        {% for facility in facilities %}
+                            <article class="facility-card">
+                                <div class="facility-image-holder">
+                                    {% if facility.image %}
+                                        <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                                    {% else %}
+                                        <div class="placeholder-image">
+                                            <span>{{ facility.name | first }}</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="facility-details">
+                                    <h3>{{ facility.name }}</h3>
+                                    <p class="capacity">Capacity: {{ facility.capacity }} pax</p>
+                                    {% if facility.description %}
+                                        <p class="description">{{ facility.description }}</p>
+                                    {% endif %}
+                                    {% set facilityImages = [] %}
+                                    {% if facility.image %}
+                                        {% set facilityImages = facilityImages|merge([facility.image]) %}
+                                    {% endif %}
+                                    {% if facility.images|length > 0 %}
+                                        {% for image in facility.images %}
+                                            {% set facilityImages = facilityImages|merge([image.path]) %}
+                                        {% endfor %}
+                                    {% endif %}
+                                    <a href="javascript:void(0)" class="btn-view btn-view-modal"
+                                       data-id="{{ facility.id }}"
+                                       data-name="{{ facility.name|e('html_attr') }}"
+                                       data-capacity="{{ facility.capacity }}"
+                                       data-description="{{ facility.description|e('html_attr') }}"
+                                       data-images="{{ facilityImages|json_encode|e('html_attr') }}">
+                                        View Details
+                                    </a>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    {% endif %}
             </div>
         </section>
 
-        <section id="research" class="carousel-section">
+        <section id="research" class="research-section">
             <h2 class="section-title">Research/Articles Overview</h2>
 
-            <div class="carousel-container">
-                <div class="research-carousel" aria-label="Research and article previews">
-                    <div class="carousel-item">
-                        <img src="https://images.unsplash.com/photo-1532619187608-e5375cab36aa?w=500&h=320&fit=crop" alt="Research preview 1">
+            <div class="research-preview-grid">
+                {% if researchItems is empty %}
+                    <div class="research-empty-state">
+                        <p>No research or articles have been posted yet.</p>
                     </div>
-                    <div class="carousel-item">
-                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=320&fit=crop" alt="Research preview 2">
-                    </div>
-                    <div class="carousel-item">
-                        <img src="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&h=320&fit=crop" alt="Research preview 3">
-                    </div>
-                    <div class="carousel-item">
-                        <img src="https://images.unsplash.com/photo-1516534775068-ba3e7458af70?w=500&h=320&fit=crop" alt="Research preview 4">
-                    </div>
-                    <div class="carousel-item">
-                        <img src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=500&h=320&fit=crop" alt="Research preview 5">
-                    </div>
-                </div>
+                {% else %}
+                    {% for item in researchItems %}
+                        <article class="research-preview-card">
+                            <div class="research-preview-media">
+                                {% if item.filePath %}
+                                    <img src="{{ item.filePath }}" alt="{{ item.title }}">
+                                {% else %}
+                                    <div class="research-preview-placeholder">
+                                        <span>{{ item.title|first }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="research-preview-content">
+                                <span class="research-preview-badge">{{ item.type }}</span>
+                                <h3>{{ item.title }}</h3>
+                                {% if item.type == 'Research' %}
+                                    {% if item.abstract %}
+                                        <p>{{ item.abstract }}</p>
+                                    {% elseif item.summary %}
+                                        <p>{{ item.summary }}</p>
+                                    {% endif %}
+                                {% else %}
+                                    {% if item.summary %}
+                                        <p>{{ item.summary }}</p>
+                                    {% elseif item.body %}
+                                        <p>{{ item.body|striptags|slice(0, 140) ~ (item.body|striptags|length > 140 ? '...' : '') }}</p>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                {% endif %}
             </div>
         </section>
 
@@ -277,4 +349,137 @@
             });
         })();
     </script>
+
+    <script>
+        // Facility quick view modal wiring
+        (function() {
+            const modal = document.getElementById('facilityModal');
+            if (!modal) return;
+
+            const overlay = modal.querySelector('.facility-modal-overlay');
+            const closeBtn = modal.querySelector('.facility-modal-close');
+            const imgSection = document.getElementById('modalImageSection');
+            const mainImageWrap = modal.querySelector('.modal-main-image-wrap');
+            const mainImage = document.getElementById('modalMainImage');
+            const thumbnailStrip = document.getElementById('modalThumbnailStrip');
+            const nameEl = document.getElementById('modalFacilityName');
+            const capEl = document.getElementById('modalCapacity');
+            const descBox = document.getElementById('modalDescriptionBox');
+            const descEl = document.getElementById('modalDescription');
+            const reserveBtn = modal.querySelector('.btn-reserve');
+
+            function setActiveThumbnail(activeBtn) {
+                thumbnailStrip.querySelectorAll('.modal-thumbnail').forEach(function(btn) {
+                    btn.classList.toggle('is-active', btn === activeBtn);
+                });
+            }
+
+            function showImage(src, alt, activeBtn) {
+                if (!src) return;
+                mainImage.src = src;
+                mainImage.alt = alt || '';
+                setActiveThumbnail(activeBtn || null);
+            }
+
+            function openModal(data) {
+                imgSection.querySelectorAll('.modal-placeholder-image').forEach(function(node) {
+                    node.remove();
+                });
+                const images = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
+                imgSection.classList.toggle('has-images', images.length > 0);
+                if (images.length > 0) {
+                    mainImageWrap.style.display = 'block';
+                    mainImage.style.display = 'block';
+                    thumbnailStrip.innerHTML = '';
+                    showImage(images[0], data.name, null);
+
+                    images.forEach(function(src, index) {
+                        const thumb = document.createElement('button');
+                        thumb.type = 'button';
+                        thumb.className = 'modal-thumbnail' + (index === 0 ? ' is-active' : '');
+                        thumb.setAttribute('aria-label', (data.name || 'Facility') + ' image ' + (index + 1));
+
+                        const thumbImg = document.createElement('img');
+                        thumbImg.src = src;
+                        thumbImg.alt = data.name || '';
+                        thumb.appendChild(thumbImg);
+
+                        thumb.addEventListener('click', function() {
+                            showImage(src, data.name, thumb);
+                        });
+
+                        thumbnailStrip.appendChild(thumb);
+                    });
+                } else {
+                    mainImageWrap.style.display = 'none';
+                    thumbnailStrip.innerHTML = '';
+                    mainImage.removeAttribute('src');
+                    mainImage.alt = data.name || '';
+
+                    const ph = document.createElement('div');
+                    ph.className = 'placeholder-image modal-placeholder-image';
+                    ph.textContent = data.name ? data.name.charAt(0) : '';
+                    imgSection.appendChild(ph);
+                }
+
+                nameEl.textContent = data.name || '';
+                capEl.textContent = data.capacity ? data.capacity + ' persons' : '';
+
+                if (data.description) {
+                    descEl.textContent = data.description;
+                    descBox.style.display = 'block';
+                } else {
+                    descBox.style.display = 'none';
+                }
+
+                // Reserve should go to sign up page for unauthenticated quick view
+                if (reserveBtn) {
+                    reserveBtn.setAttribute('href', '{{ path('app_register') }}');
+                    reserveBtn.setAttribute('data-turbo', 'false');
+                    reserveBtn.setAttribute('target', '_self');
+                }
+
+                modal.style.display = 'grid';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeModal() {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                const pageOverlay = document.getElementById('pageLoadingOverlay');
+                if (pageOverlay) {
+                    pageOverlay.style.display = 'none';
+                }
+            }
+
+            document.querySelectorAll('.btn-view-modal').forEach(function(el) {
+                el.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    let images = [];
+                    try {
+                        images = JSON.parse(el.dataset.images || '[]');
+                    } catch (err) {
+                        images = [];
+                    }
+                    const data = {
+                        id: el.dataset.id,
+                        name: el.dataset.name,
+                        capacity: el.dataset.capacity,
+                        description: el.dataset.description,
+                        images: images
+                    };
+                    openModal(data);
+                });
+            });
+
+            overlay.addEventListener('click', function(e) { e.stopPropagation(); closeModal(); });
+            closeBtn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); closeModal(); });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal.style.display !== 'none') {
+                    closeModal();
+                }
+            });
+        })();
+    </script>
+
 {% endblock %}

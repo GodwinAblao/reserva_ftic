@@ -92,6 +92,22 @@ body.page-landing {
     background-color: #4a8d0c;
 }
 
+.btn-get-started {
+    background-color: #5ca110;
+    color: white !important;
+    padding: 0.75rem 2rem;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background-color 0.2s;
+    display: inline-block;
+}
+
+.btn-get-started:hover {
+    background-color: #4a8d0c;
+}
+
 .page-loading-overlay {
     position: fixed;
     inset: 0;
@@ -132,6 +148,8 @@ body.page-landing {
     position: relative;
     height: 20.25rem;
     overflow: hidden;
+    border-bottom: 5px solid;
+    border-image: linear-gradient(to right, rgba(0, 151, 13, 0.623), rgb(213, 170, 0)) 1;
 }
 
 .hero-image {
@@ -175,7 +193,7 @@ body.page-landing {
 .description-section {
     max-width: 1120px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 2.1rem;
+    padding: .5rem 1.5rem 2.1rem;
 }
 
 .description-content {
@@ -187,30 +205,32 @@ body.page-landing {
 .description-text {
     margin: 0 0 .95rem;
     color: #111827;
-    font-size: .98rem;
+    font-size: 1.1rem;
     line-height: 1.45;
 }
 
 .offers-section {
-    padding: 4rem 0;
+    padding: 5rem 0;
     background: linear-gradient(to bottom, rgba(109, 200, 10, .12), transparent);
+    border-bottom: 5px solid;
+    border-image: linear-gradient(to right, #16a34a, #d5a900) 1;
 }
 
 .section-title {
-    margin: 0 0 2.25rem;
-    color: #111827;
+    color: #1c7900;
     text-align: center;
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 2.5rem;
+    font-weight: 800;
 }
 
 .offers-grid {
-    max-width: 1280px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 2.5rem;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 3rem;
+    
+    
 }
 
 .offer-card {
@@ -218,19 +238,21 @@ body.page-landing {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    border-right: #16a34a 1px solid;
+    padding-right: 5px;
 }
 
 .offer-icon {
     width: 5.5rem;
     height: 5.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     display: block;
     object-fit: contain;
 }
 
 .offer-title {
     margin: 0 0 .75rem;
-    font-size: 1rem;
+    font-size: 1.5rem;
     font-weight: 600;
 }
 
@@ -257,8 +279,8 @@ body.page-landing {
     text-decoration: underline;
 }
 
+
 .facilities-section,
-.carousel-section,
 .faq-section {
     padding: 4rem 0;
     background: #fff;
@@ -306,40 +328,98 @@ body.page-landing {
     font-weight: 600;
 }
 
-.carousel-container {
+
+.research-section {
+    padding: 4rem 0;
+    border-bottom: 5px solid;
+    border-image: linear-gradient(to right, #16a34a, #d5a900) 1;
+}
+
+.research-preview-grid {
     max-width: 1280px;
     margin: 0 auto;
     padding: 0 1.5rem;
-}
-
-.research-carousel {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(240px, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.5rem;
-    overflow-x: auto;
-    padding-bottom: .75rem;
-    scroll-snap-type: x mandatory;
 }
 
-.carousel-item {
-    height: 12rem;
+.research-preview-card {
+    background: #fff;
+    border-radius: 1rem;
     overflow: hidden;
-    border-radius: .5rem;
-    background: #d1d5db;
-    scroll-snap-align: start;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(92, 161, 16, 0.12);
 }
 
-.carousel-item img {
+.research-preview-media {
+    height: 11rem;
+    background: #d1d5db;
+}
+
+.research-preview-media img {
     width: 100%;
     height: 100%;
-    display: block;
     object-fit: cover;
+    display: block;
+}
+
+.research-preview-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #5ca110, #2f6f10);
+    color: #fff;
+    font-size: 3rem;
+    font-weight: 800;
+}
+
+.research-preview-content {
+    padding: 1rem 1rem 1.1rem;
+}
+
+.research-preview-badge {
+    display: inline-block;
+    margin-bottom: .65rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: rgba(92, 161, 16, .12);
+    color: #2f6f10;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.research-preview-content h3 {
+    margin: 0 0 .55rem;
+    font-size: 1.05rem;
+    color: #111827;
+}
+
+.research-preview-content p {
+    margin: 0;
+    color: #4b5563;
+    font-size: .92rem;
+    line-height: 1.5;
+}
+
+.research-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6b7280;
+    background: rgba(109, 200, 10, .07);
+    border-radius: 1rem;
 }
 
 .about-section {
     padding: 4.5rem 0 1rem;
     background: linear-gradient(to bottom, rgba(234, 239, 206, .3), #fff);
+    border-bottom: 5px solid;
+    border-image: linear-gradient(to right, #16a34a, #d5a900) 1;
 }
 
 .about-grid {
@@ -370,15 +450,13 @@ body.page-landing {
 
 .about-text {
     margin: 0;
-    color: #1f2937;
+    color: #313130a8;
     text-align: justify;
-    font-size: 1rem;
+    font-size: 1.5rem;
     line-height: 1.8;
+    font-weight: 700;
 }
 
-.about-text-bold {
-    font-weight: 600;
-}
 
 .about-text-lead {
     max-width: 34rem;
@@ -396,23 +474,22 @@ body.page-landing {
 }
 
 .mission-container {
-    max-width: 36rem;
+    max-width: 40rem;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 1.5rem 5.5rem 0;
 }
 
 .mission-card {
     padding: 1.6rem 1.1rem 1.8rem;
     border: 2px solid #d5a900;
     border-radius: 1.75rem;
-    background: #fff;
     box-shadow: none;
 }
 
 .mission-title {
     margin: 0 0 1.5rem;
     text-align: center;
-    color: #111827;
+    color:  #d5a900;
     font-size: 1.75rem;
     font-weight: 600;
 }
@@ -421,6 +498,8 @@ body.page-landing {
     display: flex;
     flex-direction: column;
     gap: .95rem;
+    text-align: justify;
+    padding-left: 5rem;
 }
 
 .mission-item {
@@ -432,7 +511,7 @@ body.page-landing {
 .mission-checkbox {
     flex: 0 0 auto;
     width: 1.25rem;
-    height: 1.25rem;
+    height: 1.75rem;
     display: grid;
     place-items: center;
     margin-top: .25rem;
@@ -440,8 +519,6 @@ body.page-landing {
     border-radius: .1rem;
     background: transparent;
     color: #d5a900;
-    font-size: .875rem;
-    font-weight: 800;
 }
 
 .mission-text {
@@ -474,10 +551,10 @@ body.page-landing {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #1f2937;
+    color:  #d5a900;
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: 400;
+    font-size: 1.2rem;
+    font-weight: 600;
     list-style: none;
 }
 
@@ -489,6 +566,7 @@ body.page-landing {
     content: "▼";
     color: #5ca110;
     font-size: .875rem;
+    font-weight: 500;
     transition: transform .2s ease;
 }
 
@@ -501,12 +579,13 @@ body.page-landing {
     padding: 0 0 1rem;
     color: #374151;
     font-size: .875rem;
+    font-weight: 500;
     line-height: 1.5;
 }
 
 .site-footer {
     padding: 1.5rem 0;
-    border-top: 2px solid #a4e4869d;
+    border-top: 2px solid #a4e48625;
     color: #ffffff;
 }
 
