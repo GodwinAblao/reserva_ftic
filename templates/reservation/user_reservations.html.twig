@@ -17,6 +17,10 @@
             <div class="status-count">{{ reservations['Pending']|length }}</div>
             <div class="status-label">Pending</div>
         </div>
+        <div class="status-card suggested">
+            <div class="status-count">{{ reservations['Suggested']|length }}</div>
+            <div class="status-label">Suggested</div>
+        </div>
         <div class="status-card rejected">
             <div class="status-count">{{ reservations['Rejected']|length }}</div>
             <div class="status-label">Rejected</div>
@@ -142,6 +146,66 @@
         </div>
     {% endif %}
 
+    <!-- Suggested Reservations -->
+    {% if reservations['Suggested']|length > 0 %}
+        <div class="reservations-section card-panel">
+            <h3 class="status-heading suggested">Suggested Alternatives</h3>
+            <p class="section-description">The Super Admin has suggested an alternative for your reservation. Please review and accept or decline.</p>
+            <div class="reservations-grid">
+                {% for reservation in reservations['Suggested'] %}
+                    <div class="reservation-card suggested-card">
+                        <div class="card-header">
+                            <span class="status-badge suggested">Suggested</span>
+                            <span class="reservation-date">{{ reservation.reservationDate|date('M d, Y') }}</span>
+                        </div>
+
+                        <div class="card-body">
+                            <h4 class="facility-name">{{ reservation.facility.name }}</h4>
+                            
+                            <div class="suggestion-info">
+                                <p><strong>💡 Suggested Schedule:</strong></p>
+                                <p>Facility: {{ reservation.facility.name }}</p>
+                                <p>Date: {{ reservation.reservationDate|date('M d, Y') }}</p>
+                                <p>Time: {{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</p>
+                            </div>
+                            
+                            <div class="reservation-details" style="margin-top: 1rem;">
+                                <div class="detail-row">
+                                    <span class="label">Attendees:</span>
+                                    <span class="value">{{ reservation.capacity }}/{{ reservation.facility.capacity }}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="label">Contact:</span>
+                                    <span class="value">{{ reservation.contact }}</span>
+                                </div>
+                                
+                                {% if reservation.purpose %}
+                                    <div class="detail-row">
+                                        <span class="label">Purpose:</span>
+                                        <span class="value">{{ reservation.purpose }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="button-group">
+                                <form method="POST" action="{{ path('accept_suggestion', {'id': reservation.id}) }}" style="display: inline;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('accept_suggestion_' ~ reservation.id) }}">
+                                    <button type="submit" class="btn btn-primary-small">Accept Suggestion</button>
+                                </form>
+                                <form method="POST" action="{{ path('decline_suggestion', {'id': reservation.id}) }}" style="display: inline;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('decline_suggestion_' ~ reservation.id) }}">
+                                    <button type="submit" class="btn btn-danger-small" onclick="return confirm('Decline this suggestion? Your reservation will be cancelled.')">Decline</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
     <!-- Rejected Reservations -->
     {% if reservations['Rejected']|length > 0 %}
         <div class="reservations-section card-panel">
@@ -248,7 +312,7 @@
 
     <!-- No Reservations Message -->
     {% if reservations['Approved']|length == 0 and reservations['Pending']|length == 0 
-        and reservations['Rejected']|length == 0 and reservations['Cancelled']|length == 0 %}
+        and reservations['Suggested']|length == 0 and reservations['Rejected']|length == 0 and reservations['Cancelled']|length == 0 %}
         <div class="empty-state card-panel">
             <h3>No Reservations Yet</h3>
             <p>You haven't made any facility reservations.</p>
@@ -273,7 +337,7 @@
     /* Status Overview */
     .status-overview {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 1rem;
         margin-bottom: 2rem;
     }
@@ -300,6 +364,10 @@
 
     .status-card.cancelled {
         background: linear-gradient(135deg, #6c757d, #495057);
+    }
+
+    .status-card.suggested {
+        background: linear-gradient(135deg, #6f42c1, #9b59b6);
     }
 
     .status-count {
@@ -348,6 +416,11 @@
     .status-heading.cancelled {
         color: #6c757d;
         border-bottom-color: #6c757d;
+    }
+
+    .status-heading.suggested {
+        color: #6f42c1;
+        border-bottom-color: #6f42c1;
     }
 
     .section-description {
@@ -409,6 +482,10 @@
 
     .status-badge.cancelled {
         background: #6c757d;
+    }
+
+    .status-badge.suggested {
+        background: #6f42c1;
     }
 
     .reservation-date {
@@ -479,6 +556,15 @@
 
     .suggestion-info p {
         margin: 0;
+    }
+
+    .reservation-card.suggested-card {
+        border-color: #6f42c1;
+        background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+    }
+
+    .reservation-card.suggested-card:hover {
+        border-color: #9b59b6;
     }
 
     .card-footer {
@@ -587,6 +673,12 @@
         }
 
         .reservations-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .status-overview {
             grid-template-columns: 1fr;
         }
     }

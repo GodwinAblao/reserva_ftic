@@ -3,6 +3,135 @@
 {% block title %}Account Management | Reserva FTIC{% endblock %}
 
 {% block content %}
+    <style>
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-bar .search-wrap {
+            position: relative;
+            flex: 1 1 260px;
+            min-width: 200px;
+        }
+        .filter-bar .search-wrap svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: #9ca3af;
+            pointer-events: none;
+        }
+        .filter-bar .search-wrap input {
+            width: 100%;
+            padding: 10px 12px 10px 38px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 102, 51, 0.2);
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+            background: #fff;
+        }
+        .filter-bar .search-wrap input:focus {
+            border-color: var(--feu-green-light);
+            box-shadow: 0 0 0 3px rgba(0, 136, 68, 0.15);
+        }
+        .filter-bar select {
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 102, 51, 0.2);
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+            cursor: pointer;
+            min-width: 160px;
+        }
+        .accounts-table tbody tr.row-hidden {
+            display: none;
+        }
+        .accounts-table tbody tr.row-shown {
+            display: table-row;
+            animation: popInRow 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @keyframes popInRow {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .no-results {
+            display: none;
+            text-align: center;
+            padding: 48px 20px;
+            color: #94a3b8;
+            font-size: 15px;
+        }
+        .no-results.visible {
+            display: block;
+            animation: popInRow 0.3s ease both;
+        }
+        .results-counter {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 12px;
+            margin-top: -8px;
+        }
+        .search-clear {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: none;
+            background: #e5e7eb;
+            color: #64748b;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            line-height: 1;
+            padding: 0;
+            transition: background 0.15s ease;
+        }
+        .search-clear:hover {
+            background: #d1d5db;
+        }
+        .search-clear.show {
+            display: flex;
+        }
+        .pill-role--superadmin {
+            background: rgba(220, 38, 38, 0.15);
+            color: #991b1b;
+        }
+        .pill-role--admin {
+            background: rgba(37, 99, 235, 0.15);
+            color: #1e40af;
+        }
+        .pill-role--faculty {
+            background: rgba(126, 34, 206, 0.15);
+            color: #6b21a8;
+        }
+        .pill-role--mentor {
+            background: rgba(219, 39, 119, 0.15);
+            color: #9d174d;
+        }
+        .pill-role--student {
+            background: rgba(34, 197, 94, 0.15);
+            color: #166534;
+        }
+    </style>
+
     <div class="content-header">
         <h2>Account Management</h2>
         <a href="{{ path('app_account_management_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, var(--feu-green) 0%, var(--feu-green-light) 100%); color: white; font-weight: 700;">+ Create Account</a>
@@ -17,6 +146,24 @@
     {% endfor %}
 
     <div class="card-panel">
+        <div class="filter-bar">
+            <div class="search-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" id="accountSearch" placeholder="Search by name or email..." autocomplete="off">
+                <button type="button" class="search-clear" id="searchClear" title="Clear search">&times;</button>
+            </div>
+            <select id="roleFilter">
+                <option value="">All Roles</option>
+                <option value="superadmin">Superadmin</option>
+                <option value="admin">Admin</option>
+                <option value="faculty">Faculty</option>
+                <option value="mentor">Mentor</option>
+                <option value="student">Student</option>
+            </select>
+        </div>
+
         <table class="accounts-table">
             <thead>
                 <tr>
@@ -26,9 +173,35 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="accountsTableBody">
                 {% for user in users %}
-                    <tr>
+                    {% set searchText = ((user.firstName ?? '') ~ ' ' ~ (user.lastName ?? '') ~ ' ' ~ user.email)|lower %}
+                    {% if 'ROLE_SUPER_ADMIN' in user.roles %}
+                        {% set userRole = 'superadmin' %}
+                        {% set roleLabel = 'SUPER ADMIN' %}
+                        {% set roleClass = 'pill-role--superadmin' %}
+                    {% elseif 'ROLE_ADMIN' in user.roles %}
+                        {% set userRole = 'admin' %}
+                        {% set roleLabel = 'ADMIN' %}
+                        {% set roleClass = 'pill-role--admin' %}
+                    {% elseif 'ROLE_FACULTY' in user.roles %}
+                        {% set userRole = 'faculty' %}
+                        {% set roleLabel = 'FACULTY' %}
+                        {% set roleClass = 'pill-role--faculty' %}
+                    {% elseif 'ROLE_MENTOR' in user.roles %}
+                        {% set userRole = 'mentor' %}
+                        {% set roleLabel = 'MENTOR' %}
+                        {% set roleClass = 'pill-role--mentor' %}
+                    {% elseif 'ROLE_STUDENT' in user.roles %}
+                        {% set userRole = 'student' %}
+                        {% set roleLabel = 'STUDENT' %}
+                        {% set roleClass = 'pill-role--student' %}
+                    {% else %}
+                        {% set userRole = 'user' %}
+                        {% set roleLabel = 'USER' %}
+                        {% set roleClass = '' %}
+                    {% endif %}
+                    <tr data-search-text="{{ searchText }}" data-role="{{ userRole }}" class="row-shown">
                         <td>
                             {% if user.firstName or user.lastName %}
                                 {{ user.firstName ?? '' }} {{ user.lastName ?? '' }}
@@ -38,15 +211,7 @@
                         </td>
                         <td>{{ user.email }}</td>
                         <td>
-                            <span class="pill-role">
-                                {% if 'ROLE_SUPER_ADMIN' in user.roles %}
-                                    SUPER ADMIN
-                                {% elseif 'ROLE_ADMIN' in user.roles %}
-                                    ADMIN
-                                {% else %}
-                                    USER
-                                {% endif %}
-                            </span>
+                            <span class="pill-role {{ roleClass }}">{{ roleLabel }}</span>
                         </td>
                         <td>
                             <a href="{{ path('app_account_management_view', {'id': user.id}) }}" class="btn-link">View</a>
@@ -62,5 +227,87 @@
                 {% endfor %}
             </tbody>
         </table>
+        <div class="results-counter">
+            Showing <strong id="visibleCount">0</strong> of <strong id="totalCount">0</strong> accounts
+        </div>
+        <div id="noResults" class="no-results">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 12px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <div>No accounts found matching your search.</div>
+        </div>
     </div>
+
+    <script>
+    (function() {
+        const searchInput = document.getElementById('accountSearch');
+        const roleFilter = document.getElementById('roleFilter');
+        const searchClear = document.getElementById('searchClear');
+        const tbody = document.getElementById('accountsTableBody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const noResults = document.getElementById('noResults');
+        const visibleCountEl = document.getElementById('visibleCount');
+        const totalCountEl = document.getElementById('totalCount');
+        let debounceTimer;
+
+        totalCountEl.textContent = rows.length;
+
+        function updateClearButton() {
+            if (searchInput.value.length > 0) {
+                searchClear.classList.add('show');
+            } else {
+                searchClear.classList.remove('show');
+            }
+        }
+
+        function filterRows() {
+            const query = searchInput.value.trim().toLowerCase();
+            const role = roleFilter.value;
+            let visibleIndex = 0;
+
+            rows.forEach(function(row) {
+                const searchText = row.getAttribute('data-search-text');
+                const userRole = row.getAttribute('data-role');
+                const matchesSearch = !query || searchText.indexOf(query) !== -1;
+                const matchesRole = !role || userRole === role;
+
+                if (matchesSearch && matchesRole) {
+                    row.style.animationDelay = (visibleIndex * 0.03) + 's';
+                    row.classList.remove('row-hidden');
+                    row.classList.add('row-shown');
+                    visibleIndex++;
+                } else {
+                    row.classList.remove('row-shown');
+                    row.classList.add('row-hidden');
+                    row.style.animationDelay = '0s';
+                }
+            });
+
+            visibleCountEl.textContent = visibleIndex;
+
+            if (visibleIndex === 0) {
+                noResults.classList.add('visible');
+            } else {
+                noResults.classList.remove('visible');
+            }
+        }
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            updateClearButton();
+            debounceTimer = setTimeout(filterRows, 60);
+        });
+
+        roleFilter.addEventListener('change', filterRows);
+
+        searchClear.addEventListener('click', function() {
+            searchInput.value = '';
+            updateClearButton();
+            filterRows();
+            searchInput.focus();
+        });
+
+        filterRows();
+    })();
+    </script>
 {% endblock %}

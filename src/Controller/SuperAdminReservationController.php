@@ -27,11 +27,13 @@ class SuperAdminReservationController extends AbstractController
         $pending = $reservationRepo->findBy(['status' => 'Pending'], ['createdAt' => 'DESC']);
         $approved = $reservationRepo->findBy(['status' => 'Approved'], ['reservationDate' => 'DESC']);
         $rejected = $reservationRepo->findBy(['status' => 'Rejected'], ['reservationDate' => 'DESC']);
+        $suggested = $reservationRepo->findBy(['status' => 'Suggested'], ['updatedAt' => 'DESC']);
 
         return $this->render('super_admin/reservations.html.twig', [
             'pending' => $pending,
             'approved' => $approved,
             'rejected' => $rejected,
+            'suggested' => $suggested,
         ]);
     }
 
@@ -46,17 +48,19 @@ class SuperAdminReservationController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        $date = $reservation->getReservationDate();
-        $startTime = $reservation->getReservationStartTime();
-        $endTime = $reservation->getReservationEndTime();
+        // Check if the reservation date is Sunday
+        if ($reservation->getReservationDate()->format('w') == '0') {
+            $this->addFlash('error', 'Cannot approve reservation: All facilities are closed on Sundays.');
+            return $this->redirectToRoute('admin_reservations');
+        }
 
-        if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $date, $startTime, $endTime)) {
-            $this->addFlash('error', 'Cannot approve: this time range is already approved for this facility.');
-
+        if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $reservation->getReservationDate(), $reservation->getReservationStartTime(), $reservation->getReservationEndTime(), $reservation->getId(), ['Approved', 'Pending'])) {
+            $this->addFlash('error', 'Cannot approve: this time slot is already booked for this facility.');
             return $this->redirectToRoute('admin_reservations');
         }
 
         $reservation->setStatus('Approved');
+        $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
 
         $this->addFlash('success', 'Reservation approved successfully.');
@@ -97,9 +101,16 @@ class SuperAdminReservationController extends AbstractController
             $reservation->getFacility()
         );
 
+        // Calculate duration in minutes
+        $startMinutes = $reservation->getReservationStartTime()->format('H') * 60 + $reservation->getReservationStartTime()->format('i');
+        $endMinutes = $reservation->getReservationEndTime()->format('H') * 60 + $reservation->getReservationEndTime()->format('i');
+        $durationMinutes = abs($endMinutes - $startMinutes);
+
         return $this->render('super_admin/suggest_alternatives.html.twig', [
             'reservation' => $reservation,
             'alternatives' => $alternatives,
+            'isEditingSuggestion' => $reservation->getStatus() === 'Suggested',
+            'durationMinutes' => $durationMinutes,
         ]);
     }
 
@@ -129,6 +140,166 @@ class SuperAdminReservationController extends AbstractController
         $this->addFlash('success', 'Alternative facility suggested to the requester.');
 
         return $this->redirectToRoute('admin_reservations');
+    }
+
+    #[Route('/reservations/{id}/suggest-datetime', name: 'admin_suggest_datetime', methods: ['POST'])]
+    public function suggestDateTime(
+        Reservation $reservation,
+        Request $request,
+        ReservationRepository $reservationRepo,
+        FacilityRepository $facilityRepo,
+        EntityManagerInterface $em
+    ): Response {
+        if (!$this->isCsrfTokenValid('admin_suggest_datetime_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $facilityId = $request->request->get('facility_id');
+        $date = \DateTime::createFromFormat('!Y-m-d', $request->request->get('date'));
+        $startTime = \DateTime::createFromFormat('!H:i', $request->request->get('start_time'));
+        $endTime = \DateTime::createFromFormat('!H:i', $request->request->get('end_time'));
+
+        if (!$facilityId || !$date || !$startTime || !$endTime || $endTime <= $startTime) {
+            $this->addFlash('error', 'Invalid data. Please check facility, date, and time.');
+            return $this->redirectToRoute('admin_suggest_alternatives', ['id' => $reservation->getId()]);
+        }
+
+        $facility = $facilityRepo->find($facilityId);
+        if (!$facility) {
+            $this->addFlash('error', 'Facility not found.');
+            return $this->redirectToRoute('admin_suggest_alternatives', ['id' => $reservation->getId()]);
+        }
+
+        // Check if the date is Sunday (0 = Sunday in PHP)
+        if ($date->format('w') == '0') {
+            $this->addFlash('error', 'All facilities are closed on Sundays. Please choose a different date.');
+            return $this->redirectToRoute('admin_suggest_alternatives', ['id' => $reservation->getId()]);
+        }
+
+        // Check if the suggested time slot is available
+        if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, $reservation->getId(), ['Approved', 'Pending', 'Suggested'])) {
+            $this->addFlash('error', 'The suggested time slot is already booked. Please choose a different time.');
+            return $this->redirectToRoute('admin_suggest_alternatives', ['id' => $reservation->getId()]);
+        }
+
+        // Update reservation with suggested facility, date/time and set status to Suggested
+        $reservation->setFacility($facility);
+        $reservation->setReservationDate($date);
+        $reservation->setReservationStartTime($startTime);
+        $reservation->setReservationEndTime($endTime);
+        $reservation->setStatus('Suggested');
+        $reservation->setSuggestedFacility($facility);
+        $reservation->setUpdatedAt(new \DateTime());
+        $em->flush();
+
+        $this->addFlash('success', 'Alternative schedule suggested successfully. The requester will be notified and can accept or reject this suggestion.');
+
+        return $this->redirectToRoute('admin_reservations');
+    }
+
+    #[Route('/check-availability', name: 'admin_check_availability', methods: ['POST'])]
+    public function checkAvailability(
+        Request $request,
+        ReservationRepository $reservationRepo,
+        FacilityRepository $facilityRepo
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        $facilityId = $data['facility_id'] ?? null;
+        $date = $data['date'] ?? null;
+        $startTime = $data['start_time'] ?? null;
+        $endTime = $data['end_time'] ?? null;
+        $excludeReservationId = $data['exclude_reservation_id'] ?? null;
+
+        if (!$facilityId || !$date || !$startTime || !$endTime) {
+            return $this->json(['available' => false, 'message' => 'Missing required fields']);
+        }
+
+        $facility = $facilityRepo->find($facilityId);
+        if (!$facility) {
+            return $this->json(['available' => false, 'message' => 'Facility not found']);
+        }
+
+        $reservationDate = \DateTime::createFromFormat('!Y-m-d', $date);
+        $start = \DateTime::createFromFormat('!H:i', $startTime);
+        $end = \DateTime::createFromFormat('!H:i', $endTime);
+
+        if (!$reservationDate || !$start || !$end || $end <= $start) {
+            return $this->json(['available' => false, 'message' => 'Invalid date or time']);
+        }
+
+        // Check if the date is Sunday (0 = Sunday in PHP)
+        if ($reservationDate->format('w') == '0') {
+            return $this->json(['available' => false, 'message' => 'All facilities are closed on Sundays']);
+        }
+
+        $isBooked = $reservationRepo->isTimeRangeBooked($facility, $reservationDate, $start, $end, $excludeReservationId, ['Approved', 'Pending', 'Suggested']);
+
+        return $this->json([
+            'available' => !$isBooked,
+            'message' => $isBooked ? 'This time slot is already booked' : 'This time slot is available'
+        ]);
+    }
+
+    #[Route('/get-available-slots', name: 'admin_get_available_slots', methods: ['POST'])]
+    public function getAvailableSlots(
+        Request $request,
+        ReservationRepository $reservationRepo,
+        FacilityRepository $facilityRepo
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        $facilityId = $data['facility_id'] ?? null;
+        $date = $data['date'] ?? null;
+        $durationMinutes = $data['duration_minutes'] ?? 60;
+        $excludeReservationId = $data['exclude_reservation_id'] ?? null;
+
+        if (!$facilityId || !$date) {
+            return $this->json(['slots' => []]);
+        }
+
+        $facility = $facilityRepo->find($facilityId);
+        if (!$facility) {
+            return $this->json(['slots' => []]);
+        }
+
+        $reservationDate = \DateTime::createFromFormat('!Y-m-d', $date);
+        if (!$reservationDate) {
+            return $this->json(['slots' => []]);
+        }
+
+        // Check if the date is Sunday (0 = Sunday in PHP)
+        if ($reservationDate->format('w') == '0') {
+            return $this->json(['slots' => [], 'message' => 'All facilities are closed on Sundays']);
+        }
+
+        // Generate time slots from 7 AM to 8 PM
+        $slots = [];
+        $startHour = 7;
+        $endHour = 20;
+
+        for ($hour = $startHour; $hour < $endHour; $hour++) {
+            $startTime = new \DateTime($date . ' ' . sprintf('%02d:00', $hour));
+            $endTime = clone $startTime;
+            $endTime->add(new \DateInterval('PT' . $durationMinutes . 'M'));
+
+            // Skip if end time goes past 8 PM
+            if ($endTime->format('H') >= 20) {
+                continue;
+            }
+
+            // Check if this slot is available
+            $isBooked = $reservationRepo->isTimeRangeBooked($facility, $reservationDate, $startTime, $endTime, $excludeReservationId, ['Approved', 'Pending', 'Suggested']);
+
+            if (!$isBooked) {
+                $slots[] = [
+                    'start' => $startTime->format('H:i'),
+                    'end' => $endTime->format('H:i'),
+                ];
+            }
+        }
+
+        return $this->json(['slots' => $slots]);
     }
 
     #[Route('/calendar', name: 'admin_calendar')]
@@ -286,6 +457,16 @@ class SuperAdminReservationController extends AbstractController
             return $this->redirectToRoute('admin_calendar');
         }
 
+        // Check if the date is Sunday (0 = Sunday in PHP)
+        if ($date->format('w') == '0') {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'All facilities are closed on Sundays.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
         $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
         $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
         if ($start < $dayStart || $end > $dayEnd) {
@@ -374,14 +555,6 @@ class SuperAdminReservationController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        if ($block->getType() === 'Class Schedule') {
-            if ($isAjax) {
-                return $this->json(['success' => false, 'message' => 'Imported class schedules cannot be edited here. Re-import the schedule instead.'], Response::HTTP_FORBIDDEN);
-            }
-
-            $this->addFlash('error', 'Imported class schedules cannot be edited here. Re-import the schedule instead.');
-            return $this->redirectToRoute('admin_calendar');
-        }
 
         $facility = $facilityRepo->find($request->request->get('facility'));
         $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
@@ -394,6 +567,16 @@ class SuperAdminReservationController extends AbstractController
             }
 
             $this->addFlash('error', 'Invalid schedule block data.');
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        // Check if the date is Sunday (0 = Sunday in PHP)
+        if ($date->format('w') == '0') {
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+            }
+
+            $this->addFlash('error', 'All facilities are closed on Sundays.');
             return $this->redirectToRoute('admin_calendar');
         }
 
@@ -421,7 +604,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $type = (string) $request->request->get('type', 'Manual');
-        if (!in_array($type, ['Manual', 'Blocked', 'Maintenance'], true)) {
+        if (!in_array($type, ['Manual', 'Blocked', 'Maintenance', 'Class Schedule'], true)) {
             $type = 'Manual';
         }
 
@@ -448,6 +631,27 @@ class SuperAdminReservationController extends AbstractController
         return $this->redirectToRoute('admin_calendar');
     }
 
+    #[Route('/reservations/{id}/cancel-suggestion', name: 'admin_cancel_suggestion', methods: ['POST'])]
+    public function cancelSuggestion(
+        Reservation $reservation,
+        Request $request,
+        EntityManagerInterface $em
+    ): Response {
+        if (!$this->isCsrfTokenValid('cancel_suggestion_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        // Reset reservation to pending status
+        $reservation->setStatus('Pending');
+        $reservation->setSuggestedFacility(null);
+        $reservation->setUpdatedAt(new \DateTime());
+        $em->flush();
+
+        $this->addFlash('success', 'Suggestion cancelled successfully. The reservation is now back to pending status.');
+
+        return $this->redirectToRoute('admin_reservations');
+    }
+
     #[Route('/calendar/block/{id}/delete', name: 'admin_calendar_block_delete', methods: ['POST'])]
     public function deleteBlock(
         FacilityScheduleBlock $block,
@@ -462,15 +666,6 @@ class SuperAdminReservationController extends AbstractController
             }
 
             throw $this->createAccessDeniedException('Invalid CSRF token.');
-        }
-
-        if ($block->getType() === 'Class Schedule') {
-            if ($isAjax) {
-                return $this->json(['success' => false, 'message' => 'Imported class schedules cannot be deleted one by one here. Use Delete Imported Schedule instead.'], Response::HTTP_FORBIDDEN);
-            }
-
-            $this->addFlash('error', 'Imported class schedules cannot be deleted one by one here. Use Delete Imported Schedule instead.');
-            return $this->redirectToRoute('admin_calendar');
         }
 
         $em->remove($block);
@@ -611,7 +806,6 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $this->addFlash('success', $message);
-
         return $this->redirectToRoute('admin_calendar');
     }
 

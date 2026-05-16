@@ -10,27 +10,69 @@
         <div class="facilities-grid">
             {% for facility in facilities %}
                 {% if facility.availableForReservation %}
-                    <div class="facility-card">
-                        <div class="facility-image-holder">
-                            {% if facility.image %}
-                                <img src="{{ facility.image }}" alt="{{ facility.name }}">
-                            {% else %}
-                                <div class="placeholder-image">
-                                    <span>{{ facility.name | first }}</span>
-                                </div>
-                            {% endif %}
+                    <div class="facility-card-wrapper">
+                        <div class="facility-card">
+                            <div class="facility-image-holder">
+                                {% if facility.image %}
+                                    <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                                {% else %}
+                                    <div class="placeholder-image">
+                                        <span>{{ facility.name | first }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="facility-details">
+                                <h3>{{ facility.name }}</h3>
+                                <p class="capacity">
+                                    <strong>Capacity:</strong> {{ facility.capacity }} pax
+                                </p>
+                                {% if facility.description %}
+                                    <p class="description">{{ facility.description }}</p>
+                                {% endif %}
+                                <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
+                                    View Details
+                                </a>
+                            </div>
                         </div>
-                        <div class="facility-details">
-                            <h3>{{ facility.name }}</h3>
-                            <p class="capacity">
-                                <strong>Capacity:</strong> {{ facility.capacity }} pax
-                            </p>
-                            {% if facility.description %}
-                                <p class="description">{{ facility.description }}</p>
-                            {% endif %}
-                            <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
-                                View Details
-                            </a>
+                        
+                        <!-- Hover Card -->
+                        <div class="hover-card">
+                            <div class="hover-card-content">
+                                <div class="hover-card-image">
+                                    {% if facility.image %}
+                                        <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                                    {% else %}
+                                        <div class="placeholder-image">
+                                            <span>{{ facility.name | first }}</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="hover-card-details">
+                                    <h4>{{ facility.name }}</h4>
+                                    <p class="hover-capacity">
+                                        <span>👥</span> {{ facility.capacity }} persons
+                                    </p>
+                                    {% if facility.description %}
+                                        <p class="hover-description">{{ facility.description }}</p>
+                                    {% endif %}
+                                    <div class="hover-gallery">
+                                        {% if facility.images|length > 0 %}
+                                            <p><strong>Gallery:</strong></p>
+                                            <div class="hover-gallery-images">
+                                                {% for image in facility.images|slice(0, 4) %}
+                                                    <img src="{{ image.path }}" alt="{{ facility.name }}">
+                                                {% endfor %}
+                                                {% if facility.images|length > 4 %}
+                                                    <span class="more-images">+{{ facility.images|length - 4 }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-hover-view">
+                                        View Facility
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 {% endif %}
@@ -43,6 +85,10 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 24px;
+    }
+
+    .facility-card-wrapper {
+        position: relative;
     }
 
     .facility-card {
@@ -140,6 +186,141 @@
         background: rgba(0, 102, 51, 0.05);
         border-radius: 12px;
         color: #999;
+    }
+
+    /* Hover Card Styles */
+    .hover-card {
+        position: absolute;
+        top: 0;
+        left: 100%;
+        width: 320px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(-10px);
+        transition: all 0.3s ease;
+        z-index: 100;
+        pointer-events: none;
+        margin-left: 16px;
+    }
+
+    .facility-card-wrapper:hover .hover-card {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+
+    .hover-card-content {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    .hover-card-image {
+        width: 120px;
+        height: 120px;
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: #f0f0f0;
+    }
+
+    .hover-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .hover-card-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .hover-card-details h4 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        color: var(--feu-ink);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .hover-capacity {
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .hover-description {
+        margin: 0 0 12px 0;
+        font-size: 12px;
+        color: #888;
+        line-height: 1.4;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .hover-gallery {
+        margin-bottom: 12px;
+    }
+
+    .hover-gallery p {
+        margin: 0 0 6px 0;
+        font-size: 12px;
+        color: #666;
+        font-weight: 600;
+    }
+
+    .hover-gallery-images {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .hover-gallery-images img {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        object-fit: cover;
+    }
+
+    .more-images {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #666;
+        font-weight: 600;
+    }
+
+    .btn-hover-view {
+        display: inline-block;
+        padding: 8px 20px;
+        background: var(--feu-green);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-hover-view:hover {
+        background: var(--feu-green-dark);
+        box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
     }
 </style>
 {% endblock %}

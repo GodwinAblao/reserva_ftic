@@ -2,237 +2,503 @@
 
 {% block content %}
 <div class="facility-view-container">
-    <a href="{{ path('app_facility_index') }}" class="back-link">&larr; Back to Facilities</a>
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a href="{{ path('app_facility_index') }}" class="breadcrumb-link">Facilities</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">{{ facility.name }}</span>
+    </div>
 
+    <!-- Main Content -->
     <div class="facility-view-content">
-        <div class="facility-image-section">
+        <!-- Image Gallery Section -->
+        <div class="image-gallery-section">
             {% if facility.images|length > 0 %}
-                <div class="facility-gallery">
-                    {% for image in facility.images %}
-                        <img src="{{ image.path }}" alt="{{ facility.name }}">
-                    {% endfor %}
+                <div class="main-gallery">
+                    <div class="main-image">
+                        <img src="{{ facility.images[0].path }}" alt="{{ facility.name }}" id="mainImage">
+                    </div>
+                    {% if facility.images|length > 1 %}
+                        <div class="thumbnail-strip">
+                            {% for image in facility.images %}
+                                <div class="thumbnail {% if loop.first %}active{% endif %}" onclick="changeMainImage('{{ image.path }}', this)">
+                                    <img src="{{ image.path }}" alt="{{ facility.name }}">
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             {% elseif facility.image %}
-                <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                <div class="single-image">
+                    <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                </div>
             {% else %}
                 <div class="placeholder-image">
-                    {{ facility.name | first }}
+                    <span>{{ facility.name | first }}</span>
                 </div>
             {% endif %}
         </div>
 
-        <div class="facility-info-section">
-            <h1>{{ facility.name }}</h1>
-
-            <div class="info-box">
-                <h3>Capacity</h3>
-                <p class="capacity-value">{{ facility.capacity }} persons</p>
+        <!-- Details Section -->
+        <div class="details-section">
+            <!-- Header -->
+            <div class="facility-header">
+                <h1 class="facility-title">{{ facility.name }}</h1>
+                <div class="facility-meta">
+                    <span class="meta-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        {{ facility.capacity }} persons
+                    </span>
+                    <span class="meta-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Available for reservation
+                    </span>
+                </div>
             </div>
 
+            <!-- Description -->
             {% if facility.description %}
-                <div class="info-box">
-                    <h3>Description</h3>
-                    <p>{{ facility.description }}</p>
+                <div class="info-card">
+                    <h2 class="card-title">About this Facility</h2>
+                    <p class="description-text">{{ facility.description }}</p>
                 </div>
             {% endif %}
 
-            <div class="info-box">
-                <h3>Information</h3>
-                <p>
-                    <strong>Created:</strong> {{ facility.createdAt | format_datetime('long', 'none') }}<br>
-                    <strong>Last Updated:</strong> {{ facility.updatedAt | format_datetime('long', 'none') }}
-                </p>
+            <!-- Capacity Card -->
+            <div class="info-card">
+                <h2 class="card-title">Capacity</h2>
+                <div class="capacity-display">
+                    <span class="capacity-number">{{ facility.capacity }}</span>
+                    <span class="capacity-label">persons</span>
+                </div>
             </div>
 
-            {% if is_granted('ROLE_SUPER_ADMIN') %}
-                <div class="admin-actions">
-                    <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn btn-warning">Edit</a>
-                    <a href="{{ path('app_facility_management') }}" class="btn btn-secondary">Back to Management</a>
+            <!-- Additional Info -->
+            <div class="info-card">
+                <h2 class="card-title">Additional Information</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Created</span>
+                        <span class="info-value">{{ facility.createdAt | format_datetime('medium', 'none') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Updated</span>
+                        <span class="info-value">{{ facility.updatedAt | format_datetime('medium', 'none') }}</span>
+                    </div>
                 </div>
-            {% else %}
-                <div class="user-actions">
-                    {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-                        <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn btn-reserve">Reserve Now</a>
-                    {% else %}
-                        <a href="{{ path('app_login') }}" class="btn btn-reserve" data-turbo="false" target="_self">Sign In to Reserve</a>
-                    {% endif %}
-                </div>
-            {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-section">
+                {% if is_granted('ROLE_SUPER_ADMIN') %}
+                    <div class="admin-actions">
+                        <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn btn-primary">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Edit Facility
+                        </a>
+                        <a href="{{ path('app_facility_management') }}" class="btn btn-secondary">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            Back to Management
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="user-actions">
+                        {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                            <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn btn-reserve">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                Reserve Now
+                            </a>
+                        {% else %}
+                            <a href="{{ path('app_login') }}" class="btn btn-reserve" data-turbo="false" target="_self">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                    <polyline points="10 17 15 12 10 7"></polyline>
+                                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                                </svg>
+                                Sign In to Reserve
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
+<script>
+function changeMainImage(src, thumbnail) {
+    document.getElementById('mainImage').src = src;
+    
+    // Remove active class from all thumbnails
+    document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+    
+    // Add active class to clicked thumbnail
+    thumbnail.classList.add('active');
+}
+</script>
+
 <style>
     .facility-view-container {
-        padding: 30px;
-        max-width: 1000px;
+        padding: 40px;
+        max-width: 1400px;
         margin: 0 auto;
+        background: #f8f9fa;
+        min-height: 100vh;
     }
 
-    .back-link {
-        display: inline-block;
-        margin-bottom: 20px;
-        color: var(--feu-green);
-        text-decoration: none;
+    /* Breadcrumb */
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 24px;
         font-size: 14px;
     }
 
-    .back-link:hover {
-        text-decoration: underline;
+    .breadcrumb-link {
+        color: #6b7280;
+        text-decoration: none;
+        transition: color 0.2s;
     }
 
+    .breadcrumb-link:hover {
+        color: var(--feu-green);
+    }
+
+    .breadcrumb-separator {
+        color: #d1d5db;
+    }
+
+    .breadcrumb-current {
+        color: #374151;
+        font-weight: 500;
+    }
+
+    /* Main Content */
     .facility-view-content {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 32px;
         align-items: start;
     }
 
-    .facility-image-section {
+    /* Image Gallery Section */
+    .image-gallery-section {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .main-gallery {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .main-image {
         width: 100%;
+        height: 500px;
+        background: #f0f0f0;
+        overflow: hidden;
+    }
+
+    .main-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .thumbnail-strip {
+        display: flex;
+        gap: 8px;
+        padding: 16px;
+        background: white;
+        overflow-x: auto;
+    }
+
+    .thumbnail {
+        width: 80px;
+        height: 80px;
         border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        flex-shrink: 0;
     }
 
-    .facility-image-section img {
+    .thumbnail:hover {
+        border-color: var(--feu-green);
+    }
+
+    .thumbnail.active {
+        border-color: var(--feu-green);
+    }
+
+    .thumbnail img {
         width: 100%;
-        height: auto;
-        display: block;
-    }
-
-    .facility-gallery {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 10px;
-        padding: 10px;
-        background: #fff;
-    }
-
-    .facility-gallery img {
-        height: 180px;
+        height: 100%;
         object-fit: cover;
-        border-radius: 6px;
+    }
+
+    .single-image {
+        width: 100%;
+        height: 500px;
+        background: #f0f0f0;
+        overflow: hidden;
+    }
+
+    .single-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
     .placeholder-image {
         width: 100%;
-        aspect-ratio: 1;
+        height: 500px;
         background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 100px;
+        font-size: 120px;
         color: white;
         font-weight: bold;
     }
 
-    .facility-info-section {
-        padding: 20px;
+    /* Details Section */
+    .details-section {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
     }
 
-    .facility-info-section h1 {
+    /* Facility Header */
+    .facility-header {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .facility-title {
         font-size: 32px;
-        margin: 0 0 20px 0;
-        color: var(--feu-green-dark);
+        font-weight: 700;
+        margin: 0 0 16px 0;
+        color: #1f2937;
+        line-height: 1.2;
     }
 
-    .info-box {
-        margin-bottom: 25px;
-        padding-bottom: 25px;
-        border-bottom: 1px solid #eee;
+    .facility-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
     }
 
-    .info-box:last-of-type {
-        border-bottom: none;
-    }
-
-    .info-box h3 {
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
         font-size: 14px;
-        color: #999;
+        color: #6b7280;
+        background: #f3f4f6;
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    .meta-item svg {
+        color: var(--feu-green);
+    }
+
+    /* Info Cards */
+    .info-card {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 16px 0;
+        color: #1f2937;
+    }
+
+    .description-text {
+        margin: 0;
+        color: #4b5563;
+        line-height: 1.7;
+        font-size: 15px;
+    }
+
+    .capacity-display {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .capacity-number {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--feu-green);
+        line-height: 1;
+    }
+
+    .capacity-label {
+        font-size: 18px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
+        font-size: 12px;
+        color: #9ca3af;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin: 0 0 10px 0;
         font-weight: 600;
     }
 
-    .capacity-value {
-        font-size: 24px;
-        color: var(--feu-green);
-        font-weight: bold;
-        margin: 0;
+    .info-value {
+        font-size: 14px;
+        color: #4b5563;
+        font-weight: 500;
     }
 
-    .info-box p {
-        margin: 0;
-        color: #555;
-        line-height: 1.6;
+    /* Action Buttons */
+    .action-section {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
 
     .admin-actions,
     .user-actions {
         display: flex;
-        gap: 10px;
-        margin-top: 30px;
+        gap: 12px;
         flex-wrap: wrap;
     }
 
     .btn {
-        padding: 12px 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 28px;
         border: none;
-        border-radius: 6px;
+        border-radius: 12px;
         cursor: pointer;
         text-decoration: none;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         transition: all 0.3s ease;
-        display: inline-block;
+        justify-content: center;
+    }
+
+    .btn-primary {
+        background: var(--feu-green);
+        color: white;
+        flex: 1;
+    }
+
+    .btn-primary:hover {
+        background: var(--feu-green-dark);
+        box-shadow: 0 8px 20px rgba(0, 102, 51, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        flex: 1;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
     }
 
     .btn-reserve {
         background: var(--feu-green);
         color: white;
-        flex: 1;
-        text-align: center;
-        font-size: 15px;
-        padding: 14px 24px;
+        width: 100%;
+        font-size: 16px;
+        padding: 16px 28px;
     }
 
     .btn-reserve:hover {
         background: var(--feu-green-dark);
-        box-shadow: 0 4px 8px rgba(0, 102, 51, 0.3);
+        box-shadow: 0 8px 24px rgba(0, 102, 51, 0.4);
+        transform: translateY(-2px);
     }
 
-    .btn-warning {
-        background: #f39c12;
-        color: white;
-    }
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .facility-view-content {
+            grid-template-columns: 1fr;
+        }
 
-    .btn-warning:hover {
-        background: #d68910;
-    }
-
-    .btn-secondary {
-        background: #6c757d;
-        color: white;
-    }
-
-    .btn-secondary:hover {
-        background: #5a6268;
+        .main-image,
+        .single-image,
+        .placeholder-image {
+            height: 400px;
+        }
     }
 
     @media (max-width: 768px) {
-        .facility-view-content {
-            grid-template-columns: 1fr;
-            gap: 30px;
-        }
-
         .facility-view-container {
             padding: 20px;
         }
 
-        .facility-info-section h1 {
+        .facility-title {
             font-size: 24px;
+        }
+
+        .main-image,
+        .single-image,
+        .placeholder-image {
+            height: 300px;
+        }
+
+        .capacity-number {
+            font-size: 36px;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
         }
 
         .admin-actions,

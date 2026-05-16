@@ -1,107 +1,228 @@
 {% extends "layouts/app.html.twig" %}
 
-{% block title %}Suggest Alternative Facility - Reserva FTIC{% endblock %}
+{% block title %}Suggest Alternative - Reserva FTIC{% endblock %}
 
 {% block content %}
     <div class="content-header">
-        <h2>Suggest Alternative Facility</h2>
-        <a href="{{ path('admin_reservations') }}" class="btn btn-secondary">Back to Reservations</a>
+        <h2>Suggest Alternative Schedule</h2>
+        <a href="{{ path('admin_reservations') }}" class="btn btn-secondary">← Back to Reservations</a>
     </div>
 
     <!-- Original Reservation Details -->
-    <div class="card-panel">
-        <h3 class="section-title">Original Reservation Request</h3>
-        <div class="reservation-details-grid">
-            <div class="detail-item">
-                <label>Requester:</label>
-                <span>{{ reservation.name }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Email:</label>
-                <span>{{ reservation.email }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Requested Facility:</label>
-                <span class="highlight">{{ reservation.facility.name }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Date:</label>
-                <span>{{ reservation.reservationDate|date('M d, Y') }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Time:</label>
-                <span>{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Attendees:</label>
-                <span>{{ reservation.capacity }} people</span>
+    <div class="card-panel original-reservation">
+        <div class="panel-header">
+            <h3>Original Reservation Request</h3>
+            <span class="badge badge-info">{{ reservation.status }}</span>
+        </div>
+        <div class="reservation-details">
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <label>Requester</label>
+                    <div class="detail-value">{{ reservation.name }}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Email</label>
+                    <div class="detail-value">{{ reservation.email }}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Requested Facility</label>
+                    <div class="detail-value highlight">{{ reservation.facility.name }}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Date</label>
+                    <div class="detail-value">{{ reservation.reservationDate|date('M d, Y') }}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Time</label>
+                    <div class="detail-value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</div>
+                </div>
+                <div class="detail-item">
+                    <label>Attendees</label>
+                    <div class="detail-value">{{ reservation.capacity }} / {{ reservation.facility.capacity }}</div>
+                </div>
             </div>
             {% if reservation.purpose %}
                 <div class="detail-item full-width">
-                    <label>Purpose:</label>
-                    <span>{{ reservation.purpose }}</span>
+                    <label>Purpose</label>
+                    <div class="detail-value">{{ reservation.purpose }}</div>
                 </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Available Alternative Facilities -->
-    <div class="card-panel">
-        <h3 class="section-title">Available Alternative Facilities</h3>
-        <p class="section-description">Select a facility to suggest as an alternative. These facilities match the capacity requirement ({{ reservation.capacity }} people) and are available on {{ reservation.reservationDate|date('M d, Y') }} from {{ reservation.reservationStartTime|date('h:i A') }} to {{ reservation.reservationEndTime|date('h:i A') }}.</p>
-        
-        <div class="alternatives-grid">
-            {% for facility in alternatives %}
-                <div class="facility-card">
-                    <div class="facility-header">
-                        <h4>{{ facility.name }}</h4>
-                        <span class="capacity-badge">
-                            <i class="fas fa-users"></i> {{ facility.capacity }} capacity
-                        </span>
-                    </div>
+    {% if isEditingSuggestion %}
+    <div class="card-panel" style="background: #fff7ed; border-color: #fdba74;">
+        <div class="panel-header">
+            <h3>💡 Editing Existing Suggestion</h3>
+        </div>
+        <p style="color: #9a3412; margin: 0;">You are currently editing an existing suggestion. The requester has been notified of the previous suggestion. Modifying this will update the suggestion and notify them again.</p>
+    </div>
+    {% endif %}
 
-                    <div class="facility-body">
-                        {% if facility.description %}
-                            <p class="facility-description">{{ facility.description }}</p>
-                        {% endif %}
-
+    <div class="suggestions-layout">
+        <!-- Alternative Facilities -->
+        <div class="card-panel facilities-panel">
+            <div class="panel-header">
+                <h3>Available Facilities</h3>
+                <span class="subtitle">Click a facility to view available time slots</span>
+            </div>
+            <div class="facilities-list">
+                {% for facility in alternatives %}
+                    <div class="facility-select-card" onclick="selectFacility({{ facility.id }}, '{{ facility.name }}', {{ facility.capacity }})" data-facility-id="{{ facility.id }}">
+                        <div class="facility-icon">🏢</div>
                         <div class="facility-info">
-                            <div class="info-row">
-                                <span class="label">Capacity:</span>
-                                <span class="value">{{ facility.capacity }} people</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">Status:</span>
-                                <span class="value status-available">✓ Available</span>
-                            </div>
+                            <h4>{{ facility.name }}</h4>
+                            <p class="facility-meta">Capacity: {{ facility.capacity }} people</p>
+                            {% if facility.description %}
+                                <p class="facility-desc">{{ facility.description }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="facility-arrow">→</div>
+                    </div>
+                {% endfor %}
+                {% if alternatives is empty %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <p>No alternative facilities available for this request.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Schedule Selection -->
+        <div class="card-panel schedule-panel" id="schedulePanel">
+            <div class="panel-header">
+                <h3>Schedule Selection</h3>
+                <span class="subtitle" id="selectedFacilityName">
+                    {% if isEditingSuggestion %}
+                        {{ reservation.facility.name }}
+                    {% else %}
+                        Select a facility first
+                    {% endif %}
+                </span>
+            </div>
+            
+            <div id="facilitySelectionPlaceholder" class="placeholder-state" style="{% if isEditingSuggestion %}display: none;{% endif %}">
+                <div class="placeholder-icon">👆</div>
+                <p>Select a facility from the left to view available time slots</p>
+            </div>
+
+            <div id="scheduleSelectionForm" class="schedule-form" style="{% if isEditingSuggestion %}display: block;{% endif %}">
+                <form id="suggestScheduleForm" method="POST" action="{{ path('admin_suggest_datetime', {'id': reservation.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('admin_suggest_datetime_' ~ reservation.id) }}">
+                    <input type="hidden" name="facility_id" id="selectedFacilityId" value="{% if isEditingSuggestion %}{{ reservation.facility.id }}{% endif %}">
+                    
+                    <div class="form-section">
+                        <h4>📅 Select Date</h4>
+                        <div class="form-group">
+                            <input type="date" id="suggestDate" name="date" class="form-input" required min="{{ 'now'|date('Y-m-d') }}" value="{% if isEditingSuggestion %}{{ reservation.reservationDate|date('Y-m-d') }}{% endif %}" onchange="loadTimeSlots()">
                         </div>
                     </div>
 
-                    <div class="facility-footer">
-                        <form method="POST" action="{{ path('admin_confirm_suggest', {'id': reservation.id, 'facilityId': facility.id}) }}">
-                            <input type="hidden" name="_token" value="{{ csrf_token('admin_suggest_' ~ reservation.id) }}">
-                            <button type="submit" class="btn btn-primary-full" onclick="return confirm('Suggest {{ facility.name }} as an alternative to {{ reservation.name }}?')">
-                                <i class="fas fa-check"></i> Suggest This Facility
-                            </button>
-                        </form>
+                    <div class="form-section">
+                        <h4>⏰ Available Time Slots</h4>
+                        <div id="timeSlotsContainer" class="time-slots-grid">
+                            <p class="loading-text">{% if isEditingSuggestion %}Select a date to see available time slots{% else %}Select a date to see available time slots{% endif %}</p>
+                        </div>
                     </div>
-                </div>
-            {% endfor %}
+
+                    <div id="selectedTimeInfo" class="selected-time-info" style="display: {% if isEditingSuggestion %}block{% else %}none{% endif %};">
+                        <div class="selected-time-display">
+                            <span class="label">Current Selected Time:</span>
+                            <span class="time-value" id="selectedTimeDisplay">{{ reservation.reservationStartTime|date('H:i') }} - {{ reservation.reservationEndTime|date('H:i') }}</span>
+                        </div>
+                    </div>
+
+                    <div id="availabilityIndicator" class="availability-indicator" style="display: none;">
+                        <div class="indicator-icon" id="indicatorIcon">✓</div>
+                        <div class="indicator-text" id="indicatorText">Available</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-full" id="submitSuggestion" disabled>
+                        <span class="btn-icon">✓</span>
+                        {% if isEditingSuggestion %}Update Suggestion{% else %}Suggest This Schedule{% endif %}
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
 <style>
-    .reservation-details-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1rem;
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .content-header h2 {
+        color: #1f2937;
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .card-panel {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .panel-header h3 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+
+    .panel-header .subtitle {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .badge {
+        padding: 0.375rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .original-reservation {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #bae6fd;
+    }
+
+    .reservation-details {
         margin-top: 1rem;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.25rem;
     }
 
     .detail-item {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
     }
 
     .detail-item.full-width {
@@ -109,155 +230,540 @@
     }
 
     .detail-item label {
-        font-weight: 600;
-        color: #666;
-        font-size: 0.875rem;
-    }
-
-    .detail-item span {
-        color: #333;
-        font-size: 1rem;
-    }
-
-    .detail-item .highlight {
-        color: #2563eb;
-        font-weight: 600;
-    }
-
-    .section-title {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        color: #1f2937;
-    }
-
-    .section-description {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
         color: #6b7280;
-        margin-bottom: 1.5rem;
-        line-height: 1.6;
+        margin-bottom: 0.25rem;
     }
 
-    .alternatives-grid {
+    .detail-value {
+        color: #1f2937;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .detail-value.highlight {
+        color: #0369a1;
+        font-weight: 700;
+    }
+
+    .suggestions-layout {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 1.5rem;
-        margin-top: 1.5rem;
+        grid-template-columns: 350px 1fr;
+        gap: 2rem;
+        align-items: start;
     }
 
-    .facility-card {
+    .facilities-panel {
+        position: sticky;
+        top: 2rem;
+    }
+
+    .facilities-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .facility-select-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
         background: white;
         border: 2px solid #e5e7eb;
         border-radius: 12px;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: all 0.2s ease;
     }
 
-    .facility-card:hover {
-        border-color: #2563eb;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
-        transform: translateY(-2px);
+    .facility-select-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        transform: translateX(4px);
     }
 
-    .facility-header {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    .facility-select-card.selected {
+        border-color: #3b82f6;
+        background: #eff6ff;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+
+    .facility-select-card.disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    .facility-select-card.disabled:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .facility-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .facility-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .facility-info h4 {
+        margin: 0 0 0.25rem 0;
+        color: #1f2937;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    .facility-meta,
+    .facility-desc {
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+    .facility-desc {
+        margin-top: 0.25rem;
+    }
+
+    .facility-arrow {
+        color: #9ca3af;
+        font-size: 1.25rem;
+        transition: transform 0.2s ease;
+    }
+
+    .facility-select-card:hover .facility-arrow {
+        color: #3b82f6;
+        transform: translateX(4px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .placeholder-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #9ca3af;
+    }
+
+    .placeholder-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .placeholder-state p {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .schedule-form {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .form-section h4 {
+        margin: 0 0 1rem 0;
+        color: #374151;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .time-slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .time-slot-btn {
+        padding: 0.75rem 0.5rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        background: white;
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .time-slot-btn:hover {
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+
+    .time-slot-btn.selected {
+        background: #3b82f6;
+        border-color: #3b82f6;
         color: white;
-        padding: 1.25rem;
+    }
+
+    .time-slot-btn.unavailable {
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #991b1b;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .loading-text {
+        color: #9ca3af;
+        font-style: italic;
+        text-align: center;
+        grid-column: 1 / -1;
+        padding: 1rem;
+    }
+
+    .selected-time-info {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #f0fdf4;
+        border: 2px solid #86efac;
+        border-radius: 10px;
+    }
+
+    .selected-time-display {
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    .facility-header h4 {
-        margin: 0;
-        font-size: 1.25rem;
+    .selected-time-display .label {
         font-weight: 600;
+        color: #166534;
     }
 
-    .capacity-badge {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 0.375rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        white-space: nowrap;
+    .selected-time-display .time-value {
+        font-weight: 700;
+        color: #15803d;
+        font-size: 1.1rem;
     }
 
-    .facility-body {
-        padding: 1.25rem;
-    }
-
-    .facility-description {
-        color: #6b7280;
-        margin-bottom: 1rem;
-        line-height: 1.5;
-    }
-
-    .facility-info {
+    .availability-indicator {
         display: flex;
-        flex-direction: column;
+        align-items: center;
         gap: 0.75rem;
-    }
-
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .info-row:last-child {
-        border-bottom: none;
-    }
-
-    .info-row .label {
-        font-weight: 600;
-        color: #6b7280;
-    }
-
-    .info-row .value {
-        color: #1f2937;
-    }
-
-    .status-available {
-        color: #10b981;
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
         font-weight: 600;
     }
 
-    .facility-footer {
-        padding: 1rem 1.25rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
+    .availability-indicator.available {
+        background: #dcfce7;
+        border: 2px solid #86efac;
+        color: #166534;
+    }
+
+    .availability-indicator.unavailable {
+        background: #fee2e2;
+        border: 2px solid #fca5a5;
+        color: #991b1b;
+    }
+
+    .availability-indicator.checking {
+        background: #dbeafe;
+        border: 2px solid #93c5fd;
+        color: #1e40af;
+    }
+
+    .indicator-icon {
+        font-size: 1.5rem;
+    }
+
+    .indicator-text {
+        font-size: 0.95rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
     }
 
     .btn-primary-full {
         width: 100%;
-        background: #2563eb;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         color: white;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: 8px;
+        padding: 1rem;
         font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
     }
 
-    .btn-primary-full:hover {
-        background: #1d4ed8;
+    .btn-primary-full:hover:not(:disabled) {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
-    .btn-primary-full i {
-        font-size: 1rem;
+    .btn-primary-full:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+        opacity: 0.6;
     }
 
-    @media (max-width: 768px) {
-        .alternatives-grid {
+    .btn-icon {
+        font-size: 1.25rem;
+    }
+
+    @media (max-width: 1024px) {
+        .suggestions-layout {
             grid-template-columns: 1fr;
+        }
+
+        .facilities-panel {
+            position: static;
+        }
+
+        .facilities-list {
+            max-height: none;
         }
     }
 </style>
+
+<script>
+    let selectedFacilityId = null;
+    let selectedStartTime = null;
+    let selectedEndTime = null;
+    const reservationId = {{ reservation.id }};
+    const originalDuration = {{ durationMinutes }};
+    const isEditingSuggestion = {{ isEditingSuggestion ? 'true' : 'false' }};
+
+    function selectFacility(facilityId, facilityName, capacity) {
+        selectedFacilityId = facilityId;
+        
+        // Update UI
+        document.querySelectorAll('.facility-select-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        document.querySelector(`[data-facility-id="${facilityId}"]`).classList.add('selected');
+        
+        // Show form
+        document.getElementById('facilitySelectionPlaceholder').style.display = 'none';
+        document.getElementById('scheduleSelectionForm').style.display = 'block';
+        document.getElementById('selectedFacilityName').textContent = facilityName;
+        document.getElementById('selectedFacilityId').value = facilityId;
+        
+        // Reset form
+        document.getElementById('suggestDate').value = '';
+        document.getElementById('timeSlotsContainer').innerHTML = '<p class="loading-text">Select a date to see available time slots</p>';
+        document.getElementById('selectedTimeInfo').style.display = 'none';
+        document.getElementById('availabilityIndicator').style.display = 'none';
+        document.getElementById('submitSuggestion').disabled = true;
+    }
+
+    function loadTimeSlots() {
+        const date = document.getElementById('suggestDate').value;
+        const container = document.getElementById('timeSlotsContainer');
+        
+        if (!date) {
+            container.innerHTML = '<p class="loading-text">Select a date to see available time slots</p>';
+            return;
+        }
+
+        if (!selectedFacilityId) {
+            return;
+        }
+
+        container.innerHTML = '<p class="loading-text">Loading available time slots...</p>';
+
+        fetch('/super-admin/get-available-slots', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                facility_id: selectedFacilityId,
+                date: date,
+                duration_minutes: originalDuration,
+                exclude_reservation_id: reservationId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message && data.message.includes('Sunday')) {
+                container.innerHTML = '<p class="loading-text" style="color: #dc2626;">🚫 All facilities are closed on Sundays</p>';
+            } else if (data.slots && data.slots.length > 0) {
+                container.innerHTML = data.slots.map(slot => 
+                    `<button type="button" class="time-slot-btn" onclick="selectTimeSlot('${slot.start}', '${slot.end}')">
+                        ${slot.start} - ${slot.end}
+                    </button>`
+                ).join('');
+            } else {
+                container.innerHTML = '<p class="loading-text">No available time slots found for this date</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading time slots:', error);
+            container.innerHTML = '<p class="loading-text">Error loading time slots</p>';
+        });
+    }
+
+    function selectTimeSlot(startTime, endTime) {
+        selectedStartTime = startTime;
+        selectedEndTime = endTime;
+
+        // Update UI
+        document.querySelectorAll('.time-slot-btn').forEach(btn => btn.classList.remove('selected'));
+        event.target.classList.add('selected');
+
+        // Show selected time
+        document.getElementById('selectedTimeDisplay').textContent = `${startTime} - ${endTime}`;
+        document.getElementById('selectedTimeInfo').style.display = 'block';
+
+        // Check availability
+        checkAvailability();
+    }
+
+    function checkAvailability() {
+        const date = document.getElementById('suggestDate').value;
+        const indicator = document.getElementById('availabilityIndicator');
+        const submitBtn = document.getElementById('submitSuggestion');
+
+        if (!date || !selectedStartTime || !selectedEndTime) {
+            return;
+        }
+
+        indicator.style.display = 'flex';
+        indicator.className = 'availability-indicator checking';
+        indicator.innerHTML = '<div class="indicator-icon">⏳</div><div class="indicator-text">Checking availability...</div>';
+        submitBtn.disabled = true;
+
+        fetch('/super-admin/check-availability', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                facility_id: selectedFacilityId,
+                date: date,
+                start_time: selectedStartTime,
+                end_time: selectedEndTime,
+                exclude_reservation_id: reservationId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.available) {
+                indicator.className = 'availability-indicator available';
+                indicator.innerHTML = '<div class="indicator-icon">✓</div><div class="indicator-text">This time slot is available</div>';
+                submitBtn.disabled = false;
+            } else {
+                indicator.className = 'availability-indicator unavailable';
+                indicator.innerHTML = '<div class="indicator-icon">✕</div><div class="indicator-text">This time slot is already booked</div>';
+                submitBtn.disabled = true;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking availability:', error);
+            indicator.className = 'availability-indicator unavailable';
+            indicator.innerHTML = '<div class="indicator-icon">⚠️</div><div class="indicator-text">Error checking availability</div>';
+        });
+    }
+
+    document.getElementById('suggestScheduleForm').addEventListener('submit', function(e) {
+        if (!selectedStartTime || !selectedEndTime) {
+            e.preventDefault();
+            alert('Please select a time slot');
+            return;
+        }
+
+        // Add hidden inputs for start and end time
+        const startTimeInput = document.createElement('input');
+        startTimeInput.type = 'hidden';
+        startTimeInput.name = 'start_time';
+        startTimeInput.value = selectedStartTime;
+        
+        const endTimeInput = document.createElement('input');
+        endTimeInput.type = 'hidden';
+        endTimeInput.name = 'end_time';
+        endTimeInput.value = selectedEndTime;
+
+        this.appendChild(startTimeInput);
+        this.appendChild(endTimeInput);
+    });
+
+    // Initialize if editing suggestion
+    document.addEventListener('DOMContentLoaded', function() {
+        if (isEditingSuggestion) {
+            selectedFacilityId = {{ reservation.facility.id }};
+            selectedStartTime = '{{ reservation.reservationStartTime|date('H:i') }}';
+            selectedEndTime = '{{ reservation.reservationEndTime|date('H:i') }}';
+            
+            // Pre-select the current facility
+            document.querySelector(`[data-facility-id="${selectedFacilityId}"]`).classList.add('selected');
+            
+            // Load time slots for the current date
+            loadTimeSlots();
+            
+            // Check availability for the current time slot
+            checkAvailability();
+        }
+    });
+</script>
 {% endblock %}

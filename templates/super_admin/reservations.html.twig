@@ -159,6 +159,66 @@
             </div>
         {% endif %}
     </div>
+
+    <!-- Suggested Reservations Tab -->
+    <div class="reservation-section card-panel">
+        <div class="section-header">
+            <h3 class="status-title suggested">💡 Suggested Reservations ({{ suggested|length }})</h3>
+            <p class="section-description">View reservation suggestions that have been sent to requesters.</p>
+        </div>
+
+        {% if suggested|length > 0 %}
+            <div class="reservations-table">
+                {% for reservation in suggested %}
+                    <div class="reservation-row suggested-row">
+                        <div class="row-header">
+                            <h4>{{ reservation.facility.name }}</h4>
+                            <span class="status-badge suggested">Suggested</span>
+                        </div>
+
+                        <div class="row-details">
+                            <div class="detail-col">
+                                <label>Requester</label>
+                                <p>{{ reservation.name }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Email</label>
+                                <p>{{ reservation.email }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Suggested Facility</label>
+                                <p class="highlight">{{ reservation.facility.name }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Suggested Date & Time</label>
+                                <p>{{ reservation.reservationDate|date('M d, Y') }} at {{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Attendees</label>
+                                <p>{{ reservation.capacity }}/{{ reservation.facility.capacity }}</p>
+                            </div>
+                            <div class="detail-col">
+                                <label>Suggested On</label>
+                                <p>{{ reservation.updatedAt|date('M d, Y - h:i A') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="row-actions">
+                            <a href="{{ path('admin_suggest_alternatives', {'id': reservation.id}) }}" class="btn btn-suggest">Edit Suggestion</a>
+                            <form method="POST" action="{{ path('admin_cancel_suggestion', {'id': reservation.id}) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this suggestion? This will remove the suggested schedule and return the reservation to pending status.')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('cancel_suggestion_' ~ reservation.id) }}">
+                                <button type="submit" class="btn btn-reject">Cancel Suggestion</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-message">
+                <p>No suggested reservations.</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Reject Modal -->
@@ -177,6 +237,7 @@
             <button type="button" class="btn btn-reject" onclick="submitReject()">Confirm Reject</button>
         </div>
     </div>
+</div>
 
 <style>
     .content-header {
@@ -223,6 +284,11 @@
         border-bottom-color: #dc3545;
     }
 
+    .status-title.suggested {
+        color: #6f42c1;
+        border-bottom-color: #6f42c1;
+    }
+
     .section-description {
         color: #666;
         margin: 0.5rem 0 0 0;
@@ -257,8 +323,14 @@
     }
 
     .reservation-row.approved-row,
-    .reservation-row.rejected-row {
+    .reservation-row.rejected-row,
+    .reservation-row.suggested-row {
         opacity: 0.8;
+    }
+
+    .reservation-row.suggested-row {
+        border-color: #6f42c1;
+        background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
     }
 
     .row-header {
@@ -296,6 +368,10 @@
         background: #dc3545;
     }
 
+    .status-badge.suggested {
+        background: #6f42c1;
+    }
+
     .row-details {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -322,6 +398,11 @@
     .detail-col p {
         margin: 0;
         color: #333;
+    }
+
+    .detail-col p.highlight {
+        color: #6f42c1;
+        font-weight: 600;
     }
 
     .row-actions {

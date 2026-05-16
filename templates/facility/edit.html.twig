@@ -30,67 +30,240 @@
                     <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; text-align: center;">
                         <img src="{{ facility.image }}" alt="{{ facility.name }}" style="max-width: 200px; max-height: 200px; margin-bottom: 10px; border-radius: 6px; display: block; margin-left: auto; margin-right: auto;">
                         <p style="margin: 0; color: #666; font-size: 12px;">Current Image</p>
-                        <form action="{{ path('app_facility_remove_main_image', {id: facility.id}) }}" method="POST" onsubmit="return confirm('Remove this facility image?');" style="display: inline;">
-                            <input type="hidden" name="_token" value="{{ csrf_token('remove_main_image_' ~ facility.id) }}">
-                            <button type="submit" class="btn-secondary" style="margin-top: 8px; padding: 8px 16px;">Remove Image</button>
-                        </form>
                     </div>
                 {% endif %}
                 <input type="file" id="image" name="image" accept="image/*">
             </div>
 
             <div class="form-group">
-                <label for="images">Add Gallery Images <span style="color: #666; font-size: 12px;">(Maximum: 5 images)</span></label>
+                <label for="images">Add Gallery Images <span style="color: #666; font-size: 12px;">(Maximum: 5 gallery images - main facility image is separate)</span></label>
                 <p style="font-size: 12px; color: #666; margin: 5px 0;">
                     Current gallery images: <span id="currentImageCount">{{ facility.images|length }}</span> / 5
                 </p>
-                <input type="file" id="images" name="images[]" accept="image/*" multiple onchange="validateGalleryImages(event)">
+                
+                <div style="position: relative;">
+                    <div id="galleryUploadArea" style="display: block; border: 2px dashed #d1d5db; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f9fafb;">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
+                        <p style="margin: 0; color: #374151; font-weight: 500;">Click to add images</p>
+                        <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">or drag and drop files here</p>
+                    </div>
+                    <input type="file" id="images" name="images[]" accept="image/*" multiple style="display: none;" onchange="handleImageSelection(this)">
+                </div>
+                
+                <div id="selectedImagesPreview" style="display: none; margin-top: 1rem;">
+                    <p style="font-size: 0.875rem; color: #374151; font-weight: 500; margin-bottom: 0.5rem;">
+                        New images to add: <span id="selectedCount">0</span>
+                    </p>
+                    <div id="selectedImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem;"></div>
+                </div>
             </div>
 
-            {% if facility.images|length > 0 %}
-                <div class="form-group">
-                    <label>Gallery Management</label>
-                    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:12px;">
-                        {% for image in facility.images %}
-                            <div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px;">
-                                <img src="{{ image.path }}" alt="{{ facility.name }}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;">
-                                <form action="{{ path('app_facility_image_delete', {id: image.id}) }}" method="POST" onsubmit="return confirm('Remove this image?');" style="margin-top:8px;">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_image' ~ image.id) }}">
-                                    <button type="submit" class="btn-secondary" style="width:100%;">Remove</button>
-                                </form>
-                            </div>
-                        {% endfor %}
+            <!-- Custom Modal for Alerts -->
+            <div id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); animation: slideIn 0.3s ease;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                        <h3 style="margin: 0 0 0.5rem 0; color: #374151;">Notice</h3>
+                        <p id="modalMessage" style="margin: 0 0 1.5rem 0; color: #6b7280; line-height: 1.5;"></p>
+                        <button onclick="closeModal()" style="background: #3b82f6; color: white; border: none; padding: 0.75rem 2rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; width: 100%;">
+                            OK
+                        </button>
                     </div>
                 </div>
-            {% endif %}
+            </div>
+
+            <style>
+                @keyframes slideIn {
+                    from {
+                        transform: translateY(-20px);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateY(0);
+                        opacity: 1;
+                    }
+                }
+            </style>
 
             <div style="display: flex; gap: 12px;">
                 <button type="submit" class="btn-primary">Update Facility</button>
                 <a href="{{ path('app_facility_management') }}" class="btn-secondary">Cancel</a>
             </div>
         </form>
+
+        {% if facility.images|length > 0 %}
+            <div class="form-group" style="margin-top: 2rem;">
+                <label>Gallery Management</label>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:12px;">
+                    {% for image in facility.images %}
+                        <div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px;">
+                            <img src="{{ image.path }}" alt="{{ facility.name }}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;">
+                            <form action="{{ path('app_facility_image_delete', {id: image.id}) }}" method="POST" onsubmit="return confirm('Remove this image?');" style="margin-top:8px;">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete_image' ~ image.id) }}">
+                                <button type="submit" class="btn-secondary" style="width:100%;">Remove</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
     </div>
 
     <script>
-        function validateGalleryImages(event) {
-            const maxImages = 5;
-            const currentImageCount = parseInt(document.getElementById('currentImageCount').textContent);
-            const fileInput = event.target;
-            const files = fileInput.files;
-            const allowedCount = maxImages - currentImageCount;
+        const maxImages = 5;
+        let selectedFiles = [];
+        const currentImageCount = {{ facility.images|length }};
 
-            if (currentImageCount >= maxImages) {
-                alert('Gallery already contains the maximum of 5 images. Please remove some before adding new ones.');
-                fileInput.value = '';
-                return;
-            }
-
-            if (files.length > allowedCount) {
-                alert(`You can only add ${allowedCount} more image(s). Gallery has a maximum of ${maxImages} images.`);
-                fileInput.value = '';
-                return;
-            }
+        function showModal(message) {
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('customModal').style.display = 'flex';
         }
+
+        function closeModal() {
+            document.getElementById('customModal').style.display = 'none';
+        }
+
+        function handleImageSelection(input) {
+            console.log('handleImageSelection called, files:', input.files);
+            const files = input.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            console.log('handleFiles called with', files.length, 'files');
+            
+            let addedCount = 0;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    const totalAfterAdd = currentImageCount + selectedFiles.length + 1;
+                    if (totalAfterAdd > maxImages) {
+                        showModal(`Maximum ${maxImages} images allowed. You already have ${currentImageCount + selectedFiles.length} images.`);
+                        break;
+                    }
+                    selectedFiles.push(file);
+                    addedCount++;
+                }
+            }
+
+            if (addedCount === 0) {
+                showModal('Please select valid image files.');
+                return;
+            }
+
+            console.log('Added', addedCount, 'images. Total selected:', selectedFiles.length);
+            updateSelectedImagesPreview();
+        }
+
+        function updateSelectedImagesPreview() {
+            console.log('updateSelectedImagesPreview called, selectedFiles:', selectedFiles.length);
+            const previewContainer = document.getElementById('selectedImagesPreview');
+            const imagesList = document.getElementById('selectedImagesList');
+            const selectedCount = document.getElementById('selectedCount');
+            const currentImageCountDisplay = document.getElementById('currentImageCount');
+
+            console.log('DOM elements found:', { previewContainer, imagesList, selectedCount, currentImageCountDisplay });
+
+            if (selectedFiles.length === 0) {
+                previewContainer.style.display = 'none';
+                currentImageCountDisplay.textContent = currentImageCount;
+                return;
+            }
+
+            previewContainer.style.display = 'block';
+            selectedCount.textContent = selectedFiles.length;
+            currentImageCountDisplay.textContent = currentImageCount + selectedFiles.length;
+            imagesList.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imageContainer = document.createElement('div');
+                    imageContainer.style.cssText = 'position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; aspect-ratio: 1;';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.textContent = '✕';
+                    removeBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: rgba(220, 38, 38, 0.9); color: white; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;';
+                    removeBtn.onmouseover = function() { this.style.background = '#dc2626'; };
+                    removeBtn.onmouseout = function() { this.style.background = 'rgba(220, 38, 38, 0.9)'; };
+                    removeBtn.onclick = function() {
+                        selectedFiles.splice(index, 1);
+                        updateSelectedImagesPreview();
+                        updateFileInput();
+                    };
+                    
+                    imageContainer.appendChild(img);
+                    imageContainer.appendChild(removeBtn);
+                    imagesList.appendChild(imageContainer);
+                    console.log('Image preview added for index:', index);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            updateFileInput();
+            console.log('updateSelectedImagesPreview completed');
+        }
+
+        function updateFileInput() {
+            const fileInput = document.getElementById('images');
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dataTransfer.items.add(file);
+            });
+            fileInput.files = dataTransfer.files;
+        }
+
+        // Initialize drag and drop when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadArea = document.getElementById('galleryUploadArea');
+            const fileInput = document.getElementById('images');
+            
+            console.log('File input found:', fileInput);
+            console.log('Upload area found:', uploadArea);
+            
+            // Click handler for upload area
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // Handle drag and drop
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#3b82f6';
+                uploadArea.style.backgroundColor = '#eff6ff';
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#d1d5db';
+                uploadArea.style.backgroundColor = '#f9fafb';
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.style.borderColor = '#d1d5db';
+                uploadArea.style.backgroundColor = '#f9fafb';
+                
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+
+            // Form submission validation
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const totalImages = currentImageCount + selectedFiles.length;
+                if (totalImages > maxImages) {
+                    e.preventDefault();
+                    showModal(`Gallery cannot exceed ${maxImages} images. You have ${currentImageCount} existing and ${selectedFiles.length} new images.`);
+                    return false;
+                }
+            });
+        });
     </script>
 
 {% endblock %}

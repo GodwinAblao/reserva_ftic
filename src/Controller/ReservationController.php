@@ -379,6 +379,7 @@ public function reserve(
         $categorized = [
             'Approved' => [],
             'Pending' => [],
+            'Suggested' => [],
             'Rejected' => [],
             'Cancelled' => [],
         ];

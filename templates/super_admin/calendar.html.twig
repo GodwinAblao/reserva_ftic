@@ -103,6 +103,7 @@
                     <option value="Manual">Manual</option>
                     <option value="Blocked">Blocked</option>
                     <option value="Maintenance">Maintenance</option>
+                    <option value="Class Schedule">Class Schedule</option>
                 </select>
             </div>
             <textarea name="notes" placeholder="Notes" style="width:100%; margin:10px 0; padding:10px; border:1px solid #d1d5db; border-radius:8px;"></textarea>
@@ -1463,8 +1464,10 @@
         document.getElementById('modalBody').innerHTML = details.map(([label, value]) => `<div class="detail-row"><span class="detail-label">${label}:</span><span class="detail-value">${value}</span></div>`).join('');
         if (data.isBlock === '1' && data.status !== 'Class Schedule') {
             document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;
+        } else if (data.isBlock === '1') {
+            document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Schedule</button>`;
         } else {
-            document.getElementById('modalActions').innerHTML = data.isBlock === '1' ? '' : `<a href="/super-admin/reservations/${data.id}/edit" class="btn-edit">Edit</a>`;
+            document.getElementById('modalActions').innerHTML = `<a href="/super-admin/reservations/${data.id}/edit" class="btn-edit">Edit</a>`;
         }
         document.getElementById('eventModal').dataset.activeBlock = data.blockId || '';
         document.getElementById('eventModal').dataset.activeFacilityId = data.facilityId || '';
@@ -1495,6 +1498,30 @@
         form.elements.type.value = ['Manual', 'Blocked', 'Maintenance'].includes(modal.dataset.activeStatus) ? modal.dataset.activeStatus : 'Manual';
         form.elements.notes.value = modal.dataset.activePurpose;
         document.getElementById('manualBlockSubmit').textContent = 'Update Block';
+        document.getElementById('manualBlockCancelEdit').style.display = 'inline-block';
+        document.getElementById('manualBlockMessage').style.display = 'none';
+        closeModal();
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function modifyClassScheduleFromModal() {
+        const modal = document.getElementById('eventModal');
+        const form = document.getElementById('manualBlockForm');
+        const blockId = modal.dataset.activeBlock;
+
+        if (!blockId) {
+            return;
+        }
+
+        document.getElementById('manualBlockId').value = blockId;
+        form.elements.facility.value = modal.dataset.activeFacilityId;
+        form.elements.date.value = modal.dataset.activeDate;
+        form.elements.start_time.value = modal.dataset.activeStart;
+        form.elements.end_time.value = modal.dataset.activeEnd;
+        form.elements.title.value = modal.dataset.activeTitle;
+        form.elements.type.value = 'Class Schedule';
+        form.elements.notes.value = modal.dataset.activePurpose;
+        document.getElementById('manualBlockSubmit').textContent = 'Modify Schedule';
         document.getElementById('manualBlockCancelEdit').style.display = 'inline-block';
         document.getElementById('manualBlockMessage').style.display = 'none';
         closeModal();

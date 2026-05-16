@@ -150,9 +150,16 @@ class FacilityController extends AbstractController
     {
         $facilityId = $image->getFacility()?->getId();
 
+        if (!$facilityId) {
+            $this->addFlash('error', 'Unable to remove image: no facility associated.');
+            return $this->redirectToRoute('app_facility_management');
+        }
+
         if ($this->isCsrfTokenValid('delete_image' . $image->getId(), (string) $request->request->get('_token'))) {
             $imageRepository->remove($image, true);
             $this->addFlash('success', 'Facility image removed.');
+        } else {
+            $this->addFlash('error', 'Invalid CSRF token.');
         }
 
         return $this->redirectToRoute('app_facility_edit', ['id' => $facilityId]);
