@@ -163,8 +163,10 @@
             html += '</div>';
 
             for (let i = 0; i < 7; i++) {
+                const dayDate = new Date(startDate);
+                dayDate.setDate(startDate.getDate() + i);
                 html += '<div class="day-column">';
-                html += '<div class="day-header"><div class="day-name">' + days[i] + '</div></div>';
+                html += '<div class="day-header"><div class="day-name">' + days[i] + '</div><div class="day-date">' + dayDate.getDate() + '</div></div>';
                 html += '<div class="day-body">';
                 timeSlots.forEach(() => {
                     html += '<div class="time-slot" style="height:' + calendarHourHeight + 'px;"></div>';
@@ -806,7 +808,7 @@
         days.forEach(day => {
             const dateKey = formatDateForAPI(day);
             const dayEvents = events.filter(event => event.reservationDate === dateKey);
-            html += `<div class="day-column"><div class="day-header"><div class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div></div><div class="day-body">`;
+            html += `<div class="day-column"><div class="day-header"><div class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div><div class="day-date">${day.toLocaleDateString('en-US', { day: 'numeric' })}</div></div><div class="day-body">`;
             timeSlots.forEach(() => html += `<div class="time-slot" style="height:${calendarHourHeight}px;"></div>`);
             dayEvents.forEach((event, index) => html += renderEventBlock(event, index, dayEvents.length));
             html += '</div></div>';

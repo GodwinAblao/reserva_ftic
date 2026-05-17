@@ -79,8 +79,6 @@
                             <input type="hidden" name="reason" class="reject-reason">
                             <button type="button" class="sa-btn sa-btn-reject" onclick="showRejectModal(this)">✕ Reject</button>
                         </form>
-
-                        <a href="{{ path('admin_suggest_alternatives', {'id': reservation.id}) }}" class="sa-btn sa-btn-suggest">💡 Suggest Alternative</a>
                     </div>
                 </div>
             {% endfor %}
@@ -172,69 +170,6 @@
     {% endif %}
 </div>
 
-{# ── Suggested ─────────────────────────────────────────── #}
-<div class="sa-card">
-    <div class="sa-card-header">
-        <div>
-            <h3 class="sa-card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Suggested Reservations
-                <span class="sa-badge sa-badge-suggested">{{ suggested|length }}</span>
-            </h3>
-            <p class="sa-card-subtitle">Suggestions sent to requesters awaiting their decision.</p>
-        </div>
-    </div>
-
-    {% if suggested|length > 0 %}
-        <div class="sa-reservation-list">
-            {% for reservation in suggested %}
-                <div class="sa-reservation-row row-suggested">
-                    <div class="sa-row-head">
-                        <h4>{{ reservation.facility.name }}</h4>
-                        <span class="sa-badge sa-badge-suggested">Suggested</span>
-                    </div>
-
-                    <div class="sa-detail-grid">
-                        <div class="sa-detail-col">
-                            <label>Requester</label>
-                            <p>{{ reservation.name }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Email</label>
-                            <p>{{ reservation.email }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Suggested Facility</label>
-                            <p class="highlight">{{ reservation.facility.name }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Suggested Date &amp; Time</label>
-                            <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} – {{ reservation.reservationEndTime|date('h:i A') }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Attendees</label>
-                            <p>{{ reservation.capacity }} / {{ reservation.facility.capacity }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Suggested On</label>
-                            <p>{{ reservation.updatedAt|date('M d, Y · h:i A') }}</p>
-                        </div>
-                    </div>
-
-                    <div class="sa-row-actions">
-                        <a href="{{ path('admin_suggest_alternatives', {'id': reservation.id}) }}" class="sa-btn sa-btn-suggest">✏️ Edit Suggestion</a>
-                        <form method="POST" action="{{ path('admin_cancel_suggestion', {'id': reservation.id}) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to cancel this suggestion? This will remove the suggested schedule and return the reservation to pending status.')">
-                            <input type="hidden" name="_token" value="{{ csrf_token('cancel_suggestion_' ~ reservation.id) }}">
-                            <button type="submit" class="sa-btn sa-btn-reject">Cancel Suggestion</button>
-                        </form>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="sa-empty">No suggested reservations.</div>
-    {% endif %}
-</div>
 
 {# ── Reject Modal ──────────────────────────────────────── #}
 <div id="rejectModal" class="sa-modal-overlay" style="display:none;">
