@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS `reservation` (
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
     `rejection_reason` VARCHAR(255) DEFAULT NULL,
+    `event_name` VARCHAR(255) DEFAULT NULL,
     INDEX `IDX_42C84955A76ED395` (`user_id`),
     INDEX `IDX_42C84955A7014910` (`facility_id`),
     INDEX `IDX_42C8495568500A62` (`suggested_facility_id`),
