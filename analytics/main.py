@@ -24,7 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+        res_by_date = {d.isoformat(): int(res.get(d, 0)) for d in [datetime.fromisoformat(x).date() for x in dates]}
 # Load dummy data
 def load_dummy_data() -> pd.DataFrame:
     """Load or generate dummy reservation data"""
@@ -41,19 +41,19 @@ def load_dummy_data() -> pd.DataFrame:
         df['created_at'] = pd.to_datetime(df['created_at'])
         if 'updated_at' in df.columns:
             df['updated_at'] = pd.to_datetime(df['updated_at'])
-        if 'setup_date' in df.columns:
-            df['setup_date'] = pd.to_datetime(df['setup_date'])
-        return df
-
-    # Generate 100 dummy reservations
+            reservationTrends.append({
+                'day': datetime.fromisoformat(td).strftime('%a'),
+                'approved': 0,
+                'pending': 0,
+            })
     data = []
     facilities = [
         {"id": 1, "name": "CS Project Room", "capacity": 48},
-        {"id": 2, "name": "Discussion Room 3", "capacity": 6},
-        {"id": 3, "name": "Discussion Room 4", "capacity": 8},
-        {"id": 4, "name": "Presentation Room 1", "capacity": 40},
-        {"id": 5, "name": "Presentation Room 2", "capacity": 60},
-        {"id": 6, "name": "COE Project Room", "capacity": 48},
+            mentoringTrends.append({
+                'day': datetime.fromisoformat(td).strftime('%a'),
+                'appointments': 0,
+                'requests': 0,
+            })
         {"id": 7, "name": "Lounge Area", "capacity": 150}
     ]
 

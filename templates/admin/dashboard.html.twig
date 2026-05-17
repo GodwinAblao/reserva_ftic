@@ -433,39 +433,44 @@
 
     async function loadChart(type) {
         if (!dashboardState.chart) return;
-        
+
         document.querySelectorAll('[data-chart]').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.chart === type);
         });
-        
+
+        const FASTAPI_BASE = 'http://127.0.0.1:8002';
+
         try {
-            const response = await fetch('{{ path('admin_api_analytics') }}');
+            const response = await fetch(FASTAPI_BASE + '/api/analytics/overview', { mode: 'cors' });
+            if (!response.ok) {
+                throw new Error('FastAPI analytics returned HTTP ' + response.status);
+            }
+
             const data = await response.json();
-            
-            const labels = data.dailyStats.slice(-7).map(d => {
-                const date = new Date(d.date);
-                return date.toLocaleDateString('en', { weekday: 'short' });
-            });
-            
+            const recentStats = (data.dailyStats || []).slice(-30);
             const isReservations = type === 'reservations';
-            const chartData = data.dailyStats.slice(-7).map(d => isReservations ? d.reservations : d.mentoring);
             const color = isReservations ? '#006633' : '#7c3aed';
-            
+
             dashboardState.chart.data = {
-                labels: labels,
+                labels: recentStats.map(d => {
+                    const date = new Date(d.date);
+                    return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                }),
                 datasets: [{
                     label: isReservations ? 'Reservations' : 'Mentoring',
-                    data: chartData,
+                    data: recentStats.map(d => isReservations ? d.reservations : d.mentoring),
                     borderColor: color,
                     backgroundColor: color + '20',
                     fill: true,
                     borderWidth: 2
                 }]
             };
-            dashboardState.chart.update('none'); // No animation for faster render
         } catch (e) {
-            // Silent fail
+            dashboardState.chart.data = { labels: [], datasets: [] };
+            console.error('FastAPI analytics overview failed:', e);
         }
+
+        dashboardState.chart.update('none');
     }
 </script>
 {% endblock %}
