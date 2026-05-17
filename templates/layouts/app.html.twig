@@ -18,6 +18,25 @@
         {% set regular_user_page_name = 'Leaderboard' %}
     {% endif %}
 
+    {% set admin_page_name = 'Dashboard' %}
+    {% if route in ['app_profile', 'profile_availability', 'profile_requests'] %}
+        {% set admin_page_name = 'Profile' %}
+    {% elseif route == 'app_account_management' %}
+        {% set admin_page_name = 'Account Management' %}
+    {% elseif route == 'admin_reservations' or route == 'admin_role_reservation_monitoring' %}
+        {% set admin_page_name = 'Reservation Management' %}
+    {% elseif route == 'app_facility_management' %}
+        {% set admin_page_name = 'Facility Management' %}
+    {% elseif route starts with 'mentoring_' %}
+        {% set admin_page_name = 'Mentoring Management' %}
+    {% elseif route starts with 'research_' %}
+        {% set admin_page_name = 'Research Management' %}
+    {% elseif route starts with 'analytics_' or route == 'admin_role_reports' %}
+        {% set admin_page_name = 'Analytics' %}
+    {% elseif route starts with 'admin_calendar' %}
+        {% set admin_page_name = 'Calendar' %}
+    {% endif %}
+
     {% set notification_bell_markup %}
     <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user.id }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
         <button type="button" aria-expanded="false" class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
@@ -105,83 +124,99 @@
                 {{ notification_bell_markup }}
             {% endif %}
         </header>
+    {% else %}
+        <header class="admin-page-header">
+            <div class="admin-page-header-left">
+                <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo" class="admin-page-logo">
+                <h1 class="admin-page-title">{{ admin_page_name }}</h1>
+            </div>
+        </header>
     {% endif %}
 
-    <div class="app-shell {{ is_regular_user ? 'regular-user-shell' : '' }}">
-        <aside class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : '' }}">
-            <div class="sidebar-brand">
-                {% if not is_regular_user %}
-                <img src="{{ asset('images/R-Logo.png') }}" alt="R Logo">
-                {% endif %}
-            </div>
+    <div class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }}">
+        <aside class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : 'admin-sidebar' }}">
 
             {% if is_regular_user %}
-                <div class="regular-user-mail">{{ app.user ? app.user.userIdentifier : 'user@ftic.edu.ph' }}</div>
+                <div class="admin-sidebar-user">
+                    <div class="admin-sidebar-email">{{ app.user ? app.user.userIdentifier : 'user@ftic.edu.ph' }}</div>
+                    <div class="admin-sidebar-role">
+                        {% if is_granted('ROLE_MENTOR') %}Mentor
+                        {% elseif is_granted('ROLE_FACULTY') %}Faculty
+                        {% else %}Student
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="admin-sidebar-user">
+                    <div class="admin-sidebar-email">{{ app.user ? app.user.userIdentifier : '' }}</div>
+                    <div class="admin-sidebar-role">{{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : 'ADMIN' }}</div>
+                </div>
             {% endif %}
 
             <nav class="nav-list">
                 {% if is_granted('ROLE_SUPER_ADMIN') %}
-                <a class="nav-link {{ app.request.attributes.get('_route') in ['app_dashboard', 'admin_home'] or app.request.attributes.get('_route') starts with 'admin_' ? 'active' : '' }}" href="{{ path('admin_home') }}">
-                    Dashboard
+                <a class="nav-link {{ route in ['app_dashboard', 'admin_home'] ? 'active' : '' }}" href="{{ path('admin_home') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg></span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="nav-link {{ route in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg></span>
+                    <span>Profile</span>
+                </a>
+                <a class="nav-link {{ route == 'app_account_management' ? 'active' : '' }}" href="{{ path('app_account_management') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg></span>
+                    <span>Accounts</span>
+                </a>
+                <a class="nav-link {{ route == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_reservations') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></span>
+                    <span>Reservations</span>
+                </a>
+                <a class="nav-link {{ route == 'app_facility_management' ? 'active' : '' }}" href="{{ path('app_facility_management') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V7.5L12 3l9 4.5V20h-4v-7H7v7H3Zm6-2h6v-5H9v5Zm2-7h2V9h-2v2Z" fill="currentColor"/></svg></span>
+                    <span>Facilities</span>
+                </a>
+                <a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_super-admin') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
+                    <span>Mentoring</span>
+                </a>
+                <a class="nav-link {{ route starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 6.5V9l10-4.5L22 9V6.5L12 2Zm-7 9.2 7 3.15 7-3.15V18l-7 3-7-3V11.2Zm3 2.25v1.85l4 1.7 4-1.7v-1.85l-4 1.8-4-1.8Z" fill="currentColor"/></svg></span>
+                    <span>Research</span>
+                </a>
+                <a class="nav-link {{ route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg></span>
+                    <span>Analytics</span>
                 </a>
                 {% elseif is_granted('ROLE_ADMIN') %}
-                {# Dashboard link is in the ROLE_ADMIN section below #}
-                {% else %}
-                {% endif %}
-                {% if is_granted('ROLE_SUPER_ADMIN') %}
-                <a class="nav-link {{ app.request.attributes.get('_route') in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
-                    Profile
+                <a class="nav-link {{ route == 'admin_role_home' ? 'active' : '' }}" href="{{ path('admin_role_home') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg></span>
+                    <span>Dashboard</span>
                 </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'app_account_management' ? 'active' : '' }}" href="{{ path('app_account_management') }}">
-                    Account Management
+                <a class="nav-link {{ route in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg></span>
+                    <span>Profile</span>
                 </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_reservations') }}">
-                    Reservation Management
+                <a class="nav-link {{ route == 'admin_role_reservation_monitoring' or route starts with 'admin_calendar' or route == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_role_reservation_monitoring') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></span>
+                    <span>Reservations</span>
                 </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'app_facility_management' ? 'active' : '' }}" href="{{ path('app_facility_management') }}">
-                    Facility Management
+                <a class="nav-link {{ route == 'admin_role_mentorship_coordination' or route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('admin_role_mentorship_coordination') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
+                    <span>Mentoring</span>
                 </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_super-admin') }}">
-                    Mentoring Management
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
-                    Research Management
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') starts with 'analytics_' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">
-                    Analytics
-                </a>
-                {% elseif is_granted('ROLE_ADMIN') %}
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_role_home' ? 'active' : '' }}" href="{{ path('admin_role_home') }}">
-                    Dashboard
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
-                    Profile
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_role_reservation_monitoring' or app.request.attributes.get('_route') starts with 'admin_calendar' or app.request.attributes.get('_route') == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_role_reservation_monitoring') }}">
-                    Reservations
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_role_mentorship_coordination' or app.request.attributes.get('_route') starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('admin_role_mentorship_coordination') }}">
-                    Mentoring
-                </a>
-                <a class="nav-link {{ app.request.attributes.get('_route') == 'admin_role_reports' or app.request.attributes.get('_route') starts with 'analytics_' ? 'active' : '' }}" href="{{ path('admin_role_reports') }}">
-                    Reports
+                <a class="nav-link {{ route == 'admin_role_reports' or route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('admin_role_reports') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg></span>
+                    <span>Reports</span>
                 </a>
                 {% else %}
                 {% include 'layouts/_regular_user_nav.html.twig' %}
                 {% endif %}
             </nav>
 
-            {% if is_regular_user %}
-                
-            {% else %}
-            <div class="sidebar-footer">
-                <div class="pill-role">
-                    {{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : (is_granted('ROLE_ADMIN') ? 'ADMIN' : 'USER') }}
-                </div>
-                <div>Signed in as {{ app.user ? app.user.userIdentifier : 'Guest' }}</div>
-                <div><a href="{{ path('app_logout') }}" data-clear-notification-session>Log out</a></div>
-            </div>
-            {% endif %}
+            <a class="nav-link regular-user-logout" href="{{ path('app_logout') }}" data-clear-notification-session>
+                <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17v-2h4V9h-4V7l-5 5 5 5Zm2-14a9 9 0 1 1 0 18h-1v-2h1a7 7 0 1 0 0-14h-1V3h1Z" fill="currentColor"/></svg></span>
+                <span>Logout</span>
+            </a>
         </aside>
 
         <main class="content-area {{ is_regular_user ? 'regular-user-content' : '' }}">

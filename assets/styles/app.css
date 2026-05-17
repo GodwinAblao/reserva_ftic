@@ -2,6 +2,7 @@
 @import './mentoring.css';
 @import './profile.css';
 @import './leaderboard.css';
+@import './superadmin.css';
 :root {
     --feu-green: #006633;
     --feu-green-dark: #004d26;

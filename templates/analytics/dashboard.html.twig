@@ -3,21 +3,23 @@
 {% block title %}Analytics | Reserva FTIC{% endblock %}
 
 {% block content %}
-<div class="content-header">
-    <h2>Managerial Analytics Dashboard</h2>
-    <p>Advanced analytics for facility reservation management using ARIMA forecasting and managerial insights</p>
+<div class="sa-page-header">
+    <div class="sa-page-header-left">
+        <h2>Managerial Analytics Dashboard</h2>
+        <p>Advanced analytics for facility reservation management using ARIMA forecasting and managerial insights</p>
+    </div>
 </div>
 
-<div class="analytics-nav">
-    <button class="analytics-btn active" type="button" onclick="loadAnalytics('planning')">Planning</button>
-    <button class="analytics-btn" type="button" onclick="loadAnalytics('organizing')">Organizing</button>
-    <button class="analytics-btn" type="button" onclick="loadAnalytics('staffing')">Staffing</button>
-    <button class="analytics-btn" type="button" onclick="loadAnalytics('leading')">Leading</button>
-    <button class="analytics-btn" type="button" onclick="loadAnalytics('controlling')">Controlling</button>
+<div class="sa-analytics-nav">
+    <button class="sa-analytics-btn active analytics-btn" type="button" onclick="loadAnalytics('planning')">Planning</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" onclick="loadAnalytics('organizing')">Organizing</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" onclick="loadAnalytics('staffing')">Staffing</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" onclick="loadAnalytics('leading')">Leading</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" onclick="loadAnalytics('controlling')">Controlling</button>
 </div>
 
-<div id="analytics-content" class="analytics-content">
-    <div class="loading">Loading analytics...</div>
+<div id="analytics-content" class="sa-analytics-section">
+    <div class="sa-loading">Loading analytics...</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -29,10 +31,11 @@ const localAnalytics = {{ localAnalytics|json_encode|raw }};
 function loadAnalytics(functionName) {
     document.querySelectorAll('.analytics-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.textContent.toLowerCase() === functionName);
+        btn.classList.toggle('sa-analytics-btn-active', btn.textContent.toLowerCase() === functionName);
     });
 
     const content = document.getElementById('analytics-content');
-    content.innerHTML = `<div class="loading">Loading ${titleCase(functionName)} analytics...</div>`;
+    content.innerHTML = `<div class="sa-loading">Loading ${titleCase(functionName)} analytics...</div>`;
 
     const apiUrls = [
         `http://127.0.0.1:8002/api/analytics/${functionName}`,
@@ -74,13 +77,13 @@ function renderAnalytics(functionName, data, isFallback) {
     destroyCurrentCharts();
 
     const content = document.getElementById('analytics-content');
-    let html = `<div class="analytics-section">
-        <div class="analytics-title-row">
+    let html = `<div class="sa-analytics-section">
+        <div class="sa-analytics-title-row">
             <div>
                 <h3>${titleCase(functionName)} Analytics</h3>
                 <p>${getFunctionSummary(functionName)}</p>
             </div>
-            <span class="analytics-source ${isFallback ? 'fallback' : 'live'}">${isFallback ? 'Local database' : 'FastAPI ARIMA'}</span>
+            <span class="sa-analytics-source ${isFallback ? 'fallback' : 'live'}">${isFallback ? 'Local database' : 'FastAPI ARIMA'}</span>
         </div>`;
 
     switch (functionName) {
@@ -107,30 +110,30 @@ function renderAnalytics(functionName, data, isFallback) {
 }
 
 function renderPlanning(data) {
-    let html = '<div class="analytics-grid">';
-    html += '<div class="chart-container chart-wide"><h4>Weekly ARIMA Reservation Demand Forecast</h4><canvas id="planningWeeklyChart"></canvas></div>';
-    html += '<div class="chart-container chart-wide"><h4>Monthly ARIMA Reservation Demand Forecast</h4><canvas id="planningMonthlyChart"></canvas></div>';
-    html += '<div class="chart-container chart-wide"><h4>Event Type Distribution</h4><canvas id="eventTypeChart"></canvas></div>';
+    let html = '<div class="sa-analytics-grid">';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Weekly ARIMA Reservation Demand Forecast</h4><canvas id="planningWeeklyChart"></canvas></div>';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Monthly ARIMA Reservation Demand Forecast</h4><canvas id="planningMonthlyChart"></canvas></div>';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Event Type Distribution</h4><canvas id="eventTypeChart"></canvas></div>';
 
-    html += '<div class="data-table"><h4>Peak Demand Hours</h4><table><tr><th>Hour</th><th>Reservations</th></tr>';
+    html += '<div class="sa-data-table"><h4>Peak Demand Hours</h4><table><tr><th>Hour</th><th>Reservations</th></tr>';
     topEntries(data.peak_demand_hours || {}, 5).forEach(([hour, count]) => {
         html += `<tr><td>${escapeHtml(formatHour(hour))}</td><td>${formatNumber(count, 0)}</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>Recommended Room Capacity</h4><table><tr><th>Facility</th><th>Avg</th><th>Max</th><th>Count</th></tr>';
+    html += '<div class="sa-data-table"><h4>Recommended Room Capacity</h4><table><tr><th>Facility</th><th>Avg</th><th>Max</th><th>Count</th></tr>';
     Object.entries(normalizeStatsTable(data.recommended_room_capacity || {})).forEach(([facility, stats]) => {
         html += `<tr><td>${escapeHtml(facility)}</td><td>${formatNumber(stats.mean, 1)}</td><td>${formatNumber(stats.max, 0)}</td><td>${formatNumber(stats.count, 0)}</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>Monthly Participation Trends</h4><table><tr><th>Month</th><th>Total Participants</th></tr>';
+    html += '<div class="sa-data-table"><h4>Monthly Participation Trends</h4><table><tr><th>Month</th><th>Total Participants</th></tr>';
     Object.entries(normalizeValueSeries(data.participation_trends || {})).slice(-8).forEach(([month, count]) => {
         html += `<tr><td>${escapeHtml(formatLabel(month))}</td><td>${formatNumber(count, 0)}</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>ARIMA Model Accuracy</h4><table><tr><th>Metric</th><th>Value</th></tr>';
+    html += '<div class="sa-data-table"><h4>ARIMA Model Accuracy</h4><table><tr><th>Metric</th><th>Value</th></tr>';
     Object.entries(data.forecast_accuracy || {}).forEach(([metric, value]) => {
         html += `<tr><td>${escapeHtml(formatMetricName(metric))}</td><td>${formatNumber(value, 2)}</td></tr>`;
     });
@@ -141,26 +144,26 @@ function renderPlanning(data) {
 }
 
 function renderOrganizing(data) {
-    let html = '<div class="analytics-grid">';
-    html += '<div class="chart-container chart-wide"><h4>Facility Load Distribution</h4><canvas id="organizingChart"></canvas></div>';
-    html += '<div class="chart-container chart-wide"><h4>Peak Usage Times</h4><canvas id="peakUsageChart"></canvas></div>';
+    let html = '<div class="sa-analytics-grid">';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Facility Load Distribution</h4><canvas id="organizingChart"></canvas></div>';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Peak Usage Times</h4><canvas id="peakUsageChart"></canvas></div>';
 
-    html += '<div class="data-table"><h4>Room Utilization Details</h4><table><tr><th>Facility</th><th>Reservations</th><th>Utilization Rate</th></tr>';
+    html += '<div class="sa-data-table"><h4>Room Utilization Details</h4><table><tr><th>Facility</th><th>Reservations</th><th>Utilization Rate</th></tr>';
     Object.entries(normalizeStatsTable(data.room_utilization || {})).forEach(([facility, stats]) => {
         const rate = toNumber(stats.utilization_rate) * 100;
         html += `<tr><td>${escapeHtml(facility)}</td><td>${formatNumber(stats.reservations, 0)}</td><td>${formatNumber(rate, 1)}%</td></tr>`;
     });
     html += '</table></div>';
 
-    html += `<div class="metric-card"><h4>Overlapping Reservations</h4><div class="metric">${formatNumber(data.overlapping_reservations, 0)}</div></div>`;
+    html += `<div class="sa-metric-card"><h4>Overlapping Reservations</h4><div class="sa-metric">${formatNumber(data.overlapping_reservations, 0)}</div></div>`;
 
-    html += '<div class="data-table"><h4>Facility Load Distribution</h4><table><tr><th>Facility</th><th>Reservations</th></tr>';
+    html += '<div class="sa-data-table"><h4>Facility Load Distribution</h4><table><tr><th>Facility</th><th>Reservations</th></tr>';
     Object.entries(data.facility_load_distribution || {}).forEach(([facility, count]) => {
         html += `<tr><td>${escapeHtml(facility)}</td><td>${formatNumber(count, 0)}</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>Optimization Suggestions</h4><ul>';
+    html += '<div class="sa-data-table"><h4>Optimization Suggestions</h4><ul>';
     (data.optimization_suggestions || []).forEach((suggestion) => {
         html += `<li>${escapeHtml(suggestion)}</li>`;
     });
@@ -171,24 +174,24 @@ function renderOrganizing(data) {
 }
 
 function renderStaffing(data) {
-    let html = '<div class="analytics-grid">';
-    html += '<div class="chart-container chart-wide"><h4>Monthly Staffing Requirements</h4><canvas id="staffingChart"></canvas></div>';
-    html += '<div class="chart-container chart-wide"><h4>Participant Demand Trend</h4><canvas id="participantDemandChart"></canvas></div>';
+    let html = '<div class="sa-analytics-grid">';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Monthly Staffing Requirements</h4><canvas id="staffingChart"></canvas></div>';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Participant Demand Trend</h4><canvas id="participantDemandChart"></canvas></div>';
 
-    html += '<div class="data-table"><h4>Participation Trends</h4><table><tr><th>Month</th><th>Participants</th><th>Required Staff</th></tr>';
+    html += '<div class="sa-data-table"><h4>Participation Trends</h4><table><tr><th>Month</th><th>Participants</th><th>Required Staff</th></tr>';
     Object.entries(normalizeStatsTable(data.participation_trends || {})).forEach(([month, stats]) => {
         const requiredStaff = stats.required_staff ?? Math.ceil(toNumber(stats.sum) / 20);
         html += `<tr><td>${escapeHtml(formatLabel(month))}</td><td>${formatNumber(stats.sum, 0)}</td><td>${formatNumber(requiredStaff, 0)}</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>High Demand Periods</h4><table><tr><th>Period</th><th>Participants</th></tr>';
+    html += '<div class="sa-data-table"><h4>High Demand Periods</h4><table><tr><th>Period</th><th>Participants</th></tr>';
     Object.entries(data.high_demand_periods || {}).forEach(([date, count]) => {
         html += `<tr><td>${escapeHtml(formatLabel(date))}</td><td>${formatNumber(count, 0)}</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>Staffing Recommendations</h4><ul>';
+    html += '<div class="sa-data-table"><h4>Staffing Recommendations</h4><ul>';
     (data.staffing_recommendations || []).forEach((recommendation) => {
         html += `<li>${escapeHtml(recommendation)}</li>`;
     });
@@ -199,16 +202,16 @@ function renderStaffing(data) {
 }
 
 function renderLeading(data) {
-    let html = '<div class="analytics-grid">';
-    html += '<div class="chart-container chart-wide"><h4>Event Success Rate by Purpose</h4><canvas id="successChart"></canvas></div>';
+    let html = '<div class="sa-analytics-grid">';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Event Success Rate by Purpose</h4><canvas id="successChart"></canvas></div>';
 
-    html += `<div class="metrics-grid chart-wide">
-        <div class="metric-card"><h4>Overall Completion Rate</h4><div class="metric">${formatNumber(data.overall_completion_rate, 1)}%</div></div>
-        <div class="metric-card"><h4>RSO Completion Rate</h4><div class="metric">${formatNumber(data.rso_completion_rate, 1)}%</div></div>
-        <div class="metric-card"><h4>Participation Accuracy</h4><div class="metric">${formatNumber(data.participation_accuracy, 1)}%</div></div>
+    html += `<div class="sa-metrics-grid sa-chart-wide">
+        <div class="sa-metric-card"><h4>Overall Completion Rate</h4><div class="sa-metric">${formatNumber(data.overall_completion_rate, 1)}%</div></div>
+        <div class="sa-metric-card"><h4>RSO Completion Rate</h4><div class="sa-metric">${formatNumber(data.rso_completion_rate, 1)}%</div></div>
+        <div class="sa-metric-card"><h4>Participation Accuracy</h4><div class="sa-metric">${formatNumber(data.participation_accuracy, 1)}%</div></div>
     </div>`;
 
-    html += '<div class="data-table chart-wide"><h4>Event Success by Type</h4><table><tr><th>Purpose</th><th>Success Rate</th></tr>';
+    html += '<div class="sa-data-table sa-chart-wide"><h4>Event Success by Type</h4><table><tr><th>Purpose</th><th>Success Rate</th></tr>';
     Object.entries(data.event_success_by_type || {}).forEach(([purpose, rate]) => {
         html += `<tr><td>${escapeHtml(purpose)}</td><td>${formatNumber(rate, 1)}%</td></tr>`;
     });
@@ -219,23 +222,23 @@ function renderLeading(data) {
 }
 
 function renderControlling(data) {
-    let html = '<div class="analytics-grid">';
-    html += '<div class="chart-container chart-wide"><h4>Target Achievement by Status</h4><canvas id="controlChart"></canvas></div>';
-    html += '<div class="chart-container chart-wide"><h4>Facility Utilization Rate</h4><canvas id="facilityUtilizationChart"></canvas></div>';
+    let html = '<div class="sa-analytics-grid">';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Target Achievement by Status</h4><canvas id="controlChart"></canvas></div>';
+    html += '<div class="sa-chart-container sa-chart-wide"><h4>Facility Utilization Rate</h4><canvas id="facilityUtilizationChart"></canvas></div>';
 
-    html += `<div class="metrics-grid chart-wide">
-        <div class="metric-card"><h4>Average Setup Gap</h4><div class="metric">${formatNumber(data.average_setup_gap, 1)} days</div></div>
-        <div class="metric-card"><h4>No-Show Rate</h4><div class="metric">${formatNumber(data.no_show_rate, 1)}%</div></div>
-        <div class="metric-card"><h4>Setup Compliance</h4><div class="metric">${formatNumber(data.setup_compliance_rate, 1)}%</div></div>
+    html += `<div class="sa-metrics-grid sa-chart-wide">
+        <div class="sa-metric-card"><h4>Average Setup Gap</h4><div class="sa-metric">${formatNumber(data.average_setup_gap, 1)} days</div></div>
+        <div class="sa-metric-card"><h4>No-Show Rate</h4><div class="sa-metric">${formatNumber(data.no_show_rate, 1)}%</div></div>
+        <div class="sa-metric-card"><h4>Setup Compliance</h4><div class="sa-metric">${formatNumber(data.setup_compliance_rate, 1)}%</div></div>
     </div>`;
 
-    html += '<div class="data-table"><h4>Target Achievement</h4><table><tr><th>Status</th><th>Share</th></tr>';
+    html += '<div class="sa-data-table"><h4>Target Achievement</h4><table><tr><th>Status</th><th>Share</th></tr>';
     Object.entries(data.target_achievement || {}).forEach(([status, percentage]) => {
         html += `<tr><td>${escapeHtml(status)}</td><td>${formatNumber(percentage, 1)}%</td></tr>`;
     });
     html += '</table></div>';
 
-    html += '<div class="data-table"><h4>Rejection Reasons</h4><table><tr><th>Reason</th><th>Cases</th></tr>';
+    html += '<div class="sa-data-table"><h4>Rejection Reasons</h4><table><tr><th>Reason</th><th>Cases</th></tr>';
     Object.entries(data.rejection_analysis || {}).forEach(([reason, count]) => {
         html += `<tr><td>${escapeHtml(reason)}</td><td>${formatNumber(count, 0)}</td></tr>`;
     });
@@ -856,161 +859,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-.analytics-nav {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.analytics-btn {
-    padding: 10px 20px;
-    background: #f0f0f0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.analytics-btn.active {
-    background: #006633;
-    color: white;
-    border-color: #006633;
-}
-
-.analytics-btn:hover {
-    background: #e9ecef;
-}
-
-.analytics-btn.active:hover {
-    background: #005229;
-}
-
-.analytics-content {
-    min-height: 400px;
-}
-
-.loading {
-    text-align: center;
-    padding: 50px;
-    font-size: 18px;
-    color: #666;
-}
-
-.analytics-section {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.analytics-title-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    align-items: flex-start;
-}
-
-.analytics-title-row h3 {
-    margin-bottom: 4px;
-}
-
-.analytics-title-row p {
-    margin: 0;
-    color: #667085;
-}
-
-.analytics-source {
-    white-space: nowrap;
-    border-radius: 999px;
-    padding: 6px 10px;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.analytics-source.live {
-    color: #065f46;
-    background: #d1fae5;
-}
-
-.analytics-source.fallback {
-    color: #92400e;
-    background: #fef3c7;
-}
-
-.analytics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.chart-wide {
-    grid-column: 1 / -1;
-}
-
-.chart-container {
-    min-height: 360px;
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-}
-
-.chart-container canvas {
-    width: 100% !important;
-    height: 300px !important;
-}
-
-.data-table {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-    overflow-x: auto;
-}
-
-.data-table table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-    padding: 8px 12px;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.metric-card {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-    text-align: center;
-}
-
-.metric {
-    font-size: 24px;
-    font-weight: bold;
-    color: #006633;
-    margin-top: 10px;
-}
-
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-}
-
-@media (max-width: 700px) {
-    .analytics-title-row {
-        flex-direction: column;
+    /* analytics-btn active state toggled by JS — keep in sync with sa-analytics-btn */
+    .sa-analytics-btn.active {
+        background: #ffffff;
+        color: #0d4702;
+        box-shadow: 0 2px 8px rgba(0,102,51,.12);
     }
-
-    .analytics-grid {
-        grid-template-columns: 1fr;
-    }
-}
+    /* sa-chart-wide mirrors sa-chart-wide span used in sa-analytics-grid */
+    .sa-chart-wide { grid-column: 1 / -1; }
+    .sa-analytics-grid .sa-chart-wide { grid-column: 1 / -1; }
 </style>
 {% endblock %}
