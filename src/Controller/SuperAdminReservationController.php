@@ -344,7 +344,7 @@ class SuperAdminReservationController extends AbstractController
         // Only fetch reservations if not filtering by block-only status
         if (!$status || !in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Maintenance'], true)) {
             $qb = $reservationRepo->createQueryBuilder('r')
-                ->select('r.id', 'r.name', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
+                ->select('r.id', 'r.name', 'r.eventName', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
                 ->innerJoin('r.facility', 'f')
                 ->where('r.reservationDate BETWEEN :start AND :end')
                 ->setParameter('start', $startDate)
@@ -371,6 +371,7 @@ class SuperAdminReservationController extends AbstractController
                 $data[] = [
                     'id' => $r['id'],
                     'name' => $r['name'],
+                    'eventName' => $r['eventName'],
                     'email' => $r['email'],
                     'contact' => $r['contact'],
                     'reservationDate' => $r['reservationDate']->format('Y-m-d'),
@@ -687,6 +688,7 @@ class SuperAdminReservationController extends AbstractController
         return $this->json([
             'id' => $reservation->getId(),
             'name' => $reservation->getName(),
+            'eventName' => $reservation->getEventName(),
             'email' => $reservation->getEmail(),
             'contact' => $reservation->getContact(),
             'reservationDate' => $reservation->getReservationDate()->format('Y-m-d'),
@@ -729,6 +731,7 @@ class SuperAdminReservationController extends AbstractController
 
         // Update basic information
         $reservation->setName($request->request->get('name'));
+        $reservation->setEventName(trim((string)$request->request->get('event_name')) ?: null);
         $reservation->setEmail($request->request->get('email'));
         $reservation->setContact($request->request->get('contact'));
         $reservation->setCapacity((int)$request->request->get('capacity'));

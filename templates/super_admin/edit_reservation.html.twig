@@ -24,6 +24,12 @@
                 </div>
 
                 <div class="sa-form-group">
+                    <label for="eventName">Event Name</label>
+                    <input type="text" id="eventName" name="event_name" class="sa-form-input"
+                           value="{{ reservation.eventName ?? '' }}">
+                </div>
+
+                <div class="sa-form-group">
                     <label for="email">Email *</label>
                     <input type="email" id="email" name="email" class="sa-form-input"
                            value="{{ reservation.email }}" required>
@@ -77,9 +83,9 @@
                 </div>
 
                 <div class="sa-form-group full-width">
-                    <label for="purpose">Purpose / Notes (Optional)</label>
+                    <label for="purpose">Event Objective</label>
                     <textarea id="purpose" name="purpose" class="sa-form-input" rows="4"
-                              placeholder="Describe the purpose of the reservation...">{{ reservation.purpose ?? '' }}</textarea>
+                              placeholder="Describe the objective of the reservation...">{{ reservation.purpose ?? '' }}</textarea>
                 </div>
 
                 <div class="sa-form-group">

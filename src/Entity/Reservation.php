@@ -33,6 +33,9 @@ class Reservation
     #[Assert\Length(min: 2, max: 255)]
     private ?string $name = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $eventName = null;
+
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank(message: 'Email is required')]
     #[Assert\Email(message: 'Invalid email address')]
@@ -129,6 +132,18 @@ class Reservation
     public function setName(string $name): static
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    public function getEventName(): ?string
+    {
+        return $this->eventName;
+    }
+
+    public function setEventName(?string $eventName): static
+    {
+        $this->eventName = $eventName;
 
         return $this;
     }

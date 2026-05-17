@@ -846,6 +846,7 @@
         const safeFacility = escapeHtml(event.facility.name);
         const safeStatus = escapeHtml(event.status);
         const safePurpose = escapeHtml(event.purpose || '');
+        const safeEventName = escapeHtml(event.eventName || '');
         const safeEmail = escapeHtml(event.email || '');
         const safeContact = escapeHtml(event.contact || '');
         const safeCapacity = event.capacity || 0;
@@ -860,6 +861,7 @@
             ' data-block-id="' + blockId + '"' +
             ' data-is-block="' + isBlock + '"' +
             ' data-title="' + safeName + '"' +
+            ' data-event-name="' + safeEventName + '"' +
             ' data-facility="' + safeFacility + '"' +
             ' data-facility-id="' + safeFacilityId + '"' +
             ' data-status="' + safeStatus + '"' +
@@ -881,9 +883,10 @@
     function openEventModal(element) {
         const data = element.dataset;
         document.getElementById('modalTitle').textContent = `${data.facility} - ${data.status}`;
+        const eventName = data.eventName || data.title || data.facility || 'Unnamed Event';
         const details = data.isBlock === '1'
-            ? [['Title', data.title], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Notes', data.purpose || 'None']]
-            : [['Requester', data.title], ['Email', data.email], ['Contact', data.contact], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Attendees', `${data.capacity} / ${data.facilityCapacity}`], ['Purpose', data.purpose || 'None']];
+            ? [['Event Name', eventName], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Event Objective', data.purpose || 'None']]
+            : [['Event Name', eventName], ['Requester', data.title], ['Email', data.email], ['Contact', data.contact], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Attendees', `${data.capacity} / ${data.facilityCapacity}`], ['Event Objective', data.purpose || 'None']];
         document.getElementById('modalBody').innerHTML = details.map(([label, value]) => `<div class="detail-row"><span class="detail-label">${label}:</span><span class="detail-value">${value}</span></div>`).join('');
         if (data.isBlock === '1' && data.status !== 'Class Schedule') {
             document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;

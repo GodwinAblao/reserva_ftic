@@ -45,61 +45,105 @@ public function reserve(
         }
 
         if ($request->isMethod('POST')) {
-            $name = $request->request->get('name');
-            $email = $request->request->get('email');
-            $contact = $request->request->get('contact');
-            $dateStr = $request->request->get('reservation_date');
-            $startTimeStr = $request->request->get('reservation_start_time');
-            $endTimeStr = $request->request->get('reservation_end_time');
-            $capacity = (int)$request->request->get('capacity');
-            $purpose = $request->request->get('purpose');
+            try {
+                $name = $request->request->get('name');
+                $email = $request->request->get('email');
+                $contact = $request->request->get('contact');
+                $dateStr = $request->request->get('reservation_date');
+                $startTimeStr = $request->request->get('reservation_start_time');
+                $endTimeStr = $request->request->get('reservation_end_time');
+                $capacity = (int)$request->request->get('capacity');
+                $eventName = trim((string)$request->request->get('event_name')) ?: null;
+                $purpose = $request->request->get('purpose');
 
-            $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
-            $endTime = \DateTime::createFromFormat('H:i', $endTimeStr);
-            if (!$startTime || !$endTime) {
-                return $this->json(
-                    ['error' => 'Please select a valid start and end time'],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
+                $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
+                $endTime = \DateTime::createFromFormat('H:i', $endTimeStr);
+                if (!$startTime || !$endTime) {
+                    return $this->json(
+                        ['error' => 'Please select a valid start and end time', 'message' => 'Please select a valid start and end time'],
+                        Response::HTTP_BAD_REQUEST
+                    );
+                }
 
-            $dayStart = \DateTime::createFromFormat('H:i', '07:00');
-            $dayEnd = \DateTime::createFromFormat('H:i', '20:00');
-            if ($startTime < $dayStart || $endTime > $dayEnd || $endTime <= $startTime) {
-                return $this->json(
-                    ['error' => 'Reservation time must be between 7:00 AM and 8:00 PM'],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
+                $dayStart = \DateTime::createFromFormat('H:i', '07:00');
+                $dayEnd = \DateTime::createFromFormat('H:i', '20:00');
+                if ($startTime < $dayStart || $endTime > $dayEnd || $endTime <= $startTime) {
+                    return $this->json(
+                        ['error' => 'Reservation time must be between 7:00 AM and 8:00 PM', 'message' => 'Reservation time must be between 7:00 AM and 8:00 PM'],
+                        Response::HTTP_BAD_REQUEST
+                    );
+                }
 
-            $startMinutes = ((int)$startTime->format('H')) * 60 + (int)$startTime->format('i');
-            $endMinutes = ((int)$endTime->format('H')) * 60 + (int)$endTime->format('i');
-            if (($startMinutes % 10 !== 0) || ($endMinutes % 10 !== 0)) {
-                return $this->json(
-                    ['error' => 'Please select times in 10-minute intervals'],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
+                $startMinutes = ((int)$startTime->format('H')) * 60 + (int)$startTime->format('i');
+                $endMinutes = ((int)$endTime->format('H')) * 60 + (int)$endTime->format('i');
+                if (($startMinutes % 10 !== 0) || ($endMinutes % 10 !== 0)) {
+                    return $this->json(
+                        ['error' => 'Please select times in 10-minute intervals', 'message' => 'Please select times in 10-minute intervals'],
+                        Response::HTTP_BAD_REQUEST
+                    );
+                }
 
-            // Validate capacity doesn't exceed facility capacity
-            if ($capacity > $facility->getCapacity()) {
-                return $this->json(
-                    ['error' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}"],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
+                // Validate capacity doesn't exceed facility capacity
+                if ($capacity > $facility->getCapacity()) {
+                    return $this->json(
+                        ['error' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}", 'message' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}"],
+                        Response::HTTP_BAD_REQUEST
+                    );
+                }
 
-            // Check if time slot is already booked
-            $date = \DateTime::createFromFormat('Y-m-d', $dateStr);
-            if (!$date) {
-                return $this->json(
-                    ['error' => 'Please select a valid reservation date'],
-                    Response::HTTP_BAD_REQUEST
-                );
-            }
+                // Check if time slot is already booked
+                $date = \DateTime::createFromFormat('Y-m-d', $dateStr);
+                if (!$date) {
+                    return $this->json(
+                        ['error' => 'Please select a valid reservation date', 'message' => 'Please select a valid reservation date'],
+                        Response::HTTP_BAD_REQUEST
+                    );
+                }
 
-            if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested'])) {
-                // Find alternative facilities
+                if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested'])) {
+                    // Find alternative facilities
+                    $alternatives = $reservationRepo->findAvailableAlternatives(
+                        $capacity,
+                        $date,
+                        $startTime,
+                        $endTime,
+                        $facility
+                    );
+
+                    return $this->json(
+                        [
+                            'error' => 'This facility already has a reservation or class scheduled during that time. Please choose another time or facility.',
+                            'message' => 'This facility already has a reservation or class scheduled during that time. Please choose another time or facility.',
+                            'alternatives' => array_map(fn($alt) => [
+                                'id' => $alt->getId(),
+                                'name' => $alt->getName(),
+                                'capacity' => $alt->getCapacity(),
+                            ], $alternatives),
+                        ],
+                        Response::HTTP_CONFLICT
+                    );
+                }
+
+                // Create reservation
+                $reservation = new Reservation();
+                $reservation->setUser($this->getUser());
+                $reservation->setFacility($facility);
+                $reservation->setName($name);
+                $reservation->setEventName($eventName);
+                $reservation->setEmail($email);
+                $reservation->setContact($contact);
+                $reservation->setReservationDate($date);
+                $reservation->setReservationStartTime($startTime);
+                $reservation->setReservationEndTime($endTime);
+                $reservation->setCapacity($capacity);
+                $reservation->setPurpose($purpose);
+                // Set initial status to AwaitingFacilitySelection - will be set to Pending after user selects facility
+                $reservation->setStatus('AwaitingFacilitySelection');
+
+                $em->persist($reservation);
+                $em->flush();
+
+                // Always redirect to suggest alternatives to let user confirm facility choice
                 $alternatives = $reservationRepo->findAvailableAlternatives(
                     $capacity,
                     $date,
@@ -108,51 +152,18 @@ public function reserve(
                     $facility
                 );
 
+                // Redirect to suggest alternatives page
+                return $this->json([
+                    'success' => true,
+                    'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
+                ]);
+            } catch (\Throwable $exception) {
+                // Do not expose internal errors to the user, but return a JSON-friendly message for AJAX requests.
                 return $this->json(
-                    [
-                        'error' => 'This facility already has a reservation or class scheduled during that time. Please choose another time or facility.',
-                        'alternatives' => array_map(fn($alt) => [
-                            'id' => $alt->getId(),
-                            'name' => $alt->getName(),
-                            'capacity' => $alt->getCapacity(),
-                        ], $alternatives),
-                    ],
-                    Response::HTTP_CONFLICT
+                    ['error' => 'An unexpected error occurred while submitting the reservation. Please try again later.', 'message' => 'An unexpected error occurred while submitting the reservation. Please try again later.'],
+                    Response::HTTP_INTERNAL_SERVER_ERROR
                 );
             }
-
-            // Create reservation
-            $reservation = new Reservation();
-            $reservation->setUser($this->getUser());
-            $reservation->setFacility($facility);
-            $reservation->setName($name);
-            $reservation->setEmail($email);
-            $reservation->setContact($contact);
-            $reservation->setReservationDate($date);
-            $reservation->setReservationStartTime($startTime);
-            $reservation->setReservationEndTime($endTime);
-            $reservation->setCapacity($capacity);
-            $reservation->setPurpose($purpose);
-            // Set initial status to AwaitingFacilitySelection - will be set to Pending after user selects facility
-            $reservation->setStatus('AwaitingFacilitySelection');
-
-            $em->persist($reservation);
-            $em->flush();
-
-            // Always redirect to suggest alternatives to let user confirm facility choice
-            $alternatives = $reservationRepo->findAvailableAlternatives(
-                $capacity,
-                $date,
-                $startTime,
-                $endTime,
-                $facility
-            );
-
-            // Redirect to suggest alternatives page
-            return $this->json([
-                'success' => true,
-                'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
-            ]);
         }
 
         // Get booked times for calendar

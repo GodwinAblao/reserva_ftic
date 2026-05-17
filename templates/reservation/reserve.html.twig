@@ -65,23 +65,31 @@
             <form id="reservationForm" class="form-group">
                 <div class="form-row">
                     <div class="form-group-item">
+                        <label for="eventName">Event Name</label>
+                        <input type="text" id="eventName" name="event_name" class="form-input"
+                               placeholder="Enter the event name or title" required>
+                    </div>
+                    <div class="form-group-item">
                         <label for="name">Full Name</label>
                         <input type="text" id="name" name="name" class="form-input" 
                                value="{{ userName }}" required>
-                    </div>
-                    <div class="form-group-item">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" class="form-input" 
-                               value="{{ userEmail }}" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group-item">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" class="form-input" 
+                               value="{{ userEmail }}" required>
+                    </div>
+                    <div class="form-group-item">
                         <label for="contact">Contact Number</label>
                         <input type="tel" id="contact" name="contact" class="form-input" 
                                placeholder="e.g., 09123456789" required>
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group-item">
                         <label for="capacity">Number of Attendees</label>
                         <input type="number" id="capacity" name="capacity" class="form-input" 
@@ -91,9 +99,9 @@
                 </div>
 
                 <div class="form-group-item">
-                    <label for="purpose">Purpose/Notes (Optional)</label>
+                    <label for="purpose">Event Objective</label>
                     <textarea id="purpose" name="purpose" class="form-input" rows="4" 
-                              placeholder="Describe the purpose of your reservation..."></textarea>
+                              placeholder="Describe the objective of your event..."></textarea>
                 </div>
 
                 <!-- Hidden fields for date and time -->
@@ -871,32 +879,55 @@
         const formData = new FormData(document.getElementById('reservationForm'));
         fetch('{{ path('facility_reserve', {'id': facility.id}) }}', {
             method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+            },
             body: formData,
+            credentials: 'same-origin',
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    if (data.alternatives && data.alternatives.length > 0) {
-                        showAlternatives(data.alternatives, data.error);
-                    } else {
-                        throw new Error(data.error || 'Submission failed');
-                    }
-                });
+        .then(async response => {
+            const text = await response.text();
+            const contentType = response.headers.get('content-type') || '';
+            const isJson = contentType.includes('application/json') || contentType.includes('application/problem+json');
+
+            if (!isJson) {
+                const message = text.replace(/<[^>]+>/g, '').trim().slice(0, 240) || 'Server returned an unexpected response.';
+                throw new Error(message);
             }
-            return response.json();
+
+            const data = text ? JSON.parse(text) : {};
+            const errorMessage = data.error || data.message || data.title || 'Submission failed';
+
+            if (!response.ok) {
+                if (Array.isArray(data.alternatives) && data.alternatives.length > 0) {
+                    showAlternatives(data.alternatives, errorMessage);
+                    return null;
+                }
+                throw new Error(errorMessage);
+            }
+
+            return data;
         })
         .then(data => {
-            if (data && data.success) {
-                if (data.redirect) {
-                    // Redirect to suggestion page if alternatives were found
-                    window.location.href = data.redirect;
-                } else {
-                    alert('Reservation submitted successfully! Your request is pending approval.');
-                    window.location.href = '{{ path('user_reservations') }}';
-                }
+            if (!data) {
+                return;
+            }
+
+            if (!data.success) {
+                const errorMessage = data.error || data.message || data.title || 'Submission failed';
+                showError(errorMessage);
+                return;
+            }
+
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                alert('Reservation submitted successfully! Your request is pending approval.');
+                window.location.href = '{{ path('user_reservations') }}';
             }
         })
         .catch(error => {
+            console.error('Reservation submit failed:', error);
             showError(error.message);
         });
     }
