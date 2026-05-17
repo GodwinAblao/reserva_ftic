@@ -302,11 +302,12 @@ CREATE TABLE IF NOT EXISTS `messenger_messages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `user`
-(`email`, `roles`, `password`, `is_verified`, `verification_code`,
+(`id`, `email`, `roles`, `password`, `is_verified`, `verification_code`,
  `first_name`, `middle_name`, `last_name`,
  `degree`, `degree_name`, `profile_picture`)
 VALUES
 (
+    1,
     'SuperAdmin@feutech.edu.ph',
     '["ROLE_SUPER_ADMIN", "ROLE_USER"]',
     '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq',
@@ -320,6 +321,7 @@ VALUES
     NULL
 ),
 (
+    3,
     'faculty.test@feutech.edu.ph',
     '["ROLE_FACULTY", "ROLE_USER"]',
     '$2y$10$v442gQr85NGBS6zxvVX8b.DjPSrhiURe1hKOpOzhz2O2HZkZqaYm6',
