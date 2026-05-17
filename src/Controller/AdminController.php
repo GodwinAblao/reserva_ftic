@@ -22,7 +22,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/superadmin')]
-#[IsGranted('ROLE_SUPER_ADMIN')]
+#[IsGranted('ROLE_ADMIN')]
 class AdminController extends AbstractController
 {
     private array $connectedClients = [];
@@ -270,6 +270,9 @@ class AdminController extends AbstractController
     #[Route('/reservation-monitoring', name: 'admin_reservation_monitoring', methods: ['GET'])]
     public function reservationMonitoring(EntityManagerInterface $em): Response
     {
+        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_role_reservation_monitoring');
+        }
         return $this->render('admin/reservation_monitoring.html.twig', [
             'reservations' => $em->getRepository(Reservation::class)->findBy([], ['createdAt' => 'DESC'], 40),
             'statusCounts' => $this->reservationStatusCounts($em),
@@ -280,6 +283,9 @@ class AdminController extends AbstractController
     #[Route('/mentorship-coordination', name: 'admin_mentorship_coordination', methods: ['GET'])]
     public function mentorshipCoordination(EntityManagerInterface $em): Response
     {
+        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_role_mentorship_coordination');
+        }
         return $this->render('admin/mentorship_coordination.html.twig', [
             'applications' => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
             'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 20),
@@ -293,6 +299,9 @@ class AdminController extends AbstractController
     #[Route('/reports', name: 'admin_reports', methods: ['GET'])]
     public function reports(EntityManagerInterface $em): Response
     {
+        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_role_reports');
+        }
         return $this->render('admin/reports.html.twig', [
             'reservationStatusCounts' => $this->reservationStatusCounts($em),
             'facilityCounts' => $this->facilityReservationCounts($em),

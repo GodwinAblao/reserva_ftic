@@ -43,7 +43,7 @@ security:
         - { path: ^/logout, roles: PUBLIC_ACCESS }
         - { path: ^/account-manager, roles: ROLE_SUPER_ADMIN }
         - { path: ^/account-management, roles: ROLE_ADMIN }
-        - { path: ^/superadmin, roles: ROLE_SUPER_ADMIN }
+        - { path: ^/superadmin, roles: ROLE_ADMIN }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/super-admin, roles: ROLE_ADMIN }
         - { path: ^/analytics, roles: ROLE_ADMIN }
