@@ -320,19 +320,6 @@ VALUES
     NULL
 ),
 (
-    'admin@feutech.edu.ph',
-    '["ROLE_ADMIN"]',
-    '$2y$10$kavRT7C4.meNbM8Pt.Eu5.a5/oSjTQ6wso5qUrx/8X7BpPIpOLRmq',
-    1,
-    NULL,
-    'Admin',
-    NULL,
-    'User',
-    NULL,
-    NULL,
-    NULL
-),
-(
     'faculty.test@feutech.edu.ph',
     '["ROLE_FACULTY", "ROLE_USER"]',
     '$2y$10$v442gQr85NGBS6zxvVX8b.DjPSrhiURe1hKOpOzhz2O2HZkZqaYm6',
