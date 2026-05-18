@@ -2,76 +2,170 @@
 
 {% block title %}Reservation Monitoring | Reserva FTIC{% endblock %}
 
+{% block stylesheets %}
+{{ parent() }}
+<style>
+.rm-layout { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: start; }
+.rm-main { min-width: 0; }
+.rm-chart-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 24px 24px 16px; margin-bottom: 20px; }
+.rm-chart-title { font-size: 11px; font-weight: 700; color: #9ca3af; letter-spacing: 0.6px; text-transform: uppercase; margin: 0 0 16px; }
+.rm-chart-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: #e5e7eb transparent; }
+.rm-chart-scroll::-webkit-scrollbar { height: 5px; }
+.rm-chart-scroll::-webkit-scrollbar-track { background: transparent; }
+.rm-chart-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+.rm-chart-wrap { position: relative; height: 220px; }
+.rm-stats-col { display: flex; flex-direction: column; gap: 14px; width: 160px; flex-shrink: 0; }
+.rm-stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px 18px; }
+.rm-stat-val { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+.rm-stat-val.orange { color: #f59e0b; }
+.rm-stat-val.gray   { color: #374151; }
+.rm-stat-val.green  { color: #22c55e; }
+.rm-stat-label { font-size: 11.5px; color: #6b7280; font-weight: 500; line-height: 1.3; }
+.rm-table-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 24px; }
+.rm-table-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0 0 16px; }
+.rm-table { width: 100%; border-collapse: collapse; }
+.rm-table th { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; padding: 0 12px 10px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+.rm-table td { padding: 12px; font-size: 13.5px; color: #374151; border-bottom: 1px solid #f9fafb; }
+.rm-table tr:last-child td { border-bottom: none; }
+.rm-table tbody tr:hover td { background: #fafafa; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="content-header">
-    <div>
-        <h2>Facility Reservation Monitoring</h2>
-        <p class="muted">View reservation requests, statuses, and facility schedule tools.</p>
-    </div>
-    <div class="button-group">
-        <a class="btn-secondary" href="{{ path('admin_reservations') }}">Review Requests</a>
-        <a class="btn-secondary" href="{{ path('admin_calendar') }}">Modify Facility Schedule</a>
-    </div>
-</div>
+{# API meta tag — read by app.js section 6 for live polling #}
+<meta name="rm-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_reservation_monitoring') : path('admin_role_api_reservation_monitoring') }}">
 
-<div class="stats-grid admin-stats">
-    {% for status, total in statusCounts %}
-        <div class="stat-card">
-            <div class="stat-value">{{ total }}</div>
-            <div class="stat-label">{{ status }}</div>
+<div class="rm-layout">
+    <div class="rm-main">
+        <div class="rm-chart-card">
+            <p class="rm-chart-title">Room Reservation Today</p>
+            <div class="rm-chart-scroll">
+                <div class="rm-chart-wrap">
+                    <canvas id="rmBarChart"></canvas>
+                </div>
+            </div>
         </div>
-    {% else %}
-        <div class="card-panel">No reservation status data yet.</div>
-    {% endfor %}
-</div>
 
-<div class="module-grid">
-    <section class="card-panel">
-        <h3>Reservation Requests</h3>
-        <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Facility</th>
-                    <th>Requester</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for reservation in reservations %}
+        <div class="rm-table-card">
+            <h3 class="rm-table-title">Reservation Details</h3>
+            <table class="rm-table">
+                <thead>
                     <tr>
-                        <td>{{ reservation.facility.name }}</td>
+                        <th>Reservation Holder</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Reserved Facility</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="rmTableBody">
+                    {% for reservation in reservations %}
+                    <tr>
                         <td>{{ reservation.name }}</td>
-                        <td>{{ reservation.reservationDate|date('M d, Y') }}</td>
-                        <td><span class="status-chip">{{ reservation.status }}</span></td>
+                        <td>{{ reservation.email }}</td>
+                        <td>
+                            {% set role = reservation.user ? reservation.user.roles : [] %}
+                            {% if 'ROLE_FACULTY' in role %}Faculty
+                            {% elseif 'ROLE_MENTOR' in role %}Mentor
+                            {% else %}Student{% endif %}
+                        </td>
+                        <td>{{ reservation.facility.name }}</td>
+                        <td>{{ reservation.reservationStartTime|date('H:i') }} – {{ reservation.reservationEndTime|date('H:i') }}</td>
                     </tr>
-                {% else %}
-                    <tr><td colspan="4">No reservations yet.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+                    {% else %}
+                    <tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:24px;">No reservations yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <section class="card-panel">
-        <h3>Facility Load</h3>
-        <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Facility</th>
-                    <th>Requests</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for facility, total in facilityCounts %}
-                    <tr>
-                        <td>{{ facility }}</td>
-                        <td>{{ total }}</td>
-                    </tr>
-                {% else %}
-                    <tr><td colspan="2">No facility data yet.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+    <div class="rm-stats-col">
+        <div class="rm-stat-card">
+            <div class="rm-stat-val orange" id="rmStatCancelled">{{ statusCounts.Cancelled ?? 0 }}</div>
+            <div class="rm-stat-label">cancelled reservation this day</div>
+        </div>
+        <div class="rm-stat-card">
+            <div class="rm-stat-val gray" id="rmStatPending">{{ statusCounts.Pending ?? 0 }}</div>
+            <div class="rm-stat-label">pending for this day</div>
+        </div>
+        <div class="rm-stat-card">
+            <div class="rm-stat-val green" id="rmStatTotal">{{ (statusCounts.Approved ?? 0) + (statusCounts.Pending ?? 0) + (statusCounts.Cancelled ?? 0) + (statusCounts.Rejected ?? 0) }}</div>
+            <div class="rm-stat-label">total reservation this day</div>
+        </div>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+    var BAR_WIDTH  = 60;   // px per bar — comfortable, not cramped
+    var CHART_H    = 220;  // must match .rm-chart-wrap height
+    var COLORS     = ['#ef4444','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+
+    function calcWidth(n) {
+        var wrap = document.querySelector('.rm-chart-scroll');
+        var minByData = Math.max(n * BAR_WIDTH + 60, 200);
+        var available = wrap ? wrap.clientWidth : 0;
+        return Math.max(minByData, available);  // fill card if data is sparse, scroll if many bars
+    }
+
+    function initChart(labels, values) {
+        var canvas = document.getElementById('rmBarChart');
+        if (!canvas) return;
+        var w = calcWidth(labels.length);
+        canvas.width  = w;
+        canvas.height = CHART_H;
+        canvas.style.display = 'block';
+
+        window._rmChart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ data: values, backgroundColor: COLORS.slice(0, labels.length), borderRadius: 4, barPercentage: 0.55 }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function(c){ return ' ' + c.parsed.y + ' reservations'; } } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#6b7280' } },
+                    y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { font: { size: 11 }, color: '#6b7280', stepSize: 1 } }
+                }
+            }
+        });
+    }
+
+    var facilityData = {{ facilityCounts|json_encode|raw }};
+    initChart(Object.keys(facilityData), Object.values(facilityData));
+
+    // Expose resize helper for the live poller in app.js
+    window._rmChartResize = function(facilityCounts) {
+        var labels = Object.keys(facilityCounts);
+        var values = Object.values(facilityCounts);
+        if (window._rmChart) {
+            var canvas = document.getElementById('rmBarChart');
+            var w = calcWidth(labels.length);
+            if (canvas && canvas.width !== w) {
+                // Bar count changed — destroy and recreate at new size
+                window._rmChart.destroy();
+                window._rmChart = null;
+                canvas.width  = w;
+                canvas.height = CHART_H;
+            }
+            if (window._rmChart) {
+                window._rmChart.data.labels = labels;
+                window._rmChart.data.datasets[0].data = values;
+                window._rmChart.data.datasets[0].backgroundColor = COLORS.slice(0, labels.length);
+                window._rmChart.update('none');
+            } else {
+                initChart(labels, values);
+            }
+        }
+    };
+})();
+</script>
 {% endblock %}

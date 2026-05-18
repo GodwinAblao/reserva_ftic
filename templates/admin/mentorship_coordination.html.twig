@@ -2,103 +2,234 @@
 
 {% block title %}Mentorship Coordination | Reserva FTIC{% endblock %}
 
+{% block stylesheets %}
+{{ parent() }}
+<style>
+.mc-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; height: calc(100vh - 130px); min-height: 500px; }
+.mc-list-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.mc-list-filters { padding: 12px; border-bottom: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 8px; }
+.mc-status-select { width: 100%; padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance: none; cursor: pointer; }
+.mc-search-row { display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; background: #fff; }
+.mc-search-row input { flex: 1; border: none; outline: none; font-size: 13px; color: #374151; padding: 9px 0; background: transparent; }
+.mc-search-row svg { color: #9ca3af; flex-shrink: 0; }
+.mc-list-scroll { flex: 1; overflow-y: auto; }
+.mc-list-section-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 14px 6px; }
+.mc-list-item { padding: 12px 14px; border-bottom: 1px solid #f9fafb; cursor: pointer; transition: background 0.15s; }
+.mc-list-item:hover { background: #fafafa; }
+.mc-list-item.active { background: #fff8ee; border-left: 3px solid #f59e0b; }
+.mc-list-item-name { font-size: 13.5px; font-weight: 700; color: #111827; margin-bottom: 3px; }
+.mc-list-item-time { font-size: 11px; color: #9ca3af; float: right; }
+.mc-list-item-msg { font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.mc-detail-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.mc-detail-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 14px; }
+.mc-detail-inner { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.mc-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f3f4f6; }
+.mc-detail-user { display: flex; align-items: center; gap: 12px; }
+.mc-detail-avatar { width: 44px; height: 44px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #374151; flex-shrink: 0; }
+.mc-detail-name { font-size: 15px; font-weight: 700; color: #111827; }
+.mc-detail-email { font-size: 12px; color: #9ca3af; }
+.mc-detail-time { font-size: 12px; color: #9ca3af; }
+.mc-request-label { font-size: 11px; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.4px; margin: 0 0 10px; }
+.mc-request-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.mc-req-field label { font-size: 11px; color: #9ca3af; font-weight: 600; display: block; margin-bottom: 3px; }
+.mc-req-field p { font-size: 13.5px; color: #111827; font-weight: 600; margin: 0; }
+.mc-req-field.sub p { font-size: 12px; color: #6b7280; font-weight: 500; }
+.mc-notes-label { font-size: 11px; font-weight: 600; color: #9ca3af; margin: 10px 0 6px; }
+.mc-notes-text { font-size: 13px; color: #374151; line-height: 1.6; background: #f9fafb; border-radius: 8px; padding: 12px 14px; }
+.mc-assign-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid #f3f4f6; }
+.mc-assign-title { font-size: 14px; font-weight: 700; color: #111827; margin: 0 0 14px; }
+.mc-assign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.mc-assign-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+.mc-assign-field { display: flex; flex-direction: column; gap: 5px; }
+.mc-assign-field label { font-size: 11px; font-weight: 600; color: #9ca3af; }
+.mc-assign-input { padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; background: #fff; font-family: inherit; }
+.mc-assign-input:focus { outline: none; border-color: #f59e0b; }
+.mc-notes-input { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; background: #fff; resize: vertical; min-height: 80px; width: 100%; box-sizing: border-box; font-family: inherit; }
+.mc-notes-input:focus { outline: none; border-color: #f59e0b; }
+.mc-send-btn { display: flex; align-items: center; gap: 7px; padding: 10px 22px; background: #006633; color: #fff; border: none; border-radius: 8px; font-size: 13.5px; font-weight: 700; cursor: pointer; margin-left: auto; margin-top: 12px; transition: background 0.15s; }
+.mc-send-btn:hover { background: #005528; }
+@media (max-width: 900px) { .mc-layout { grid-template-columns: 1fr; height: auto; } }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="content-header">
-    <div>
-        <h2>Mentorship Coordination</h2>
-        <p class="muted">Review mentoring requests, assign mentors, and monitor sessions.</p>
-    </div>
-    <a class="btn-secondary" href="{{ path('mentoring_super-admin') }}">Open Coordination Tools</a>
-</div>
+<div class="mc-layout">
 
-<div class="module-grid">
-    <section class="card-panel">
-        <h3>Review Mentoring Requests</h3>
-        <div class="compact-list">
-            {% for request in requests %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ request.fullName ?: request.student.email }}</strong>
-                        <p>{{ request.preferredExpertise ?: request.mentorProfile.displayName|default('General mentoring') }}</p>
-                    </div>
-                    <span class="status-chip">{{ request.status }}</span>
-                </div>
-            {% else %}
-                <p class="muted">No mentoring requests yet.</p>
-            {% endfor %}
+    {# ── Left: message list ── #}
+    <div class="mc-list-panel">
+        <div class="mc-list-filters">
+            <select class="mc-status-select" id="mcStatusFilter" onchange="filterRequests()">
+                <option value="">Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+            <div class="mc-search-row">
+                <input type="text" id="mcSearch" placeholder="Search name..." oninput="filterRequests()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
         </div>
-    </section>
-
-    <section class="card-panel">
-        <h3>Assign Mentor To Mentee</h3>
-        <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Mentor</th>
-                    <th>Expertise</th>
-                    <th>Sessions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for mentor in mentors %}
-                    <tr>
-                        <td>{{ mentor.displayName }}</td>
-                        <td>{{ mentor.specialization }}</td>
-                        <td>{{ mentor.engagementPoints }}</td>
-                    </tr>
+        <div class="mc-list-scroll" id="mcListScroll">
+            {% set grouped = {'Today': [], 'This Week': [], 'Earlier': []} %}
+            {% set today = 'now'|date('Y-m-d') %}
+            {% set weekAgo = '-7 days'|date('Y-m-d') %}
+            {% for req in requests %}
+                {% set reqDate = req.createdAt|date('Y-m-d') %}
+                {% if reqDate == today %}
+                    {% set grouped = grouped|merge({'Today': grouped.Today|merge([req])}) %}
+                {% elseif reqDate >= weekAgo %}
+                    {% set grouped = grouped|merge({'This Week': grouped['This Week']|merge([req])}) %}
                 {% else %}
-                    <tr><td colspan="3">No mentors yet.</td></tr>
+                    {% set grouped = grouped|merge({'Earlier': grouped.Earlier|merge([req])}) %}
+                {% endif %}
+            {% endfor %}
+
+            {% for group, items in grouped %}
+                {% if items|length > 0 %}
+                <div class="mc-list-section-label">{{ group }}</div>
+                {% for req in items %}
+                <div class="mc-list-item {{ loop.first and group == 'Today' ? 'active' : '' }}"
+                     data-id="{{ req.id }}"
+                     data-status="{{ req.status|lower }}"
+                     data-name="{{ (req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName))|lower }}"
+                     onclick="selectRequest({{ req.id }})">
+                    <span class="mc-list-item-time">{{ req.createdAt|date('H:i') }}</span>
+                    <div class="mc-list-item-name">{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</div>
+                    <div class="mc-list-item-msg">{{ req.preferredExpertise ?: 'Mentoring Custom Request' }}</div>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
-    </section>
+                {% endif %}
+            {% endfor %}
+            {% if requests|length == 0 %}
+                <div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px;">No mentoring requests yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ── Right: detail + assignment form ── #}
+    <div class="mc-detail-panel" id="mcDetailPanel">
+        {% if requests|length > 0 %}
+            {% for req in requests %}
+            <div class="mc-detail-inner mc-req-detail" id="mc-req-{{ req.id }}" style="{{ not loop.first ? 'display:none' : '' }}">
+                <div class="mc-detail-header">
+                    <div class="mc-detail-user">
+                        <div class="mc-detail-avatar">
+                            {{ (req.fullName ?: req.student.firstName)|slice(0,1)|upper }}
+                        </div>
+                        <div>
+                            <div class="mc-detail-name">{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</div>
+                            <div class="mc-detail-email">{{ req.student.email }}</div>
+                        </div>
+                    </div>
+                    <div class="mc-detail-time">{{ req.createdAt|date('H:i a') }}</div>
+                </div>
+
+                <p class="mc-request-label">Request Details</p>
+                <div class="mc-request-grid">
+                    <div class="mc-req-field">
+                        <label>Full name</label>
+                        <p>{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</p>
+                    </div>
+                    <div class="mc-req-field">
+                        <label>Time</label>
+                        <p>{{ req.preferredSchedule ?: '—' }}</p>
+                    </div>
+                    <div class="mc-req-field">
+                        <label>Preferred Expertise</label>
+                        <p>{{ req.preferredExpertise ?: '—' }}</p>
+                    </div>
+                    <div class="mc-req-field sub">
+                        <label>Department / Course</label>
+                        <p>{{ req.departmentCourse ?: '—' }}</p>
+                    </div>
+                    <div class="mc-req-field sub" style="grid-column:span 2;">
+                        <label>Student / Learner</label>
+                        <p>{{ req.student.degree ?: 'Student' }}</p>
+                    </div>
+                </div>
+
+                {% if req.message %}
+                <div class="mc-notes-label">Notes</div>
+                <div class="mc-notes-text">{{ req.message }}</div>
+                {% endif %}
+
+                <div class="mc-assign-section">
+                    <h4 class="mc-assign-title">Mentor Assignment</h4>
+                    <form method="POST" action="{{ path(is_granted('ROLE_SUPER_ADMIN') ? 'admin_mentorship_assign' : 'admin_role_mentorship_assign', {'id': req.id}) }}" data-ajax="true">
+                        <input type="hidden" name="_token" value="{{ csrf_token('mentorship_assign_' ~ req.id) }}">
+                        <div class="mc-assign-grid">
+                            <div class="mc-assign-field">
+                                <label>Mentor Name</label>
+                                <select name="mentor_id" class="mc-assign-input">
+                                    <option value="">Select mentor…</option>
+                                    {% for mentor in mentors %}
+                                    <option value="{{ mentor.id }}" {{ req.assignedMentorName == mentor.displayName ? 'selected' : '' }}>{{ mentor.displayName }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mc-assign-field">
+                                <label>Specialization</label>
+                                <input type="text" name="specialization" class="mc-assign-input" value="{{ req.assignedMentorExpertise ?? '' }}" placeholder="e.g. Business Analytics">
+                            </div>
+                        </div>
+                        <div class="mc-assign-grid three">
+                            <div class="mc-assign-field">
+                                <label>Setup</label>
+                                <select name="meeting_method" class="mc-assign-input">
+                                    <option value="In Person" {{ req.meetingMethod == 'In Person' ? 'selected' : '' }}>In Person</option>
+                                    <option value="Online" {{ req.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
+                                    <option value="Hybrid" {{ req.meetingMethod == 'Hybrid' ? 'selected' : '' }}>Hybrid</option>
+                                </select>
+                            </div>
+                            <div class="mc-assign-field">
+                                <label>Day</label>
+                                <select name="available_dates" class="mc-assign-input">
+                                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                                    <option value="{{ day }}" {{ req.availableDates == day ? 'selected' : '' }}>{{ day }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mc-assign-field">
+                                <label>Time</label>
+                                <input type="text" name="available_time" class="mc-assign-input" value="{{ req.availableTime ?? '' }}" placeholder="e.g. 10:00 am – 11:00 am">
+                            </div>
+                        </div>
+                        <div class="mc-assign-field" style="margin-top:10px;">
+                            <label>Notes</label>
+                            <textarea name="admin_instructions" class="mc-notes-input" placeholder="Write any...">{{ req.adminInstructions ?? '' }}</textarea>
+                        </div>
+                        <button type="submit" class="mc-send-btn">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="mc-detail-empty">Select a request to view details</div>
+        {% endif %}
+    </div>
 </div>
 
-<section class="card-panel">
-    <h3>Monitor Mentoring Session</h3>
-    <table class="accounts-table">
-        <thead>
-            <tr>
-                <th>Student</th>
-                <th>Mentor</th>
-                <th>Schedule</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for appointment in appointments %}
-                <tr>
-                    <td>{{ appointment.student.email }}</td>
-                    <td>{{ appointment.mentor.displayName }}</td>
-                    <td>{{ appointment.scheduledAt|date('M d, Y h:i A') }}</td>
-                    <td><span class="status-chip">{{ appointment.status }}</span></td>
-                </tr>
-            {% else %}
-                <tr><td colspan="4">No mentoring sessions yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
-
-<section class="card-panel">
-    <h3>Most Requested Experties</h3>
-    <table class="accounts-table">
-        <thead>
-            <tr>
-                <th>Expertise</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for expertise, total in topExpertise %}
-                <tr>
-                    <td>{{ expertise }}</td>
-                    <td>{{ total }}</td>
-                </tr>
-            {% else %}
-                <tr><td colspan="2">No expertise requests yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
+<script>
+function selectRequest(id) {
+    document.querySelectorAll('.mc-req-detail').forEach(function(el){ el.style.display = 'none'; });
+    var detail = document.getElementById('mc-req-' + id);
+    if (detail) detail.style.display = '';
+    document.querySelectorAll('.mc-list-item').forEach(function(el){ el.classList.remove('active'); });
+    var item = document.querySelector('.mc-list-item[data-id="' + id + '"]');
+    if (item) item.classList.add('active');
+}
+function filterRequests() {
+    var status = document.getElementById('mcStatusFilter').value.toLowerCase();
+    var search = document.getElementById('mcSearch').value.toLowerCase();
+    document.querySelectorAll('.mc-list-item').forEach(function(el) {
+        var matchStatus = !status || el.dataset.status === status;
+        var matchSearch = !search || el.dataset.name.includes(search);
+        el.style.display = (matchStatus && matchSearch) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

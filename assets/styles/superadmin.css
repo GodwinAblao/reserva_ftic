@@ -3,6 +3,36 @@
    Layout/shell styles are in admin.css
    ============================================================ */
 
+/* ── Super Admin sidebar — green colour overrides (#0D9B00)
+   Overrides the orange (#f59e0b) values set in admin.css.
+   Scoped to .superadmin-sidebar so ROLE_ADMIN stays orange.
+─────────────────────────────────────────────────────────── */
+
+/* Role badge button */
+.sidebar.superadmin-sidebar .admin-sidebar-role-btn {
+    background: #0D9B00;
+    box-shadow: 0 2px 6px rgba(13, 155, 0, 0.25);
+}
+
+/* Nav link hover: filled green, white text */
+.sidebar.superadmin-sidebar .nav-link:hover {
+    background: #0D9B00;
+    border-color: #0D9B00;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(13, 155, 0, 0.30);
+}
+
+/* Nav link active (current page): outlined green */
+.sidebar.superadmin-sidebar .nav-link.active {
+    border-color: #0D9B00;
+    color: #0a7d00;
+}
+
+/* Active icon */
+.sidebar.superadmin-sidebar .nav-link.active .nav-link-icon {
+    color: #0a7d00;
+}
+
 /* ── SA Page Header ──────────────────────────────────────────── */
 .sa-page-header {
     display: flex;

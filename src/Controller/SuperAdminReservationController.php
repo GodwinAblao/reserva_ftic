@@ -48,13 +48,16 @@ class SuperAdminReservationController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        // Check if the reservation date is Sunday
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+
         if ($reservation->getReservationDate()->format('w') == '0') {
+            if ($isAjax) return $this->json(['success' => false, 'message' => 'Cannot approve: facilities are closed on Sundays.']);
             $this->addFlash('error', 'Cannot approve reservation: All facilities are closed on Sundays.');
             return $this->redirectToRoute('admin_reservations');
         }
 
         if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $reservation->getReservationDate(), $reservation->getReservationStartTime(), $reservation->getReservationEndTime(), $reservation->getId(), ['Approved', 'Pending'])) {
+            if ($isAjax) return $this->json(['success' => false, 'message' => 'Cannot approve: this time slot is already booked.']);
             $this->addFlash('error', 'Cannot approve: this time slot is already booked for this facility.');
             return $this->redirectToRoute('admin_reservations');
         }
@@ -63,8 +66,8 @@ class SuperAdminReservationController extends AbstractController
         $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
 
+        if ($isAjax) return $this->json(['success' => true, 'message' => 'Reservation approved successfully.']);
         $this->addFlash('success', 'Reservation approved successfully.');
-
         return $this->redirectToRoute('admin_reservations');
     }
 
@@ -78,13 +81,15 @@ class SuperAdminReservationController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+
         $reason = $request->request->get('reason') ?? 'Not specified';
         $reservation->setStatus('Rejected');
         $reservation->setRejectionReason($reason);
         $em->flush();
 
+        if ($isAjax) return $this->json(['success' => true, 'message' => 'Reservation rejected successfully.']);
         $this->addFlash('success', 'Reservation rejected successfully.');
-
         return $this->redirectToRoute('admin_reservations');
     }
 

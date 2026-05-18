@@ -69,19 +69,7 @@
                 display: none;
             ">0</span>
         </button>
-        <div class="notification-dropdown-floating" data-notification-target="dropdown" style="
-            position: absolute;
-            top: 58px;
-            right: 0;
-            width: 350px;
-            max-height: 400px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 9999;
-        ">
+        <div class="notification-dropdown-floating" data-notification-target="dropdown">
             <div class="notification-dropdown-header" style="
                 display: flex;
                 justify-content: space-between;
@@ -137,8 +125,8 @@
         </header>
     {% endif %}
 
-    <div class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }}">
-        <aside class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : 'admin-sidebar' }}">
+    <div class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-shell' : '' }}">
+        <aside class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : 'admin-sidebar' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-sidebar' : '' }}">
 
             {% if is_regular_user %}
                 <div class="admin-sidebar-user">
@@ -239,108 +227,44 @@
         </main>
 
         {% if not is_regular_user %}
-        <aside class="admin-right-panel" id="adminRightPanel">
-            <div class="admin-right-panel-title">Recent Reservation Request</div>
-            <div id="adminNotifList">
-                <div class="admin-notif-card">
-                    <div class="admin-notif-card-title">Loading...</div>
-                    <div class="admin-notif-card-desc">Fetching recent reservations</div>
+        {# API meta tags — read by app.js to drive right-panel polling #}
+        <meta name="admin-stats-api"    content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_stats') : path('admin_role_api_stats') }}">
+        <meta name="admin-recent-api"   content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_recent_reservations') : path('admin_role_api_recent_reservations') }}">
+        {% set is_mentoring_page = route == 'admin_role_mentorship_coordination' or route == 'admin_mentorship_coordination' or route starts with 'mentoring_' %}
+        {% if is_mentoring_page %}
+        <meta name="admin-mentoring-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_mentoring', {'type': 'requests'}) : path('admin_role_api_mentoring_panel') }}">
+        {% endif %}
+        {% if is_mentoring_page %}
+                <div class="admin-right-col">
+                    <aside class="admin-right-panel" id="adminRightPanel">
+                        <div class="admin-right-panel-title rp-title-green" id="rp-title-mentoring">Mentoring Request</div>
+                        <div id="adminMentoringReqList">
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
+                        </div>
+                    </aside>
+                    <aside class="admin-right-panel">
+                        <div class="admin-right-panel-title rp-title-green">Leaderboard</div>
+                        <div id="adminLeaderboardList">
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
+                        </div>
+                    </aside>
                 </div>
-            </div>
-        </aside>
+        {% else %}
+                <aside class="admin-right-panel" id="adminRightPanel">
+                    <div class="admin-right-panel-title rp-title-green" id="rp-title-reservations">Recent Reservation Request</div>
+                    <div id="adminNotifList">
+                        <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
+                        <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
+                        <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
+                    </div>
+                </aside>
+        {% endif %}
         {% endif %}
     </div>
     
-    {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-    {# Fallback JS: ensure bell toggles dropdown even if Stimulus didn't bind #}
-    <script>
-    (function(){
-        try {
-            console.log('Notification fallback script loaded');
-            const wrapper = document.getElementById('floatingNotificationBell');
-            if (!wrapper) return;
-            const btn = wrapper.querySelector('.notification-bell-btn');
-            const dropdown = wrapper.querySelector('.notification-dropdown-floating');
-            if (!btn || !dropdown) return;
-            console.log('Notification fallback initialized');
-            document.querySelectorAll('[data-clear-notification-session]').forEach(function(link) {
-                link.addEventListener('click', function() {
-                    Object.keys(sessionStorage).forEach(function(key) {
-                        if (key.indexOf('reservaNotificationSoundPlayed:') === 0) {
-                            sessionStorage.removeItem(key);
-                        }
-                    });
-                });
-            });
-            btn.addEventListener('click', function(e){
-                e.preventDefault();
-                if (wrapper.dataset.notificationConnected === '1') {
-                    return;
-                }
-                const isOpen = wrapper.classList.contains('open');
-                console.log('Notification bell clicked, isOpen=', isOpen);
-                if (isOpen) {
-                    wrapper.classList.remove('open');
-                    dropdown.classList.remove('show');
-                    btn.setAttribute('aria-expanded', 'false');
-                } else {
-                    wrapper.classList.add('open');
-                    dropdown.classList.add('show');
-                    btn.setAttribute('aria-expanded', 'true');
-                }
-            });
-        } catch (err) { console.error('Notification fallback init error', err); }
-    })();
-    </script>
-    {% endif %}
+    {# Fallback script removed — Stimulus notification controller handles all bell interactions #}
 
-    {% if is_granted('IS_AUTHENTICATED_FULLY') and not is_regular_user %}
-    <script>
-    (function(){
-        function timeAgo(dateStr) {
-            var d = new Date(dateStr);
-            var now = new Date();
-            var diff = Math.floor((now - d) / 60000);
-            if (isNaN(diff) || diff < 0) return '';
-            if (diff < 1) return 'Just now';
-            if (diff < 60) return diff + 'm ago';
-            var h = Math.floor(diff / 60);
-            if (h < 24) return h + 'h ago';
-            return Math.floor(h/24) + 'd ago';
-        }
-
-        function formatTime(dateStr) {
-            var d = new Date(dateStr);
-            if (isNaN(d)) return '';
-            return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        }
-
-        function loadRightPanel() {
-            var panel = document.getElementById('adminNotifList');
-            if (!panel) return;
-            var apiUrl = '{{ is_granted("ROLE_SUPER_ADMIN") ? path("admin_api_stats") : path("admin_role_api_stats") }}';
-            fetch(apiUrl)
-                .then(function(r){ return r.ok ? r.json() : null; })
-                .catch(function(){ return null; })
-                .then(function(data) {
-                    var reservations = (data && data.recentReservations) ? data.recentReservations : [];
-                    if (reservations.length === 0) {
-                        panel.innerHTML = '<div class="admin-notif-card"><div class="admin-notif-card-desc" style="color:#9ca3af;text-align:center;">No recent reservations</div></div>';
-                        return;
-                    }
-                    panel.innerHTML = reservations.slice(0, 8).map(function(r) {
-                        return '<div class="admin-notif-card">'
-                            + '<div class="admin-notif-card-title">' + (r.facilityName || 'Facility') + '</div>'
-                            + '<div class="admin-notif-card-desc">' + (r.userName || 'User') + ' has reserved ' + (r.facilityName || '') + (r.date ? ' ' + r.date : '') + (r.time ? ' at ' + r.time : '') + '</div>'
-                            + '<span class="admin-notif-card-time">' + (r.time || '') + '</span>'
-                            + '</div>';
-                    }).join('');
-                });
-        }
-
-        document.addEventListener('DOMContentLoaded', loadRightPanel);
-        setInterval(loadRightPanel, 30000);
-    })();
-    </script>
-    {% endif %}
 {% endblock %}

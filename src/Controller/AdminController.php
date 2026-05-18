@@ -57,7 +57,17 @@ class AdminController extends AbstractController
     #[Route('/api/stats', name: 'admin_api_stats', methods: ['GET'])]
     public function apiStats(EntityManagerInterface $em): JsonResponse
     {
-        return $this->json($this->getDashboardData($em));
+        $response = $this->json($this->getDashboardData($em));
+        $response->headers->set('Cache-Control', 'private, max-age=15');
+        return $response;
+    }
+
+    #[Route('/api/recent-reservations', name: 'admin_api_recent_reservations', methods: ['GET'])]
+    public function apiRecentReservations(EntityManagerInterface $em): JsonResponse
+    {
+        $response = $this->json($this->getRecentReservationsData($em));
+        $response->headers->set('Cache-Control', 'private, max-age=10');
+        return $response;
     }
 
     #[Route('/api/reservations', name: 'admin_api_reservations', methods: ['GET'])]
@@ -273,11 +283,134 @@ class AdminController extends AbstractController
         if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->redirectToRoute('admin_role_reservation_monitoring');
         }
+        $today = new \DateTime('today');
+        $tomorrow = new \DateTime('tomorrow');
+        $todayReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->where('r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+            ->setParameter('today', $today)
+            ->setParameter('tomorrow', $tomorrow)
+            ->orderBy('r.createdAt', 'DESC')
+            ->getQuery()->getResult();
+        $statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
+        $statusCounts = [];
+        foreach ($statuses as $s) {
+            $statusCounts[$s] = (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')
+                ->select('COUNT(r.id)')
+                ->where('r.status = :status AND r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+                ->setParameter('status', $s)->setParameter('today', $today)->setParameter('tomorrow', $tomorrow)
+                ->getQuery()->getSingleScalarResult();
+        }
+        $facilityCounts = [];
+        foreach ($em->getRepository(Facility::class)->findAll() as $facility) {
+            $cnt = (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')
+                ->select('COUNT(r.id)')
+                ->where('r.facility = :facility AND r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+                ->setParameter('facility', $facility)->setParameter('today', $today)->setParameter('tomorrow', $tomorrow)
+                ->getQuery()->getSingleScalarResult();
+            $facilityCounts[$facility->getName()] = $cnt;
+        }
         return $this->render('admin/reservation_monitoring.html.twig', [
-            'reservations' => $em->getRepository(Reservation::class)->findBy([], ['createdAt' => 'DESC'], 40),
-            'statusCounts' => $this->reservationStatusCounts($em),
-            'facilityCounts' => $this->facilityReservationCounts($em),
+            'reservations' => $todayReservations,
+            'statusCounts' => $statusCounts,
+            'facilityCounts' => $facilityCounts,
         ]);
+    }
+
+    #[Route('/api/reservation-monitoring', name: 'admin_api_reservation_monitoring', methods: ['GET'])]
+    public function apiReservationMonitoring(EntityManagerInterface $em): JsonResponse
+    {
+        $conn  = $em->getConnection();
+        $today = (new \DateTime('today'))->format('Y-m-d');
+
+        // All today's reservations with facility name + user roles in one query
+        $rows = $conn->fetchAllAssociative(
+            'SELECT r.id, r.name, r.email, r.status,
+                    r.reservation_start_time, r.reservation_end_time,
+                    f.name AS facility_name,
+                    u.roles AS user_roles
+             FROM reservation r
+             LEFT JOIN facility f ON f.id = r.facility_id
+             LEFT JOIN user u     ON u.id = r.user_id
+             WHERE DATE(r.reservation_date) = :today
+             ORDER BY r.created_at DESC',
+            ['today' => $today]
+        );
+
+        $reservations = array_map(static function (array $r): array {
+            $roles    = json_decode($r['user_roles'] ?? '[]', true) ?? [];
+            $roleLabel = in_array('ROLE_FACULTY', $roles) ? 'Faculty'
+                       : (in_array('ROLE_MENTOR', $roles)  ? 'Mentor' : 'Student');
+            return [
+                'name'     => $r['name'],
+                'email'    => $r['email'],
+                'role'     => $roleLabel,
+                'facility' => $r['facility_name'] ?? '',
+                'time'     => substr($r['reservation_start_time'], 0, 5)
+                              . ' – ' . substr($r['reservation_end_time'], 0, 5),
+                'status'   => $r['status'],
+            ];
+        }, $rows);
+
+        // Status counts — one query
+        $statusRows = $conn->fetchAllAssociative(
+            'SELECT status, COUNT(*) AS cnt FROM reservation
+             WHERE DATE(reservation_date) = :today GROUP BY status',
+            ['today' => $today]
+        );
+        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0,
+                          'AwaitingFacilitySelection' => 0, 'Suggested' => 0];
+        foreach ($statusRows as $sr) {
+            $statusCounts[$sr['status']] = (int) $sr['cnt'];
+        }
+
+        // Facility counts — one query
+        $facRows = $conn->fetchAllAssociative(
+            'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
+             FROM facility f
+             LEFT JOIN reservation r ON r.facility_id = f.id AND DATE(r.reservation_date) = :today
+             GROUP BY f.id, f.name',
+            ['today' => $today]
+        );
+        $facilityCounts = [];
+        foreach ($facRows as $fr) {
+            $facilityCounts[$fr['facility_name']] = (int) $fr['cnt'];
+        }
+
+        $response = $this->json([
+            'reservations'  => $reservations,
+            'statusCounts'  => $statusCounts,
+            'facilityCounts'=> $facilityCounts,
+        ]);
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
+    }
+
+    #[Route('/mentorship-coordination/{id}/assign', name: 'admin_mentorship_assign', methods: ['POST'])]
+    public function mentorshipAssign(int $id, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('mentorship_assign_' . $id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $req = $em->getRepository(MentorCustomRequest::class)->find($id);
+        if ($req) {
+            $mentorId = $request->request->get('mentor_id');
+            if ($mentorId) {
+                $mentor = $em->getRepository(MentorProfile::class)->find((int)$mentorId);
+                if ($mentor) { $req->setAssignedMentorName($mentor->getDisplayName()); $req->setAssignedMentorExpertise($mentor->getSpecialization()); }
+            }
+            $req->setMeetingMethod($request->request->get('meeting_method') ?: null);
+            $req->setAvailableDates($request->request->get('available_dates') ?: null);
+            $req->setAvailableTime($request->request->get('available_time') ?: null);
+            $req->setAdminInstructions($request->request->get('admin_instructions') ?: null);
+            $req->setStatus('approved');
+            $em->flush();
+            if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
+            $this->addFlash('success', 'Mentor assigned successfully.');
+        } else {
+            if ($isAjax) return $this->json(['success' => false, 'message' => 'Request not found.']);
+        }
+        return $this->redirectToRoute('admin_mentorship_coordination');
     }
 
     #[Route('/mentorship-coordination', name: 'admin_mentorship_coordination', methods: ['GET'])]
@@ -484,48 +617,85 @@ class AdminController extends AbstractController
         return $counts;
     }
 
+    private function getRecentReservationsData(EntityManagerInterface $em): array
+    {
+        $conn = $em->getConnection();
+        $rows = $conn->executeQuery(
+            'SELECT r.name AS userName, f.name AS facilityName,
+                    r.reservation_date AS date, r.reservation_start_time AS time, r.status
+             FROM reservation r
+             LEFT JOIN facility f ON r.facility_id = f.id
+             ORDER BY r.created_at DESC LIMIT 8'
+        )->fetchAllAssociative();
+
+        return [
+            'recentReservations' => array_map(static function ($r) {
+                return [
+                    'facilityName' => $r['facilityName'] ?? 'Unknown',
+                    'userName'     => $r['userName'] ?? '',
+                    'date'         => $r['date']  ? (new \DateTime($r['date']))->format('M j, Y') : '',
+                    'time'         => $r['time']  ? substr($r['time'], 0, 5) : '',
+                    'status'       => $r['status'] ?? '',
+                ];
+            }, $rows),
+            'ts' => time(),
+        ];
+    }
+
     private function getDashboardData(EntityManagerInterface $em): array
     {
         $conn = $em->getConnection();
         $today = (new \DateTime())->format('Y-m-d');
 
-        // Use native SQL for much faster counts - single query per table with GROUP BY
-        
-        // Get all reservation counts in one query
-        $resCounts = $conn->executeQuery(
-            "SELECT status, COUNT(*) as cnt FROM reservation GROUP BY status"
-        )->fetchAllKeyValue();
-        
+        // Single batch query: counts across all four tables in one round-trip
+        $batch = $conn->executeQuery(
+            "SELECT 'res_status'  AS grp, status AS lbl, COUNT(*) AS cnt FROM reservation GROUP BY status
+             UNION ALL
+             SELECT 'apt_status', status, COUNT(*) FROM mentoring_appointment GROUP BY status
+             UNION ALL
+             SELECT 'req_status', status, COUNT(*) FROM mentor_custom_request GROUP BY status
+             UNION ALL
+             SELECT 'meta', 'mentors',    COUNT(*) FROM mentor_profile
+             UNION ALL
+             SELECT 'meta', 'facilities', COUNT(*) FROM facility
+             UNION ALL
+             SELECT 'meta', 'users',      COUNT(*) FROM `user`
+             UNION ALL
+             SELECT 'meta', 'today_res',  COUNT(*) FROM reservation WHERE reservation_date = ?
+             UNION ALL
+             SELECT 'meta', 'active_res', COUNT(*) FROM reservation WHERE reservation_date >= ? AND status = 'Approved'",
+            [$today, $today]
+        )->fetchAllAssociative();
+
+        $resCounts = []; $aptCounts = []; $reqCounts = [];
+        $mentors = 0; $facilities = 0; $users = 0; $resToday = 0; $activeRes = 0;
+
+        foreach ($batch as $row) {
+            $cnt = (int) $row['cnt'];
+            switch ($row['grp']) {
+                case 'res_status': $resCounts[$row['lbl']] = $cnt; break;
+                case 'apt_status': $aptCounts[$row['lbl']] = $cnt; break;
+                case 'req_status': $reqCounts[$row['lbl']] = $cnt; break;
+                case 'meta':
+                    match ($row['lbl']) {
+                        'mentors'    => $mentors    = $cnt,
+                        'facilities' => $facilities = $cnt,
+                        'users'      => $users      = $cnt,
+                        'today_res'  => $resToday   = $cnt,
+                        'active_res' => $activeRes  = $cnt,
+                        default      => null,
+                    };
+                    break;
+            }
+        }
+
         $resTotal = (int) array_sum($resCounts);
-        $resToday = (int) $conn->executeQuery(
-            "SELECT COUNT(*) FROM reservation WHERE reservation_date = ?",
-            [$today]
-        )->fetchOne();
-
-        // Get appointment counts in one query
-        $aptCounts = $conn->executeQuery(
-            "SELECT status, COUNT(*) as cnt FROM mentoring_appointment GROUP BY status"
-        )->fetchAllKeyValue();
-        
-        // Get mentor request counts in one query
-        $reqCounts = $conn->executeQuery(
-            "SELECT status, COUNT(*) as cnt FROM mentor_custom_request GROUP BY status"
-        )->fetchAllKeyValue();
-
-        // Fast single counts
-        $mentors = (int) $conn->executeQuery("SELECT COUNT(*) FROM mentor_profile")->fetchOne();
-        $facilities = (int) $conn->executeQuery("SELECT COUNT(*) FROM facility")->fetchOne();
-        $users = (int) $conn->executeQuery("SELECT COUNT(*) FROM user")->fetchOne();
-        
-        $activeRes = (int) $conn->executeQuery(
-            "SELECT COUNT(*) FROM reservation WHERE reservation_date >= ? AND status = 'Approved'",
-            [$today]
-        )->fetchOne();
 
         $recentRaw = $conn->executeQuery(
-            "SELECT r.name as userName, f.name as facilityName, r.reservation_date as date, r.reservation_start_time as time, r.status
+            'SELECT r.name AS userName, f.name AS facilityName,
+                    r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r LEFT JOIN facility f ON r.facility_id = f.id
-             ORDER BY r.created_at DESC LIMIT 8"
+             ORDER BY r.created_at DESC LIMIT 8'
         )->fetchAllAssociative();
 
         return [
@@ -555,15 +725,15 @@ class AdminController extends AbstractController
             'users' => [
                 'total' => $users,
             ],
-            'recentReservations' => array_map(function ($r) {
-                $date = $r['date'] ? (new \DateTime($r['date']))->format('M j, Y') : '';
-                $time = $r['time'] ? (new \DateTime($r['time']))->format('H:i') : '';
+            'recentReservations' => array_map(static function ($r) {
+                $d = $r['date'] ?? '';
+                $t = $r['time'] ?? '';
                 return [
                     'facilityName' => $r['facilityName'] ?? 'Unknown',
-                    'userName' => $r['userName'] ?? '',
-                    'date' => $date,
-                    'time' => $time,
-                    'status' => $r['status'] ?? '',
+                    'userName'     => $r['userName'] ?? '',
+                    'date'         => $d ? date('M j, Y', strtotime($d)) : '',
+                    'time'         => $t ? substr($t, 0, 5) : '',
+                    'status'       => $r['status'] ?? '',
                 ];
             }, $recentRaw),
             'timestamp' => (new \DateTime())->format('c'),

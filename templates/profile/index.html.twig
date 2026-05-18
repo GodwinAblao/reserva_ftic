@@ -49,7 +49,7 @@
     </div>
 
     {# ── Personal Information Form ── #}
-    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form" id="pf-form">
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form" id="pf-form" data-ajax="true">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
         <input type="file" name="profile_picture" id="profile_picture_trigger" accept="image/*" style="display:none;">
 
@@ -158,7 +158,7 @@
     {% if is_granted('ROLE_MENTOR') and mentorProfile %}
     {# ── Mentor Profile Section ── #}
     <div class="pf-divider"></div>
-    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form">
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form" data-ajax="true">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
         <div class="pf-section">
             <h3 class="pf-section-title">Mentor Public Profile</h3>

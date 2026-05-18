@@ -4,6 +4,7 @@
 
 {% block stylesheets %}
 {{ parent() }}
+<meta name="stats-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_stats') : path('admin_role_api_stats') }}">
 <style>
     /* ── Dashboard-specific styles (stat cards, activity feed, chart tabs) ── */
     .stats-grid-pro { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; margin-bottom:22px; }

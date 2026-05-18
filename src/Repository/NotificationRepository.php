@@ -22,18 +22,34 @@ class NotificationRepository extends ServiceEntityRepository
      */
     public function getUnreadCount(User $user): int
     {
-        return $this->createQueryBuilder('n')
-            ->select('COUNT(n.id)')
-            ->where('n.user = :user')
-            ->andWhere('n.isRead = :isRead')
-            ->setParameter('user', $user)
-            ->setParameter('isRead', false)
-            ->getQuery()
-            ->getSingleScalarResult();
+        return (int) $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = 0',
+            [$user->getId()]
+        );
     }
 
     /**
-     * Find latest notifications for a user
+     * Lightweight poll data — single query returns unreadCount + newestId.
+     * Used for background polling to decide whether a full fetch is needed.
+     */
+    public function getPollData(User $user): array
+    {
+        $row = $this->getEntityManager()->getConnection()->fetchAssociative(
+            'SELECT COUNT(CASE WHEN is_read = 0 THEN 1 END) AS unread_count,
+                    MAX(id) AS newest_id
+             FROM notifications
+             WHERE user_id = ?',
+            [$user->getId()]
+        );
+
+        return [
+            'unreadCount' => (int) ($row['unread_count'] ?? 0),
+            'newestId'    => (int) ($row['newest_id']    ?? 0),
+        ];
+    }
+
+    /**
+     * Find latest notifications for a user (native SQL — avoids ORM hydration)
      */
     public function findLatest(User $user, int $limit = 20): array
     {
@@ -59,5 +75,16 @@ class NotificationRepository extends ServiceEntityRepository
             ->orderBy('n.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Mark all unread as read via single UPDATE — avoids N flush calls
+     */
+    public function markAllReadForUser(User $user): void
+    {
+        $this->getEntityManager()->getConnection()->executeStatement(
+            'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0',
+            [$user->getId()]
+        );
     }
 }

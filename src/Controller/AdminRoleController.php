@@ -51,7 +51,79 @@ class AdminRoleController extends AbstractController
     #[Route('/api/stats', name: 'admin_role_api_stats', methods: ['GET'])]
     public function apiStats(EntityManagerInterface $em): JsonResponse
     {
-        return $this->json($this->getDashboardData($em));
+        $response = $this->json($this->getDashboardData($em));
+        $response->headers->set('Cache-Control', 'private, max-age=15');
+        return $response;
+    }
+
+    #[Route('/api/recent-reservations', name: 'admin_role_api_recent_reservations', methods: ['GET'])]
+    public function apiRecentReservations(EntityManagerInterface $em): JsonResponse
+    {
+        $conn = $em->getConnection();
+        $rows = $conn->executeQuery(
+            'SELECT r.name AS userName, f.name AS facilityName,
+                    r.reservation_date AS date, r.reservation_start_time AS time, r.status
+             FROM reservation r
+             LEFT JOIN facility f ON r.facility_id = f.id
+             ORDER BY r.created_at DESC LIMIT 8'
+        )->fetchAllAssociative();
+
+        $response = $this->json([
+            'recentReservations' => array_map(static function ($r) {
+                return [
+                    'facilityName' => $r['facilityName'] ?? 'Unknown',
+                    'userName'     => $r['userName'] ?? '',
+                    'date'         => $r['date'] ? date('M j, Y', strtotime($r['date'])) : '',
+                    'time'         => $r['time'] ? substr($r['time'], 0, 5) : '',
+                    'status'       => $r['status'] ?? '',
+                ];
+            }, $rows),
+            'ts' => time(),
+        ]);
+        $response->headers->set('Cache-Control', 'private, max-age=10');
+        return $response;
+    }
+
+    #[Route('/api/mentoring-panel', name: 'admin_role_api_mentoring_panel', methods: ['GET'])]
+    public function apiMentoringPanel(EntityManagerInterface $em): JsonResponse
+    {
+        $conn = $em->getConnection();
+
+        $reqRows = $conn->executeQuery(
+            'SELECT mcr.preferred_expertise, mcr.created_at,
+                    u.first_name, u.last_name, u.email
+             FROM mentor_custom_request mcr
+             LEFT JOIN user u ON mcr.student_id = u.id
+             ORDER BY mcr.created_at DESC LIMIT 5'
+        )->fetchAllAssociative();
+
+        $lbRows = $conn->executeQuery(
+            'SELECT mp.display_name, mp.specialization, u.degree
+             FROM mentor_profile mp
+             LEFT JOIN user u ON mp.user_id = u.id
+             ORDER BY mp.engagement_points DESC LIMIT 5'
+        )->fetchAllAssociative();
+
+        $response = $this->json([
+            'requests'    => array_map(static function ($r) {
+                $name = trim(($r['first_name'] ?? '') . ' ' . ($r['last_name'] ?? '')) ?: ($r['email'] ?? '');
+                return [
+                    'title'   => $r['preferred_expertise'] ? $r['preferred_expertise'] . ' Mentor Request' : 'Mentoring Request',
+                    'student' => $name,
+                    'date'    => $r['created_at'] ? date('M j, Y', strtotime($r['created_at'])) : '',
+                    'time'    => $r['created_at'] ? substr($r['created_at'], 11, 5) : '',
+                ];
+            }, $reqRows),
+            'leaderboard' => array_map(static function ($m) {
+                return [
+                    'name'           => $m['display_name'] ?? '',
+                    'degree'         => $m['degree'] ?? '',
+                    'specialization' => $m['specialization'] ? 'Specialization in ' . $m['specialization'] : '',
+                ];
+            }, $lbRows),
+        ]);
+        $response->headers->set('Cache-Control', 'private, max-age=15');
+        return $response;
     }
 
     #[Route('/reports', name: 'admin_role_reports', methods: ['GET'])]
@@ -69,11 +141,113 @@ class AdminRoleController extends AbstractController
     #[Route('/reservation-monitoring', name: 'admin_role_reservation_monitoring', methods: ['GET'])]
     public function reservationMonitoring(EntityManagerInterface $em): Response
     {
+        $today = new \DateTime('today');
+        $tomorrow = new \DateTime('tomorrow');
+        $todayReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->where('r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+            ->setParameter('today', $today)
+            ->setParameter('tomorrow', $tomorrow)
+            ->orderBy('r.createdAt', 'DESC')
+            ->getQuery()->getResult();
         return $this->render('admin/reservation_monitoring.html.twig', [
-            'reservations' => $em->getRepository(Reservation::class)->findBy([], ['createdAt' => 'DESC'], 40),
-            'statusCounts' => $this->reservationStatusCounts($em),
-            'facilityCounts' => $this->facilityReservationCounts($em),
+            'reservations' => $todayReservations,
+            'statusCounts' => $this->reservationStatusCountsToday($em),
+            'facilityCounts' => $this->facilityReservationCountsToday($em),
         ]);
+    }
+
+    #[Route('/api/reservation-monitoring', name: 'admin_role_api_reservation_monitoring', methods: ['GET'])]
+    public function apiReservationMonitoring(EntityManagerInterface $em): JsonResponse
+    {
+        $conn  = $em->getConnection();
+        $today = (new \DateTime('today'))->format('Y-m-d');
+
+        $rows = $conn->fetchAllAssociative(
+            'SELECT r.id, r.name, r.email, r.status,
+                    r.reservation_start_time, r.reservation_end_time,
+                    f.name AS facility_name,
+                    u.roles AS user_roles
+             FROM reservation r
+             LEFT JOIN facility f ON f.id = r.facility_id
+             LEFT JOIN user u     ON u.id = r.user_id
+             WHERE DATE(r.reservation_date) = :today
+             ORDER BY r.created_at DESC',
+            ['today' => $today]
+        );
+
+        $reservations = array_map(static function (array $r): array {
+            $roles     = json_decode($r['user_roles'] ?? '[]', true) ?? [];
+            $roleLabel = in_array('ROLE_FACULTY', $roles) ? 'Faculty'
+                       : (in_array('ROLE_MENTOR', $roles)  ? 'Mentor' : 'Student');
+            return [
+                'name'     => $r['name'],
+                'email'    => $r['email'],
+                'role'     => $roleLabel,
+                'facility' => $r['facility_name'] ?? '',
+                'time'     => substr($r['reservation_start_time'], 0, 5)
+                              . ' – ' . substr($r['reservation_end_time'], 0, 5),
+                'status'   => $r['status'],
+            ];
+        }, $rows);
+
+        $statusRows = $conn->fetchAllAssociative(
+            'SELECT status, COUNT(*) AS cnt FROM reservation
+             WHERE DATE(reservation_date) = :today GROUP BY status',
+            ['today' => $today]
+        );
+        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0,
+                          'AwaitingFacilitySelection' => 0, 'Suggested' => 0];
+        foreach ($statusRows as $sr) {
+            $statusCounts[$sr['status']] = (int) $sr['cnt'];
+        }
+
+        $facRows = $conn->fetchAllAssociative(
+            'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
+             FROM facility f
+             LEFT JOIN reservation r ON r.facility_id = f.id AND DATE(r.reservation_date) = :today
+             GROUP BY f.id, f.name',
+            ['today' => $today]
+        );
+        $facilityCounts = [];
+        foreach ($facRows as $fr) {
+            $facilityCounts[$fr['facility_name']] = (int) $fr['cnt'];
+        }
+
+        $response = $this->json([
+            'reservations'   => $reservations,
+            'statusCounts'   => $statusCounts,
+            'facilityCounts' => $facilityCounts,
+        ]);
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
+    }
+
+    #[Route('/mentorship-coordination/{id}/assign', name: 'admin_role_mentorship_assign', methods: ['POST'])]
+    public function mentorshipAssign(int $id, Request $request, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('mentorship_assign_' . $id, (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $req = $em->getRepository(\App\Entity\MentorCustomRequest::class)->find($id);
+        if ($req) {
+            $mentorId = $request->request->get('mentor_id');
+            if ($mentorId) {
+                $mentor = $em->getRepository(MentorProfile::class)->find((int)$mentorId);
+                if ($mentor) { $req->setAssignedMentorName($mentor->getDisplayName()); $req->setAssignedMentorExpertise($mentor->getSpecialization()); }
+            }
+            $req->setMeetingMethod($request->request->get('meeting_method') ?: null);
+            $req->setAvailableDates($request->request->get('available_dates') ?: null);
+            $req->setAvailableTime($request->request->get('available_time') ?: null);
+            $req->setAdminInstructions($request->request->get('admin_instructions') ?: null);
+            $req->setStatus('approved');
+            $em->flush();
+            if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
+            $this->addFlash('success', 'Mentor assigned successfully.');
+        } else {
+            if ($isAjax) return $this->json(['success' => false, 'message' => 'Request not found.']);
+        }
+        return $this->redirectToRoute('admin_role_mentorship_coordination');
     }
 
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
@@ -186,6 +360,43 @@ class AdminRoleController extends AbstractController
             'Rejected' => $repo->count(['status' => 'Rejected']),
             'Cancelled' => $repo->count(['status' => 'Cancelled']),
         ];
+    }
+
+    private function reservationStatusCountsToday(EntityManagerInterface $em): array
+    {
+        $today = new \DateTime('today');
+        $tomorrow = new \DateTime('tomorrow');
+        $statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
+        $counts = [];
+        foreach ($statuses as $status) {
+            $counts[$status] = (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')
+                ->select('COUNT(r.id)')
+                ->where('r.status = :status AND r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+                ->setParameter('status', $status)
+                ->setParameter('today', $today)
+                ->setParameter('tomorrow', $tomorrow)
+                ->getQuery()->getSingleScalarResult();
+        }
+        return $counts;
+    }
+
+    private function facilityReservationCountsToday(EntityManagerInterface $em): array
+    {
+        $today = new \DateTime('today');
+        $tomorrow = new \DateTime('tomorrow');
+        $facilities = $em->getRepository(\App\Entity\Facility::class)->findAll();
+        $counts = [];
+        foreach ($facilities as $facility) {
+            $cnt = (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')
+                ->select('COUNT(r.id)')
+                ->where('r.facility = :facility AND r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+                ->setParameter('facility', $facility)
+                ->setParameter('today', $today)
+                ->setParameter('tomorrow', $tomorrow)
+                ->getQuery()->getSingleScalarResult();
+            $counts[$facility->getName()] = $cnt;
+        }
+        return $counts;
     }
 
     private function mentoringStatusCounts(EntityManagerInterface $em): array

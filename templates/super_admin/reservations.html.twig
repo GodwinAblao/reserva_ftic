@@ -69,12 +69,12 @@
                     </div>
 
                     <div class="sa-row-actions">
-                        <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display:inline;">
+                        <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display:inline;" data-ajax="true" data-ajax-reload="1000">
                             <input type="hidden" name="_token" value="{{ csrf_token('approve_reservation_' ~ reservation.id) }}">
                             <button type="submit" class="sa-btn sa-btn-approve">✓ Approve</button>
                         </form>
 
-                        <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display:inline;" class="reject-form">
+                        <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display:inline;" class="reject-form" data-ajax="true" data-ajax-reload="1000">
                             <input type="hidden" name="_token" value="{{ csrf_token('reject_reservation_' ~ reservation.id) }}">
                             <input type="hidden" name="reason" class="reject-reason">
                             <button type="button" class="sa-btn sa-btn-reject" onclick="showRejectModal(this)">✕ Reject</button>

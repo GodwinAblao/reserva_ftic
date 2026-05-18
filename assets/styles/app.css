@@ -619,6 +619,7 @@ a {
 
 .content-area {
     padding: 36px 40px;
+    contain: layout;
 }
 
 .content-header {
@@ -1154,13 +1155,8 @@ select:focus {
     background: white;
     border-radius: 12px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    display: none;
-    flex-direction: column;
     overflow: hidden;
-}
-
-.floating-notification-bell .notification-dropdown-floating.show {
-    display: flex;
+    z-index: 10000;
 }
 
 .floating-notification-bell .notification-dropdown-floating .notification-list a {
@@ -1185,6 +1181,54 @@ select:focus {
     padding: 40px 20px;
     text-align: center;
     color: #6b7280;
+}
+
+/* ── Dropdown open/close ── */
+.notification-dropdown-floating {
+    display: none;          /* hidden by default — no stacking context issues */
+    flex-direction: column;
+}
+.notification-dropdown-floating.show {
+    display: flex;          /* shown when .show is added by Stimulus */
+    animation: notif-dropdown-in 0.14s ease forwards;
+}
+@keyframes notif-dropdown-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── New notification slide-in ── */
+@keyframes notif-slide-in {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+.notif-slide-in {
+    animation: notif-slide-in 0.22s ease forwards;
+    will-change: opacity, transform;
+}
+
+/* ── Badge count bump on change ── */
+@keyframes notif-badge-bump {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    70%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+.notif-badge-bump {
+    animation: notif-badge-bump 0.3s ease forwards;
+}
+
+/* ── Unread left-bar indicator ── */
+.notification-item {
+    position: relative;
+}
+.notification-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--feu-green, #006633);
+    border-radius: 0 2px 2px 0;
 }
 
 .verify-card {
@@ -1382,3 +1426,32 @@ select:focus {
         font-size: 1.75rem;
     }
 }
+
+/* ── AJAX inline flash messages ── */
+.ajax-flash {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    animation: ajaxFlashIn 0.18s ease;
+}
+@keyframes ajaxFlashIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.ajax-flash-success {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+.ajax-flash-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+.ajax-flash-success::before { content: '✓ '; }
+.ajax-flash-error::before   { content: '✕ '; }

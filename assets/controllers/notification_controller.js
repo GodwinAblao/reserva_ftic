@@ -1,276 +1,341 @@
 import { Controller } from '@hotwired/stimulus';
 
+/* ─────────────────────────────────────────────────────────────
+   Notification Bell Controller
+   Strategy:
+   · Background: cheap /poll every 15 s — one DB query, ~1 ms
+   · Full load: /api/notifications — only when newestId changes
+     OR when dropdown is opened by the user
+   · Mark-as-read: optimistic UI (instant) + fire-and-forget POST
+   · Mark-all-read: single UPDATE via server, instant badge clear
+   · Turbo-safe: connect/disconnect manage all timers
+   · Hash-diff: list only re-rendered when content changes
+   · New-item animation: only genuinely new items slide in
+───────────────────────────────────────────────────────────── */
 export default class extends Controller {
     static targets = ['badge', 'dropdown', 'list', 'empty'];
-    static outlets = [];
-    
+
     initialize() {
-        this.lastUnreadCount = 0;
-        this.soundPlayedKey = `reservaNotificationSoundPlayed:${this.element.dataset.userId || 'user'}`;
-        console.log('Notification controller initialized');
+        this._pollTimer    = null;
+        this._fetching     = false;
+        this._listFetching = false;
+        this._lastNewestId = 0;
+        this._lastUnread   = 0;
+        this._listHash     = null;
+        this._knownIds     = new Set();
+        this._outsideClick = null;
+        this._initialized  = false;   // true after first successful poll
+        this._soundKey     = `reservaNotifSound:${this.element.dataset.userId || 'u'}`;
     }
 
     connect() {
-        console.log('Notification controller connected');
         this.element.dataset.notificationConnected = '1';
-        this.loadNotifications();
-        // Poll for new notifications every 30 seconds
-        this.pollingInterval = setInterval(() => this.loadNotifications(), 30000);
+        this._initialized = false;
+
+        // Clear sound sessionStorage key when user logs out
+        document.querySelectorAll('[data-clear-notification-session]')
+            .forEach(link => {
+                link.addEventListener('click', () => {
+                    Object.keys(sessionStorage)
+                        .filter(k => k.startsWith('reservaNotifSound:'))
+                        .forEach(k => sessionStorage.removeItem(k));
+                });
+            });
+
+        // Immediate poll on connect, then every 15 s
+        this._poll();
+        this._pollTimer = setInterval(() => this._poll(), 15000);
     }
 
     disconnect() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
+        clearInterval(this._pollTimer);
+        this._pollTimer   = null;
+        this._initialized = false;
+        if (this._outsideClick) {
+            document.removeEventListener('click', this._outsideClick);
+            this._outsideClick = null;
         }
     }
 
-    async loadNotifications() {
+    /* ── Cheap background poll — hits /poll (1 query) ── */
+    async _poll() {
+        if (this._fetching) return;
+        this._fetching = true;
         try {
-            const response = await fetch('/api/notifications', {
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                }
+            const r = await fetch('/api/notifications/poll', {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
-            
-            if (!response.ok) return;
-            
-            const data = await response.json();
-            const unreadCount = data.unreadCount || 0;
-            
-            // The notification sound is a login cue. Keep badge/list live, but do not replay it on refresh.
-            if (unreadCount > 0 && !sessionStorage.getItem(this.soundPlayedKey)) {
-                this.playNotificationSound();
-                sessionStorage.setItem(this.soundPlayedKey, '1');
+            if (!r.ok) return;
+            const { unreadCount, newestId } = await r.json();
+
+            // Badge always reflects latest count
+            this._setBadge(unreadCount);
+
+            // Only do expensive full load if something actually changed
+            // On first poll (_initialized=false), never treat items as "new" arrivals
+            const hasNew = this._initialized && newestId > this._lastNewestId;
+            if (!this._initialized || newestId !== this._lastNewestId || unreadCount !== this._lastUnread) {
+                this._lastUnread   = unreadCount;
+                this._lastNewestId = newestId;
+                this._initialized  = true;
+                await this._loadList(hasNew);
             }
-            
-            this.lastUnreadCount = unreadCount;
-            this.updateBadge(unreadCount);
-            this.updateList(data.notifications || []);
-        } catch (error) {
-            console.error('Error loading notifications:', error);
-        }
-    }
-    
-    playNotificationSound() {
-        try {
-            // Create a simple notification beep sound using Web Audio API
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // Bell-like sound
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
-            oscillator.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.3); // Drop to A4
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-            
-            // Second beep for emphasis
-            setTimeout(() => {
-                const oscillator2 = audioContext.createOscillator();
-                const gainNode2 = audioContext.createGain();
-                
-                oscillator2.connect(gainNode2);
-                gainNode2.connect(audioContext.destination);
-                
-                oscillator2.type = 'sine';
-                oscillator2.frequency.setValueAtTime(660, audioContext.currentTime); // E5
-                
-                gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                
-                oscillator2.start(audioContext.currentTime);
-                oscillator2.stop(audioContext.currentTime + 0.5);
-            }, 200);
-        } catch (e) {
-            console.log('Notification sound not available');
+        } catch (_) {
+            // silent — network errors don't break the UI
+        } finally {
+            this._fetching = false;
         }
     }
 
-    updateBadge(count) {
+    /* ── Full notification list load ── */
+    async _loadList(hasNewItems = false) {
+        if (this._listFetching) return;
+        this._listFetching = true;
+        try {
+            const r = await fetch('/api/notifications', {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!r.ok) return;
+            const data = await r.json();
+            const notifications = data.notifications || [];
+
+            // Sound only for brand-new arrivals (not read-state changes)
+            if (hasNewItems && !sessionStorage.getItem(this._soundKey)) {
+                this._playSound();
+                sessionStorage.setItem(this._soundKey, '1');
+            }
+
+            this._renderList(notifications, hasNewItems);
+            this._setBadge(data.unreadCount ?? 0);
+            this._lastUnread = data.unreadCount ?? 0;
+        } catch (_) {
+            // silent
+        } finally {
+            this._listFetching = false;
+        }
+    }
+
+    /* ── Render list with hash-diff — only writes DOM when changed ── */
+    _renderList(notifications, animateNew = false) {
+        if (!this.hasListTarget) return;
+
+        if (notifications.length === 0) {
+            if (this.hasEmptyTarget) {
+                this.listTarget.style.display  = 'none';
+                this.emptyTarget.style.display = 'block';
+            }
+            this._listHash = null;
+            this._knownIds.clear();
+            return;
+        }
+
+        if (this.hasEmptyTarget) {
+            this.listTarget.style.display  = 'block';
+            this.emptyTarget.style.display = 'none';
+        }
+
+        // Build HTML string and hash it
+        const html  = notifications.map(n => this._renderItem(n)).join('');
+        const hash  = this._hash(html);
+        if (hash === this._listHash) return;  // nothing changed
+        this._listHash = hash;
+
+        // Detect which IDs are genuinely new
+        const newIds = animateNew
+            ? notifications.filter(n => !this._knownIds.has(n.id)).map(n => n.id)
+            : [];
+        notifications.forEach(n => this._knownIds.add(n.id));
+
+        this.listTarget.innerHTML = html;
+
+        // Slide-in only genuinely new items
+        if (newIds.length) {
+            newIds.forEach(id => {
+                const el = this.listTarget.querySelector(`[data-id="${id}"]`);
+                if (el) el.classList.add('notif-slide-in');
+            });
+        }
+    }
+
+    _renderItem(n) {
+        const isMentor    = n.type && n.type.startsWith('mentor');
+        const statusClass = n.status === 'Approved' ? 'text-success'
+                          : n.status === 'Rejected'  ? 'text-danger'
+                          : 'text-warning';
+        const unreadClass = n.isRead ? '' : ' unread';
+        const icon        = isMentor ? 'bi-person-check' : 'bi-calendar-check';
+        const href        = this._esc(n.link || '#');
+
+        return `<a href="${href}" class="notification-item${unreadClass}" `
+             + `data-action="click->notification#markAsRead" `
+             + `data-id="${n.id}" data-href="${href}">`
+             + `<div class="notification-icon"><i class="bi ${icon}"></i></div>`
+             + `<div class="notification-content">`
+             + `<div class="notification-title">${this._esc(n.title)}</div>`
+             + `<div class="notification-message">${this._esc(n.message)}</div>`
+             + `<div class="notification-meta">`
+             + `<span class="notification-status ${statusClass}">${this._esc(n.status)}</span>`
+             + `<span class="notification-time">${this._timeAgo(n.createdAt)}</span>`
+             + `</div></div></a>`;
+    }
+
+    /* ── Badge update ── */
+    _setBadge(count) {
         if (!this.hasBadgeTarget) return;
-        
         const badge = this.badgeTarget;
         if (count > 0) {
-            badge.textContent = count > 99 ? '99+' : count;
-            badge.classList.remove('hidden');
-            badge.style.display = 'block';
+            const label = count > 99 ? '99+' : String(count);
+            if (badge.textContent !== label) {
+                badge.textContent = label;
+                badge.classList.add('notif-badge-bump');
+                badge.addEventListener('animationend', () =>
+                    badge.classList.remove('notif-badge-bump'), { once: true });
+            }
+            badge.style.display = 'inline-flex';
         } else {
-            badge.classList.add('hidden');
             badge.style.display = 'none';
         }
     }
 
-    updateList(notifications) {
-        if (!this.hasListTarget || !this.hasEmptyTarget) return;
+    /* ── Toggle dropdown ── */
+    toggleDropdown(event) {
+        if (event) event.preventDefault();
+        if (!this.hasDropdownTarget) return;
 
-        if (notifications.length === 0) {
-            this.listTarget.classList.add('hidden');
-            this.emptyTarget.classList.remove('hidden');
-            return;
-        }
-
-        this.listTarget.classList.remove('hidden');
-        this.emptyTarget.classList.add('hidden');
-
-        this.listTarget.innerHTML = notifications.map(n => this.renderNotification(n)).join('');
-    }
-
-    renderNotification(notification) {
-        const iconClass = notification.type.startsWith('mentor') ? 'bi-person-badge' : 'bi-building';
-        const statusClass = notification.status === 'Approved' ? 'text-success' : 
-                         notification.status === 'Rejected' ? 'text-danger' : 'text-warning';
-        const timeAgo = this.formatTimeAgo(notification.createdAt);
-        const unreadClass = !notification.isRead ? 'unread' : '';
-
-        return `
-            <a href="${this.escapeHtml(notification.link || '#')}" 
-               class="notification-item ${unreadClass}"
-               data-action="click->notification#markAsRead"
-               data-id="${notification.id}"
-               data-type="${notification.type}">
-                <div class="notification-icon ${iconClass}">
-                    <i class="bi ${notification.type.startsWith('mentor') ? 'bi-person-check' : 'bi-calendar-check'}"></i>
-                </div>
-                <div class="notification-content">
-                    <div class="notification-title">${this.escapeHtml(notification.title)}</div>
-                    <div class="notification-message">${this.escapeHtml(notification.message)}</div>
-                    <div class="notification-meta">
-                        <span class="notification-status ${statusClass}">${notification.status}</span>
-                        <span class="notification-time">${timeAgo}</span>
-                    </div>
-                </div>
-            </a>
-        `;
-    }
-
-    // notification.link is provided by the server; fallback preserved above
-
-    formatTimeAgo(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    async toggleDropdown(event) {
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        const dropdown = this.dropdownTarget;
-
-        // Toggle using an "open" class so CSS can animate smoothly
         const isOpen = this.element.classList.contains('open');
+        const btn    = this.element.querySelector('.notification-bell-btn');
+
         if (isOpen) {
-            this.element.classList.remove('open');
-            dropdown.classList.remove('show');
-            if (this.closeOnOutsideClick) {
-                document.removeEventListener('click', this.closeOnOutsideClick);
-                this.closeOnOutsideClick = null;
-            }
-            // update aria
-            const btn = this.element.querySelector('.notification-bell-btn');
-            if (btn) btn.setAttribute('aria-expanded', 'false');
+            this._closeDropdown();
         } else {
             this.element.classList.add('open');
-            dropdown.classList.add('show');
-
-            // Load fresh notifications when opening
-            this.loadNotifications();
-
-            // set aria
-            const btn = this.element.querySelector('.notification-bell-btn');
+            this.dropdownTarget.classList.add('show');
             if (btn) btn.setAttribute('aria-expanded', 'true');
 
-            // Close on outside click
-            setTimeout(() => {
-                this.closeOnOutsideClick = (e) => {
-                    if (!dropdown.contains(e.target) && !this.element.contains(e.target)) {
-                        this.element.classList.remove('open');
-                        dropdown.classList.remove('show');
-                        document.removeEventListener('click', this.closeOnOutsideClick);
-                        this.closeOnOutsideClick = null;
-                    }
-                };
-                document.addEventListener('click', this.closeOnOutsideClick);
-            }, 100);
+            // Fresh load when user opens — always show latest data
+            this._loadList(false);
+
+            // Outside-click to close — attach once, clean up on close
+            if (!this._outsideClick) {
+                setTimeout(() => {
+                    this._outsideClick = (e) => {
+                        if (!this.element.contains(e.target)) this._closeDropdown();
+                    };
+                    document.addEventListener('click', this._outsideClick);
+                }, 80);
+            }
         }
     }
 
-    async markAsRead(event) {
+    _closeDropdown() {
+        if (!this.hasDropdownTarget) return;
+        this.element.classList.remove('open');
+        this.dropdownTarget.classList.remove('show');
+        const btn = this.element.querySelector('.notification-bell-btn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        if (this._outsideClick) {
+            document.removeEventListener('click', this._outsideClick);
+            this._outsideClick = null;
+        }
+    }
+
+    /* ── Mark single as read — optimistic UI ── */
+    markAsRead(event) {
         event.preventDefault();
         const link = event.currentTarget;
-        const id = link.dataset.id;
-        
-        try {
-            await fetch(`/api/notifications/${id}/read`, {
-                method: 'POST',
-                credentials: 'include',
-            });
-            
-            // Update unread count
-            const response = await fetch('/api/notifications', {
-                credentials: 'include',
-            });
-            const data = await response.json();
-            this.updateBadge(data.unreadCount || 0);
-            
-            // Navigate to the link
-            window.location.href = link.href;
-        } catch (error) {
-            console.error('Error marking as read:', error);
-            // Still navigate
-            window.location.href = link.href;
+        const id   = link.dataset.id;
+        const href = link.dataset.href || link.getAttribute('href') || '#';
+
+        // Optimistic: visually mark read and decrement badge immediately
+        if (link.classList.contains('unread')) {
+            link.classList.remove('unread');
+            const newCount = Math.max(0, this._lastUnread - 1);
+            this._lastUnread = newCount;
+            this._setBadge(newCount);
+        }
+
+        // Fire-and-forget POST — no await, no second fetch
+        fetch(`/api/notifications/${id}/read`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        }).catch(() => {});
+
+        // Navigate
+        if (href && href !== '#') {
+            window.location.href = href;
         }
     }
 
+    /* ── Mark all as read ── */
     async markAllAsRead(event) {
-        if (event) {
-            event.preventDefault();
-        }
-        
+        if (event) event.preventDefault();
+
+        // Optimistic
+        this._setBadge(0);
+        this._lastUnread = 0;
+        this.listTarget?.querySelectorAll('.notification-item.unread')
+            .forEach(el => el.classList.remove('unread'));
+
+        // Invalidate hash so next render re-draws with all items read
+        this._listHash = null;
+
         try {
             await fetch('/api/notifications/read-all', {
                 method: 'POST',
-                credentials: 'include',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
             });
-            
-            this.updateBadge(0);
-            this.lastUnreadCount = 0;
-            
-            // Clear list UI
-            if (this.hasListTarget) {
-                this.listTarget.innerHTML = '';
-                if (this.hasEmptyTarget) {
-                    this.listTarget.classList.add('hidden');
-                    this.emptyTarget.classList.remove('hidden');
-                }
-            }
-        } catch (error) {
-            console.error('Error marking all as read:', error);
+        } catch (_) {}
+    }
+
+    /* ── Helpers ── */
+    _timeAgo(dateString) {
+        const diff  = Date.now() - new Date(dateString).getTime();
+        const mins  = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days  = Math.floor(diff / 86400000);
+        if (mins  < 1)  return 'Just now';
+        if (mins  < 60) return `${mins}m ago`;
+        if (hours < 24) return `${hours}h ago`;
+        if (days  < 7)  return `${days}d ago`;
+        return new Date(dateString).toLocaleDateString();
+    }
+
+    _esc(text) {
+        const d = document.createElement('div');
+        d.textContent = String(text ?? '');
+        return d.innerHTML;
+    }
+
+    _hash(str) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+            h ^= str.charCodeAt(i);
+            h = Math.imul(h, 0x01000193) >>> 0;
         }
+        return h;
+    }
+
+    _playSound() {
+        try {
+            const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+            const play = (freq, start, dur) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+                gain.gain.setValueAtTime(0.25, ctx.currentTime + start);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + dur);
+                osc.start(ctx.currentTime + start);
+                osc.stop(ctx.currentTime + start + dur);
+            };
+            play(880, 0,    0.4);
+            play(660, 0.22, 0.35);
+        } catch (_) {}
     }
 }

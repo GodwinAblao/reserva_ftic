@@ -60,10 +60,29 @@ class NotificationController extends AbstractController
             ];
         }, $notifications);
 
-        return $this->json([
+        $response = $this->json([
             'notifications' => $data,
             'unreadCount' => $notificationRepo->getUnreadCount($user),
         ]);
+        $response->headers->set('Cache-Control', 'private, max-age=60');
+        return $response;
+    }
+
+    /**
+     * Lightweight poll endpoint — returns only unreadCount + newestId.
+     * Used for background polling; costs a single indexed COUNT query.
+     */
+    #[Route('/poll', name: 'api_notifications_poll', methods: ['GET'])]
+    public function poll(NotificationRepository $notificationRepo): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $response = $this->json($notificationRepo->getPollData($user));
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
     }
 
     /**
@@ -121,7 +140,6 @@ class NotificationController extends AbstractController
      */
     #[Route('/read-all', name: 'api_notifications_mark_all_read', methods: ['POST'])]
     public function markAllAsRead(
-        EntityManagerInterface $em,
         NotificationRepository $notificationRepo
     ): JsonResponse {
         $user = $this->getUser();
@@ -129,12 +147,7 @@ class NotificationController extends AbstractController
             return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        $notifications = $notificationRepo->findUnread($user);
-        foreach ($notifications as $notification) {
-            $notification->setIsRead(true);
-        }
-
-        $em->flush();
+        $notificationRepo->markAllReadForUser($user);
 
         return $this->json([
             'success' => true,

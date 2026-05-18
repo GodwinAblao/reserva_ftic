@@ -36,9 +36,12 @@ class ProfileController extends AbstractController
 
         $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
 
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+
         if ($request->isMethod('POST')) {
             $token = $request->request->get('_csrf_token');
             if (!$csrfTokenManager->isTokenValid(new \Symfony\Component\Security\Csrf\CsrfToken('profile', $token))) {
+                if ($isAjax) return $this->json(['success' => false, 'message' => 'Invalid CSRF token.']);
                 $this->addFlash('error', 'Invalid CSRF token.');
             } else {
                 // Update user
@@ -61,14 +64,17 @@ class ProfileController extends AbstractController
                 // Password change — require current password + confirmation match
                 if ($password) {
                     if (!$currentPassword) {
+                        if ($isAjax) return $this->json(['success' => false, 'message' => 'Please enter your current password to set a new one.']);
                         $this->addFlash('error', 'Please enter your current password to set a new one.');
                         return $this->redirectToRoute('app_profile');
                     }
                     if (!$passwordHasher->isPasswordValid($user, $currentPassword)) {
+                        if ($isAjax) return $this->json(['success' => false, 'message' => 'Current password is incorrect.']);
                         $this->addFlash('error', 'Current password is incorrect.');
                         return $this->redirectToRoute('app_profile');
                     }
                     if ($password !== $passwordConfirm) {
+                        if ($isAjax) return $this->json(['success' => false, 'message' => 'New passwords do not match.']);
                         $this->addFlash('error', 'New passwords do not match.');
                         return $this->redirectToRoute('app_profile');
                     }
@@ -130,8 +136,10 @@ class ProfileController extends AbstractController
 
                 try {
                     $em->flush();
+                    if ($isAjax) return $this->json(['success' => true, 'message' => 'Profile updated successfully.']);
                     $this->addFlash('success', 'Profile updated successfully.');
                 } catch (\Exception $e) {
+                    if ($isAjax) return $this->json(['success' => false, 'message' => 'Save failed: ' . $e->getMessage()]);
                     $this->addFlash('error', 'Save failed: ' . $e->getMessage());
                 }
             }
