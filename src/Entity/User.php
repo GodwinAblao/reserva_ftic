@@ -44,7 +44,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $lastName = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
+    #[ORM\Column(length: 100, nullable: true)]
     private ?string $degree = null;
 
     #[ORM\Column(length: 255, nullable: true)]

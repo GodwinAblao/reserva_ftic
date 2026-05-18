@@ -130,6 +130,24 @@ class AdminRoleController extends AbstractController
         $mentorProfileRepo = $em->getRepository(MentorProfile::class);
         $appointmentRepo = $em->getRepository(MentoringAppointment::class);
 
+        $recentRaw = $reservationRepo->createQueryBuilder('r')
+            ->leftJoin('r.facility', 'f')
+            ->addSelect('f')
+            ->orderBy('r.createdAt', 'DESC')
+            ->setMaxResults(8)
+            ->getQuery()
+            ->getResult();
+
+        $recentReservations = array_map(function ($r) {
+            return [
+                'facilityName' => $r->getFacility() ? $r->getFacility()->getName() : 'Unknown',
+                'userName' => $r->getName(),
+                'date' => $r->getReservationDate() ? $r->getReservationDate()->format('M j, Y') : '',
+                'time' => $r->getReservationStartTime() ? $r->getReservationStartTime()->format('H:i') : '',
+                'status' => $r->getStatus(),
+            ];
+        }, $recentRaw);
+
         return [
             'reservations' => [
                 'total' => $reservationRepo->count([]),
@@ -155,6 +173,7 @@ class AdminRoleController extends AbstractController
                         ->getSingleScalarResult(),
                 ],
             ],
+            'recentReservations' => $recentReservations,
         ];
     }
 

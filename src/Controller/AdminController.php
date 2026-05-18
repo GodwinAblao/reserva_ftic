@@ -522,6 +522,12 @@ class AdminController extends AbstractController
             [$today]
         )->fetchOne();
 
+        $recentRaw = $conn->executeQuery(
+            "SELECT r.name as userName, f.name as facilityName, r.reservation_date as date, r.reservation_start_time as time, r.status
+             FROM reservation r LEFT JOIN facility f ON r.facility_id = f.id
+             ORDER BY r.created_at DESC LIMIT 8"
+        )->fetchAllAssociative();
+
         return [
             'reservations' => [
                 'total' => $resTotal,
@@ -549,6 +555,17 @@ class AdminController extends AbstractController
             'users' => [
                 'total' => $users,
             ],
+            'recentReservations' => array_map(function ($r) {
+                $date = $r['date'] ? (new \DateTime($r['date']))->format('M j, Y') : '';
+                $time = $r['time'] ? (new \DateTime($r['time']))->format('H:i') : '';
+                return [
+                    'facilityName' => $r['facilityName'] ?? 'Unknown',
+                    'userName' => $r['userName'] ?? '',
+                    'date' => $date,
+                    'time' => $time,
+                    'status' => $r['status'] ?? '',
+                ];
+            }, $recentRaw),
             'timestamp' => (new \DateTime())->format('c'),
         ];
     }

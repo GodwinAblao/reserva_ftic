@@ -38,7 +38,7 @@
     {% endif %}
 
     {% set notification_bell_markup %}
-    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user.id }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user.id }}" style="position: {{ is_regular_user ? 'fixed; top: 20px; right: 20px; z-index: 9999' : 'relative' }};">
         <button type="button" aria-expanded="false" class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
             width: 50px;
             height: 50px;
@@ -71,7 +71,7 @@
         </button>
         <div class="notification-dropdown-floating" data-notification-target="dropdown" style="
             position: absolute;
-            top: 60px;
+            top: 58px;
             right: 0;
             width: 350px;
             max-height: 400px;
@@ -80,6 +80,7 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             flex-direction: column;
             overflow: hidden;
+            z-index: 9999;
         ">
             <div class="notification-dropdown-header" style="
                 display: flex;
@@ -114,6 +115,7 @@
     </div>
     {% endset %}
 
+
     {% if is_regular_user %}
         <header class="regular-user-page-header">
             <div class="regular-user-page-header-left">
@@ -128,8 +130,10 @@
         <header class="admin-page-header">
             <div class="admin-page-header-left">
                 <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo" class="admin-page-logo">
-                <h1 class="admin-page-title">{{ admin_page_name }}</h1>
             </div>
+            {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                {{ notification_bell_markup }}
+            {% endif %}
         </header>
     {% endif %}
 
@@ -147,22 +151,27 @@
                     </div>
                 </div>
             {% else %}
+                <span class="admin-sidebar-access-label">Access Level</span>
                 <div class="admin-sidebar-user">
-                    <div class="admin-sidebar-email">{{ app.user ? app.user.userIdentifier : '' }}</div>
-                    <div class="admin-sidebar-role">{{ is_granted('ROLE_SUPER_ADMIN') ? 'SUPER ADMIN' : 'ADMIN' }}</div>
+                    <div class="admin-sidebar-role-btn">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z"/></svg>
+                        {{ is_granted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin' }}
+                    </div>
                 </div>
             {% endif %}
 
             <nav class="nav-list">
                 {% if is_granted('ROLE_SUPER_ADMIN') %}
+                <span class="nav-section-label">General</span>
                 <a class="nav-link {{ route in ['app_dashboard', 'admin_home'] ? 'active' : '' }}" href="{{ path('admin_home') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg></span>
                     <span>Dashboard</span>
                 </a>
                 <a class="nav-link {{ route in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg></span>
-                    <span>Profile</span>
+                    <span>Account Profile</span>
                 </a>
+                <span class="nav-section-label">Management</span>
                 <a class="nav-link {{ route == 'app_account_management' ? 'active' : '' }}" href="{{ path('app_account_management') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/></svg></span>
                     <span>Accounts</span>
@@ -175,10 +184,12 @@
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V7.5L12 3l9 4.5V20h-4v-7H7v7H3Zm6-2h6v-5H9v5Zm2-7h2V9h-2v2Z" fill="currentColor"/></svg></span>
                     <span>Facilities</span>
                 </a>
+                <span class="nav-section-label">Mentoring</span>
                 <a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_super-admin') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
                     <span>Mentoring</span>
                 </a>
+                <span class="nav-section-label">Reports and Analytics</span>
                 <a class="nav-link {{ route starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 6.5V9l10-4.5L22 9V6.5L12 2Zm-7 9.2 7 3.15 7-3.15V18l-7 3-7-3V11.2Zm3 2.25v1.85l4 1.7 4-1.7v-1.85l-4 1.8-4-1.8Z" fill="currentColor"/></svg></span>
                     <span>Research</span>
@@ -188,22 +199,26 @@
                     <span>Analytics</span>
                 </a>
                 {% elseif is_granted('ROLE_ADMIN') %}
+                <span class="nav-section-label">General</span>
                 <a class="nav-link {{ route == 'admin_role_home' ? 'active' : '' }}" href="{{ path('admin_role_home') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg></span>
                     <span>Dashboard</span>
                 </a>
                 <a class="nav-link {{ route in ['app_profile', 'profile_availability', 'profile_requests'] ? 'active' : '' }}" href="{{ path('app_profile') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg></span>
-                    <span>Profile</span>
+                    <span>Account Profile</span>
                 </a>
+                <span class="nav-section-label">Monitoring</span>
                 <a class="nav-link {{ route == 'admin_role_reservation_monitoring' or route starts with 'admin_calendar' or route == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_role_reservation_monitoring') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></span>
-                    <span>Reservations</span>
+                    <span>Reservation</span>
                 </a>
+                <span class="nav-section-label">Mentoring</span>
                 <a class="nav-link {{ route == 'admin_role_mentorship_coordination' or route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('admin_role_mentorship_coordination') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
                     <span>Mentoring</span>
                 </a>
+                <span class="nav-section-label">Reports and Analytics</span>
                 <a class="nav-link {{ route == 'admin_role_reports' or route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('admin_role_reports') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg></span>
                     <span>Reports</span>
@@ -222,13 +237,20 @@
         <main class="content-area {{ is_regular_user ? 'regular-user-content' : '' }}">
             {% block content %}{% endblock %}
         </main>
+
+        {% if not is_regular_user %}
+        <aside class="admin-right-panel" id="adminRightPanel">
+            <div class="admin-right-panel-title">Recent Reservation Request</div>
+            <div id="adminNotifList">
+                <div class="admin-notif-card">
+                    <div class="admin-notif-card-title">Loading...</div>
+                    <div class="admin-notif-card-desc">Fetching recent reservations</div>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
     </div>
     
-{# Notification Bell #}
-    {% if is_granted('IS_AUTHENTICATED_FULLY') and not is_regular_user %}
-    {{ notification_bell_markup }}
-    {% endif %}
-
     {% if is_granted('IS_AUTHENTICATED_FULLY') %}
     {# Fallback JS: ensure bell toggles dropdown even if Stimulus didn't bind #}
     <script>
@@ -268,6 +290,56 @@
                 }
             });
         } catch (err) { console.error('Notification fallback init error', err); }
+    })();
+    </script>
+    {% endif %}
+
+    {% if is_granted('IS_AUTHENTICATED_FULLY') and not is_regular_user %}
+    <script>
+    (function(){
+        function timeAgo(dateStr) {
+            var d = new Date(dateStr);
+            var now = new Date();
+            var diff = Math.floor((now - d) / 60000);
+            if (isNaN(diff) || diff < 0) return '';
+            if (diff < 1) return 'Just now';
+            if (diff < 60) return diff + 'm ago';
+            var h = Math.floor(diff / 60);
+            if (h < 24) return h + 'h ago';
+            return Math.floor(h/24) + 'd ago';
+        }
+
+        function formatTime(dateStr) {
+            var d = new Date(dateStr);
+            if (isNaN(d)) return '';
+            return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+
+        function loadRightPanel() {
+            var panel = document.getElementById('adminNotifList');
+            if (!panel) return;
+            var apiUrl = '{{ is_granted("ROLE_SUPER_ADMIN") ? path("admin_api_stats") : path("admin_role_api_stats") }}';
+            fetch(apiUrl)
+                .then(function(r){ return r.ok ? r.json() : null; })
+                .catch(function(){ return null; })
+                .then(function(data) {
+                    var reservations = (data && data.recentReservations) ? data.recentReservations : [];
+                    if (reservations.length === 0) {
+                        panel.innerHTML = '<div class="admin-notif-card"><div class="admin-notif-card-desc" style="color:#9ca3af;text-align:center;">No recent reservations</div></div>';
+                        return;
+                    }
+                    panel.innerHTML = reservations.slice(0, 8).map(function(r) {
+                        return '<div class="admin-notif-card">'
+                            + '<div class="admin-notif-card-title">' + (r.facilityName || 'Facility') + '</div>'
+                            + '<div class="admin-notif-card-desc">' + (r.userName || 'User') + ' has reserved ' + (r.facilityName || '') + (r.date ? ' ' + r.date : '') + (r.time ? ' at ' + r.time : '') + '</div>'
+                            + '<span class="admin-notif-card-time">' + (r.time || '') + '</span>'
+                            + '</div>';
+                    }).join('');
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', loadRightPanel);
+        setInterval(loadRightPanel, 30000);
     })();
     </script>
     {% endif %}

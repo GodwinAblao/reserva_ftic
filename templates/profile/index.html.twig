@@ -8,123 +8,168 @@
 {% endblock %}
 
 {% block content %}
+
 {% for message in app.flashes('success') %}
-    <div class="alert alert-success">{{ message }}</div>
+    <div class="pf-flash pf-flash--success">{{ message }}</div>
 {% endfor %}
 {% for message in app.flashes('error') %}
-    <div class="alert alert-error">{{ message }}</div>
+    <div class="pf-flash pf-flash--error">{{ message }}</div>
 {% endfor %}
 
-<div class="card-panel profile-editor">
-    <div class="profile-summary">
-        <div class="profile-picture-holder">
+<div class="pf-wrap">
+
+    {# ── Profile Header Card ── #}
+    <div class="pf-header-card">
+        <div class="pf-avatar-wrap">
             {% if app.user.profilePicture %}
-                <img src="{{ asset('uploads/profiles/' ~ app.user.profilePicture) }}" alt="Profile Picture">
+                <img src="{{ asset('uploads/profiles/' ~ app.user.profilePicture) }}" alt="Profile Picture" class="pf-avatar-img">
             {% else %}
-                <div class="profile-placeholder">
-                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="12" cy="8" r="4"/>
-                        <path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
-                    </svg>
+                <div class="pf-avatar-placeholder">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z"/></svg>
                 </div>
             {% endif %}
+            <label for="profile_picture_trigger" class="pf-avatar-add" title="Change photo">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+            </label>
         </div>
-        <div>
-            <h3>{{ app.user.firstName ~ ' ' ~ app.user.lastName|default(app.user.email) }}</h3>
-            <p>{{ app.user.degreeName|default('Profile details not completed') }}</p>
-            <div class="role-badges">
-                {% for role in app.user.roles %}
-                    {% if role != 'ROLE_USER' %}
-                        <span class="role-badge">{{ role|replace({'ROLE_': ''}) }}</span>
-                    {% endif %}
-                {% endfor %}
-            </div>
+        <div class="pf-header-info">
+            <h2 class="pf-name">{{ ((app.user.firstName ?? '') ~ ' ' ~ (app.user.middleName ? app.user.middleName ~ ' ' : '') ~ (app.user.lastName ?? ''))|trim ?: app.user.email }}</h2>
+            <p class="pf-role-label">
+                {% if is_granted('ROLE_SUPER_ADMIN') %}Super Admin
+                {% elseif is_granted('ROLE_ADMIN') %}Admin
+                {% elseif is_granted('ROLE_MENTOR') %}Mentor
+                {% elseif is_granted('ROLE_FACULTY') %}Faculty
+                {% else %}Student{% endif %}
+            </p>
         </div>
+        <button type="button" class="pf-edit-btn" id="pf-edit-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg>
+            Edit
+        </button>
     </div>
 
-    <div class="profile-main">
-        <div class="profile-form-header">
-            <div class="profile-tabs">
-                <button type="button" class="tab-btn active">Personal Information</button>
-                {% if is_granted('ROLE_MENTOR') and mentorProfile %}
-                <button type="button" class="tab-btn">Mentor Public Profile</button>
-                {% endif %}
+    {# ── Personal Information Form ── #}
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form" id="pf-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
+        <input type="file" name="profile_picture" id="profile_picture_trigger" accept="image/*" style="display:none;">
+
+        <div class="pf-section">
+            <div class="pf-row pf-row--3">
+                <div class="pf-field">
+                    <label class="pf-label">First Name</label>
+                    <input class="pf-input" type="text" name="first_name" value="{{ app.user.firstName }}" disabled>
+                </div>
+                <div class="pf-field">
+                    <label class="pf-label">Middle Name</label>
+                    <input class="pf-input" type="text" name="middle_name" value="{{ app.user.middleName }}" disabled>
+                </div>
+                <div class="pf-field">
+                    <label class="pf-label">Last Name</label>
+                    <input class="pf-input" type="text" name="last_name" value="{{ app.user.lastName }}" disabled>
+                </div>
+            </div>
+
+            <div class="pf-row pf-row--1-narrow">
+                <div class="pf-field">
+                    <label class="pf-label">Institutional Email</label>
+                    <input class="pf-input pf-input--readonly" type="email" value="{{ app.user.email }}" readonly>
+                </div>
+            </div>
+
+            <div class="pf-row pf-row--2">
+                <div class="pf-field">
+                    <label class="pf-label">Specialization</label>
+                    <select class="pf-input" name="degree" disabled>
+                        <option value="">Select specialization...</option>
+                        <option value="BSITBA" {{ app.user.degree == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
+                        <option value="BSCS" {{ app.user.degree == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
+                        <option value="Software Engineering" {{ app.user.degree == 'Software Engineering' ? 'selected' : '' }}>Software Engineering</option>
+                        <option value="Data Science" {{ app.user.degree == 'Data Science' ? 'selected' : '' }}>Data Science</option>
+                        <option value="Cybersecurity" {{ app.user.degree == 'Cybersecurity' ? 'selected' : '' }}>Cybersecurity</option>
+                        <option value="Cloud Computing" {{ app.user.degree == 'Cloud Computing' ? 'selected' : '' }}>Cloud Computing</option>
+                        <option value="Web Development" {{ app.user.degree == 'Web Development' ? 'selected' : '' }}>Web Development</option>
+                        <option value="Mobile Development" {{ app.user.degree == 'Mobile Development' ? 'selected' : '' }}>Mobile Development</option>
+                        <option value="UI/UX Design" {{ app.user.degree == 'UI/UX Design' ? 'selected' : '' }}>UI/UX Design</option>
+                        <option value="Research" {{ app.user.degree == 'Research' ? 'selected' : '' }}>Research</option>
+                        <option value="Other" {{ app.user.degree == 'Other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                </div>
+                <div class="pf-field">
+                    <label class="pf-label">Degree Name <span class="pf-optional">(optional)</span></label>
+                    <input class="pf-input" type="text" name="degree_name" value="{{ app.user.degreeName }}" placeholder="e.g. Bachelor of Science in Information Technology" disabled>
+                </div>
             </div>
         </div>
 
-        <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="profile-form" id="personalForm">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
-
-        <div class="form-section">
-            <h3>Personal Information</h3>
-            <p class="muted">Update your account details</p>
-
-            {# Profile Photo #}
-            <div class="form-group">
-                <label for="profile_picture">Profile Photo</label>
-                <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
-            </div>
-
-            {# Name #}
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="first_name">First Name</label>
-                    <input type="text" name="first_name" id="first_name" value="{{ app.user.firstName }}">
+        {# ── Reset Password Section ── #}
+        <div class="pf-divider"></div>
+        <div class="pf-section">
+            <h3 class="pf-section-title">Reset Password</h3>
+            <div class="pf-row pf-row--2">
+                <div class="pf-field">
+                    <label class="pf-label">Enter Current Password</label>
+                    <input class="pf-input" type="password" name="current_password" placeholder="Current password" disabled>
                 </div>
-                <div class="form-group">
-                    <label for="middle_name">Middle Name</label>
-                    <input type="text" name="middle_name" id="middle_name" value="{{ app.user.middleName }}">
-                </div>
-                <div class="form-group">
-                    <label for="last_name">Last Name</label>
-                    <input type="text" name="last_name" id="last_name" value="{{ app.user.lastName }}">
-                </div>
-            </div>
-
-            {# Degree #}
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="degree">Course Code</label>
-                    <input type="text" name="degree" id="degree" value="{{ app.user.degree }}" placeholder="BSIT">
-                </div>
-                <div class="form-group">
-                    <label for="degree_name">Degree Name</label>
-                    <input type="text" name="degree_name" id="degree_name" value="{{ app.user.degreeName }}">
-                </div>
-            </div>
-
-            {# Login #}
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="email">Login Email</label>
-                    <input type="email" name="email" id="email" value="{{ app.user.email }}">
-                </div>
-                <div class="form-group">
-                    <label for="password">New Password</label>
-                    <input type="password" name="password" id="password" placeholder="Leave blank">
+                <div class="pf-col">
+                    <div class="pf-field">
+                        <label class="pf-label">Enter New Password</label>
+                        <div class="pf-pw-wrap">
+                            <input class="pf-input" type="password" name="password" id="pf-new-password" placeholder="New password" disabled autocomplete="new-password">
+                            <button type="button" class="pf-pw-toggle" data-target="pf-new-password" tabindex="-1">
+                                <svg class="pf-eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="pf-eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
+                        <div class="pf-strength-bar" id="pf-strength-bar">
+                            <div class="pf-strength-seg" id="pf-seg-1"></div>
+                            <div class="pf-strength-seg" id="pf-seg-2"></div>
+                            <div class="pf-strength-seg" id="pf-seg-3"></div>
+                            <div class="pf-strength-seg" id="pf-seg-4"></div>
+                        </div>
+                        <span class="pf-strength-label" id="pf-strength-label"></span>
+                        <ul class="pf-pw-reqs" id="pf-pw-reqs">
+                            <li id="req-len">At least 8 characters</li>
+                            <li id="req-upper">One uppercase letter</li>
+                            <li id="req-lower">One lowercase letter</li>
+                            <li id="req-num">One number</li>
+                            <li id="req-special">One special character</li>
+                        </ul>
+                    </div>
+                    <div class="pf-field" style="margin-top: 20px;">
+                        <label class="pf-label">Re-Enter New Password</label>
+                        <div class="pf-pw-wrap">
+                            <input class="pf-input" type="password" name="password_confirm" id="pf-confirm-password" placeholder="Confirm new password" disabled autocomplete="new-password">
+                            <button type="button" class="pf-pw-toggle" data-target="pf-confirm-password" tabindex="-1">
+                                <svg class="pf-eye-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="pf-eye-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            </button>
+                        </div>
+                        <span class="pf-match-label" id="pf-match-label"></span>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            {# Mentor fields removed from personal form and moved to mentor form below #}
-
-            <button type="submit" class="btn-primary">Save Personal Changes</button>
+        <div class="pf-actions" id="pf-actions" style="display:none;">
+            <button type="submit" class="pf-save-btn">Save</button>
         </div>
     </form>
 
     {% if is_granted('ROLE_MENTOR') and mentorProfile %}
-    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="profile-form mentor-form" id="mentorForm" style="display:none;">
+    {# ── Mentor Profile Section ── #}
+    <div class="pf-divider"></div>
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
-        <div class="form-section">
-            <h3>Mentor Public Profile</h3>
-            <p class="muted">This information is visible to all students</p>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Display Name</label>
-                    <input type="text" name="display_name" value="{{ mentorProfile.displayName }}" placeholder="How you want to be known">
+        <div class="pf-section">
+            <h3 class="pf-section-title">Mentor Public Profile</h3>
+            <div class="pf-row pf-row--2">
+                <div class="pf-field">
+                    <label class="pf-label">Display Name</label>
+                    <input class="pf-input" type="text" name="display_name" value="{{ mentorProfile.displayName }}" placeholder="How you want to be known">
                 </div>
-                <div class="form-group">
-                    <label>Specialization</label>
-                    <select name="specialization" class="form-input">
+                <div class="pf-field">
+                    <label class="pf-label">Specialization</label>
+                    <select class="pf-input" name="specialization">
                         <option value="">Select specialization...</option>
                         <option value="BSITBA" {{ mentorProfile.specialization == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
                         <option value="BSCS" {{ mentorProfile.specialization == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
@@ -140,41 +185,146 @@
                     </select>
                 </div>
             </div>
-            <div class="form-group">
-                <label>Bio / Description</label>
-                <textarea name="bio" rows="4" placeholder="Tell students about your expertise, experience, and what you can help with...">{{ mentorProfile.bio }}</textarea>
+            <div class="pf-field">
+                <label class="pf-label">Bio / Description</label>
+                <textarea class="pf-input" name="bio" rows="4" placeholder="Tell students about your expertise...">{{ mentorProfile.bio }}</textarea>
             </div>
-            <button type="submit" class="btn-primary">Save Mentor Changes</button>
+            <div class="pf-actions">
+                <button type="submit" class="pf-save-btn">Save Mentor Profile</button>
+            </div>
         </div>
     </form>
     {% endif %}
 
-    </div>
-
-    <script>
-    (function(){
-        // Tab switching for profile page
-        const tabs = document.querySelectorAll('.tab-btn');
-        const personalForm = document.getElementById('personalForm');
-        const mentorForm = document.getElementById('mentorForm');
-        if (!tabs.length) return;
-        tabs.forEach(function(btn){
-            btn.addEventListener('click', function(){
-                tabs.forEach(b=>b.classList.remove('active'));
-                btn.classList.add('active');
-                if (btn.textContent.trim().toLowerCase().includes('mentor')){
-                    if (personalForm) personalForm.style.display = 'none';
-                    if (mentorForm) mentorForm.style.display = '';
-                } else {
-                    if (mentorForm) mentorForm.style.display = 'none';
-                    if (personalForm) personalForm.style.display = '';
-                }
-            });
-        });
-        // ensure default state: show personal
-        if (mentorForm) mentorForm.style.display = 'none';
-    })();
-    </script>
 </div>
+
+<script>
+(function(){
+    const toggleBtn = document.getElementById('pf-edit-toggle');
+    const form = document.getElementById('pf-form');
+    const actions = document.getElementById('pf-actions');
+    if (!toggleBtn || !form) return;
+
+    toggleBtn.addEventListener('click', function(){
+        const inputs = form.querySelectorAll('.pf-input:not(.pf-input--readonly)');
+        const isEditing = toggleBtn.classList.contains('active');
+        if (isEditing) {
+            inputs.forEach(el => el.setAttribute('disabled', ''));
+            actions.style.display = 'none';
+            toggleBtn.classList.remove('active');
+            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg> Edit';
+        } else {
+            inputs.forEach(el => el.removeAttribute('disabled'));
+            actions.style.display = 'flex';
+            toggleBtn.classList.add('active');
+            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg> Cancel';
+        }
+    });
+
+    // Auto-submit profile picture on file select
+    const picInput = document.getElementById('profile_picture_trigger');
+    if (picInput) {
+        picInput.addEventListener('change', function(){
+            form.submit();
+        });
+    }
+
+    // ── Show/hide password toggles ──
+    document.querySelectorAll('.pf-pw-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const input = document.getElementById(btn.dataset.target);
+            if (!input) return;
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.querySelector('.pf-eye-show').style.display = isHidden ? 'none' : '';
+            btn.querySelector('.pf-eye-hide').style.display = isHidden ? '' : 'none';
+        });
+    });
+
+    // ── Password strength ──
+    const newPwInput    = document.getElementById('pf-new-password');
+    const confirmInput  = document.getElementById('pf-confirm-password');
+    const segs          = [document.getElementById('pf-seg-1'), document.getElementById('pf-seg-2'), document.getElementById('pf-seg-3'), document.getElementById('pf-seg-4')];
+    const strengthLabel = document.getElementById('pf-strength-label');
+    const matchLabel    = document.getElementById('pf-match-label');
+    const reqs          = {
+        len:     document.getElementById('req-len'),
+        upper:   document.getElementById('req-upper'),
+        lower:   document.getElementById('req-lower'),
+        num:     document.getElementById('req-num'),
+        special: document.getElementById('req-special'),
+    };
+    const levels = ['', 'weak', 'fair', 'good', 'strong'];
+    const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+
+    const reqsList = document.getElementById('pf-pw-reqs');
+
+    function getChecks(val) {
+        return {
+            len:     val.length >= 8,
+            upper:   /[A-Z]/.test(val),
+            lower:   /[a-z]/.test(val),
+            num:     /[0-9]/.test(val),
+            special: /[^A-Za-z0-9]/.test(val),
+        };
+    }
+
+    function checkStrength(val) {
+        const checks = getChecks(val);
+        Object.keys(checks).forEach(k => {
+            if (reqs[k]) reqs[k].classList.toggle('met', checks[k]);
+        });
+        const score = Object.values(checks).filter(Boolean).length;
+        segs.forEach((s, i) => {
+            s.className = 'pf-strength-seg';
+            if (val.length > 0 && i < score) s.classList.add(levels[score]);
+        });
+        strengthLabel.className = 'pf-strength-label' + (val.length > 0 ? ' ' + levels[score] : '');
+        strengthLabel.textContent = val.length > 0 ? labels[score] : '';
+
+        // Show requirements list only while there is input and not all met
+        const allMet = Object.values(checks).every(Boolean);
+        if (val.length > 0 && !allMet) {
+            reqsList.classList.add('visible');
+        } else {
+            reqsList.classList.remove('visible');
+        }
+    }
+
+    function checkMatch() {
+        if (!confirmInput.value) { matchLabel.textContent = ''; matchLabel.className = 'pf-match-label'; return; }
+        const matches = newPwInput.value === confirmInput.value;
+        matchLabel.textContent = matches ? 'Passwords match' : 'Passwords do not match';
+        matchLabel.className = 'pf-match-label ' + (matches ? 'match' : 'no-match');
+    }
+
+    if (newPwInput) {
+        newPwInput.addEventListener('input', function() { checkStrength(this.value); checkMatch(); });
+    }
+    if (confirmInput) {
+        confirmInput.addEventListener('input', checkMatch);
+    }
+
+    // Block form submission if password fields are filled but requirements not met
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!newPwInput || !newPwInput.value) return; // no password change, allow
+            const checks = getChecks(newPwInput.value);
+            const allMet = Object.values(checks).every(Boolean);
+            if (!allMet) {
+                e.preventDefault();
+                reqsList.classList.add('visible');
+                newPwInput.focus();
+                return;
+            }
+            if (newPwInput.value !== confirmInput.value) {
+                e.preventDefault();
+                checkMatch();
+                confirmInput.focus();
+            }
+        });
+    }
+})();
+</script>
 
 {% endblock %}

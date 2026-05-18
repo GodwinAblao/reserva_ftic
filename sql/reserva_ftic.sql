@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `first_name` VARCHAR(100) DEFAULT NULL,
     `middle_name` VARCHAR(100) DEFAULT NULL,
     `last_name` VARCHAR(100) DEFAULT NULL,
-    `degree` VARCHAR(50) DEFAULT NULL,
+    `degree` VARCHAR(100) DEFAULT NULL,
     `degree_name` VARCHAR(255) DEFAULT NULL,
     `profile_picture` VARCHAR(255) DEFAULT NULL,
     UNIQUE INDEX `UNIQ_8D93D649E7927C74` (`email`),

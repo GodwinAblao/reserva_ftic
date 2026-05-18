@@ -47,17 +47,33 @@ class ProfileController extends AbstractController
                 $lastName = $request->request->get('last_name');
                 $degree = $request->request->get('degree');
                 $degreeName = $request->request->get('degree_name');
-                $email = $request->request->get('email');
+                $currentPassword = $request->request->get('current_password');
                 $password = $request->request->get('password');
+                $passwordConfirm = $request->request->get('password_confirm');
                 $profilePictureFile = $request->files->get('profile_picture');
 
-                $user->setFirstName($firstName);
-                $user->setMiddleName($middleName);
-                $user->setLastName($lastName);
-                $user->setDegree($degree);
-                $user->setDegreeName($degreeName);
-                if ($email) $user->setEmail($email);
-                if ($password) $user->setPassword($passwordHasher->hashPassword($user, $password));
+                if ($firstName) $user->setFirstName($firstName);
+                if ($middleName !== null) $user->setMiddleName($middleName ?: null);
+                if ($lastName) $user->setLastName($lastName);
+                if ($degree !== null) $user->setDegree($degree ?: null);
+                if ($degreeName !== null) $user->setDegreeName($degreeName ?: null);
+
+                // Password change — require current password + confirmation match
+                if ($password) {
+                    if (!$currentPassword) {
+                        $this->addFlash('error', 'Please enter your current password to set a new one.');
+                        return $this->redirectToRoute('app_profile');
+                    }
+                    if (!$passwordHasher->isPasswordValid($user, $currentPassword)) {
+                        $this->addFlash('error', 'Current password is incorrect.');
+                        return $this->redirectToRoute('app_profile');
+                    }
+                    if ($password !== $passwordConfirm) {
+                        $this->addFlash('error', 'New passwords do not match.');
+                        return $this->redirectToRoute('app_profile');
+                    }
+                    $user->setPassword($passwordHasher->hashPassword($user, $password));
+                }
 
                 if ($profilePictureFile instanceof UploadedFile && $profilePictureFile->isValid()) {
                     $originalFilename = pathinfo($profilePictureFile->getClientOriginalName(), PATHINFO_FILENAME);
@@ -114,7 +130,7 @@ class ProfileController extends AbstractController
 
                 try {
                     $em->flush();
-                    $this->addFlash('success', 'Profile saved! Name: ' . $firstName . ', Degree: ' . $degreeName);
+                    $this->addFlash('success', 'Profile updated successfully.');
                 } catch (\Exception $e) {
                     $this->addFlash('error', 'Save failed: ' . $e->getMessage());
                 }
