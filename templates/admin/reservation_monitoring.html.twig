@@ -35,6 +35,20 @@
 {# API meta tag — read by app.js section 6 for live polling #}
 <meta name="rm-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_reservation_monitoring') : path('admin_role_api_reservation_monitoring') }}">
 
+<div class="sa-page-header" style="margin-bottom: 20px;">
+    <div class="sa-page-header-left">
+        <h2 style="margin:0;font-size:1.35rem;">Reservation Monitoring</h2>
+        <p style="margin:4px 0 0;color:#6b7280;font-size:0.9rem;">Today's reservations and status processing history</p>
+    </div>
+    <div class="sa-header-actions">
+        {% if is_granted('ROLE_SUPER_ADMIN') %}
+            <a href="{{ path('admin_calendar') }}" class="sa-btn sa-btn-primary">Calendar View</a>
+        {% else %}
+            <a href="{{ path('admin_role_calendar') }}" class="sa-btn sa-btn-primary">Calendar View</a>
+        {% endif %}
+    </div>
+</div>
+
 <div class="rm-layout">
     <div class="rm-main">
         <div class="rm-chart-card">
@@ -95,6 +109,8 @@
         </div>
     </div>
 </div>
+
+{% include 'admin/_status_audit_trail.html.twig' %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>

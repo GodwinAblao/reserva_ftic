@@ -2,14 +2,27 @@
 
 {% block title %}Calendar View - Reserva FTIC{% endblock %}
 
+{% set calendar_full_mode = calendar_full_mode|default(true) %}
+
 {% block content %}
+<div id="calendarApp"
+     data-data-url="{{ calendar_data_url|default(path('admin_calendar_data')) }}"
+     data-edit-url-pattern="{{ calendar_edit_url_pattern|default('/super-admin/reservations/{id}/edit') }}"
+     data-status-url-pattern="{{ calendar_status_url_pattern|default('') }}"
+     data-block-create-url="{{ calendar_block_create_url|default(path('admin_calendar_block')) }}"
+     data-import-url="{{ calendar_import_url|default(path('admin_calendar_import')) }}"
+     data-import-delete-url="{{ calendar_import_delete_url|default(path('admin_calendar_import_delete')) }}"
+     data-block-update-pattern="{{ calendar_block_update_pattern|default('/super-admin/calendar/block/{id}/update') }}"
+     data-block-delete-pattern="{{ calendar_block_delete_pattern|default('/super-admin/calendar/block/{id}/delete') }}"
+     data-full-mode="{{ calendar_full_mode ? '1' : '0' }}"
+     style="display:none;"></div>
 <div class="sa-page-header">
     <div class="sa-page-header-left">
         <h2>Reservation Calendar</h2>
-        <p>View and manage all facility reservations on the calendar</p>
+        <p>{% if calendar_full_mode %}View and manage all facility reservations on the calendar{% else %}View reservations and update status (Pending, Approved, Rejected, Cancelled){% endif %}</p>
     </div>
     <div class="sa-header-actions">
-        <a href="{{ path('admin_reservations') }}" class="sa-btn sa-btn-secondary">← List View</a>
+        <a href="{{ calendar_back_url|default(path('admin_reservations')) }}" class="sa-btn sa-btn-secondary">← Back</a>
     </div>
 </div>
 
@@ -33,6 +46,7 @@
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Cancelled">Cancelled</option>
                     <option value="Class Schedule">Class Schedule</option>
                     <option value="Blocked">Blocked</option>
                     <option value="Manual">Manual</option>
@@ -64,7 +78,7 @@
         </div>
     </div>
 
-
+    {% if calendar_full_mode %}
     <div class="sa-import-grid">
         <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" class="sa-import-card">
             <h3>Import Class Schedule</h3>
@@ -115,6 +129,7 @@
             <div id="manualBlockMessage" class="schedule-import-message" style="display:none;"></div>
         </form>
     </div>
+    {% endif %}
     <!-- Calendar Grid -->
     <div class="sa-card" style="padding:0; overflow:auto;">
         <div id="calendarStatus" class="calendar-status calendar-status-loading">
@@ -296,6 +311,17 @@
 </style>
 
 <script>
+    const calendarAppEl = document.getElementById('calendarApp');
+    const calendarConfig = {
+        dataUrl: calendarAppEl.dataset.dataUrl,
+        editUrlPattern: calendarAppEl.dataset.editUrlPattern,
+        statusUrlPattern: calendarAppEl.dataset.statusUrlPattern || '',
+        blockCreateUrl: calendarAppEl.dataset.blockCreateUrl || '',
+        blockUpdatePattern: calendarAppEl.dataset.blockUpdatePattern || '',
+        blockDeletePattern: calendarAppEl.dataset.blockDeletePattern || '',
+        fullMode: calendarAppEl.dataset.fullMode === '1',
+    };
+
     const today = new Date();
     const initialCalendarDate = '{{ initialDate|default('')|e('js') }}';
     let currentDate = initialCalendarDate
@@ -337,12 +363,14 @@
             if (e.target.id === 'deleteScheduleModal') closeDeleteScheduleModal();
         });
         document.getElementById('calendarRetryBtn').addEventListener('click', () => renderCalendar(true));
-        document.getElementById('scheduleImportForm').addEventListener('submit', importScheduleInBackground);
-        document.getElementById('manualBlockForm').addEventListener('submit', saveManualBlockInBackground);
-        document.getElementById('manualBlockCancelEdit').addEventListener('click', resetManualBlockForm);
-        document.getElementById('scheduleDeleteSubmit').addEventListener('click', openDeleteScheduleModal);
-        document.getElementById('cancelDeleteSchedule').addEventListener('click', closeDeleteScheduleModal);
-        document.getElementById('confirmDeleteSchedule').addEventListener('click', deleteImportedScheduleInBackground);
+        if (calendarConfig.fullMode) {
+            document.getElementById('scheduleImportForm').addEventListener('submit', importScheduleInBackground);
+            document.getElementById('manualBlockForm').addEventListener('submit', saveManualBlockInBackground);
+            document.getElementById('manualBlockCancelEdit').addEventListener('click', resetManualBlockForm);
+            document.getElementById('scheduleDeleteSubmit').addEventListener('click', openDeleteScheduleModal);
+            document.getElementById('cancelDeleteSchedule').addEventListener('click', closeDeleteScheduleModal);
+            document.getElementById('confirmDeleteSchedule').addEventListener('click', deleteImportedScheduleInBackground);
+        }
         window.addEventListener('focus', () => renderCalendar(true));
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) renderCalendar(true);
@@ -418,7 +446,9 @@
         const originalText = submitButton.textContent;
         let savedSuccessfully = false;
         const blockId = document.getElementById('manualBlockId').value;
-        const actionUrl = blockId ? `/super-admin/calendar/block/${blockId}/update` : form.dataset.createUrl;
+        const actionUrl = blockId
+            ? calendarConfig.blockUpdatePattern.replace('{id}', blockId)
+            : form.dataset.createUrl;
 
         submitButton.disabled = true;
         submitButton.textContent = blockId ? 'Updating...' : 'Adding...';
@@ -763,7 +793,7 @@
 
     async function fetchReservations(startDate, endDate, signal) {
         const params = new URLSearchParams({ start: formatDateForAPI(startDate), end: formatDateForAPI(endDate), facility: selectedFacility, status: selectedStatus });
-        const response = await fetch(`/super-admin/calendar/data?${params}`, { cache: 'no-store', signal });
+        const response = await fetch(`${calendarConfig.dataUrl}?${params}`, { cache: 'no-store', signal });
         if (!response.ok) {
             throw new Error('Calendar data request failed.');
         }
@@ -872,7 +902,8 @@
             ' data-email="' + safeEmail + '"' +
             ' data-contact="' + safeContact + '"' +
             ' data-capacity="' + safeCapacity + '"' +
-            ' data-facility-capacity="' + safeFacilityCapacity + '">' +
+            ' data-facility-capacity="' + safeFacilityCapacity + '"' +
+            ' data-status-csrf="' + escapeHtml(event.statusCsrfToken || '') + '">' +
             '<div class="event-title">' + safeFacility + '</div>' +
             '<div class="event-requester">' + safeName + '</div>' +
             '<div class="event-time">' + timeDisplay + '</div>' +
@@ -888,13 +919,31 @@
             ? [['Event Name', eventName], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Event Objective', data.purpose || 'None']]
             : [['Event Name', eventName], ['Requester', data.title], ['Email', data.email], ['Contact', data.contact], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Attendees', `${data.capacity} / ${data.facilityCapacity}`], ['Event Objective', data.purpose || 'None']];
         document.getElementById('modalBody').innerHTML = details.map(([label, value]) => `<div class="detail-row"><span class="detail-label">${label}:</span><span class="detail-value">${value}</span></div>`).join('');
-        if (data.isBlock === '1' && data.status !== 'Class Schedule') {
+        if (data.isBlock === '1' && !calendarConfig.fullMode) {
+            document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Schedule block (view only)</p>';
+        } else if (data.isBlock === '1' && data.status !== 'Class Schedule') {
             document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;
         } else if (data.isBlock === '1') {
             document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Schedule</button>`;
         } else {
-            document.getElementById('modalActions').innerHTML = `<a href="/super-admin/reservations/${data.id}/edit" class="btn-edit">Edit</a>`;
+            const editUrl = calendarConfig.editUrlPattern.replace('{id}', data.id);
+            if (calendarConfig.fullMode) {
+                document.getElementById('modalActions').innerHTML = `<a href="${editUrl}" class="btn-edit">Edit</a>`;
+            } else {
+                const statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
+                const options = statuses.map(s => `<option value="${s}" ${s === data.status ? 'selected' : ''}>${s}</option>`).join('');
+                document.getElementById('modalActions').innerHTML = `
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;">
+                        <label style="font-weight:700;color:#374151;">Status</label>
+                        <select id="modalStatusSelect" class="sa-form-input" style="min-width:160px;">${options}</select>
+                        <button type="button" class="btn-approve" id="modalStatusSave">Save Status</button>
+                        <a href="${editUrl}" class="btn-edit">Full Edit</a>
+                    </div>`;
+                document.getElementById('modalStatusSave').onclick = () => saveReservationStatusFromModal(data);
+            }
         }
+        document.getElementById('eventModal').dataset.activeReservationId = data.isBlock === '1' ? '' : (data.id || '');
+        document.getElementById('eventModal').dataset.activeStatusCsrf = data.statusCsrf || '';
         document.getElementById('eventModal').dataset.activeBlock = data.blockId || '';
         document.getElementById('eventModal').dataset.activeFacilityId = data.facilityId || '';
         document.getElementById('eventModal').dataset.activeDate = data.date || '';
@@ -967,7 +1016,7 @@
         setCalendarStatus('Deleting manual schedule block...', 'loading', false);
 
         try {
-            const response = await fetch(`/super-admin/calendar/block/${blockId}/delete`, {
+            const response = await fetch(calendarConfig.blockDeletePattern.replace('{id}', blockId), {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -997,6 +1046,42 @@
         messageBox.textContent = message;
         messageBox.className = 'schedule-import-message ' + type;
         messageBox.style.display = 'block';
+    }
+
+    async function saveReservationStatusFromModal(data) {
+        const select = document.getElementById('modalStatusSelect');
+        if (!select || !calendarConfig.statusUrlPattern) {
+            return;
+        }
+
+        const newStatus = select.value;
+        const url = calendarConfig.statusUrlPattern.replace('{id}', data.id);
+        const formData = new FormData();
+        formData.append('status', newStatus);
+        formData.append('_token', data.statusCsrf || '');
+
+        setCalendarStatus('Updating reservation status...', 'loading', false);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Status update failed.');
+            }
+            closeModal();
+            calendarEventsCache.clear();
+            setCalendarStatus(result.message || 'Status updated.', 'success', true);
+            await renderCalendar(true);
+        } catch (error) {
+            setCalendarStatus(error.message || 'Status update failed.', 'error', false);
+        }
     }
 
     function closeModal() {

@@ -27,27 +27,10 @@ class NotificationController extends AbstractController
         }
 
         $notifications = $notificationRepo->findLatest($user, 20);
-        
-        $data = array_map(function(Notification $n) {
-            // compute a link appropriate to the notification and the current user's roles
-            $link = '#';
-            if ($n->getType() === 'mentor_assistance' && $this->isGranted('ROLE_ADMIN')) {
-                $link = $this->generateUrl('mentoring_admin_requests');
-            } elseif (str_starts_with($n->getType(), 'mentor')) {
-                if ($this->isGranted('ROLE_ADMIN')) {
-                    $link = $this->generateUrl('mentoring_super-admin');
-                } else {
-                    $link = $this->generateUrl('mentoring_index');
-                }
-            } elseif ($n->getType() === 'reservation') {
-                if ($this->isGranted('ROLE_ADMIN')) {
-                    $link = $this->generateUrl('admin_reservations');
-                } else {
-                    $link = $this->generateUrl('user_reservations');
-                }
-            }
 
-            return [
+        $data = [];
+        foreach ($notifications as $n) {
+            $data[] = [
                 'id' => $n->getId(),
                 'type' => $n->getType(),
                 'title' => $n->getTitle(),
@@ -56,9 +39,9 @@ class NotificationController extends AbstractController
                 'isRead' => $n->isIsRead(),
                 'referenceId' => $n->getReferenceId(),
                 'createdAt' => $n->getCreatedAt()->format('c'),
-                'link' => $link,
+                'link' => $this->resolveNotificationLink($n),
             ];
-        }, $notifications);
+        }
 
         $response = $this->json([
             'notifications' => $data,
@@ -181,5 +164,44 @@ class NotificationController extends AbstractController
         $em->flush();
 
         return $notification;
+    }
+
+    /**
+     * Route each notification to the correct area for the current access level.
+     * Super Admin and Admin both have ROLE_ADMIN — check ROLE_SUPER_ADMIN first.
+     */
+    private function resolveNotificationLink(Notification $n): string
+    {
+        if ($n->getType() === 'mentor_assistance' && $this->isGranted('ROLE_ADMIN')) {
+            if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                return $this->generateUrl('mentoring_admin_requests');
+            }
+
+            return $this->generateUrl('admin_role_mentorship_coordination');
+        }
+
+        if (str_starts_with($n->getType(), 'mentor')) {
+            if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                return $this->generateUrl('mentoring_super-admin');
+            }
+            if ($this->isGranted('ROLE_ADMIN')) {
+                return $this->generateUrl('admin_role_mentorship_coordination');
+            }
+
+            return $this->generateUrl('mentoring_index');
+        }
+
+        if ($n->getType() === 'reservation') {
+            if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                return $this->generateUrl('admin_reservations');
+            }
+            if ($this->isGranted('ROLE_ADMIN')) {
+                return $this->generateUrl('admin_role_reservation_monitoring');
+            }
+
+            return $this->generateUrl('user_reservations');
+        }
+
+        return '#';
     }
 }

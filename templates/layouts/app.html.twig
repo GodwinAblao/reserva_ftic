@@ -33,7 +33,7 @@
         {% set admin_page_name = 'Research Management' %}
     {% elseif route starts with 'analytics_' or route == 'admin_role_reports' %}
         {% set admin_page_name = 'Analytics' %}
-    {% elseif route starts with 'admin_calendar' %}
+    {% elseif route starts with 'admin_calendar' or route starts with 'admin_role_calendar' %}
         {% set admin_page_name = 'Calendar' %}
     {% endif %}
 
@@ -202,7 +202,7 @@
                     <span>Account Profile</span>
                 </a>
                 <span class="nav-section-label">Monitoring</span>
-                <a class="nav-link {{ route == 'admin_role_reservation_monitoring' or route starts with 'admin_calendar' or route == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_role_reservation_monitoring') }}">
+                <a class="nav-link {{ route == 'admin_role_reservation_monitoring' or route starts with 'admin_role_calendar' or route starts with 'admin_calendar' or route == 'admin_reservations' ? 'active' : '' }}" href="{{ path('admin_role_reservation_monitoring') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg></span>
                     <span>Reservation</span>
                 </a>

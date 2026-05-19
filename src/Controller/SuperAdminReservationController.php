@@ -8,6 +8,10 @@ use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityScheduleBlockRepository;
 use App\Repository\ReservationRepository;
+use App\Repository\ReservationStatusLogRepository;
+use App\Service\CalendarDataService;
+use App\Service\ReservationAuditLogger;
+use App\Service\ReservationStatusManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -22,8 +26,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class SuperAdminReservationController extends AbstractController
 {
     #[Route('/reservations', name: 'admin_reservations')]
-    public function listReservations(ReservationRepository $reservationRepo): Response
-    {
+    public function listReservations(
+        ReservationRepository $reservationRepo,
+        ReservationStatusLogRepository $auditRepo,
+    ): Response {
         $pending = $reservationRepo->findBy(['status' => 'Pending'], ['createdAt' => 'DESC']);
         $approved = $reservationRepo->findBy(['status' => 'Approved'], ['reservationDate' => 'DESC']);
         $rejected = $reservationRepo->findBy(['status' => 'Rejected'], ['reservationDate' => 'DESC']);
@@ -34,6 +40,7 @@ class SuperAdminReservationController extends AbstractController
             'approved' => $approved,
             'rejected' => $rejected,
             'suggested' => $suggested,
+            'statusAuditLogs' => $auditRepo->findRecent(30),
         ]);
     }
 
@@ -41,33 +48,25 @@ class SuperAdminReservationController extends AbstractController
     public function approveReservation(
         Reservation $reservation,
         Request $request,
-        ReservationRepository $reservationRepo,
-        EntityManagerInterface $em
+        ReservationStatusManager $statusManager
     ): Response {
         if (!$this->isCsrfTokenValid('approve_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $result = $statusManager->approve($reservation, $isAjax);
 
-        if ($reservation->getReservationDate()->format('w') == '0') {
-            if ($isAjax) return $this->json(['success' => false, 'message' => 'Cannot approve: facilities are closed on Sundays.']);
-            $this->addFlash('error', 'Cannot approve reservation: All facilities are closed on Sundays.');
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        if (!$result['success']) {
+            $this->addFlash('error', $result['message']);
             return $this->redirectToRoute('admin_reservations');
         }
 
-        if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $reservation->getReservationDate(), $reservation->getReservationStartTime(), $reservation->getReservationEndTime(), $reservation->getId(), ['Approved', 'Pending'])) {
-            if ($isAjax) return $this->json(['success' => false, 'message' => 'Cannot approve: this time slot is already booked.']);
-            $this->addFlash('error', 'Cannot approve: this time slot is already booked for this facility.');
-            return $this->redirectToRoute('admin_reservations');
-        }
-
-        $reservation->setStatus('Approved');
-        $reservation->setUpdatedAt(new \DateTime());
-        $em->flush();
-
-        if ($isAjax) return $this->json(['success' => true, 'message' => 'Reservation approved successfully.']);
-        $this->addFlash('success', 'Reservation approved successfully.');
+        $this->addFlash('success', $result['message']);
         return $this->redirectToRoute('admin_reservations');
     }
 
@@ -75,21 +74,26 @@ class SuperAdminReservationController extends AbstractController
     public function rejectReservation(
         Reservation $reservation,
         Request $request,
-        EntityManagerInterface $em
+        ReservationStatusManager $statusManager
     ): Response {
         if (!$this->isCsrfTokenValid('reject_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $reason = (string) ($request->request->get('reason') ?? 'Not specified');
+        $result = $statusManager->reject($reservation, $reason, $isAjax);
 
-        $reason = $request->request->get('reason') ?? 'Not specified';
-        $reservation->setStatus('Rejected');
-        $reservation->setRejectionReason($reason);
-        $em->flush();
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
 
-        if ($isAjax) return $this->json(['success' => true, 'message' => 'Reservation rejected successfully.']);
-        $this->addFlash('success', 'Reservation rejected successfully.');
+        if (!$result['success']) {
+            $this->addFlash('error', $result['message']);
+            return $this->redirectToRoute('admin_reservations');
+        }
+
+        $this->addFlash('success', $result['message']);
         return $this->redirectToRoute('admin_reservations');
     }
 
@@ -310,126 +314,44 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/calendar', name: 'admin_calendar')]
     public function calendar(
         Request $request,
-        ReservationRepository $reservationRepo,
         FacilityRepository $facilityRepo
     ): Response {
         $facilities = $facilityRepo->findAll();
         $initialDate = $request->query->get('date');
         $parsedInitialDate = $initialDate ? \DateTime::createFromFormat('!Y-m-d', $initialDate) : null;
-        
+
         return $this->render('super_admin/calendar.html.twig', [
             'facilities' => $facilities,
             'initialDate' => $parsedInitialDate ? $parsedInitialDate->format('Y-m-d') : null,
+            'calendar_full_mode' => true,
+            'calendar_back_url' => $this->generateUrl('admin_reservations'),
+            'calendar_data_url' => $this->generateUrl('admin_calendar_data'),
+            'calendar_edit_url_pattern' => '/super-admin/reservations/{id}/edit',
+            'calendar_block_create_url' => $this->generateUrl('admin_calendar_block'),
+            'calendar_import_url' => $this->generateUrl('admin_calendar_import'),
+            'calendar_import_delete_url' => $this->generateUrl('admin_calendar_import_delete'),
+            'calendar_block_update_pattern' => '/super-admin/calendar/block/{id}/update',
+            'calendar_block_delete_pattern' => '/super-admin/calendar/block/{id}/delete',
         ]);
     }
 
     #[Route('/calendar/data', name: 'admin_calendar_data')]
-    public function calendarData(
-        Request $request,
-        ReservationRepository $reservationRepo,
-        FacilityRepository $facilityRepo,
-        FacilityScheduleBlockRepository $blockRepo
-    ): JsonResponse {
+    public function calendarData(Request $request, CalendarDataService $calendarData): JsonResponse
+    {
         $start = $request->query->get('start');
         $end = $request->query->get('end');
-        $facilityId = $request->query->get('facility');
-        $status = $request->query->get('status');
 
         if (!$start || !$end) {
             return $this->json(['reservations' => []]);
         }
 
-        $data = [];
-        $startDate = new \DateTime($start);
-        $endDate = new \DateTime($end);
-
-        // Debug logging
-        error_log("Calendar Data API called - Start: $start, End: $end, Facility: $facilityId, Status: $status");
-
-        // Only fetch reservations if not filtering by block-only status
-        if (!$status || !in_array($status, ['Class Schedule', 'Blocked', 'Manual', 'Maintenance'], true)) {
-            $qb = $reservationRepo->createQueryBuilder('r')
-                ->select('r.id', 'r.name', 'r.eventName', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
-                ->innerJoin('r.facility', 'f')
-                ->where('r.reservationDate BETWEEN :start AND :end')
-                ->setParameter('start', $startDate)
-                ->setParameter('end', $endDate)
-                ->orderBy('r.reservationDate', 'ASC')
-                ->addOrderBy('r.reservationStartTime', 'ASC');
-
-            if ($facilityId) {
-                $qb->andWhere('f.id = :facilityId')
-                   ->setParameter('facilityId', (int) $facilityId);
-            }
-
-            if ($status) {
-                $qb->andWhere('r.status = :status')
-                   ->setParameter('status', $status);
-            }
-
-            $reservations = $qb->getQuery()->getArrayResult();
-
-            // Debug logging
-            error_log("Calendar Data API - Found " . count($reservations) . " reservations");
-
-            foreach ($reservations as $r) {
-                $data[] = [
-                    'id' => $r['id'],
-                    'name' => $r['name'],
-                    'eventName' => $r['eventName'],
-                    'email' => $r['email'],
-                    'contact' => $r['contact'],
-                    'reservationDate' => $r['reservationDate']->format('Y-m-d'),
-                    'reservationStartTime' => $r['reservationStartTime']->format('H:i'),
-                    'reservationEndTime' => $r['reservationEndTime']->format('H:i'),
-                    'capacity' => $r['capacity'],
-                    'purpose' => $r['purpose'],
-                    'status' => $r['status'],
-                    'isBlock' => false,
-                    'facility' => [
-                        'id' => $r['facilityId'],
-                        'name' => $r['facilityName'],
-                        'capacity' => $r['facilityCapacity'],
-                    ],
-                ];
-            }
-        }
-
-        $reservationOnlyStatuses = ['Approved', 'Pending', 'Rejected'];
-        $blockStatuses = ['Class Schedule', 'Blocked', 'Manual', 'Maintenance', 'Imported'];
-        
-        // Only fetch blocks if no status filter, or if status is a block type
-        if (!$status || in_array($status, $blockStatuses, true)) {
-            $blockFacility = $facilityId ? $facilityRepo->find((int) $facilityId) : null;
-            $blockType = $status && in_array($status, $blockStatuses, true) ? $status : null;
-            $blocks = $blockRepo->findBetween($startDate, $endDate, $blockFacility, $blockType);
-            
-            foreach ($blocks as $block) {
-                $facility = $block->getFacility();
-                if ($facilityId && $facility->getId() != $facilityId) {
-                    continue;
-                }
-                $data[] = [
-                    'id' => 'block_' . $block->getId(),
-                    'name' => $block->getTitle(),
-                    'email' => '',
-                    'contact' => '',
-                    'purpose' => $block->getNotes(),
-                    'status' => $block->getType() ?: 'Class Schedule',
-                    'capacity' => 0,
-                    'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
-                    'reservationStartTime' => $block->getStartTime()->format('H:i'),
-                    'reservationEndTime' => $block->getEndTime()->format('H:i'),
-                    'facility' => ['id' => $facility->getId(), 'name' => $facility->getName(), 'capacity' => $facility->getCapacity()],
-                    'isBlock' => true,
-                ];
-            }
-        }
-
-        // Debug logging
-        error_log("Calendar Data API - Returning " . count($data) . " total items (reservations + blocks)");
-
-        return $this->json(['reservations' => $data]);
+        return $this->json($calendarData->buildCalendarPayload(
+            $start,
+            $end,
+            $request->query->get('facility'),
+            $request->query->get('status'),
+            true,
+        ));
     }
 
     #[Route('/calendar/block', name: 'admin_calendar_block', methods: ['POST'])]
@@ -728,11 +650,15 @@ class SuperAdminReservationController extends AbstractController
         Reservation $reservation,
         Request $request,
         ReservationRepository $reservationRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ReservationAuditLogger $auditLogger,
     ): Response {
         if (!$this->isCsrfTokenValid('update_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
+
+        $previousStatus = $reservation->getStatus();
+        $newStatus = (string) $request->request->get('status');
 
         // Update basic information
         $reservation->setName($request->request->get('name'));
@@ -741,7 +667,7 @@ class SuperAdminReservationController extends AbstractController
         $reservation->setContact($request->request->get('contact'));
         $reservation->setCapacity((int)$request->request->get('capacity'));
         $reservation->setPurpose($request->request->get('purpose'));
-        $reservation->setStatus($request->request->get('status'));
+        $reservation->setStatus($newStatus);
 
         // Update dates and times
         $reservationDate = new \DateTime($request->request->get('reservationDate'));
@@ -762,7 +688,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         // Check for time conflicts only if the date/time has changed and status is being set to Approved
-        if ($request->request->get('status') === 'Approved') {
+        if ($newStatus === 'Approved') {
             if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $reservationDate, $startTime, $endTime, $reservation->getId())) {
                 $this->addFlash('error', 'Cannot update: this time range is already booked for this facility.');
                 return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
@@ -770,6 +696,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $reservation->setUpdatedAt(new \DateTime());
+        $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'update');
         $em->flush();
 
         $this->addFlash('success', 'Reservation updated successfully.');

@@ -1,0 +1,41 @@
+<div class="rm-table-card" style="margin-top: 20px;">
+    <h3 class="rm-table-title">Status change audit trail</h3>
+    <p style="font-size: 13px; color: #6b7280; margin: 0 0 14px;">Who processed each reservation — Super Admin or Admin — with previous and new status.</p>
+    <table class="rm-table">
+        <thead>
+            <tr>
+                <th>When</th>
+                <th>Actor</th>
+                <th>Facility</th>
+                <th>Requester</th>
+                <th>Change</th>
+                <th>Note</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in statusAuditLogs %}
+            <tr>
+                <td>{{ log.changedAt|date('M d, Y H:i') }}</td>
+                <td>
+                    <strong>{{ log.actorRoleLabel }}</strong>
+                    {% if log.changedBy %}
+                        <br><span style="font-size:12px;color:#9ca3af;">{{ log.changedBy.email }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ log.reservation.facility.name }}</td>
+                <td>{{ log.reservation.name }}</td>
+                <td>
+                    <span style="color:#6b7280;">{{ log.previousStatus }}</span>
+                    →
+                    <strong>{{ log.newStatus }}</strong>
+                </td>
+                <td>{{ log.note|default('—') }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align:center;color:#9ca3af;padding:24px;">No status changes recorded yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

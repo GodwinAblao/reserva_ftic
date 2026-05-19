@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="sa-form-page">
-    <a href="{{ path('admin_calendar') }}" class="sa-back-link">← Back to Calendar</a>
+    <a href="{{ path(calendar_back_route|default('admin_calendar')) }}" class="sa-back-link">← Back to Calendar</a>
 
     <div class="sa-page-header">
         <div class="sa-page-header-left">
@@ -14,7 +14,7 @@
     </div>
 
     <div class="sa-card sa-form-section">
-        <form method="POST" action="{{ path('admin_update_reservation', {'id': reservation.id}) }}" class="edit-form">
+        <form method="POST" action="{{ path(update_route|default('admin_update_reservation'), {'id': reservation.id}) }}" class="edit-form">
             <input type="hidden" name="_token" value="{{ csrf_token('update_reservation_' ~ reservation.id) }}">
             <div class="sa-form-grid">
                 <div class="sa-form-group">

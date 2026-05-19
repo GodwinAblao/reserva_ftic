@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Facility;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\Reservation;
+use App\Repository\FacilityRepository;
+use App\Repository\ReservationRepository;
+use App\Repository\ReservationStatusLogRepository;
+use App\Service\CalendarDataService;
+use App\Service\ReservationAuditLogger;
+use App\Service\ReservationStatusManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -15,6 +22,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/admin')]
@@ -139,8 +147,10 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/reservation-monitoring', name: 'admin_role_reservation_monitoring', methods: ['GET'])]
-    public function reservationMonitoring(EntityManagerInterface $em): Response
-    {
+    public function reservationMonitoring(
+        EntityManagerInterface $em,
+        ReservationStatusLogRepository $auditRepo,
+    ): Response {
         $today = new \DateTime('today');
         $tomorrow = new \DateTime('tomorrow');
         $todayReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
@@ -149,11 +159,265 @@ class AdminRoleController extends AbstractController
             ->setParameter('tomorrow', $tomorrow)
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()->getResult();
+
         return $this->render('admin/reservation_monitoring.html.twig', [
             'reservations' => $todayReservations,
             'statusCounts' => $this->reservationStatusCountsToday($em),
             'facilityCounts' => $this->facilityReservationCountsToday($em),
+            'statusAuditLogs' => $auditRepo->findRecent(30),
         ]);
+    }
+
+    #[Route('/calendar', name: 'admin_role_calendar', methods: ['GET'])]
+    public function calendar(Request $request, FacilityRepository $facilityRepo): Response
+    {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_calendar');
+        }
+
+        $initialDate = $request->query->get('date');
+        $parsedInitialDate = $initialDate ? \DateTime::createFromFormat('!Y-m-d', $initialDate) : null;
+
+        return $this->render('super_admin/calendar.html.twig', [
+            'facilities' => $facilityRepo->findAll(),
+            'initialDate' => $parsedInitialDate ? $parsedInitialDate->format('Y-m-d') : null,
+            'calendar_full_mode' => false,
+            'calendar_back_url' => $this->generateUrl('admin_role_reservation_monitoring'),
+            'calendar_data_url' => $this->generateUrl('admin_role_calendar_data'),
+            'calendar_edit_url_pattern' => '/admin/reservations/{id}/edit',
+            'calendar_status_url_pattern' => '/admin/reservations/{id}/status',
+            'calendar_block_create_url' => '',
+            'calendar_import_url' => '',
+            'calendar_import_delete_url' => '',
+            'calendar_block_update_pattern' => '',
+            'calendar_block_delete_pattern' => '',
+        ]);
+    }
+
+    #[Route('/calendar/data', name: 'admin_role_calendar_data', methods: ['GET'])]
+    public function calendarData(Request $request, CalendarDataService $calendarData, CsrfTokenManagerInterface $csrfTokenManager): JsonResponse
+    {
+        $start = $request->query->get('start');
+        $end = $request->query->get('end');
+
+        if (!$start || !$end) {
+            return $this->json(['reservations' => []]);
+        }
+
+        $payload = $calendarData->buildCalendarPayload(
+            $start,
+            $end,
+            $request->query->get('facility'),
+            $request->query->get('status'),
+            true,
+        );
+
+        foreach ($payload['reservations'] as &$item) {
+            if (empty($item['isBlock']) && is_numeric($item['id'])) {
+                $item['statusCsrfToken'] = $csrfTokenManager
+                    ->getToken('update_reservation_status_' . $item['id'])
+                    ->getValue();
+            }
+        }
+        unset($item);
+
+        return $this->json($payload);
+    }
+
+    #[Route('/reservations/{id}/edit', name: 'admin_role_edit_reservation', methods: ['GET'])]
+    public function editReservation(Reservation $reservation, FacilityRepository $facilityRepo): Response
+    {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
+        }
+
+        return $this->render('super_admin/edit_reservation.html.twig', [
+            'reservation' => $reservation,
+            'facilities' => $facilityRepo->findAll(),
+            'calendar_back_route' => 'admin_role_calendar',
+            'update_route' => 'admin_role_update_reservation',
+        ]);
+    }
+
+    #[Route('/reservations/{id}/update', name: 'admin_role_update_reservation', methods: ['POST'])]
+    public function updateReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationRepository $reservationRepo,
+        EntityManagerInterface $em,
+        ReservationAuditLogger $auditLogger,
+    ): Response {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
+        }
+
+        if (!$this->isCsrfTokenValid('update_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $previousStatus = $reservation->getStatus();
+        $newStatus = (string) $request->request->get('status');
+
+        if (!ReservationAuditLogger::isManageableStatus($newStatus)) {
+            $this->addFlash('error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
+            return $this->redirectToRoute('admin_role_edit_reservation', ['id' => $reservation->getId()]);
+        }
+
+        $reservation->setName((string) $request->request->get('name'));
+        $reservation->setEventName(trim((string) $request->request->get('event_name')) ?: null);
+        $reservation->setEmail((string) $request->request->get('email'));
+        $reservation->setContact((string) $request->request->get('contact'));
+        $reservation->setCapacity((int) $request->request->get('capacity'));
+        $reservation->setPurpose($request->request->get('purpose'));
+
+        $reservationDate = new \DateTime((string) $request->request->get('reservationDate'));
+        $startTime = \DateTime::createFromFormat('H:i', (string) $request->request->get('reservationStartTime'));
+        $endTime = \DateTime::createFromFormat('H:i', (string) $request->request->get('reservationEndTime'));
+
+        $reservation->setReservationDate($reservationDate);
+        $reservation->setReservationStartTime($startTime);
+        $reservation->setReservationEndTime($endTime);
+
+        $facilityId = $request->request->get('facility');
+        if ($facilityId) {
+            $facility = $em->getRepository(Facility::class)->find($facilityId);
+            if ($facility) {
+                $reservation->setFacility($facility);
+            }
+        }
+
+        if ($newStatus === 'Approved' && $reservationRepo->isTimeRangeBooked(
+            $reservation->getFacility(),
+            $reservationDate,
+            $startTime,
+            $endTime,
+            $reservation->getId(),
+        )) {
+            $this->addFlash('error', 'Cannot update: this time range is already booked for this facility.');
+            return $this->redirectToRoute('admin_role_edit_reservation', ['id' => $reservation->getId()]);
+        }
+
+        $reservation->setStatus($newStatus);
+        $reservation->setUpdatedAt(new \DateTime());
+        $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'update');
+        $em->flush();
+
+        $this->addFlash('success', 'Reservation updated successfully.');
+
+        return $this->redirectToRoute('admin_role_calendar');
+    }
+
+    #[Route('/reservations/{id}/approve', name: 'admin_role_approve_reservation', methods: ['POST'])]
+    public function approveReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationStatusManager $statusManager,
+    ): Response {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_reservations');
+        }
+
+        if (!$this->isCsrfTokenValid('approve_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $result = $statusManager->approve($reservation, $isAjax);
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        if (!$result['success']) {
+            $this->addFlash('error', $result['message']);
+        } else {
+            $this->addFlash('success', $result['message']);
+        }
+
+        return $this->redirectToRoute('admin_role_reservation_monitoring');
+    }
+
+    #[Route('/reservations/{id}/reject', name: 'admin_role_reject_reservation', methods: ['POST'])]
+    public function rejectReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationStatusManager $statusManager,
+    ): Response {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('admin_reservations');
+        }
+
+        if (!$this->isCsrfTokenValid('reject_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $reason = (string) ($request->request->get('reason') ?? 'Not specified');
+        $result = $statusManager->reject($reservation, $reason, $isAjax);
+
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+
+        if (!$result['success']) {
+            $this->addFlash('error', $result['message']);
+        } else {
+            $this->addFlash('success', $result['message']);
+        }
+
+        return $this->redirectToRoute('admin_role_reservation_monitoring');
+    }
+
+    #[Route('/reservations/{id}/status', name: 'admin_role_update_reservation_status', methods: ['POST'])]
+    public function updateReservationStatus(
+        Reservation $reservation,
+        Request $request,
+        ReservationStatusManager $statusManager,
+    ): JsonResponse {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->isCsrfTokenValid('update_reservation_status_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $newStatus = (string) $request->request->get('status');
+        $note = $request->request->get('note');
+        $result = $statusManager->applyManageableStatus($reservation, $newStatus, 'calendar', is_string($note) ? $note : null);
+
+        if (!$result['ok']) {
+            return $this->json(['success' => false, 'message' => $result['message'] ?? 'Update failed.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json(['success' => true, 'message' => 'Status updated to ' . $newStatus . '.']);
+    }
+
+    #[Route('/api/reservation-audit', name: 'admin_role_api_reservation_audit', methods: ['GET'])]
+    public function apiReservationAudit(ReservationStatusLogRepository $auditRepo): JsonResponse
+    {
+        $logs = array_map(static function ($log) {
+            $reservation = $log->getReservation();
+            $facility = $reservation?->getFacility();
+            $user = $log->getChangedBy();
+
+            return [
+                'changedAt' => $log->getChangedAt()->format('M d, Y H:i'),
+                'actorRole' => $log->getActorRoleLabel(),
+                'actorEmail' => $user?->getEmail() ?? '',
+                'facility' => $facility?->getName() ?? '',
+                'requester' => $reservation?->getName() ?? '',
+                'previousStatus' => $log->getPreviousStatus(),
+                'newStatus' => $log->getNewStatus(),
+                'action' => $log->getAction(),
+                'note' => $log->getNote(),
+            ];
+        }, $auditRepo->findRecent(50));
+
+        $response = $this->json(['logs' => $logs]);
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
     }
 
     #[Route('/api/reservation-monitoring', name: 'admin_role_api_reservation_monitoring', methods: ['GET'])]
