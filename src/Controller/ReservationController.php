@@ -8,7 +8,8 @@ use App\Entity\User;
 use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
-use App\Repository\FacilityScheduleBlockRepository;
+use App\Service\FacilityAvailabilityService;
+use App\Service\ScheduleRevisionService;
 use App\Repository\UserRepository;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,12 +25,22 @@ use Symfony\Component\Mime\Email;
 #[Route('/facility')]
 class ReservationController extends AbstractController
 {
+    #[Route('/schedule-revision', name: 'facility_schedule_revision', methods: ['GET'])]
+    public function scheduleRevision(ScheduleRevisionService $revision): JsonResponse
+    {
+        $response = $this->json(['revision' => $revision->getRevision()]);
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+        return $response;
+    }
+
     #[Route('/{id}/reserve', name: 'facility_reserve', methods: ['GET', 'POST'])]
 public function reserve(
         Facility $facility,
         Request $request,
         ReservationRepository $reservationRepo,
-        FacilityScheduleBlockRepository $blockRepo,
+        FacilityAvailabilityService $availabilityService,
+        ScheduleRevisionService $scheduleRevision,
         EntityManagerInterface $em,
         MailerInterface $mailer,
         UserRepository $userRepository
@@ -166,60 +177,7 @@ public function reserve(
             }
         }
 
-        // Get booked times for calendar
-        $bookedTimes = [];
-        $pendingTimes = [];
-        $classTimes = [];
-        $startDate = new \DateTime();
-        for ($i = 0; $i < 30; $i++) {
-            $date = (new \DateTime())->modify("+$i days");
-            $dateStr = $date->format('Y-m-d');
-            $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
-            $bookedTimes[$dateStr] = array_map(
-                fn($range) => [
-                    'start' => $range['start']->format('H:i'),
-                    'end' => $range['end']->format('H:i'),
-                ],
-                $ranges
-            );
-            // Separate class schedules from other blocks
-            $allBlocks = $blockRepo->findForDate($facility, $date);
-            $classBlocks = array_filter($allBlocks, fn($block) => $block->getType() === 'Class Schedule');
-            $otherBlocks = array_filter($allBlocks, fn($block) => $block->getType() !== 'Class Schedule');
-            
-            $classTimes[$dateStr] = array_map(
-                fn($block) => [
-                    'start' => $block->getStartTime()->format('H:i'),
-                    'end' => $block->getEndTime()->format('H:i'),
-                ],
-                array_values($classBlocks)
-            );
-            $blockedRanges = array_map(
-                fn($block) => [
-                    'start' => $block->getStartTime(),
-                    'end' => $block->getEndTime(),
-                ],
-                array_values($otherBlocks)
-            );
-            $bookedTimes[$dateStr] = array_merge(
-                $bookedTimes[$dateStr],
-                array_map(
-                    fn($range) => [
-                        'start' => $range['start']->format('H:i'),
-                        'end' => $range['end']->format('H:i'),
-                    ],
-                    $blockedRanges
-                )
-            );
-            $pendingRanges = $reservationRepo->getPendingRangesForDate($facility, $date);
-            $pendingTimes[$dateStr] = array_map(
-                fn($range) => [
-                    'start' => $range['start']->format('H:i'),
-                    'end' => $range['end']->format('H:i'),
-                ],
-                $pendingRanges
-            );
-        }
+        $availability = $availabilityService->buildAvailabilityMap($facility, new \DateTime('today'), 90);
 
         $user = $this->getUser();
         $userEmail = '';
@@ -231,9 +189,10 @@ public function reserve(
 
         return $this->render('reservation/reserve.html.twig', [
             'facility' => $facility,
-            'bookedTimes' => json_encode($bookedTimes),
-            'pendingTimes' => json_encode($pendingTimes),
-            'classTimes' => json_encode($classTimes),
+            'bookedTimes' => json_encode($availability['bookedTimes']),
+            'pendingTimes' => json_encode($availability['pendingTimes']),
+            'classTimes' => json_encode($availability['classTimes']),
+            'scheduleRevision' => $scheduleRevision->getRevision(),
             'userEmail' => $userEmail,
             'userName' => $userName,
         ]);
@@ -243,63 +202,22 @@ public function reserve(
     public function availability(
         Facility $facility,
         Request $request,
-        ReservationRepository $reservationRepo,
-        FacilityScheduleBlockRepository $blockRepo
+        FacilityAvailabilityService $availabilityService,
+        ScheduleRevisionService $scheduleRevision,
     ): JsonResponse {
-        $days = max(1, min(90, (int) $request->query->get('days', 30)));
+        $days = max(1, min(120, (int) $request->query->get('days', 90)));
         $startDate = \DateTime::createFromFormat('!Y-m-d', (string) $request->query->get('start'));
         if (!$startDate) {
             $startDate = new \DateTime('today');
         }
 
-        $bookedTimes = [];
-        $pendingTimes = [];
-        $classTimes = [];
+        $payload = $availabilityService->buildAvailabilityMap($facility, $startDate, $days);
+        $payload['scheduleRevision'] = $scheduleRevision->getRevision();
 
-        for ($i = 0; $i < $days; $i++) {
-            $date = (clone $startDate)->modify("+$i days");
-            $dateStr = $date->format('Y-m-d');
-            $ranges = $reservationRepo->getBookedRangesForDate($facility, $date);
-            $allBlocks = $blockRepo->findForDate($facility, $date);
-            $classBlocks = array_filter($allBlocks, fn($block) => $block->getType() === 'Class Schedule');
-            $otherBlocks = array_filter($allBlocks, fn($block) => $block->getType() !== 'Class Schedule');
-            
-            $classTimes[$dateStr] = array_map(
-                fn($block) => [
-                    'start' => $block->getStartTime()->format('H:i'),
-                    'end' => $block->getEndTime()->format('H:i'),
-                ],
-                array_values($classBlocks)
-            );
-            $blockedRanges = array_map(
-                fn($block) => [
-                    'start' => $block->getStartTime(),
-                    'end' => $block->getEndTime(),
-                ],
-                array_values($otherBlocks)
-            );
-            $bookedTimes[$dateStr] = array_map(
-                fn($range) => [
-                    'start' => $range['start']->format('H:i'),
-                    'end' => $range['end']->format('H:i'),
-                ],
-                array_merge($ranges, $blockedRanges)
-            );
-            $pendingRanges = $reservationRepo->getPendingRangesForDate($facility, $date);
-            $pendingTimes[$dateStr] = array_map(
-                fn($range) => [
-                    'start' => $range['start']->format('H:i'),
-                    'end' => $range['end']->format('H:i'),
-                ],
-                $pendingRanges
-            );
-        }
+        $response = $this->json($payload);
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
-        return $this->json([
-            'bookedTimes' => $bookedTimes,
-            'pendingTimes' => $pendingTimes,
-            'classTimes' => $classTimes,
-        ]);
+        return $response;
     }
 
     #[Route('/check-availability', name: 'check_availability', methods: ['POST'])]

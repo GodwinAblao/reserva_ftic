@@ -3,6 +3,7 @@
 {% block title %}Calendar View - Reserva FTIC{% endblock %}
 
 {% set calendar_full_mode = calendar_full_mode|default(true) %}
+{% set calendar_can_import = calendar_can_import|default(calendar_full_mode) %}
 
 {% block content %}
 <div id="calendarApp"
@@ -14,7 +15,12 @@
      data-import-delete-url="{{ calendar_import_delete_url|default(path('admin_calendar_import_delete')) }}"
      data-block-update-pattern="{{ calendar_block_update_pattern|default('/super-admin/calendar/block/{id}/update') }}"
      data-block-delete-pattern="{{ calendar_block_delete_pattern|default('/super-admin/calendar/block/{id}/delete') }}"
+     data-notify-url-pattern="{{ calendar_notify_url_pattern|default('/super-admin/class-schedule/{id}/notify') }}"
+     data-class-schedule-update-pattern="{{ calendar_class_schedule_update_pattern|default('/super-admin/class-schedule/{id}/update') }}"
+     data-class-schedule-delete-pattern="{{ calendar_class_schedule_delete_pattern|default('/super-admin/class-schedule/{id}/delete') }}"
+     data-class-schedule-available-url="{{ calendar_class_schedule_available_url|default('') }}"
      data-full-mode="{{ calendar_full_mode ? '1' : '0' }}"
+     data-can-import="{{ calendar_can_import ? '1' : '0' }}"
      style="display:none;"></div>
 <div class="sa-page-header">
     <div class="sa-page-header-left">
@@ -78,11 +84,12 @@
         </div>
     </div>
 
-    {% if calendar_full_mode %}
+    {% if calendar_can_import or calendar_full_mode %}
     <div class="sa-import-grid">
+        {% if calendar_can_import %}
         <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" class="sa-import-card">
             <h3>Import Class Schedule</h3>
-            <p>Format: facility,day,start,end,title,type. Day: Monday–Sunday. Time: HH:MM.</p>
+            <p>Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
 
             <div class="sa-import-field">
                 <label>Upload CSV</label>
@@ -91,36 +98,48 @@
 
             <div class="sa-import-field">
                 <label>Or Paste Schedule Data</label>
-                <textarea name="schedule_paste" placeholder="facility,day,start,end,title,type" style="height:80px; font-family:monospace;"></textarea>
+                <textarea name="schedule_paste" placeholder="facility,day,start,end,course_code,section,faculty_name,faculty_email" style="height:80px; font-family:monospace;"></textarea>
             </div>
 
-            <p class="sa-warning-text">Importing replaces the previous Class Schedule blocks automatically.</p>
+            <p class="sa-warning-text">Importing replaces the previous imported class schedule automatically.</p>
 
             <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
             <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="width:100%; justify-content:center;">Import &amp; Sync Schedule</button>
             <div id="scheduleImportMessage" class="schedule-import-message" style="display:none;"></div>
             <div id="scheduleDeleteMessage" class="schedule-import-message" style="display:none;"></div>
         </form>
+        {% endif %}
 
-        <form id="manualBlockForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
-            <h3>Manual Schedule Block</h3>
-            <input type="hidden" name="_token" value="{{ csrf_token('manual_schedule_block') }}">
+        {% if calendar_full_mode %}
+        <form id="manualBlockForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
+            <h3 id="manualFormTitle">Manual Schedule Block</h3>
+            <input type="hidden" name="_token" id="manualFormToken" value="{{ csrf_token('manual_schedule_block') }}">
             <input type="hidden" id="manualBlockId" name="block_id" value="">
+            <input type="hidden" id="manualClassScheduleId" name="class_schedule_id" value="">
+            <input type="hidden" id="manualEditMode" name="edit_mode" value="block">
+            <input type="hidden" name="course_code" id="manualCourseCode" value="">
+            <input type="hidden" name="section" id="manualSection" value="">
+            <input type="hidden" name="faculty_name" id="manualFacultyName" value="">
+            <input type="hidden" name="faculty_email" id="manualFacultyEmail" value="">
+            <div id="manualClassSummary" class="manual-class-summary" style="display:none;"></div>
+            <div id="facilityAllocationPanel" class="facility-allocation-panel" style="display:none;">
+                <p class="allocation-label">Available facilities for this time slot</p>
+                <div id="facilityAllocationList" class="facility-allocation-list"></div>
+            </div>
             <div class="sa-import-mini-grid">
-                <select name="facility" required class="sa-import-field"><option value="">Select Facility</option>{% for facility in facilities %}<option value="{{ facility.id }}">{{ facility.name }}</option>{% endfor %}</select>
-                <input type="date" name="date" required class="sa-import-field">
-                <input type="time" name="start_time" required class="sa-import-field">
-                <input type="time" name="end_time" required class="sa-import-field">
-                <input type="text" name="title" placeholder="Title" class="sa-import-field">
-                <select name="type" class="sa-import-field">
+                <select name="facility" id="manualFacilitySelect" required class="sa-import-field"><option value="">Select Facility</option>{% for facility in facilities %}<option value="{{ facility.id }}">{{ facility.name }}</option>{% endfor %}</select>
+                <input type="date" name="date" id="manualScheduleDate" required class="sa-import-field">
+                <input type="time" name="start_time" id="manualStartTime" required class="sa-import-field">
+                <input type="time" name="end_time" id="manualEndTime" required class="sa-import-field">
+                <input type="text" name="title" id="manualBlockTitle" placeholder="Title" class="sa-import-field manual-block-only">
+                <select name="type" id="manualBlockType" class="sa-import-field manual-block-only">
                     <option value="Manual">Manual</option>
                     <option value="Blocked">Blocked</option>
                     <option value="Maintenance">Maintenance</option>
-                    <option value="Class Schedule">Class Schedule</option>
                 </select>
             </div>
-            <div class="sa-import-field" style="margin-top:10px;">
-                <textarea name="notes" placeholder="Notes" style="height:60px;"></textarea>
+            <div class="sa-import-field manual-block-only" style="margin-top:10px;">
+                <textarea name="notes" id="manualBlockNotes" placeholder="Notes" style="height:60px;"></textarea>
             </div>
             <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
                 <button type="submit" id="manualBlockSubmit" class="sa-btn sa-btn-primary">Add Block</button>
@@ -128,6 +147,7 @@
             </div>
             <div id="manualBlockMessage" class="schedule-import-message" style="display:none;"></div>
         </form>
+        {% endif %}
     </div>
     {% endif %}
     <!-- Calendar Grid -->
@@ -264,6 +284,19 @@
     .event-status.manual,.event-status.blocked { background:#dc2626; color:white; }
     .event-status.classschedule,.event-status.imported { background:#3b82f6; color:white; }
     .event-status.maintenance { background:#7c3aed; color:white; }
+    .event-status.classschedule { background:#3b82f6; color:white; }
+    .faculty-email-verified { color:#15803d; font-weight:700; text-decoration:underline; cursor:pointer; }
+    .faculty-email-plain { color:#374151; }
+    .relocated-badge { display:inline-block; background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:8px; font-size:0.75rem; font-weight:700; margin-left:8px; }
+    .manual-class-summary { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px; margin-bottom:12px; font-size:0.9rem; color:#166534; line-height:1.5; }
+    .facility-allocation-panel { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+    .allocation-label { margin:0 0 8px; font-size:0.82rem; font-weight:700; color:#475569; }
+    .facility-allocation-list { display:flex; flex-wrap:wrap; gap:6px; }
+    .facility-chip { display:inline-block; padding:4px 10px; border-radius:999px; font-size:0.78rem; font-weight:700; cursor:pointer; border:1px solid transparent; }
+    .facility-chip.available { background:#dcfce7; color:#166534; border-color:#86efac; }
+    .facility-chip.unavailable { background:#f3f4f6; color:#9ca3af; text-decoration:line-through; cursor:not-allowed; }
+    .facility-chip.selected { box-shadow:0 0 0 2px #15803d; }
+    #manualFacilitySelect option.facility-unavailable { color:#9ca3af; }
 
     /* Day view */
     .day-view { display:grid; grid-template-columns:100px 1fr; max-width:1200px; margin:0 auto; border:1px solid #e8ede6; border-radius:10px; overflow:hidden; }
@@ -319,8 +352,14 @@
         blockCreateUrl: calendarAppEl.dataset.blockCreateUrl || '',
         blockUpdatePattern: calendarAppEl.dataset.blockUpdatePattern || '',
         blockDeletePattern: calendarAppEl.dataset.blockDeletePattern || '',
+        notifyUrlPattern: calendarAppEl.dataset.notifyUrlPattern || '',
+        classScheduleUpdatePattern: calendarAppEl.dataset.classScheduleUpdatePattern || '',
+        classScheduleDeletePattern: calendarAppEl.dataset.classScheduleDeletePattern || '',
+        classScheduleAvailableUrl: calendarAppEl.dataset.classScheduleAvailableUrl || '',
         fullMode: calendarAppEl.dataset.fullMode === '1',
+        canImport: calendarAppEl.dataset.canImport === '1',
     };
+    let facilityAllocationTimer = null;
 
     const today = new Date();
     const initialCalendarDate = '{{ initialDate|default('')|e('js') }}';
@@ -363,13 +402,22 @@
             if (e.target.id === 'deleteScheduleModal') closeDeleteScheduleModal();
         });
         document.getElementById('calendarRetryBtn').addEventListener('click', () => renderCalendar(true));
-        if (calendarConfig.fullMode) {
+        if (calendarConfig.canImport) {
             document.getElementById('scheduleImportForm').addEventListener('submit', importScheduleInBackground);
-            document.getElementById('manualBlockForm').addEventListener('submit', saveManualBlockInBackground);
-            document.getElementById('manualBlockCancelEdit').addEventListener('click', resetManualBlockForm);
             document.getElementById('scheduleDeleteSubmit').addEventListener('click', openDeleteScheduleModal);
             document.getElementById('cancelDeleteSchedule').addEventListener('click', closeDeleteScheduleModal);
             document.getElementById('confirmDeleteSchedule').addEventListener('click', deleteImportedScheduleInBackground);
+        }
+        if (calendarConfig.fullMode) {
+            document.getElementById('manualBlockForm').addEventListener('submit', saveManualBlockInBackground);
+            document.getElementById('manualBlockCancelEdit').addEventListener('click', resetManualBlockForm);
+            ['manualScheduleDate', 'manualStartTime', 'manualEndTime'].forEach((id) => {
+                document.getElementById(id).addEventListener('change', () => {
+                    if (document.getElementById('manualEditMode').value === 'class') {
+                        refreshFacilityAllocation();
+                    }
+                });
+            });
         }
         window.addEventListener('focus', () => renderCalendar(true));
         document.addEventListener('visibilitychange', () => {
@@ -380,6 +428,18 @@
         }, 15000);
         renderCalendar();
     });
+
+    function broadcastScheduleRevision(revision) {
+        if (!revision) {
+            return;
+        }
+        try {
+            localStorage.setItem('classScheduleRevision', revision);
+            window.dispatchEvent(new CustomEvent('classScheduleUpdated', { detail: { revision } }));
+        } catch (error) {
+            // ignore private browsing restrictions
+        }
+    }
 
     async function importScheduleInBackground(event) {
         event.preventDefault();
@@ -415,8 +475,9 @@
             }
 
             calendarEventsCache.clear();
+            broadcastScheduleRevision(data.scheduleRevision);
             showImportMessage(data.message, 'success');
-            setCalendarStatus('Schedule imported. Loading new calendar blocks now...', 'loading', false);
+            setCalendarStatus('Schedule imported. User facility calendars will update automatically.', 'loading', false);
             await renderCalendar(true);
 
             if (Array.isArray(data.warnings) && data.warnings.length > 0) {
@@ -445,15 +506,18 @@
         const messageBox = document.getElementById('manualBlockMessage');
         const originalText = submitButton.textContent;
         let savedSuccessfully = false;
+        const editMode = document.getElementById('manualEditMode').value;
+        const classScheduleId = document.getElementById('manualClassScheduleId').value;
         const blockId = document.getElementById('manualBlockId').value;
-        const actionUrl = blockId
-            ? calendarConfig.blockUpdatePattern.replace('{id}', blockId)
-            : form.dataset.createUrl;
+        const isClassMode = editMode === 'class' && classScheduleId;
+        const actionUrl = isClassMode
+            ? calendarConfig.classScheduleUpdatePattern.replace('{id}', classScheduleId)
+            : (blockId ? calendarConfig.blockUpdatePattern.replace('{id}', blockId) : form.dataset.createUrl);
 
         submitButton.disabled = true;
-        submitButton.textContent = blockId ? 'Updating...' : 'Adding...';
-        showManualBlockMessage(blockId ? 'Updating schedule block...' : 'Adding schedule block...', 'success');
-        setCalendarStatus(blockId ? 'Updating blocked schedule...' : 'Adding blocked schedule...', 'loading', false);
+        submitButton.textContent = isClassMode || blockId ? 'Updating...' : 'Adding...';
+        showManualBlockMessage(isClassMode ? 'Updating class schedule...' : (blockId ? 'Updating schedule block...' : 'Adding schedule block...'), 'success');
+        setCalendarStatus(isClassMode ? 'Updating class schedule...' : (blockId ? 'Updating blocked schedule...' : 'Adding blocked schedule...'), 'loading', false);
 
         try {
             const response = await fetch(actionUrl, {
@@ -470,15 +534,17 @@
                 throw new Error(data.message || 'Schedule block save failed.');
             }
 
-            if (data.block && data.block.reservationDate) {
-                currentDate = parseDateOnly(data.block.reservationDate);
+            const savedDate = (data.schedule && data.schedule.reservationDate) || (data.block && data.block.reservationDate);
+            if (savedDate) {
+                currentDate = parseDateOnly(savedDate);
             }
 
             calendarEventsCache.clear();
+            broadcastScheduleRevision(data.scheduleRevision);
             showManualBlockMessage(data.message, 'success');
             savedSuccessfully = true;
             resetManualBlockForm(false);
-            setCalendarStatus('Schedule block saved. Refreshing calendar and availability...', 'loading', false);
+            setCalendarStatus(isClassMode ? 'Class schedule saved. Refreshing calendar...' : 'Schedule block saved. Refreshing calendar and availability...', 'loading', false);
             await renderCalendar(true);
         } catch (error) {
             showManualBlockMessage(error.message || 'Schedule block save failed.', 'error');
@@ -500,11 +566,95 @@
         form.reset();
         form.action = form.dataset.createUrl;
         document.getElementById('manualBlockId').value = '';
+        document.getElementById('manualClassScheduleId').value = '';
+        document.getElementById('manualEditMode').value = 'block';
+        document.getElementById('manualFormToken').value = form.dataset.blockToken || '';
+        setManualFormMode('block');
         document.getElementById('manualBlockSubmit').textContent = 'Add Block';
         document.getElementById('manualBlockCancelEdit').style.display = 'none';
 
         if (clearMessage) {
             document.getElementById('manualBlockMessage').style.display = 'none';
+        }
+    }
+
+    function setManualFormMode(mode) {
+        const isClass = mode === 'class';
+        document.getElementById('manualFormTitle').textContent = isClass ? 'Modify Facility Schedule' : 'Manual Schedule Block';
+        document.getElementById('manualClassSummary').style.display = isClass ? 'block' : 'none';
+        document.getElementById('facilityAllocationPanel').style.display = isClass ? 'block' : 'none';
+        document.querySelectorAll('.manual-block-only').forEach((el) => {
+            el.style.display = isClass ? 'none' : '';
+            if (!isClass && el.tagName === 'INPUT') {
+                el.required = el.id === 'manualBlockTitle' ? false : el.required;
+            }
+        });
+        document.getElementById('manualBlockTitle').required = !isClass;
+    }
+
+    async function refreshFacilityAllocation() {
+        if (!calendarConfig.classScheduleAvailableUrl) {
+            return;
+        }
+
+        const date = document.getElementById('manualScheduleDate').value;
+        const start = document.getElementById('manualStartTime').value;
+        const end = document.getElementById('manualEndTime').value;
+        const excludeId = document.getElementById('manualClassScheduleId').value;
+        const listEl = document.getElementById('facilityAllocationList');
+        const facilitySelect = document.getElementById('manualFacilitySelect');
+
+        if (!date || !start || !end || end <= start) {
+            listEl.innerHTML = '<span style="color:#9ca3af;font-size:0.85rem;">Set date and time to see available facilities.</span>';
+            return;
+        }
+
+        listEl.innerHTML = '<span style="color:#6b7280;font-size:0.85rem;">Checking availability...</span>';
+
+        try {
+            const params = new URLSearchParams({ date, start, end, exclude_id: excludeId || '' });
+            const response = await fetch(`${calendarConfig.classScheduleAvailableUrl}?${params.toString()}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await response.json();
+            const availableIds = new Set((data.facilities || []).map((f) => String(f.id)));
+            const selectedId = facilitySelect.value;
+
+            Array.from(facilitySelect.options).forEach((opt) => {
+                if (!opt.value) {
+                    return;
+                }
+                const available = availableIds.has(opt.value);
+                opt.disabled = !available;
+                opt.className = available ? 'facility-available' : 'facility-unavailable';
+            });
+
+            if (!availableIds.size) {
+                listEl.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem;">No facilities are free for this slot.</span>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            Array.from(facilitySelect.options).forEach((opt) => {
+                if (!opt.value) {
+                    return;
+                }
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                const available = availableIds.has(opt.value);
+                chip.className = 'facility-chip ' + (available ? 'available' : 'unavailable') + (opt.value === selectedId ? ' selected' : '');
+                chip.textContent = opt.textContent;
+                chip.disabled = !available;
+                if (available) {
+                    chip.onclick = () => {
+                        facilitySelect.value = opt.value;
+                        refreshFacilityAllocation();
+                    };
+                }
+                listEl.appendChild(chip);
+            });
+        } catch (error) {
+            listEl.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem;">Could not load facility availability.</span>';
         }
     }
 
@@ -599,9 +749,10 @@
             }
 
             calendarEventsCache.clear();
+            broadcastScheduleRevision(data.scheduleRevision);
             closeDeleteScheduleModal();
             showDeleteMessage(data.message, 'success');
-            setCalendarStatus('Imported schedule deleted. Reloading calendar...', 'loading', false);
+            setCalendarStatus('Imported schedule deleted. User facility calendars will update automatically.', 'loading', false);
             await renderCalendar(true);
         } catch (error) {
             showDeleteMessage(error.message || 'Delete failed.', 'error');
@@ -882,12 +1033,16 @@
         const safeCapacity = event.capacity || 0;
         const safeFacilityCapacity = event.facility.capacity || 0;
         const safeFacilityId = event.facility.id || '';
-        const isBlock = event.isBlock ? '1' : '0';
+        const itemType = event.itemType || (event.isBlock ? 'block' : 'reservation');
+        const isBlock = itemType === 'block' ? '1' : '0';
         const blockId = isBlock === '1' ? String(event.id).replace('block_', '') : '';
+        const classId = itemType === 'class_schedule' ? String(event.id).replace('class_', '') : '';
         const timeDisplay = formatEventTime(event.reservationStartTime) + ' - ' + formatEventTime(event.reservationEndTime);
 
         return '<div class="event-block ' + status + '" style="top:' + top + 'px; height:' + height + 'px; left:' + offset + 'px; width:' + width + '; right:auto;"' +
             ' data-id="' + event.id + '"' +
+            ' data-item-type="' + itemType + '"' +
+            ' data-class-id="' + classId + '"' +
             ' data-block-id="' + blockId + '"' +
             ' data-is-block="' + isBlock + '"' +
             ' data-title="' + safeName + '"' +
@@ -903,6 +1058,16 @@
             ' data-contact="' + safeContact + '"' +
             ' data-capacity="' + safeCapacity + '"' +
             ' data-facility-capacity="' + safeFacilityCapacity + '"' +
+            ' data-course-code="' + escapeHtml(event.courseCode || '') + '"' +
+            ' data-section="' + escapeHtml(event.section || '') + '"' +
+            ' data-faculty-name="' + escapeHtml(event.facultyName || '') + '"' +
+            ' data-faculty-email="' + escapeHtml(event.facultyEmail || '') + '"' +
+            ' data-faculty-verified="' + (event.facultyVerified ? '1' : '0') + '"' +
+            ' data-is-relocated="' + (event.isRelocated ? '1' : '0') + '"' +
+            ' data-previous-facility="' + escapeHtml(event.previousFacilityName || '') + '"' +
+            ' data-notify-csrf="' + escapeHtml(event.notifyCsrfToken || '') + '"' +
+            ' data-update-csrf="' + escapeHtml(event.updateCsrfToken || '') + '"' +
+            ' data-delete-csrf="' + escapeHtml(event.deleteCsrfToken || '') + '"' +
             ' data-status-csrf="' + escapeHtml(event.statusCsrfToken || '') + '">' +
             '<div class="event-title">' + safeFacility + '</div>' +
             '<div class="event-requester">' + safeName + '</div>' +
@@ -919,12 +1084,54 @@
             ? [['Event Name', eventName], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Event Objective', data.purpose || 'None']]
             : [['Event Name', eventName], ['Requester', data.title], ['Email', data.email], ['Contact', data.contact], ['Date', data.date], ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`], ['Attendees', `${data.capacity} / ${data.facilityCapacity}`], ['Event Objective', data.purpose || 'None']];
         document.getElementById('modalBody').innerHTML = details.map(([label, value]) => `<div class="detail-row"><span class="detail-label">${label}:</span><span class="detail-value">${value}</span></div>`).join('');
-        if (data.isBlock === '1' && !calendarConfig.fullMode) {
+        const itemType = data.itemType || (data.isBlock === '1' ? 'block' : 'reservation');
+        if (itemType === 'class_schedule') {
+            const relocatedBadge = data.isRelocated === '1' ? '<span class="relocated-badge">Facility changed</span>' : '';
+            document.getElementById('modalTitle').innerHTML = `${data.facility} - Class Schedule${relocatedBadge}`;
+            const emailClass = data.facultyVerified === '1' ? 'faculty-email-verified' : 'faculty-email-plain';
+            const emailDisplay = data.facultyEmail
+                ? `<span class="${emailClass}">${escapeHtml(data.facultyEmail)}</span>${data.facultyVerified === '1' ? ' (verified in system)' : ''}`
+                : '—';
+            const classDetails = [
+                ['Course code', data.courseCode || '—'],
+                ['Section', data.section || '—'],
+                ['Faculty', data.facultyName || '—'],
+                ['Faculty email', emailDisplay],
+                ['Date', data.date],
+                ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`],
+            ];
+            if (data.isRelocated === '1' && data.previousFacility) {
+                classDetails.push(['Previous facility', data.previousFacility]);
+            }
+            document.getElementById('modalBody').innerHTML = classDetails.map(([label, value]) => {
+                const isHtml = label === 'Faculty email';
+                return `<div class="detail-row"><span class="detail-label">${label}:</span><span class="detail-value">${isHtml ? value : escapeHtml(value)}</span></div>`;
+            }).join('');
+            let actionsHtml = '';
+            if (calendarConfig.fullMode) {
+                actionsHtml += '<button type="button" class="btn-edit" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button>';
+                actionsHtml += '<button type="button" class="btn-edit" onclick="openManualScheduleBlockFromModal()">Manual Schedule Block</button>';
+                actionsHtml += '<button type="button" class="btn-delete" onclick="deleteClassScheduleFromModal()">Delete</button>';
+            }
+            if (data.facultyEmail && calendarConfig.notifyUrlPattern) {
+                actionsHtml += '<button type="button" class="btn-approve" id="modalNotifyFaculty">Notify faculty</button>';
+            }
+            document.getElementById('modalActions').innerHTML = actionsHtml || '<p style="color:#6b7280;margin:0;">No actions available.</p>';
+            const notifyBtn = document.getElementById('modalNotifyFaculty');
+            if (notifyBtn) {
+                notifyBtn.onclick = () => notifyClassScheduleFaculty(data);
+            }
+            document.getElementById('eventModal').dataset.activeClassId = data.classId || '';
+            document.getElementById('eventModal').dataset.activeUpdateCsrf = data.updateCsrf || '';
+            document.getElementById('eventModal').dataset.activeDeleteCsrf = data.deleteCsrf || '';
+            document.getElementById('eventModal').dataset.activeCourseCode = data.courseCode || '';
+            document.getElementById('eventModal').dataset.activeSection = data.section || '';
+            document.getElementById('eventModal').dataset.activeFacultyName = data.facultyName || '';
+            document.getElementById('eventModal').dataset.activeFacultyEmail = data.facultyEmail || '';
+        } else if (data.isBlock === '1' && !calendarConfig.fullMode) {
             document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Schedule block (view only)</p>';
-        } else if (data.isBlock === '1' && data.status !== 'Class Schedule') {
-            document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;
         } else if (data.isBlock === '1') {
-            document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Schedule</button>`;
+            document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;
         } else {
             const editUrl = calendarConfig.editUrlPattern.replace('{id}', data.id);
             if (calendarConfig.fullMode) {
@@ -964,7 +1171,11 @@
             return;
         }
 
+        document.getElementById('manualEditMode').value = 'block';
+        document.getElementById('manualClassScheduleId').value = '';
         document.getElementById('manualBlockId').value = blockId;
+        document.getElementById('manualFormToken').value = form.dataset.blockToken || '';
+        setManualFormMode('block');
         form.elements.facility.value = modal.dataset.activeFacilityId;
         form.elements.date.value = modal.dataset.activeDate;
         form.elements.start_time.value = modal.dataset.activeStart;
@@ -979,28 +1190,120 @@
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
+    function openManualScheduleBlockFromModal() {
+        const modal = document.getElementById('eventModal');
+        const form = document.getElementById('manualBlockForm');
+
+        document.getElementById('manualEditMode').value = 'block';
+        document.getElementById('manualClassScheduleId').value = '';
+        document.getElementById('manualBlockId').value = '';
+        document.getElementById('manualFormToken').value = form.dataset.blockToken || '';
+        setManualFormMode('block');
+
+        if (modal.dataset.activeFacilityId) {
+            document.getElementById('manualFacilitySelect').value = modal.dataset.activeFacilityId;
+        }
+        if (modal.dataset.activeDate) {
+            document.getElementById('manualScheduleDate').value = modal.dataset.activeDate;
+        }
+        if (modal.dataset.activeStart) {
+            document.getElementById('manualStartTime').value = modal.dataset.activeStart;
+        }
+        if (modal.dataset.activeEnd) {
+            document.getElementById('manualEndTime').value = modal.dataset.activeEnd;
+        }
+        document.getElementById('manualBlockTitle').value = '';
+        document.getElementById('manualBlockType').value = 'Manual';
+        document.getElementById('manualBlockNotes').value = '';
+        document.getElementById('manualBlockSubmit').textContent = 'Add Block';
+        document.getElementById('manualBlockCancelEdit').style.display = 'none';
+        document.getElementById('manualBlockMessage').style.display = 'none';
+
+        closeModal();
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     function modifyClassScheduleFromModal() {
         const modal = document.getElementById('eventModal');
         const form = document.getElementById('manualBlockForm');
-        const blockId = modal.dataset.activeBlock;
+        const classId = modal.dataset.activeClassId;
 
-        if (!blockId) {
+        if (!classId) {
             return;
         }
 
-        document.getElementById('manualBlockId').value = blockId;
-        form.elements.facility.value = modal.dataset.activeFacilityId;
-        form.elements.date.value = modal.dataset.activeDate;
-        form.elements.start_time.value = modal.dataset.activeStart;
-        form.elements.end_time.value = modal.dataset.activeEnd;
-        form.elements.title.value = modal.dataset.activeTitle;
-        form.elements.type.value = 'Class Schedule';
-        form.elements.notes.value = modal.dataset.activePurpose;
-        document.getElementById('manualBlockSubmit').textContent = 'Modify Schedule';
+        document.getElementById('manualEditMode').value = 'class';
+        document.getElementById('manualClassScheduleId').value = classId;
+        document.getElementById('manualBlockId').value = '';
+        document.getElementById('manualFormToken').value = modal.dataset.activeUpdateCsrf || '';
+        document.getElementById('manualCourseCode').value = modal.dataset.activeCourseCode || '';
+        document.getElementById('manualSection').value = modal.dataset.activeSection || '';
+        document.getElementById('manualFacultyName').value = modal.dataset.activeFacultyName || '';
+        document.getElementById('manualFacultyEmail').value = modal.dataset.activeFacultyEmail || '';
+
+        const summaryParts = [
+            modal.dataset.activeCourseCode ? `Course: ${modal.dataset.activeCourseCode}` : '',
+            modal.dataset.activeSection ? `Section: ${modal.dataset.activeSection}` : '',
+            modal.dataset.activeFacultyName ? `Faculty: ${modal.dataset.activeFacultyName}` : '',
+            modal.dataset.activeFacultyEmail ? `Email: ${modal.dataset.activeFacultyEmail}` : '',
+        ].filter(Boolean);
+        document.getElementById('manualClassSummary').innerHTML = summaryParts.map((p) => escapeHtml(p)).join('<br>');
+
+        setManualFormMode('class');
+        document.getElementById('manualFacilitySelect').value = modal.dataset.activeFacilityId || '';
+        document.getElementById('manualScheduleDate').value = modal.dataset.activeDate || '';
+        document.getElementById('manualStartTime').value = modal.dataset.activeStart || '';
+        document.getElementById('manualEndTime').value = modal.dataset.activeEnd || '';
+        document.getElementById('manualBlockSubmit').textContent = 'Update Class Schedule';
         document.getElementById('manualBlockCancelEdit').style.display = 'inline-block';
         document.getElementById('manualBlockMessage').style.display = 'none';
         closeModal();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        refreshFacilityAllocation();
+    }
+
+    async function deleteClassScheduleFromModal() {
+        const modal = document.getElementById('eventModal');
+        const classId = modal.dataset.activeClassId;
+
+        if (!classId || !window.confirm('Delete this class schedule entry? The time slot may become available for reservations.')) {
+            return;
+        }
+
+        if (!calendarConfig.classScheduleDeletePattern) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('_token', modal.dataset.activeDeleteCsrf || '');
+        setCalendarStatus('Deleting class schedule...', 'loading', false);
+
+        try {
+            const response = await fetch(calendarConfig.classScheduleDeletePattern.replace('{id}', classId), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Delete failed.');
+            }
+
+            closeModal();
+            resetManualBlockForm(false);
+            calendarEventsCache.clear();
+            broadcastScheduleRevision(data.scheduleRevision);
+            showManualBlockToast(data.message, 'success');
+            setCalendarStatus('Class schedule deleted. Refreshing calendar...', 'loading', false);
+            await renderCalendar(true);
+        } catch (error) {
+            showManualBlockToast(error.message || 'Delete failed.', 'error');
+            setCalendarStatus('Could not delete class schedule.', 'error', false);
+        }
     }
 
     async function deleteManualBlockFromModal() {
@@ -1032,6 +1335,7 @@
 
             closeModal();
             calendarEventsCache.clear();
+            broadcastScheduleRevision(data.scheduleRevision);
             showManualBlockToast(data.message, 'success');
             setCalendarStatus('Manual block deleted. Refreshing calendar and availability...', 'loading', false);
             await renderCalendar(true);
@@ -1046,6 +1350,42 @@
         messageBox.textContent = message;
         messageBox.className = 'schedule-import-message ' + type;
         messageBox.style.display = 'block';
+    }
+
+    async function notifyClassScheduleFaculty(data) {
+        const classId = data.classId;
+        if (!classId || !calendarConfig.notifyUrlPattern) {
+            return;
+        }
+
+        if (!window.confirm('Send notification to the faculty member about this class schedule?')) {
+            return;
+        }
+
+        const url = calendarConfig.notifyUrlPattern.replace('{id}', classId);
+        const formData = new FormData();
+        formData.append('_token', data.notifyCsrf || '');
+
+        setCalendarStatus('Sending faculty notification...', 'loading', false);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Notification failed.');
+            }
+            closeModal();
+            setCalendarStatus(result.message, 'success', true);
+        } catch (error) {
+            setCalendarStatus(error.message || 'Notification failed.', 'error', false);
+        }
     }
 
     async function saveReservationStatusFromModal(data) {

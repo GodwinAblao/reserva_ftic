@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Reservation;
 use App\Entity\User;
 use App\Entity\Facility;
+use App\Entity\ClassSchedule;
 use App\Entity\FacilityScheduleBlock;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -78,7 +79,8 @@ class ReservationRepository extends ServiceEntityRepository
         \DateTimeInterface $startTime,
         \DateTimeInterface $endTime,
         ?int $excludeReservationId = null,
-        array $statuses = ['Approved']
+        array $statuses = ['Approved'],
+        ?int $excludeClassScheduleId = null,
     ): bool
     {
         $startOfDay = (clone $date)->setTime(0, 0, 0);
@@ -112,9 +114,15 @@ class ReservationRepository extends ServiceEntityRepository
             return true;
         }
 
-        return $this->getEntityManager()
-            ->getRepository(FacilityScheduleBlock::class)
-            ->isBlocked($facility, $date, $startTime, $endTime);
+        $blockRepo = $this->getEntityManager()->getRepository(FacilityScheduleBlock::class);
+        $classRepo = $this->getEntityManager()->getRepository(ClassSchedule::class);
+
+        if ($blockRepo->isBlocked($facility, $date, $startTime, $endTime)) {
+            return true;
+        }
+
+        /** @var ClassScheduleRepository $classRepo */
+        return $classRepo->conflictsWith($facility, $date, $startTime, $endTime, $excludeClassScheduleId);
     }
 
     /**
@@ -139,6 +147,41 @@ class ReservationRepository extends ServiceEntityRepository
 
         return array_map(
             fn($r) => [
+                'start' => $r['reservationStartTime'],
+                'end' => $r['reservationEndTime'],
+            ],
+            $results
+        );
+    }
+
+    /**
+     * @param list<string> $statuses
+     *
+     * @return list<array{start: \DateTimeInterface, end: \DateTimeInterface}>
+     */
+    public function getRangesForDateByStatuses(Facility $facility, \DateTimeInterface $date, array $statuses): array
+    {
+        if ($statuses === []) {
+            return [];
+        }
+
+        $startOfDay = (clone $date)->setTime(0, 0, 0);
+        $endOfDay = (clone $date)->setTime(23, 59, 59);
+
+        $results = $this->createQueryBuilder('r')
+            ->select('r.reservationStartTime, r.reservationEndTime')
+            ->andWhere('r.facility = :facility')
+            ->andWhere('r.reservationDate BETWEEN :startOfDay AND :endOfDay')
+            ->andWhere('r.status IN (:statuses)')
+            ->setParameter('facility', $facility)
+            ->setParameter('startOfDay', $startOfDay)
+            ->setParameter('endOfDay', $endOfDay)
+            ->setParameter('statuses', $statuses)
+            ->getQuery()
+            ->getResult();
+
+        return array_map(
+            static fn ($r) => [
                 'start' => $r['reservationStartTime'],
                 'end' => $r['reservationEndTime'],
             ],
@@ -223,9 +266,11 @@ class ReservationRepository extends ServiceEntityRepository
                 ->getQuery()
                 ->getSingleScalarResult();
 
-            $blocked = $this->getEntityManager()
-                ->getRepository(FacilityScheduleBlock::class)
-                ->isBlocked($facility, $date, $startTime, $endTime);
+            $em = $this->getEntityManager();
+            $blocked = $em->getRepository(FacilityScheduleBlock::class)
+                    ->isBlocked($facility, $date, $startTime, $endTime)
+                || $em->getRepository(ClassSchedule::class)
+                    ->conflictsWith($facility, $date, $startTime, $endTime);
 
             if ($bookingCount === 0 && !$blocked) {
                 $alternatives[] = $facility;
@@ -248,6 +293,34 @@ class ReservationRepository extends ServiceEntityRepository
             ->orderBy('f.capacity', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function getAvailabilityRevisionToken(): string
+    {
+        $reservations = $this->createQueryBuilder('r')
+            ->leftJoin('r.facility', 'f')
+            ->addSelect('f')
+            ->andWhere('r.status IN (:statuses)')
+            ->setParameter('statuses', ['Approved', 'Pending', 'Suggested'])
+            ->orderBy('r.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $parts = [];
+        foreach ($reservations as $reservation) {
+            \assert($reservation instanceof Reservation);
+            $parts[] = implode('|', [
+                $reservation->getId(),
+                $reservation->getFacility()?->getId() ?? '',
+                $reservation->getReservationDate()?->format('Y-m-d') ?? '',
+                $reservation->getReservationStartTime()?->format('H:i:s') ?? '',
+                $reservation->getReservationEndTime()?->format('H:i:s') ?? '',
+                $reservation->getStatus(),
+                $reservation->getUpdatedAt()?->format('Y-m-d H:i:s.u') ?? '',
+            ]);
+        }
+
+        return count($parts) . ':' . sha1(implode("\n", $parts));
     }
 
     /**

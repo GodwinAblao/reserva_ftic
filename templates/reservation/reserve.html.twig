@@ -14,7 +14,7 @@
         <!-- Calendar Section -->
         <div class="calendar-section card-panel">
             <h3>Select Date & Time</h3>
-            <p class="info-text">Available times: <strong>7:00 AM - 8:00 PM</strong></p>
+            <p class="info-text">Available times: <strong>7:00 AM - 8:00 PM</strong> (10-minute steps). Class and block times match the admin calendar.</p>
 
             <div class="calendar-wrapper">
                 <div class="month-navigation">
@@ -267,12 +267,12 @@
 
     .time-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.75rem;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.5rem;
     }
 
     .time-slot {
-        padding: 0.75rem;
+        padding: 0.5rem 0.35rem;
         border: 2px solid #e0e0e0;
         border-radius: 6px;
         text-align: center;
@@ -575,6 +575,22 @@
 </style>
 
 <script>
+(() => {
+    if (typeof window.__reservaReservationCalendarCleanup === 'function') {
+        window.__reservaReservationCalendarCleanup();
+    }
+
+    const cleanupTasks = [];
+    function addManagedEvent(target, type, handler, options) {
+        target.addEventListener(type, handler, options);
+        cleanupTasks.push(() => target.removeEventListener(type, handler, options));
+    }
+    function addManagedInterval(handler, delay) {
+        const id = window.setInterval(handler, delay);
+        cleanupTasks.push(() => window.clearInterval(id));
+        return id;
+    }
+
     let bookedTimesData = (() => {
         const raw = {{ bookedTimes|raw }};
         if (typeof raw === 'string') {
@@ -613,7 +629,39 @@
     let selectedStartTime = null;
     let selectedEndTime = null;
     let availabilityRefreshController = null;
+    let knownScheduleRevision = {{ scheduleRevision|default('')|json_encode|raw }};
     const availabilityUrl = '{{ path('facility_reserve_availability', {'id': facility.id}) }}';
+    const scheduleRevisionUrl = '{{ path('facility_schedule_revision') }}';
+    let scheduleSyncStatusTimer = null;
+    let calendarCleanedUp = false;
+
+    window.__reservaReservationCalendarCleanup = () => {
+        if (calendarCleanedUp) {
+            return;
+        }
+        calendarCleanedUp = true;
+        while (cleanupTasks.length > 0) {
+            const cleanup = cleanupTasks.pop();
+            try {
+                cleanup();
+            } catch (error) {}
+        }
+        if (availabilityRefreshController) {
+            availabilityRefreshController.abort();
+            availabilityRefreshController = null;
+        }
+        if (scheduleSyncStatusTimer) {
+            window.clearTimeout(scheduleSyncStatusTimer);
+            scheduleSyncStatusTimer = null;
+        }
+        const container = document.querySelector('.reservation-container');
+        if (container) {
+            delete container.dataset.calendarInit;
+        }
+        if (window.switchFacility === switchFacility) {
+            delete window.switchFacility;
+        }
+    };
 
     function initReservationCalendar() {
         const container = document.querySelector('.reservation-container');
@@ -634,39 +682,57 @@
         refreshAvailabilityData();
 
         // Month navigation
-        prevButton.addEventListener('click', () => {
+        addManagedEvent(prevButton, 'click', () => {
             currentMonth.setMonth(currentMonth.getMonth() - 1);
             renderCalendar();
+            refreshAvailabilityData(false);
         });
 
-        nextButton.addEventListener('click', () => {
+        addManagedEvent(nextButton, 'click', () => {
             currentMonth.setMonth(currentMonth.getMonth() + 1);
             renderCalendar();
+            refreshAvailabilityData(false);
         });
 
         // Form submission
-        form.addEventListener('submit', submitReservation);
+        addManagedEvent(form, 'submit', submitReservation);
 
-        // Auto-refresh every 15 seconds
-        window.setInterval(() => {
-            if (!document.hidden) {
-                refreshAvailabilityData(false);
-            }
-        }, 15000);
-
-        // Refresh when tab becomes visible
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
+        // Sync with admin Import & Sync (poll + same-browser event)
+        pollScheduleRevision();
+        addManagedInterval(pollScheduleRevision, 4000);
+        addManagedEvent(window, 'classScheduleUpdated', () => refreshAvailabilityData(false));
+        addManagedEvent(window, 'storage', (event) => {
+            if (event.key === 'classScheduleRevision' && event.newValue && event.newValue !== knownScheduleRevision) {
+                knownScheduleRevision = event.newValue;
                 refreshAvailabilityData(false);
             }
         });
 
-        // Refresh when window gains focus
-        window.addEventListener('focus', () => refreshAvailabilityData(false));
+        // Also refresh availability every 20 seconds (reservations / manual blocks)
+        addManagedInterval(() => {
+            if (!document.hidden) {
+                refreshAvailabilityData(false);
+            }
+        }, 20000);
+
+        addManagedEvent(document, 'visibilitychange', () => {
+            if (!document.hidden) {
+                pollScheduleRevision();
+                refreshAvailabilityData(false);
+            }
+        });
+
+        addManagedEvent(window, 'focus', () => {
+            pollScheduleRevision();
+            refreshAvailabilityData(false);
+        });
     }
 
-    document.addEventListener('DOMContentLoaded', initReservationCalendar);
-    document.addEventListener('turbo:load', initReservationCalendar);
+    addManagedEvent(document, 'DOMContentLoaded', initReservationCalendar);
+    addManagedEvent(document, 'turbo:load', initReservationCalendar);
+    addManagedEvent(document, 'turbo:before-cache', () => {
+        window.__reservaReservationCalendarCleanup();
+    });
 
     function renderCalendar() {
         const calendar = document.getElementById('calendar');
@@ -762,6 +828,14 @@
         renderTimeSlots(date);
     }
 
+    function buildSelectableTimeSlots() {
+        const slots = [];
+        for (let minutes = 7 * 60; minutes <= 20 * 60; minutes += 10) {
+            slots.push(minutesToTime(minutes));
+        }
+        return slots;
+    }
+
     function renderTimeSlots(date) {
         const timeGrid = document.getElementById('timeGrid');
         timeGrid.innerHTML = '';
@@ -769,14 +843,7 @@
         const bookedRanges = bookedTimesData[dateStr] || [];
         const pendingRanges = pendingTimesData[dateStr] || [];
         const classRanges = classTimesData[dateStr] || [];
-        
-        // Fixed 50-minute interval logic: 7:00, 7:50, 8:00, 8:50...
-        const slots = [];
-        for (let hour = 7; hour <= 19; hour++) {
-            slots.push(`${String(hour).padStart(2, '0')}:00`);
-            slots.push(`${String(hour).padStart(2, '0')}:50`);
-        }
-        slots.push("20:00"); // End at 8pm
+        const slots = buildSelectableTimeSlots();
 
         slots.forEach(timeStr => {
             const slot = document.createElement('button');
@@ -787,14 +854,15 @@
             if (isTimeBooked(timeStr, classRanges)) {
                 slot.classList.add('class');
                 slot.disabled = true;
-                slot.title = 'This time range has a scheduled class';
+                slot.title = 'Scheduled class (same as admin calendar)';
             } else if (isTimeBooked(timeStr, bookedRanges)) {
                 slot.classList.add('booked');
                 slot.disabled = true;
-                slot.title = 'This time range is booked';
+                slot.title = 'Booked or blocked';
             } else if (isTimeBooked(timeStr, pendingRanges)) {
                 slot.classList.add('pending');
-                slot.title = 'This time range has a pending request';
+                slot.disabled = true;
+                slot.title = 'Pending reservation request';
             } else {
                 slot.classList.add('available');
                 slot.addEventListener('click', (e) => {
@@ -963,6 +1031,7 @@
             `start=${document.getElementById('reservation_start_time').value}&` +
             `end=${document.getElementById('reservation_end_time').value}`;
     }
+    window.switchFacility = switchFacility;
 
     function showError(message) {
         const errorDiv = document.getElementById('errorMessage');
@@ -983,8 +1052,17 @@
         return slots;
     }
 
+    function normalizeTimeStr(timeStr) {
+        const parts = String(timeStr || '').split(':');
+        if (parts.length < 2) {
+            return '00:00';
+        }
+        return `${String(parseInt(parts[0], 10)).padStart(2, '0')}:${String(parseInt(parts[1], 10)).padStart(2, '0')}`;
+    }
+
     function timeToMinutes(timeStr) {
-        const [hours, minutes] = timeStr.split(':').map(Number);
+        const normalized = normalizeTimeStr(timeStr);
+        const [hours, minutes] = normalized.split(':').map(Number);
         return hours * 60 + minutes;
     }
 
@@ -1016,6 +1094,7 @@
         return bookedRanges.some(range => {
             const start = timeToMinutes(range.start);
             const end = timeToMinutes(range.end);
+            // Block start times that fall inside an occupied range (matches admin calendar overlap rules).
             return minutes >= start && minutes < end;
         });
     }
@@ -1037,16 +1116,66 @@
         return ranges.some(range => selectedStart < timeToMinutes(range.end) && selectedEnd > timeToMinutes(range.start));
     }
 
+    function getAvailabilityFetchParams() {
+        const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+
+        return {
+            start: formatLocalDate(monthStart),
+            days: Math.min(120, monthEnd.getDate() + 14),
+        };
+    }
+
+    function showScheduleSyncNotice(message) {
+        const info = document.querySelector('.calendar-section .info-text');
+        if (!info) {
+            return;
+        }
+        const original = info.dataset.defaultText || info.innerHTML;
+        info.dataset.defaultText = original;
+        info.innerHTML = message;
+        clearTimeout(scheduleSyncStatusTimer);
+        scheduleSyncStatusTimer = window.setTimeout(() => {
+            info.innerHTML = info.dataset.defaultText || original;
+        }, 5000);
+    }
+
+    async function pollScheduleRevision() {
+        if (document.hidden) {
+            return;
+        }
+
+        try {
+            const response = await fetch(scheduleRevisionUrl, {
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            if (knownScheduleRevision && data.revision && data.revision !== knownScheduleRevision) {
+                knownScheduleRevision = data.revision;
+                showScheduleSyncNotice('Schedule updated from admin calendar. Refreshing available times...');
+                await refreshAvailabilityData(false);
+            } else if (data.revision) {
+                knownScheduleRevision = data.revision;
+            }
+        } catch (error) {
+            // ignore network errors during background poll
+        }
+    }
+
     async function refreshAvailabilityData(resetInvalidSelection = true) {
         if (availabilityRefreshController) {
             availabilityRefreshController.abort();
         }
 
         availabilityRefreshController = new AbortController();
-        const start = formatLocalDate(new Date());
+        const { start, days } = getAvailabilityFetchParams();
 
         try {
-            const response = await fetch(`${availabilityUrl}?start=${start}&days=90`, {
+            const response = await fetch(`${availabilityUrl}?start=${encodeURIComponent(start)}&days=${days}`, {
                 cache: 'no-store',
                 signal: availabilityRefreshController.signal,
                 headers: {
@@ -1059,6 +1188,9 @@
             }
 
             const data = await response.json();
+            if (data.scheduleRevision) {
+                knownScheduleRevision = data.scheduleRevision;
+            }
             bookedTimesData = data.bookedTimes || {};
             pendingTimesData = data.pendingTimes || {};
             classTimesData = data.classTimes || {};
@@ -1109,5 +1241,6 @@
         }
         display.textContent = selectedStartTime + ' - ' + selectedEndTime;
     }
+})();
 </script>
 {% endblock %}

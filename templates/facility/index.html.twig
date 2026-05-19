@@ -323,4 +323,47 @@
         box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
     }
 </style>
+
+<script>
+(function () {
+    const revisionUrl = '{{ path('facility_schedule_revision') }}';
+    let knownRevision = null;
+
+    async function pollScheduleRevision() {
+        if (document.hidden) {
+            return;
+        }
+        try {
+            const response = await fetch(revisionUrl, {
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            if (knownRevision && data.revision && data.revision !== knownRevision) {
+                try {
+                    localStorage.setItem('classScheduleRevision', data.revision);
+                    window.dispatchEvent(new CustomEvent('classScheduleUpdated', { detail: { revision: data.revision } }));
+                } catch (error) {}
+            }
+            knownRevision = data.revision;
+        } catch (error) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        pollScheduleRevision();
+        window.setInterval(pollScheduleRevision, 5000);
+    });
+    document.addEventListener('turbo:load', () => {
+        pollScheduleRevision();
+    });
+    window.addEventListener('classScheduleUpdated', (event) => {
+        if (event.detail && event.detail.revision) {
+            knownRevision = event.detail.revision;
+        }
+    });
+})();
+</script>
 {% endblock %}

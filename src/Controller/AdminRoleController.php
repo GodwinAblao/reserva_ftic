@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\ClassSchedule;
 use App\Entity\Facility;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\ReservationRepository;
+use App\Repository\ClassScheduleNotificationLogRepository;
 use App\Repository\ReservationStatusLogRepository;
 use App\Service\CalendarDataService;
+use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
 use App\Service\ReservationStatusManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -150,6 +153,7 @@ class AdminRoleController extends AbstractController
     public function reservationMonitoring(
         EntityManagerInterface $em,
         ReservationStatusLogRepository $auditRepo,
+        ClassScheduleNotificationLogRepository $classNotifyAuditRepo,
     ): Response {
         $today = new \DateTime('today');
         $tomorrow = new \DateTime('tomorrow');
@@ -165,6 +169,7 @@ class AdminRoleController extends AbstractController
             'statusCounts' => $this->reservationStatusCountsToday($em),
             'facilityCounts' => $this->facilityReservationCountsToday($em),
             'statusAuditLogs' => $auditRepo->findRecent(30),
+            'classScheduleNotifyLogs' => $classNotifyAuditRepo->findRecent(30),
         ]);
     }
 
@@ -182,16 +187,40 @@ class AdminRoleController extends AbstractController
             'facilities' => $facilityRepo->findAll(),
             'initialDate' => $parsedInitialDate ? $parsedInitialDate->format('Y-m-d') : null,
             'calendar_full_mode' => false,
+            'calendar_can_import' => true,
             'calendar_back_url' => $this->generateUrl('admin_role_reservation_monitoring'),
             'calendar_data_url' => $this->generateUrl('admin_role_calendar_data'),
             'calendar_edit_url_pattern' => '/admin/reservations/{id}/edit',
             'calendar_status_url_pattern' => '/admin/reservations/{id}/status',
             'calendar_block_create_url' => '',
-            'calendar_import_url' => '',
-            'calendar_import_delete_url' => '',
+            'calendar_import_url' => $this->generateUrl('admin_calendar_import'),
+            'calendar_import_delete_url' => $this->generateUrl('admin_calendar_import_delete'),
             'calendar_block_update_pattern' => '',
             'calendar_block_delete_pattern' => '',
+            'calendar_notify_url_pattern' => '/admin/class-schedule/{id}/notify',
         ]);
+    }
+
+    #[Route('/class-schedule/{id}/notify', name: 'admin_role_class_schedule_notify', methods: ['POST'])]
+    public function notifyClassScheduleFaculty(
+        ClassSchedule $schedule,
+        Request $request,
+        ClassScheduleNotificationService $notificationService,
+    ): JsonResponse {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->isCsrfTokenValid('class_schedule_notify_' . $schedule->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $result = $notificationService->notifyFaculty($schedule);
+
+        return $this->json(
+            ['success' => $result['success'], 'message' => $result['message'], 'channels' => $result['channels']],
+            $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST,
+        );
     }
 
     #[Route('/calendar/data', name: 'admin_role_calendar_data', methods: ['GET'])]
@@ -210,10 +239,11 @@ class AdminRoleController extends AbstractController
             $request->query->get('facility'),
             $request->query->get('status'),
             true,
+            true,
         );
 
         foreach ($payload['reservations'] as &$item) {
-            if (empty($item['isBlock']) && is_numeric($item['id'])) {
+            if (($item['itemType'] ?? '') === 'reservation' && is_numeric($item['id'])) {
                 $item['statusCsrfToken'] = $csrfTokenManager
                     ->getToken('update_reservation_status_' . $item['id'])
                     ->getValue();

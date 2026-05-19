@@ -202,6 +202,17 @@ class NotificationController extends AbstractController
             return $this->generateUrl('user_reservations');
         }
 
+        if ($n->getType() === 'class_schedule') {
+            if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+                return $this->generateUrl('admin_calendar');
+            }
+            if ($this->isGranted('ROLE_ADMIN')) {
+                return $this->generateUrl('admin_role_calendar');
+            }
+
+            return $this->generateUrl('app_dashboard');
+        }
+
         return '#';
     }
 }

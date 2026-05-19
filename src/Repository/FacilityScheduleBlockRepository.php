@@ -94,6 +94,34 @@ class FacilityScheduleBlockRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    public function getGlobalRevisionToken(): string
+    {
+        $blocks = $this->createQueryBuilder('b')
+            ->leftJoin('b.facility', 'f')
+            ->addSelect('f')
+            ->orderBy('b.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $parts = [];
+        foreach ($blocks as $block) {
+            \assert($block instanceof FacilityScheduleBlock);
+            $parts[] = implode('|', [
+                $block->getId(),
+                $block->getFacility()?->getId() ?? '',
+                $block->getBlockDate()?->format('Y-m-d') ?? '',
+                $block->getStartTime()?->format('H:i:s') ?? '',
+                $block->getEndTime()?->format('H:i:s') ?? '',
+                $block->getType(),
+                $block->getTitle(),
+                $block->getNotes() ?? '',
+                $block->getCreatedAt()->format('Y-m-d H:i:s.u'),
+            ]);
+        }
+
+        return count($parts) . ':' . sha1(implode("\n", $parts));
+    }
+
     /**
      * Delete all blocks from a specific source or type
      */

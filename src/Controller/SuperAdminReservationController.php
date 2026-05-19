@@ -8,8 +8,15 @@ use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityScheduleBlockRepository;
 use App\Repository\ReservationRepository;
+use App\Repository\ClassScheduleNotificationLogRepository;
 use App\Repository\ReservationStatusLogRepository;
+use App\Entity\ClassSchedule;
+use App\Repository\ClassScheduleRepository;
 use App\Service\CalendarDataService;
+use App\Service\ClassScheduleFacultyMatcher;
+use App\Service\ScheduleRevisionService;
+use App\Service\ClassScheduleImportService;
+use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
 use App\Service\ReservationStatusManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,6 +36,7 @@ class SuperAdminReservationController extends AbstractController
     public function listReservations(
         ReservationRepository $reservationRepo,
         ReservationStatusLogRepository $auditRepo,
+        ClassScheduleNotificationLogRepository $classNotifyAuditRepo,
     ): Response {
         $pending = $reservationRepo->findBy(['status' => 'Pending'], ['createdAt' => 'DESC']);
         $approved = $reservationRepo->findBy(['status' => 'Approved'], ['reservationDate' => 'DESC']);
@@ -41,6 +49,7 @@ class SuperAdminReservationController extends AbstractController
             'rejected' => $rejected,
             'suggested' => $suggested,
             'statusAuditLogs' => $auditRepo->findRecent(30),
+            'classScheduleNotifyLogs' => $classNotifyAuditRepo->findRecent(30),
         ]);
     }
 
@@ -332,6 +341,10 @@ class SuperAdminReservationController extends AbstractController
             'calendar_import_delete_url' => $this->generateUrl('admin_calendar_import_delete'),
             'calendar_block_update_pattern' => '/super-admin/calendar/block/{id}/update',
             'calendar_block_delete_pattern' => '/super-admin/calendar/block/{id}/delete',
+            'calendar_notify_url_pattern' => '/super-admin/class-schedule/{id}/notify',
+            'calendar_class_schedule_update_pattern' => '/super-admin/class-schedule/{id}/update',
+            'calendar_class_schedule_delete_pattern' => '/super-admin/class-schedule/{id}/delete',
+            'calendar_class_schedule_available_url' => $this->generateUrl('admin_class_schedule_available_facilities'),
         ]);
     }
 
@@ -351,7 +364,157 @@ class SuperAdminReservationController extends AbstractController
             $request->query->get('facility'),
             $request->query->get('status'),
             true,
+            true,
         ));
+    }
+
+    #[Route('/class-schedule/{id}/notify', name: 'admin_class_schedule_notify', methods: ['POST'])]
+    public function notifyClassScheduleFaculty(
+        ClassSchedule $schedule,
+        Request $request,
+        ClassScheduleNotificationService $notificationService,
+    ): JsonResponse {
+        if (!$this->isCsrfTokenValid('class_schedule_notify_' . $schedule->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $result = $notificationService->notifyFaculty($schedule);
+
+        return $this->json(
+            ['success' => $result['success'], 'message' => $result['message'], 'channels' => $result['channels']],
+            $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST,
+        );
+    }
+
+    #[Route('/calendar/class-schedule/available-facilities', name: 'admin_class_schedule_available_facilities', methods: ['GET'])]
+    public function availableFacilitiesForClassSchedule(
+        Request $request,
+        ClassScheduleRepository $classScheduleRepo,
+    ): JsonResponse {
+        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->query->get('date'));
+        $start = \DateTime::createFromFormat('!H:i', (string) $request->query->get('start'));
+        $end = \DateTime::createFromFormat('!H:i', (string) $request->query->get('end'));
+
+        if (!$date || !$start || !$end || $end <= $start) {
+            return $this->json(['facilities' => [], 'message' => 'Invalid date or time.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $excludeId = $request->query->get('exclude_id');
+        $excludeScheduleId = is_numeric($excludeId) ? (int) $excludeId : null;
+
+        $facilities = $classScheduleRepo->findAvailableFacilitiesForSlot($date, $start, $end, $excludeScheduleId);
+
+        return $this->json([
+            'facilities' => array_map(static fn (Facility $f) => [
+                'id' => $f->getId(),
+                'name' => $f->getName(),
+                'capacity' => $f->getCapacity(),
+            ], $facilities),
+        ]);
+    }
+
+    #[Route('/class-schedule/{id}/update', name: 'admin_class_schedule_update', methods: ['POST'])]
+    public function updateClassSchedule(
+        ClassSchedule $schedule,
+        Request $request,
+        FacilityRepository $facilityRepo,
+        ReservationRepository $reservationRepo,
+        ClassScheduleFacultyMatcher $facultyMatcher,
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
+    ): JsonResponse {
+        if (!$this->isCsrfTokenValid('class_schedule_update_' . $schedule->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $facility = $facilityRepo->find($request->request->get('facility'));
+        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
+        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+
+        if (!$facility || !$date || !$start || !$end || $end <= $start) {
+            return $this->json(['success' => false, 'message' => 'Invalid class schedule data.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($date->format('w') === '0') {
+            return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
+        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
+        if ($start < $dayStart || $end > $dayEnd) {
+            return $this->json(['success' => false, 'message' => 'Class schedules must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($reservationRepo->isTimeRangeBooked(
+            $facility,
+            $date,
+            $start,
+            $end,
+            null,
+            ['Approved', 'Pending', 'Suggested'],
+            $schedule->getId(),
+        )) {
+            return $this->json(['success' => false, 'message' => 'Selected facility is not available for this date and time.'], Response::HTTP_CONFLICT);
+        }
+
+        $previousFacility = $schedule->getFacility();
+        if ($previousFacility && $previousFacility->getId() !== $facility->getId()) {
+            $schedule->setPreviousFacility($previousFacility);
+            $schedule->setIsRelocated(true);
+        }
+
+        $schedule->setFacility($facility);
+        $schedule->setScheduleDate($date);
+        $schedule->setStartTime($start);
+        $schedule->setEndTime($end);
+        $schedule->setUpdatedAt(new \DateTime());
+
+        $courseCode = trim((string) $request->request->get('course_code', $schedule->getCourseCode()));
+        if ($courseCode !== '') {
+            $schedule->setCourseCode($courseCode);
+        }
+        $section = trim((string) $request->request->get('section', $schedule->getSection() ?? ''));
+        $schedule->setSection($section !== '' ? $section : null);
+        $facultyName = trim((string) $request->request->get('faculty_name', $schedule->getFacultyName() ?? ''));
+        $schedule->setFacultyName($facultyName !== '' ? $facultyName : null);
+        $facultyEmail = trim((string) $request->request->get('faculty_email', $schedule->getFacultyEmail() ?? ''));
+        $schedule->setFacultyEmail($facultyEmail !== '' ? $facultyEmail : null);
+        $schedule->setFacultyUser($facultyMatcher->resolveFacultyUser($schedule->getFacultyEmail()));
+
+        $em->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Class schedule updated successfully.',
+            'schedule' => [
+                'id' => $schedule->getId(),
+                'reservationDate' => $schedule->getScheduleDate()->format('Y-m-d'),
+                'isRelocated' => $schedule->isRelocated(),
+            ],
+            'scheduleRevision' => $scheduleRevision->getRevision(),
+        ]);
+    }
+
+    #[Route('/class-schedule/{id}/delete', name: 'admin_class_schedule_delete', methods: ['POST'])]
+    public function deleteClassSchedule(
+        ClassSchedule $schedule,
+        Request $request,
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
+    ): JsonResponse {
+        if (!$this->isCsrfTokenValid('class_schedule_delete_' . $schedule->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $em->remove($schedule);
+        $em->flush();
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Class schedule entry deleted.',
+            'scheduleRevision' => $scheduleRevision->getRevision(),
+        ]);
     }
 
     #[Route('/calendar/block', name: 'admin_calendar_block', methods: ['POST'])]
@@ -359,7 +522,8 @@ class SuperAdminReservationController extends AbstractController
         Request $request,
         FacilityRepository $facilityRepo,
         ReservationRepository $reservationRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
     ): Response {
         $isAjax = $request->isXmlHttpRequest();
 
@@ -457,6 +621,7 @@ class SuperAdminReservationController extends AbstractController
                 'success' => true,
                 'message' => $message,
                 'block' => $this->formatScheduleBlockForCalendar($block),
+                'scheduleRevision' => $scheduleRevision->getRevision(),
             ]);
         }
 
@@ -471,7 +636,8 @@ class SuperAdminReservationController extends AbstractController
         FacilityRepository $facilityRepo,
         ReservationRepository $reservationRepo,
         FacilityScheduleBlockRepository $blockRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
     ): Response {
         $isAjax = $request->isXmlHttpRequest();
 
@@ -532,7 +698,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $type = (string) $request->request->get('type', 'Manual');
-        if (!in_array($type, ['Manual', 'Blocked', 'Maintenance', 'Class Schedule'], true)) {
+        if (!in_array($type, ['Manual', 'Blocked', 'Maintenance'], true)) {
             $type = 'Manual';
         }
 
@@ -552,6 +718,7 @@ class SuperAdminReservationController extends AbstractController
                 'success' => true,
                 'message' => $message,
                 'block' => $this->formatScheduleBlockForCalendar($block),
+                'scheduleRevision' => $scheduleRevision->getRevision(),
             ]);
         }
 
@@ -584,7 +751,8 @@ class SuperAdminReservationController extends AbstractController
     public function deleteBlock(
         FacilityScheduleBlock $block,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
     ): Response {
         $isAjax = $request->isXmlHttpRequest();
 
@@ -602,7 +770,11 @@ class SuperAdminReservationController extends AbstractController
         $message = 'Schedule block deleted successfully. The time slot is available again if no other conflict exists.';
 
         if ($isAjax) {
-            return $this->json(['success' => true, 'message' => $message]);
+            return $this->json([
+                'success' => true,
+                'message' => $message,
+                'scheduleRevision' => $scheduleRevision->getRevision(),
+            ]);
         }
 
         $this->addFlash('success', $message);
@@ -707,8 +879,9 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/calendar/import/delete', name: 'admin_calendar_import_delete', methods: ['POST'])]
     public function deleteImportedSchedule(
         Request $request,
-        FacilityScheduleBlockRepository $blockRepo,
-        EntityManagerInterface $em
+        ClassScheduleRepository $classScheduleRepo,
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
     ): Response {
         $isAjax = $request->isXmlHttpRequest();
 
@@ -720,23 +893,18 @@ class SuperAdminReservationController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        $count = $blockRepo->createQueryBuilder('b')
-            ->select('COUNT(b.id)')
-            ->where('b.type = :type')
-            ->setParameter('type', 'Class Schedule')
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        $blockRepo->deleteByType('Class Schedule');
+        $count = $classScheduleRepo->countAll();
+        $classScheduleRepo->deleteAll();
         $em->flush();
 
-        $message = "Deleted $count imported class schedule block(s).";
+        $message = "Deleted $count imported class schedule(s).";
 
         if ($isAjax) {
             return $this->json([
                 'success' => true,
                 'message' => $message,
                 'deleted' => (int) $count,
+                'scheduleRevision' => $scheduleRevision->getRevision(),
             ]);
         }
 
@@ -747,9 +915,8 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/calendar/import', name: 'admin_calendar_import', methods: ['POST'])]
     public function importSchedule(
         Request $request,
-        FacilityRepository $facilityRepo,
-        FacilityScheduleBlockRepository $blockRepo,
-        EntityManagerInterface $em
+        ClassScheduleImportService $importService,
+        ScheduleRevisionService $scheduleRevision,
     ): Response {
         $file = $request->files->get('schedule_file');
         $pasteData = trim((string) $request->request->get('schedule_paste', ''));
@@ -764,142 +931,33 @@ class SuperAdminReservationController extends AbstractController
             return $this->redirectToRoute('admin_calendar');
         }
 
-        $rows = $this->readScheduleRows($file, $pasteData);
-        if ($rows === []) {
-            if ($isAjax) {
-                return $this->json(['success' => false, 'message' => 'No schedule rows were found in the uploaded data.'], Response::HTTP_BAD_REQUEST);
-            }
-
-            $this->addFlash('error', 'No schedule rows were found in the uploaded data.');
-            return $this->redirectToRoute('admin_calendar');
-        }
-
-        $blockRepo->deleteByType('Class Schedule');
-        $em->flush();
-
-        $created = 0;
-        $processed = 0;
-        $errors = [];
-        $sourceName = $file ? $file->getClientOriginalName() : 'Pasted CSV Data';
-        $seen = [];
-        $firstCreatedDate = null;
-
-        $row = 0;
-        foreach ($rows as $data) {
-            $row++;
-            $data = array_map(static fn ($value) => trim((string) $value), $data);
-
-            if ($this->isScheduleHeaderRow($data)) {
-                continue;
-            }
-
-            [$facilityName, $dateStr, $startStr, $endStr, $title, $type] = array_pad($data, 6, '');
-
-            if (empty($facilityName) || empty($dateStr) || empty($startStr) || empty($endStr)) {
-                $errors[] = "Row $row: Missing required fields.";
-                continue;
-            }
-
-            $processed++;
-            $facility = $this->findFacilityByName($facilityRepo, trim($facilityName));
-
-            if (!$facility) {
-                $errors[] = "Row $row: Facility '$facilityName' not found.";
-                continue;
-            }
-
-            $dates = $this->parseScheduleDates($dateStr);
-            $start = $this->parseScheduleTime($startStr);
-            $end = $this->parseScheduleTime($endStr);
-
-            if ($dates === [] || !$start || !$end) {
-                $errors[] = "Row $row: Invalid date or time format.";
-                continue;
-            }
-
-            if ($end <= $start) {
-                $errors[] = "Row $row: End time must be after start time.";
-                continue;
-            }
-
-            foreach ($dates as $date) {
-                $key = implode('|', [
-                    $facility->getId(),
-                    $date->format('Y-m-d'),
-                    $start->format('H:i'),
-                    $end->format('H:i'),
-                    trim($title) ?: 'Class Schedule',
-                ]);
-
-                if (isset($seen[$key])) {
-                    continue;
-                }
-
-                $seen[$key] = true;
-
-                $block = new FacilityScheduleBlock();
-                $block->setFacility($facility);
-                $block->setTitle(trim($title) ?: 'Class Schedule');
-                $block->setType('Class Schedule');
-                $block->setBlockDate($date);
-                $block->setStartTime(clone $start);
-                $block->setEndTime(clone $end);
-                $block->setSource($sourceName);
-                $block->setScheduleIdentifier(sha1($key));
-                $block->setNotes('Imported class schedule');
-                $em->persist($block);
-                $created++;
-
-                if ($firstCreatedDate === null || $date < $firstCreatedDate) {
-                    $firstCreatedDate = clone $date;
-                }
-
-                if ($created % 100 === 0) {
-                    $em->flush();
-                }
-            }
-        }
-
-        $em->flush();
-
-        $message = $created > 0
-            ? "Schedule sync complete. Replaced old class schedules and created $created blocking schedule entries from $processed imported row(s)."
-            : 'No class schedule blocks were created.';
-        $warnings = [];
-        $today = new \DateTimeImmutable('today');
-        $weekStart = $today->modify('monday this week');
-        $weekEnd = $weekStart->modify('+6 days');
-
-        if ($created > 0 && $firstCreatedDate && ($firstCreatedDate->format('Y-m-d') < $weekStart->format('Y-m-d') || $firstCreatedDate->format('Y-m-d') > $weekEnd->format('Y-m-d'))) {
-            $warnings[] = 'Imported schedules are not in the current week, so the calendar opened the imported schedule week.';
-        }
+        $sourceName = $file instanceof UploadedFile ? $file->getClientOriginalName() : 'Pasted CSV Data';
+        $result = $importService->import($file instanceof UploadedFile ? $file : null, $pasteData, $sourceName);
 
         if ($isAjax) {
             return $this->json([
-                'success' => $created > 0,
-                'message' => $message,
-                'warnings' => array_slice(array_merge($warnings, $errors), 0, 10),
-                'date' => $firstCreatedDate ? $firstCreatedDate->format('Y-m-d') : null,
-                'created' => $created,
-                'processed' => $processed,
-            ], $created > 0 ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'warnings' => $result['warnings'],
+                'date' => $result['date'],
+                'created' => $result['created'],
+                'processed' => $result['processed'],
+                'relocated' => $result['relocated'],
+                'scheduleRevision' => $scheduleRevision->getRevision(),
+            ], $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
         }
 
-        if ($created > 0) {
-            $this->addFlash('success', $message);
+        if ($result['success']) {
+            $this->addFlash('success', $result['message']);
         } else {
-            $this->addFlash('error', $message);
+            $this->addFlash('error', $result['message']);
         }
 
-        foreach ($warnings as $warning) {
+        foreach ($result['warnings'] as $warning) {
             $this->addFlash('warning', $warning);
         }
 
-        foreach (array_slice($errors, 0, 10) as $error) {
-            $this->addFlash('warning', $error);
-        }
-
-        return $this->redirectToRoute('admin_calendar', $firstCreatedDate ? ['date' => $firstCreatedDate->format('Y-m-d')] : []);
+        return $this->redirectToRoute('admin_calendar', $result['date'] ? ['date' => $result['date']] : []);
     }
 
     private function formatScheduleBlockForCalendar(FacilityScheduleBlock $block): array

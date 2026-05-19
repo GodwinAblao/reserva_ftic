@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Class schedule update</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+    <h2 style="color: #0d4702;">Class schedule update</h2>
+    <p>{{ message }}</p>
+    {% if schedule %}
+    <table style="margin-top: 16px; border-collapse: collapse;">
+        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Course</td><td><strong>{{ schedule.courseCode }}{% if schedule.section %} · {{ schedule.section }}{% endif %}</strong></td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Facility</td><td>{{ facilityName }}</td></tr>
+        {% if schedule.facultyName %}
+        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Faculty</td><td>{{ schedule.facultyName }}</td></tr>
+        {% endif %}
+    </table>
+    {% endif %}
+    <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">Reserva FTIC — automated message</p>
+</body>
+</html>

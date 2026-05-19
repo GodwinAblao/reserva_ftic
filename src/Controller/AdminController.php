@@ -279,8 +279,11 @@ class AdminController extends AbstractController
     }
 
     #[Route('/reservation-monitoring', name: 'admin_reservation_monitoring', methods: ['GET'])]
-    public function reservationMonitoring(EntityManagerInterface $em, ReservationStatusLogRepository $auditRepo): Response
-    {
+    public function reservationMonitoring(
+        EntityManagerInterface $em,
+        ReservationStatusLogRepository $auditRepo,
+        \App\Repository\ClassScheduleNotificationLogRepository $classNotifyAuditRepo,
+    ): Response {
         if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->redirectToRoute('admin_role_reservation_monitoring');
         }
@@ -315,6 +318,7 @@ class AdminController extends AbstractController
             'statusCounts' => $statusCounts,
             'facilityCounts' => $facilityCounts,
             'statusAuditLogs' => $auditRepo->findRecent(30),
+            'classScheduleNotifyLogs' => $classNotifyAuditRepo->findRecent(30),
         ]);
     }
 

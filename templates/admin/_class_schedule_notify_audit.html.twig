@@ -1,0 +1,56 @@
+<div class="rm-table-card" style="margin-top: 20px;">
+    <h3 class="rm-table-title">Class schedule faculty notifications</h3>
+    <p style="font-size: 13px; color: #6b7280; margin: 0 0 14px;">Who notified which faculty (email and/or in-app), including verified vs external recipients.</p>
+    <table class="rm-table">
+        <thead>
+            <tr>
+                <th>When</th>
+                <th>Actor</th>
+                <th>Course</th>
+                <th>Facility</th>
+                <th>Recipient</th>
+                <th>Channels</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in classScheduleNotifyLogs|default([]) %}
+            <tr>
+                <td>{{ log.createdAt|date('M d, Y H:i') }}</td>
+                <td>
+                    <strong>{{ log.actorRoleLabel }}</strong>
+                    {% if log.notifiedBy %}
+                        <br><span style="font-size:12px;color:#9ca3af;">{{ log.notifiedBy.email }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.classSchedule %}
+                        {{ log.classSchedule.courseCode }}{% if log.classSchedule.section %} · {{ log.classSchedule.section }}{% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.newFacility %}
+                        {{ log.newFacility.name }}
+                    {% elseif log.classSchedule and log.classSchedule.facility %}
+                        {{ log.classSchedule.facility.name }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    {{ log.recipientEmail }}
+                    {% if log.facultyUser %}
+                        <br><span style="font-size:12px;color:#15803d;">Verified faculty account</span>
+                    {% endif %}
+                </td>
+                <td>{{ log.channels }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align:center;color:#9ca3af;padding:24px;">No class schedule notifications sent yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
