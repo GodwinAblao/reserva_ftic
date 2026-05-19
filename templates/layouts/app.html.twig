@@ -132,7 +132,12 @@
                 <div class="admin-sidebar-user">
                     <div class="admin-sidebar-email">{{ app.user ? app.user.userIdentifier : 'user@ftic.edu.ph' }}</div>
                     <div class="admin-sidebar-role">
-                        {% if is_granted('ROLE_MENTOR') %}Mentor
+                        {% set user_email = app.user ? app.user.userIdentifier : '' %}
+                        {% if user_email ends with 'fit.edu.ph' %}
+                            Student{{ is_granted('ROLE_MENTOR') ? '/Mentor' : '' }}
+                        {% elseif user_email ends with 'feutech.edu.ph' %}
+                            Faculty{{ is_granted('ROLE_MENTOR') ? '/Mentor' : '' }}
+                        {% elseif is_granted('ROLE_MENTOR') %}Mentor
                         {% elseif is_granted('ROLE_FACULTY') %}Faculty
                         {% else %}Student
                         {% endif %}

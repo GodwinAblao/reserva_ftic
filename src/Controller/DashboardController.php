@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Facility;
+use App\Entity\MentorCustomRequest;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\Notification;
 use App\Entity\Reservation;
+use App\Entity\ResearchContent;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -40,7 +42,7 @@ class DashboardController extends AbstractController
         // Load user dashboard data
         $reservations = $em->getRepository(Reservation::class)->findBy(
             ['user' => $user],
-            ['reservationDate' => 'DESC'],
+            ['updatedAt' => 'DESC'],
             6
         );
         
@@ -58,6 +60,18 @@ class DashboardController extends AbstractController
                 6
             );
         }
+
+        $latestMentoringAppointment = null;
+        foreach (array_merge($mentoringAsStudent, $mentoringAsMentor) as $appointment) {
+            if ($latestMentoringAppointment === null || $appointment->getScheduledAt() > $latestMentoringAppointment->getScheduledAt()) {
+                $latestMentoringAppointment = $appointment;
+            }
+        }
+
+        $latestMentorRequest = $em->getRepository(MentorCustomRequest::class)->findOneBy(
+            ['student' => $user],
+            ['updatedAt' => 'DESC', 'createdAt' => 'DESC']
+        );
         
         $notifications = $em->getRepository(Notification::class)->findBy(
             ['user' => $user],
@@ -69,6 +83,11 @@ class DashboardController extends AbstractController
             ['availableForReservation' => true],
             ['id' => 'ASC'],
             3
+        );
+
+        $latestResearchContent = $em->getRepository(ResearchContent::class)->findOneBy(
+            ['visibility' => 'Public'],
+            ['createdAt' => 'DESC']
         );
         
         $unreadCount = $em->getRepository(Notification::class)->createQueryBuilder('n')
@@ -92,10 +111,13 @@ class DashboardController extends AbstractController
             'reservations' => $reservations,
             'mentoringAsStudent' => $mentoringAsStudent,
             'mentoringAsMentor' => $mentoringAsMentor,
+            'latestMentoringAppointment' => $latestMentoringAppointment,
+            'latestMentorRequest' => $latestMentorRequest,
             'notifications' => $notifications,
             'unreadCount' => $unreadCount,
             'stats' => $stats,
             'facilities' => $facilities,
+            'latestResearchContent' => $latestResearchContent,
         ]);
     }
 }

@@ -1,0 +1,73 @@
+{% if items is empty %}
+    <div class="reservation-empty">{{ emptyText }}</div>
+{% else %}
+    {% for reservation in items %}
+        <article class="reservation-card">
+            <div class="reservation-card-header">
+                <h3 class="reservation-card-title">{{ reservation.facility.name }}</h3>
+            </div>
+            <div class="reservation-card-details">
+                <div class="reservation-detail">
+                    <label>Reservation Holder</label>
+                    <span>{{ reservation.name }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>Email</label>
+                    <span>{{ reservation.email }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>{{ reservation.status }} at</label>
+                    <span>{{ reservation.updatedAt ? reservation.updatedAt|date('M d Y, h:i A') : reservation.createdAt|date('M d Y, h:i A') }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>Event Name</label>
+                    <span>{{ reservation.eventName ?: 'Reserved Facility' }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>Participants</label>
+                    <span>{{ reservation.capacity }} people</span>
+                </div>
+                <div class="reservation-detail full">
+                    <label>Event Description &amp; Purpose</label>
+                    <p>{{ reservation.purpose ?: 'No description provided.' }}</p>
+                </div>
+                <div class="reservation-detail">
+                    <label>Starting Time</label>
+                    <span>{{ reservation.reservationStartTime|date('h:i A') }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>End Time</label>
+                    <span>{{ reservation.reservationEndTime|date('h:i A') }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>Date</label>
+                    <span>{{ reservation.reservationDate|date('M d Y') }}</span>
+                </div>
+                <div class="reservation-detail">
+                    <label>Reserved at</label>
+                    <span>{{ reservation.createdAt|date('M d Y, h:i A') }}</span>
+                </div>
+            </div>
+            {% if reservation.status == 'Pending' or reservation.status == 'Suggested' %}
+                <div class="reservation-actions">
+                    {% if reservation.status == 'Pending' %}
+                        <form method="POST" action="{{ path('cancel_reservation', {'id': reservation.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('cancel_reservation_' ~ reservation.id) }}">
+                            <button type="submit" class="btn-danger-small" onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                        </form>
+                    {% endif %}
+                    {% if reservation.status == 'Suggested' %}
+                        <form method="POST" action="{{ path('accept_suggestion', {'id': reservation.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('accept_suggestion_' ~ reservation.id) }}">
+                            <button type="submit" class="btn-primary-small">Accept Suggestion</button>
+                        </form>
+                        <form method="POST" action="{{ path('decline_suggestion', {'id': reservation.id}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('decline_suggestion_' ~ reservation.id) }}">
+                            <button type="submit" class="btn-danger-small" onclick="return confirm('Decline this suggestion? Your reservation will be cancelled.')">Decline</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </article>
+    {% endfor %}
+{% endif %}

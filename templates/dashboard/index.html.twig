@@ -56,48 +56,47 @@
             <section class="dashboard-main-column">
                 {# Reservation and mentoring summary cards. #}
                 <div class="dashboard-stats-grid">
-                    <article class="dashboard-stat-card stat-green">
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-green">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
                             <span class="dashboard-stat-title">Total Reservations</span>
                         </div>
                         <div class="dashboard-stat-value">{{ stats.totalReservations }}</div>
                         <div class="dashboard-stat-foot">Total Reservations</div>
-                    </article>
+                    </a>
 
-                    <article class="dashboard-stat-card stat-success">
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-success">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
                             <span class="dashboard-stat-title">Approved Reservations</span>
                         </div>
                         <div class="dashboard-stat-value">{{ stats.approvedReservations }}</div>
                         <div class="dashboard-stat-foot">Reservations this week</div>
-                    </article>
+                    </a>
 
-                    <article class="dashboard-stat-card stat-warning">
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-warning">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
                             <span class="dashboard-stat-title">Pending Reservation</span>
                         </div>
                         <div class="dashboard-stat-value">{{ stats.pendingReservations }}</div>
                         <div class="dashboard-stat-foot">Pending this week</div>
-                    </article>
+                    </a>
 
-                    <article class="dashboard-stat-card stat-muted">
+                    <a href="{{ path('mentoring_index') }}" class="dashboard-stat-card stat-muted">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-mentoring" /></svg></span>
                             <span class="dashboard-stat-title">Mentoring</span>
                         </div>
                         <div class="dashboard-stat-value">{{ stats.mentoringSessions }}</div>
                         <div class="dashboard-stat-foot">Mentoring this week</div>
-                    </article>
+                    </a>
                 </div>
 
                 {# Facility overview: shows only the first three available facilities. #}
                 <section class="dashboard-section">
                     <div class="dashboard-section-head">
                         <h3>Facilities</h3>
-                        <a href="{{ path('app_facility_index') }}">View more</a>
                     </div>
 
                     {% if facilities is empty %}
@@ -133,22 +132,38 @@
                             {% endfor %}
                         </div>
                     {% endif %}
+                    <div class="dashboard-section-action">
+                        <a href="{{ path('app_facility_index') }}">View more</a>
+                    </div>
                 </section>
 
                 {# Research/articles overview: reserved for super admin posts. #}
                 <section class="dashboard-section">
                     <div class="dashboard-section-head">
                         <h3>Research/Articles</h3>
-                        <a href="{{ path('research_index') }}">View more</a>
                     </div>
 
-                    <div class="dashboard-cards-grid dashboard-articles-grid"></div>
+                    <div class="dashboard-cards-grid dashboard-articles-grid">
+                        {% if latestResearchContent %}
+                            <a href="{{ path('research_show', {id: latestResearchContent.id}) }}" class="dashboard-article-card">
+                                <div class="dashboard-article-image">
+                                    <span>{{ latestResearchContent.type }}</span>
+                                </div>
+                                <div class="dashboard-article-caption">
+                                    <strong>{{ latestResearchContent.title }}</strong>
+                                    <span>{{ latestResearchContent.summary ?: latestResearchContent.abstract ?: latestResearchContent.category }}</span>
+                                </div>
+                            </a>
+                        {% else %}
+                            <div class="no-facilities">
+                                <p>No research, articles, or news available yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="dashboard-section-action">
+                        <a href="{{ path('research_index') }}">View more</a>
+                    </div>
                 </section>
-
-                {# Dashboard footer. #}
-                <footer class="dashboard-footer">
-                    &copy; 2026 Reserva. All rights reserved.
-                </footer>
             </section>
 
             {# Secondary dashboard summaries. #}
@@ -157,15 +172,33 @@
                     <div class="dashboard-side-card-head">
                         <h3>Upcoming Reservations</h3>
                     </div>
-                    <p>You have no upcoming reservations yet. Book a facility to get started!</p>
-                    <a href="{{ path('app_facility_index') }}">View more</a>
+                    {% set latestReservation = reservations|first %}
+                    {% if latestReservation %}
+                        <p>
+                            {{ latestReservation.facility.name }} —
+                            {{ latestReservation.status }}
+                            on {{ latestReservation.reservationDate|date('M d, Y') }}
+                            at {{ latestReservation.reservationStartTime|date('h:i A') }}.
+                        </p>
+                    {% else %}
+                        <p>You have no upcoming reservations yet. Book a facility to get started!</p>
+                    {% endif %}
+                    <a href="{{ path('user_reservations') }}">View more</a>
                 </section>
 
                 <section class="dashboard-side-card dashboard-info-card">
                     <div class="dashboard-side-card-head">
                         <h3>My Mentorships</h3>
                     </div>
-                    <p>You don't have any scheduled mentor sessions at the moment. Request one now to get started!</p>
+                    {% if latestMentoringAppointment %}
+                        <p>
+                            {{ latestMentoringAppointment.topic ?: 'Mentoring session' }} —
+                            {{ latestMentoringAppointment.status }}
+                            on {{ latestMentoringAppointment.scheduledAt|date('M d, Y h:i A') }}.
+                        </p>
+                    {% else %}
+                        <p>You don't have any scheduled mentor sessions at the moment. Request one now to get started!</p>
+                    {% endif %}
                     <a href="{{ path('mentoring_index') }}">View more</a>
                 </section>
 
@@ -173,7 +206,15 @@
                     <div class="dashboard-side-card-head">
                         <h3>Mentor Requests</h3>
                     </div>
-                    <p>No mentor requests yet. Apply to become a mentor and help students!</p>
+                    {% if latestMentorRequest %}
+                        <p>
+                            {{ latestMentorRequest.preferredExpertise ?: latestMentorRequest.message|slice(0, 80) }} —
+                            {{ latestMentorRequest.status|capitalize }}
+                            updated {{ (latestMentorRequest.updatedAt ?: latestMentorRequest.createdAt)|date('M d, Y') }}.
+                        </p>
+                    {% else %}
+                        <p>No mentor requests yet. Apply to become a mentor and help students!</p>
+                    {% endif %}
                     <a href="{{ path('mentoring_index') }}">View more</a>
                 </section>
             </aside>
