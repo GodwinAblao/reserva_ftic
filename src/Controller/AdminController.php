@@ -915,6 +915,27 @@ class AdminController extends AbstractController
         return $trends;
     }
 
+    #[Route('/api/mentoring', name: 'admin_api_mentoring', methods: ['GET'])]
+    public function mentoringPanelApi(EntityManagerInterface $em): JsonResponse
+    {
+        $requests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 10);
+        $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 5);
+
+        $reqData = array_map(fn($r) => [
+            'id'     => $r->getId(),
+            'name'   => $r->getFullName() ?: ($r->getStudent() ? trim($r->getStudent()->getFirstName() . ' ' . $r->getStudent()->getLastName()) : 'Unknown'),
+            'status' => $r->getStatus(),
+            'topic'  => $r->getPreferredExpertise() ?: 'General',
+        ], $requests);
+
+        $lbData = array_map(fn($m) => [
+            'name'   => $m->getDisplayName(),
+            'points' => $m->getEngagementPoints(),
+        ], $leaderboard);
+
+        return $this->json(['requests' => $reqData, 'leaderboard' => $lbData]);
+    }
+
     private function adminModules(): array
     {
         return [

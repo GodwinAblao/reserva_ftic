@@ -265,12 +265,17 @@ const NavProgress = (() => {
 
     function buildLbCard(m, i) {
         const medals = ['🥇','🥈','🥉'];
+        const rank = medals[i] || `<span style="font-size:11px;font-weight:800;color:#6b7280;width:20px;display:inline-block;text-align:center">${i+1}</span>`;
+        const sub  = m.specialization || m.degree || '';
+        const pts  = m.points !== undefined ? m.points : '';
         return `<div class="admin-notif-card" style="display:flex;align-items:center;gap:9px">`
-            + `<span style="font-size:19px;flex-shrink:0;line-height:1">${medals[i]||''}</span>`
+            + `<span style="font-size:19px;flex-shrink:0;line-height:1">${rank}</span>`
             + `<div style="flex:1;min-width:0">`
             + `<div class="admin-notif-card-title">${esc(m.name||'Mentor')}</div>`
-            + `<div class="admin-notif-card-desc" style="font-size:11px">${esc(m.specialization||'')}</div>`
-            + `</div></div>`;
+            + (sub ? `<div class="admin-notif-card-desc" style="font-size:11px">${esc(sub)}</div>` : '')
+            + `</div>`
+            + (pts !== '' ? `<span style="font-size:11.5px;font-weight:800;color:#f59e0b;white-space:nowrap">${esc(String(pts))} pts</span>` : '')
+            + `</div>`;
     }
 
     const EMPTY = (msg) =>
@@ -324,28 +329,20 @@ const NavProgress = (() => {
         });
     }
 
-    /* ── Mentoring panel (one-shot on load, no repeat needed) ── */
+    /* ── Mentoring panel — leaderboard only (reservations top-panel
+       is already populated by pollReservations above) ── */
     function loadMentoringPanel(url) {
-        const reqPanel = document.getElementById('adminMentoringReqList');
-        const lbPanel  = document.getElementById('adminLeaderboardList');
-        if (!reqPanel && !lbPanel) return;
+        const lbPanel = document.getElementById('adminLeaderboardList');
+        if (!lbPanel) return;
 
         apiFetch(url).then(data => {
             if (!data) {
-                if (reqPanel) reqPanel.innerHTML = EMPTY('Could not load — retrying…');
-                if (lbPanel)  lbPanel.innerHTML  = EMPTY('Could not load — retrying…');
-                // Retry once after 5 s if first attempt failed
+                lbPanel.innerHTML = EMPTY('Could not load — retrying…');
                 setTimeout(() => loadMentoringPanel(url), 5000);
                 return;
             }
-            if (reqPanel) {
-                const reqs = (data.requests ?? []).slice(0, 5);
-                reqPanel.innerHTML = reqs.length ? reqs.map(buildMentorCard).join('') : EMPTY('No mentoring requests');
-            }
-            if (lbPanel) {
-                const lb = (data.leaderboard ?? []).slice(0, 5);
-                lbPanel.innerHTML = lb.length ? lb.map(buildLbCard).join('') : EMPTY('No leaderboard data');
-            }
+            const lb = (data.leaderboard ?? []).slice(0, 5);
+            lbPanel.innerHTML = lb.length ? lb.map(buildLbCard).join('') : EMPTY('No leaderboard data yet');
         });
     }
 

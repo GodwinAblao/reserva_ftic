@@ -127,29 +127,17 @@ class MentoringController extends AbstractController
 
     #[Route('/super-admin', name: 'mentoring_super-admin', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function admin(Request $request, EntityManagerInterface $em): Response
+    public function admin(): Response
     {
-        $this->ensureFacultyMentorProfiles($em);
+        return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_MOVED_PERMANENTLY);
+    }
 
-        $mentorRequestRepo = $em->getRepository(MentorCustomRequest::class);
-        $statusFilter = trim((string) $request->query->get('status', ''));
-        $departmentFilter = trim((string) $request->query->get('department', ''));
-        $dateFilter = trim((string) $request->query->get('date', ''));
-
-        $mentors = $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']);
-
-        return $this->render('mentoring/super-admin.html.twig', [
-            'mentors' => $mentors,
-            'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC']),
-            'applications' => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
-            'mentorRequests' => $mentorRequestRepo->findBy([], ['createdAt' => 'DESC'], 50),
-            'requestFilters' => [
-                'status' => $statusFilter,
-                'department' => $departmentFilter,
-                'date' => $dateFilter,
-            ],
-            'users' => $em->getRepository(User::class)->findAll(),
-            'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
+    #[Route('/super-admin/mentors', name: 'mentoring_mentors_list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function mentorsList(EntityManagerInterface $em): Response
+    {
+        return $this->render('mentoring/mentors-list.html.twig', [
+            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
         ]);
     }
 
@@ -157,9 +145,18 @@ class MentoringController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function adminMentorRequests(Request $request, EntityManagerInterface $em): Response
     {
+        $this->ensureFacultyMentorProfiles($em);
+        $allRequests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
+        $assistanceRequests = array_values(array_filter($allRequests, fn($r) => $r->isAssistanceRequest()));
+        $directRequests     = array_values(array_filter($allRequests, fn($r) => !$r->isAssistanceRequest()));
         return $this->render('mentoring/superadmin-mentor-requests.html.twig', [
-            'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
-            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'requests'           => $assistanceRequests,
+            'directRequests'     => $directRequests,
+            'mentors'            => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'leaderboard'        => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
+            'users'              => $em->getRepository(User::class)->findAll(),
+            'applications'       => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
+            'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
         ]);
     }
 
@@ -796,8 +793,8 @@ $validUntil = $request->request->get('valid_until');
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        $status = (string) $request->request->get('status', 'Reviewing');
-        if (!in_array($status, ['Pending', 'Reviewing', 'Assigned', 'Completed'], true)) {
+        $status = (string) $request->request->get('status', 'Pending');
+        if (!in_array($status, ['Pending', 'Assigned', 'Completed', 'Cancelled'], true)) {
             throw $this->createNotFoundException();
         }
 
@@ -827,7 +824,7 @@ $validUntil = $request->request->get('valid_until');
 
         if (in_array($status, ['Assigned', 'Completed'], true) && ($mentorName === '' || $expertise === '' || $availableDates === '' || $availableTime === '' || $meetingMethod === '')) {
             $this->addFlash('error', 'Mentor name, expertise, dates, time, and meeting method are required before assigning a request.');
-            return $this->redirectToRoute('mentoring_super-admin', [], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_SEE_OTHER);
         }
 
         $mentorRequest
@@ -839,14 +836,14 @@ $validUntil = $request->request->get('valid_until');
             ->setMeetingMethod($meetingMethod ?: null)
             ->setAdminInstructions($instructions ?: null);
 
-        if (in_array($status, ['Assigned', 'Completed'], true)) {
+        if (in_array($status, ['Assigned', 'Completed', 'Cancelled'], true)) {
             $mentorRequest->markResponded();
         }
 
         $student = $mentorRequest->getStudent();
         if ($student) {
-            $notificationMessage = $status === 'Reviewing'
-                ? 'Admin is now reviewing your mentor assistance request.'
+            $notificationMessage = $status === 'Cancelled'
+                ? 'Your mentor assistance request has been cancelled.'
                 : 'A mentor match has been sent for your assistance request.';
 
             $this->notificationService->notifyMentorAssistanceStatus($student, $mentorRequest->getId(), $status, $notificationMessage);

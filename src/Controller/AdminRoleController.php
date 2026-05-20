@@ -116,7 +116,7 @@ class AdminRoleController extends AbstractController
         )->fetchAllAssociative();
 
         $lbRows = $conn->executeQuery(
-            'SELECT mp.display_name, mp.specialization, u.degree
+            'SELECT mp.display_name, mp.specialization, mp.engagement_points, u.degree
              FROM mentor_profile mp
              LEFT JOIN user u ON mp.user_id = u.id
              ORDER BY mp.engagement_points DESC LIMIT 5'
@@ -135,8 +135,9 @@ class AdminRoleController extends AbstractController
             'leaderboard' => array_map(static function ($m) {
                 return [
                     'name'           => $m['display_name'] ?? '',
+                    'points'         => $m['engagement_points'] ?? 0,
+                    'specialization' => $m['specialization'] ?? '',
                     'degree'         => $m['degree'] ?? '',
-                    'specialization' => $m['specialization'] ? 'Specialization in ' . $m['specialization'] : '',
                 ];
             }, $lbRows),
         ]);
@@ -827,5 +828,26 @@ class AdminRoleController extends AbstractController
         }
         
         return $rows;
+    }
+
+    #[Route('/api/mentoring-panel', name: 'admin_role_api_mentoring_panel', methods: ['GET'])]
+    public function mentoringPanelApi(EntityManagerInterface $em): JsonResponse
+    {
+        $requests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 10);
+        $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 5);
+
+        $reqData = array_map(fn($r) => [
+            'id'     => $r->getId(),
+            'name'   => $r->getFullName() ?: ($r->getStudent() ? trim($r->getStudent()->getFirstName() . ' ' . $r->getStudent()->getLastName()) : 'Unknown'),
+            'status' => $r->getStatus(),
+            'topic'  => $r->getPreferredExpertise() ?: 'General',
+        ], $requests);
+
+        $lbData = array_map(fn($m) => [
+            'name'   => $m->getDisplayName(),
+            'points' => $m->getEngagementPoints(),
+        ], $leaderboard);
+
+        return $this->json(['requests' => $reqData, 'leaderboard' => $lbData]);
     }
 }

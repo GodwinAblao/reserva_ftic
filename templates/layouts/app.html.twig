@@ -178,7 +178,7 @@
                     <span>Facilities</span>
                 </a>
                 <span class="nav-section-label">Mentoring</span>
-                <a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_super-admin') }}">
+                <a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_superadmin_requests') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
                     <span>Mentoring</span>
                 </a>
@@ -242,14 +242,15 @@
         {% if is_mentoring_page %}
                 <div class="admin-right-col">
                     <aside class="admin-right-panel" id="adminRightPanel">
-                        <div class="admin-right-panel-title rp-title-green" id="rp-title-mentoring">Mentoring Request</div>
-                        <div id="adminMentoringReqList">
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
+                        <div class="admin-right-panel-title rp-title-green" id="rp-title-reservations">Recent Reservation Request</div>
+                        <div id="adminNotifList">
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
+                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
                         </div>
                     </aside>
                     <aside class="admin-right-panel">
-                        <div class="admin-right-panel-title rp-title-green">Leaderboard</div>
+                        <div class="admin-right-panel-title rp-title-green">LeaderBoard</div>
                         <div id="adminLeaderboardList">
                             <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
                             <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
@@ -270,6 +271,6 @@
         {% endif %}
     </div>
     
-    {# Fallback script removed — Stimulus notification controller handles all bell interactions #}
+    {# Right-panel live updates are handled by app.js (section 4) — no inline script needed #}
 
 {% endblock %}

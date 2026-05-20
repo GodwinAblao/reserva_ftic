@@ -1,412 +1,648 @@
 {% extends 'layouts/app.html.twig' %}
 
-{% block title %}Mentor Requests | Super Admin | Reserva FTIC{% endblock %}
+{% block title %}Mentoring Dashboard | Super Admin | Reserva FTIC{% endblock %}
 
 {% block stylesheets %}
 {{ parent() }}
 <style>
-.mc-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; height: calc(100vh - 160px); min-height: 500px; }
-.mc-list-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
-.mc-list-filters { padding: 12px; border-bottom: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 8px; }
-.mc-status-select { width: 100%; padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance: none; cursor: pointer; }
-.mc-search-row { display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 10px; background: #fff; }
-.mc-search-row input { flex: 1; border: none; outline: none; font-size: 13px; color: #374151; padding: 9px 0; background: transparent; }
-.mc-search-row svg { color: #9ca3af; flex-shrink: 0; }
-.mc-list-scroll { flex: 1; overflow-y: auto; }
-.mc-list-section-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 14px 6px; }
-.mc-list-item { padding: 12px 14px; border-bottom: 1px solid #f9fafb; cursor: pointer; transition: background 0.15s; }
-.mc-list-item:hover { background: #fafafa; }
-.mc-list-item.active { background: #fff8ee; border-left: 3px solid #f59e0b; }
-.mc-list-item-name { font-size: 13.5px; font-weight: 700; color: #111827; margin-bottom: 3px; }
-.mc-list-item-time { font-size: 11px; color: #9ca3af; float: right; }
-.mc-list-item-msg { font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mc-detail-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
-.mc-detail-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 14px; }
-.mc-detail-inner { flex: 1; overflow-y: auto; padding: 20px 24px; }
-.mc-detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f3f4f6; }
-.mc-detail-user { display: flex; align-items: center; gap: 12px; }
-.mc-detail-avatar { width: 44px; height: 44px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #374151; flex-shrink: 0; }
-.mc-detail-name { font-size: 15px; font-weight: 700; color: #111827; }
-.mc-detail-email { font-size: 12px; color: #9ca3af; }
-.mc-detail-time { font-size: 12px; color: #9ca3af; }
-.mc-request-label { font-size: 11px; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.4px; margin: 0 0 10px; }
-.mc-request-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-.mc-req-field label { font-size: 11px; color: #9ca3af; font-weight: 600; display: block; margin-bottom: 3px; }
-.mc-req-field p { font-size: 13.5px; color: #111827; font-weight: 600; margin: 0; }
-.mc-req-field.sub p { font-size: 12px; color: #6b7280; font-weight: 500; }
-.mc-notes-label { font-size: 11px; font-weight: 600; color: #9ca3af; margin: 10px 0 6px; }
-.mc-notes-text { font-size: 13px; color: #374151; line-height: 1.6; background: #f9fafb; border-radius: 8px; padding: 12px 14px; }
-.mc-assign-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid #f3f4f6; }
-.mc-assign-title { font-size: 14px; font-weight: 700; color: #111827; margin: 0 0 14px; }
-.mc-assign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-.mc-assign-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-.mc-assign-field { display: flex; flex-direction: column; gap: 5px; }
-.mc-assign-field label { font-size: 11px; font-weight: 600; color: #9ca3af; }
-.mc-assign-input { padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; background: #fff; font-family: inherit; }
-.mc-assign-input:focus { outline: none; border-color: #f59e0b; }
-.mc-notes-input { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; background: #fff; resize: vertical; min-height: 80px; width: 100%; box-sizing: border-box; font-family: inherit; }
-.mc-notes-input:focus { outline: none; border-color: #f59e0b; }
-.mc-send-btn { display: flex; align-items: center; gap: 7px; padding: 10px 22px; background: #006633; color: #fff; border: none; border-radius: 8px; font-size: 13.5px; font-weight: 700; cursor: pointer; margin-left: auto; margin-top: 12px; transition: background 0.15s; }
-.mc-send-btn:hover { background: #005528; }
-.mc-chosen-notice { display:flex; align-items:center; gap:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; font-size:13px; color:#166534; margin-bottom:12px; }
-.mc-chosen-notice svg { flex-shrink:0; stroke:#16a34a; }
-@media (max-width: 900px) { .mc-layout { grid-template-columns: 1fr; height: auto; } }
+/* ── toolbar ── */
+.sa-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.sa-toolbar-search{flex:1;display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:9px;padding:0 14px;background:#fff;height:40px;}
+.sa-toolbar-search input{flex:1;border:none;outline:none;font-size:13px;color:#374151;background:transparent;}
+.sa-toolbar-search svg{color:#9ca3af;flex-shrink:0;}
+.sa-create-btn{display:flex;align-items:center;gap:7px;padding:10px 18px;background:#0D9B00;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s;}
+.sa-create-btn:hover{background:#0a7d00;}
+.sa-mentors-btn{display:flex;align-items:center;gap:7px;padding:10px 16px;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;text-decoration:none;transition:background .15s;}
+.sa-mentors-btn:hover{background:#f9fafb;}
+/* ── 2-col layout ── */
+.sa-dashboard{display:grid;grid-template-columns:268px 1fr;gap:14px;align-items:start;}
+/* ── left panel ── */
+.sa-left{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;height:680px;}
+.sa-left-head{padding:12px 12px 0;}
+.sa-type-sel{width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:9px;font-size:13px;font-weight:700;color:#374151;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none;cursor:pointer;margin-bottom:10px;}
+.sa-left-scroll{flex:1;overflow-y:auto;}
+.sa-group-hd{padding:6px 14px 5px;font-size:11px;font-weight:800;color:#fff;background:#0D9B00;letter-spacing:.3px;}
+.sa-group-hd.older{background:#9ca3af;}
+.sa-item{padding:11px 14px;border-bottom:1px solid #f9fafb;cursor:pointer;transition:background .15s;}
+.sa-item:hover{background:#fafafa;}
+.sa-item.active{background:#f0fdf4;border-left:3px solid #0D9B00;}
+.sa-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.sa-item-name{font-size:12.5px;font-weight:700;color:#111827;}
+.sa-item-time{font-size:10.5px;color:#9ca3af;}
+.sa-item-sub{font-size:11px;color:#6b7280;}
+.sa-item-msg{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+/* ── center panel ── */
+.sa-center{background:#fff;border:1px solid #e5e7eb;border-radius:14px;min-height:680px;display:flex;flex-direction:column;}
+.sa-center-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:#9ca3af;font-size:13px;min-height:680px;}
+.sa-det{padding:28px 32px 28px;overflow-y:auto;flex:1;}
+.sa-det-ts{font-size:11px;color:#9ca3af;text-align:right;margin-bottom:12px;}
+.sa-det-hero{display:flex;align-items:center;gap:14px;margin-bottom:4px;}
+.sa-det-av{width:52px;height:52px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#374151;flex-shrink:0;}
+.sa-det-name{font-size:16px;font-weight:700;color:#0D9B00;}
+.sa-det-sub{font-size:12px;color:#9ca3af;}
+.sa-sec{font-size:11px;font-weight:700;color:#0D9B00;text-transform:uppercase;letter-spacing:.4px;margin:18px 0 10px;}
+.sa-hr{height:1px;background:#f3f4f6;margin:0 -32px;}
+.sa-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 18px;margin-bottom:10px;}
+.sa-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.sa-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+.sa-field label{font-size:10.5px;color:#9ca3af;font-weight:600;display:block;margin-bottom:3px;}
+.sa-field p{font-size:13px;font-weight:600;color:#111827;margin:0;}
+.sa-notes{font-size:12.5px;color:#374151;line-height:1.65;background:#f9fafb;border-radius:8px;padding:11px 14px;margin-bottom:12px;}
+.sa-chosen{display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 13px;font-size:12.5px;color:#166534;margin-bottom:10px;}
+.sa-inp{padding:8px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:12.5px;color:#374151;background:#fff;font-family:inherit;width:100%;box-sizing:border-box;}
+.sa-inp:focus{outline:none;border-color:#0D9B00;}
+.sa-textarea{padding:9px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:12.5px;color:#374151;background:#fff;resize:vertical;min-height:72px;width:100%;box-sizing:border-box;font-family:inherit;}
+.sa-textarea:focus{outline:none;border-color:#0D9B00;}
+.sa-arow{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid #f3f4f6;}
+.sa-btn-reject{padding:10px 26px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.sa-btn-reject:hover{background:#dc2626;}
+.sa-btn-approve{padding:10px 26px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.sa-btn-approve:hover{background:#0a7d00;}
+.sa-btn-send{display:flex;align-items:center;gap:6px;padding:10px 26px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.sa-btn-send:hover{background:#0a7d00;}
+/* badges */
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:capitalize;}
+.badge.pending{background:#fef9c3;color:#854d0e;}
+.badge.assigned,.badge.approved{background:#d1fae5;color:#065f46;}
+.badge.completed{background:#dbeafe;color:#1e40af;}
+.badge.cancelled,.badge.rejected{background:#fee2e2;color:#991b1b;}
+/* proof thumbs */
+.sa-proof-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+.sa-proof-img{width:72px;height:72px;border-radius:8px;border:1px solid #e5e7eb;object-fit:cover;cursor:pointer;}
+.sa-proof-pdf{width:72px;height:72px;border-radius:8px;border:1px solid #e5e7eb;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#6b7280;font-weight:600;text-decoration:none;gap:4px;}
+/* Create Mentor modal */
+.sa-modal-overlay{display:none !important;position:fixed;top:90px;left:0;right:0;bottom:0;z-index:9100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:0;}
+.sa-modal-overlay.open{display:flex !important;}
+.sa-modal-backdrop{position:fixed;top:90px;left:0;right:0;bottom:0;background:rgba(255,255,255,0.08);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:0;}
+.sa-modal{position:relative;z-index:1;background:#fff;border-radius:16px;padding:32px 36px 28px;width:100%;max-width:740px;margin:auto;box-shadow:0 24px 64px rgba(0,0,0,.18);}
+.sa-modal h3{font-size:17px;font-weight:700;color:#111827;margin:0 0 24px;}
+.sa-modal-row{display:grid;gap:16px;margin-bottom:16px;}
+.sa-modal-row.cols-4{grid-template-columns:1fr 1fr 1fr 1fr;}
+.sa-modal-row.cols-2{grid-template-columns:1fr 1fr;}
+.sa-modal-row.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.sa-modal-row.cols-1{grid-template-columns:1fr;}
+.sa-modal-field{display:flex;flex-direction:column;gap:5px;}
+.sa-modal-field label{font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.3px;}
+.sa-modal-input{padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;background:#fff;font-family:inherit;width:100%;box-sizing:border-box;transition:border-color .15s;}
+.sa-modal-input:focus{outline:none;border-color:#0D9B00;}
+.sa-modal-input.readonly{background:#f3f4f6;color:#6b7280;cursor:default;}
+.sa-modal-time-row{display:flex;align-items:center;gap:8px;}
+.sa-modal-time-row .sa-modal-input{flex:1;}
+.sa-modal-time-sep{font-size:14px;color:#9ca3af;font-weight:600;}
+.sa-modal-footer{display:flex;justify-content:flex-end;margin-top:24px;}
+.sa-modal-save{padding:10px 32px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.sa-modal-save:hover{background:#0a7d00;}
+.sa-modal-close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer;line-height:1;}
+@media(max-width:900px){.sa-dashboard{grid-template-columns:210px 1fr;}}
+@media(max-width:600px){.sa-dashboard{grid-template-columns:1fr;}.sa-left{height:auto;max-height:280px;}}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="content-header" style="align-items:center; justify-content:space-between; margin-bottom:12px;">
-    <div>
-        <h2>Mentor Requests <span style="background:#1e40af;color:#fff;font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:999px;vertical-align:middle;margin-left:.4rem;">Super Admin</span></h2>
-        <p class="muted">Manage all mentor requests — assign mentors and notify students.</p>
+
+{# ── Toolbar ── #}
+<div class="sa-toolbar">
+    <div class="sa-toolbar-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="saSearch" placeholder="Search by name…" oninput="saFilterList()">
     </div>
-    <a href="{{ path('mentoring_super-admin') }}" class="btn-secondary">← Back to Mentoring Super Admin</a>
+    <button class="sa-create-btn" onclick="openCreateMentor()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create Mentor
+    </button>
+    <a href="{{ path('mentoring_mentors_list') }}" class="sa-mentors-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Mentors
+    </a>
 </div>
 
-<div class="mc-layout">
+{# ── 2-col dashboard ── #}
+<div class="sa-dashboard">
 
-    {# ── Left: request list ── #}
-    <div class="mc-list-panel">
-        <div class="mc-list-filters">
-            <select class="mc-status-select" id="mcStatusFilter" onchange="filterRequests()">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="reviewing">Reviewing</option>
-                <option value="assigned">Assigned</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+    {# ── LEFT PANEL ── #}
+    <div class="sa-left">
+        <div class="sa-left-head">
+            <select class="sa-type-sel" id="saTypeSelect" onchange="saOnTypeChange()">
+                <option value="all">All Requests</option>
+                <option value="custom">Custom Request</option>
+                <option value="apply">Apply as Mentor</option>
             </select>
-            <div class="mc-search-row">
-                <input type="text" id="mcSearch" placeholder="Search name..." oninput="filterRequests()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            </div>
         </div>
-        <div class="mc-list-scroll" id="mcListScroll">
-            {% set grouped = {'Today': [], 'This Week': [], 'Earlier': []} %}
-            {% set today = 'now'|date('Y-m-d') %}
-            {% set weekAgo = '-7 days'|date('Y-m-d') %}
+        <div class="sa-left-scroll">
+
+            {# ── pre-compute buckets once for reuse ── #}
+            {% set today = "now"|date("Y-m-d") %}
+            {% set weekTs = "now - 7 days"|date("U") %}
+
+            {% set todayReqs = [] %}{% set weekReqs = [] %}{% set olderReqs = [] %}
             {% for req in requests %}
-                {% set reqDate = req.createdAt|date('Y-m-d') %}
-                {% if reqDate == today %}
-                    {% set grouped = grouped|merge({'Today': grouped.Today|merge([req])}) %}
-                {% elseif reqDate >= weekAgo %}
-                    {% set grouped = grouped|merge({'This Week': grouped['This Week']|merge([req])}) %}
-                {% else %}
-                    {% set grouped = grouped|merge({'Earlier': grouped.Earlier|merge([req])}) %}
-                {% endif %}
+                {% if req.createdAt|date("Y-m-d") == today %}{% set todayReqs = todayReqs|merge([req]) %}
+                {% elseif req.createdAt|date("U") >= weekTs %}{% set weekReqs = weekReqs|merge([req]) %}
+                {% else %}{% set olderReqs = olderReqs|merge([req]) %}{% endif %}
             {% endfor %}
 
-            {% for group, items in grouped %}
-                {% if items|length > 0 %}
-                <div class="mc-list-section-label">{{ group }}</div>
-                {% for req in items %}
-                <div class="mc-list-item {{ loop.first and group == 'Today' ? 'active' : '' }}"
-                     data-id="{{ req.id }}"
-                     data-status="{{ req.status|lower }}"
-                     data-name="{{ (req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName))|lower }}"
-                     onclick="selectRequest({{ req.id }})">
-                    <span class="mc-list-item-time">{{ req.createdAt|date('H:i') }}</span>
-                    <div class="mc-list-item-name">{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</div>
-                    <div class="mc-list-item-msg">{{ req.preferredExpertise ?: (req.mentorProfile ? req.mentorProfile.specialization : 'Mentoring Request') }}</div>
-                </div>
-                {% endfor %}
-                {% endif %}
+            {% set todayApps = [] %}{% set weekApps = [] %}{% set olderApps = [] %}
+            {% for app in applications %}
+                {% if app.createdAt|date("Y-m-d") == today %}{% set todayApps = todayApps|merge([app]) %}
+                {% elseif app.createdAt|date("U") >= weekTs %}{% set weekApps = weekApps|merge([app]) %}
+                {% else %}{% set olderApps = olderApps|merge([app]) %}{% endif %}
             {% endfor %}
-            {% if requests|length == 0 %}
-                <div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px;">No mentoring requests yet.</div>
+
+            {# ─ ALL list (merged, default) ─ #}
+            <div id="sa-list-all">
+                {% if requests is empty and applications is empty %}
+                    <div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No requests or applications yet.</div>
+                {% endif %}
+                {# Today group: both custom + apply mixed #}
+                <div class="sa-group-hd">Today</div>
+                {% if todayReqs is empty and todayApps is empty %}
+                    <div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new requests today.</div>
+                {% endif %}
+                {% for req in todayReqs %}
+                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('H:i') }}</span></div>
+                    <div class="sa-item-sub">Custom Request</div>
+                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                </div>{% endfor %}
+                {% for app in todayApps %}
+                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('H:i') }}</span></div>
+                    <div class="sa-item-sub">Mentor Application</div>
+                    <div class="sa-item-msg">{{ app.specialization }}</div>
+                </div>{% endfor %}
+                {# This Week group #}
+                {% if weekReqs is not empty or weekApps is not empty %}
+                <div class="sa-group-hd">This Week</div>
+                {% for req in weekReqs %}
+                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
+                    <div class="sa-item-sub">Custom Request</div>
+                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                </div>{% endfor %}
+                {% for app in weekApps %}
+                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
+                    <div class="sa-item-sub">Mentor Application</div>
+                    <div class="sa-item-msg">{{ app.specialization }}</div>
+                </div>{% endfor %}
+                {% endif %}
+                {# Older group #}
+                {% if olderReqs is not empty or olderApps is not empty %}
+                <div class="sa-group-hd older">Older</div>
+                {% for req in olderReqs %}
+                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
+                    <div class="sa-item-sub">Custom Request</div>
+                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                </div>{% endfor %}
+                {% for app in olderApps %}
+                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d') }}</span></div>
+                    <div class="sa-item-sub">Mentor Application</div>
+                    <div class="sa-item-msg">{{ app.specialization }}</div>
+                </div>{% endfor %}
+                {% endif %}
+            </div>
+
+            {# ─ Custom Requests only ─ #}
+            <div id="sa-list-custom" style="display:none">
+                {% if requests is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No custom requests yet.</div>{% endif %}
+                <div class="sa-group-hd">Today</div>
+                {% if todayReqs is empty %}<div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new requests today.</div>{% endif %}
+                {% for req in todayReqs %}
+                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('H:i') }}</span></div>
+                    <div class="sa-item-sub">Mentoring Custom Request</div>
+                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                </div>{% endfor %}
+                {% if weekReqs is not empty %}<div class="sa-group-hd">This Week</div>{% for req in weekReqs %}
+                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
+                    <div class="sa-item-sub">Mentoring Custom Request</div>
+                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                </div>{% endfor %}{% endif %}
+                {% if olderReqs is not empty %}<div class="sa-group-hd older">Older</div>{% for req in olderReqs %}
+                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
+                    <div class="sa-item-sub">Mentoring Custom Request</div>
+                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                </div>{% endfor %}{% endif %}
+            </div>
+
+            {# ─ Applications only ─ #}
+            <div id="sa-list-apply" style="display:none">
+                {% if applications is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No applications yet.</div>{% endif %}
+                <div class="sa-group-hd">Today</div>
+                {% if todayApps is empty %}<div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new applications today.</div>{% endif %}
+                {% for app in todayApps %}
+                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('H:i') }}</span></div>
+                    <div class="sa-item-sub">Mentoring Application</div>
+                    <div class="sa-item-msg">{{ app.specialization }}</div>
+                </div>{% endfor %}
+                {% if weekApps is not empty %}<div class="sa-group-hd">This Week</div>{% for app in weekApps %}
+                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
+                    <div class="sa-item-sub">Mentoring Application</div>
+                    <div class="sa-item-msg">{{ app.specialization }}</div>
+                </div>{% endfor %}{% endif %}
+                {% if olderApps is not empty %}<div class="sa-group-hd older">Older</div>{% for app in olderApps %}
+                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d') }}</span></div>
+                    <div class="sa-item-sub">Mentoring Application</div>
+                    <div class="sa-item-msg">{{ app.specialization }}</div>
+                </div>{% endfor %}{% endif %}
+            </div>
+
+        </div>
+    </div>{# end left #}
+
+    {# ── CENTER PANEL ── #}
+    <div class="sa-center" id="saCenterPanel">
+
+        {# Empty state #}
+        <div class="sa-center-empty" id="saCenterEmpty">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+            <span>Select an item from the left panel to view details</span>
+        </div>
+
+        {# ── Custom Request detail panes ── #}
+        {% for req in requests %}
+        {% set hasChosen = req.mentorProfile is not null %}
+        {% set displayDept = req.departmentCourse ?: (hasChosen and req.mentorProfile.user ? (req.mentorProfile.user.degreeName ?: req.mentorProfile.user.degree) : '') %}
+        {% set displayExpertise = req.preferredExpertise ?: (hasChosen ? req.mentorProfile.specialization : '') %}
+        <div class="sa-det" id="sa-det-custom-{{ req.id }}" style="display:none">
+            <div class="sa-det-ts">{{ req.createdAt|date('h:i a') }}</div>
+            <div class="sa-det-hero">
+                <div class="sa-det-av">{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|slice(0,1)|upper }}</div>
+                <div>
+                    <div class="sa-det-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</div>
+                    <div class="sa-det-sub">{{ req.student.email }}</div>
+                </div>
+            </div>
+            <div class="sa-sec">Mentoring Custom Request</div>
+            <div class="sa-hr"></div>
+            <div class="sa-sec">Personal Information</div>
+            <div class="sa-grid4">
+                <div class="sa-field"><label>First Name</label><p>{{ req.student.firstName }}</p></div>
+                <div class="sa-field"><label>Last Name</label><p>{{ req.student.lastName }}</p></div>
+                <div class="sa-field"><label>Department / Course</label><p>{{ displayDept ?: '—' }}</p></div>
+                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student.email }}</p></div>
+            </div>
+            <div class="sa-grid3">
+                <div class="sa-field"><label>Preferred Expertise</label><p>{{ displayExpertise ?: '—' }}</p></div>
+                <div class="sa-field"><label>Status</label><p><span class="badge {{ req.status|lower }}">{{ req.status }}</span></p></div>
+                <div class="sa-field"><label>Submitted</label><p>{{ req.createdAt|date('M d, Y') }}</p></div>
+            </div>
+            {% if req.message %}
+            <div class="sa-sec">Message</div>
+            <div class="sa-notes">{{ req.message }}</div>
+            {% endif %}
+            <div class="sa-sec">{{ hasChosen ? 'Update Assignment' : 'Assign Mentor' }}</div>
+            {% if hasChosen %}
+            <div class="sa-chosen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                Student selected: <strong>{{ req.mentorProfile.displayName }}</strong> ({{ req.mentorProfile.specialization }})
+            </div>
+            <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+                <input type="hidden" name="mentor_name" value="{{ req.mentorProfile.displayName }}">
+                <input type="hidden" name="expertise" value="{{ req.mentorProfile.specialization }}">
+                <input type="hidden" name="available_dates" value="{{ req.availableDates }}">
+                <input type="hidden" name="available_time" value="{{ req.availableTime }}">
+                <input type="hidden" name="meeting_method" value="{{ req.meetingMethod ?: 'Online' }}">
+                <div class="sa-grid2">
+                    <div class="sa-assign-field"><label>Status</label>
+                        <select name="status" class="sa-inp" required>
+                            {% for s in ['Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="sa-assign-field"><label>Meeting Method</label>
+                        <select name="meeting_method_override" class="sa-inp">
+                            <option value="">— keep current —</option>
+                            <option value="In Person" {{ req.meetingMethod=='In Person'?'selected':'' }}>In Person</option>
+                            <option value="Online" {{ req.meetingMethod=='Online'?'selected':'' }}>Online</option>
+                            <option value="Hybrid" {{ req.meetingMethod=='Hybrid'?'selected':'' }}>Hybrid</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="sa-assign-field" style="margin-bottom:0;"><label>Notes / Instructions</label>
+                    <textarea name="instructions" class="sa-textarea" placeholder="Add notes...">{{ req.adminInstructions ?? '' }}</textarea>
+                </div>
+                <div class="sa-arow"><button type="submit" class="sa-btn-send">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Update
+                </button></div>
+            </form>
+            {% else %}
+            <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+                <div class="sa-grid2">
+                    <div class="sa-assign-field">
+                        <label style="display:flex;align-items:center;justify-content:space-between;">Mentor
+                            <span style="font-size:10px;font-weight:600;color:#0D9B00;cursor:pointer;" onclick="rqToggle({{ req.id }})" id="rq-tlbl-{{ req.id }}">Type manually</span>
+                        </label>
+                        <select name="mentor_id" class="sa-inp" id="rq-sel-{{ req.id }}" onchange="rqFill({{ req.id }})">
+                            <option value="">— Pick from system —</option>
+                            {% for mentor in mentors %}<option value="{{ mentor.id }}" data-name="{{ mentor.displayName }}" data-spec="{{ mentor.specialization }}" {{ req.assignedMentorName==mentor.displayName?'selected':'' }}>{{ mentor.displayName }} ({{ mentor.specialization }})</option>{% endfor %}
+                        </select>
+                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter mentor name…" value="{{ req.assignedMentorName ?? '' }}" style="display:none;margin-top:6px;">
+                    </div>
+                    <div class="sa-assign-field"><label>Specialization</label>
+                        <select name="expertise" class="sa-inp" id="rq-spec-{{ req.id }}">
+                            <option value="">Select…</option>
+                            {% for spec in ['BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}<option value="{{ spec }}" {{ req.assignedMentorExpertise==spec?'selected':'' }}>{{ spec }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="sa-grid2">
+                    <div class="sa-assign-field"><label>Meeting Method</label>
+                        <select name="meeting_method" class="sa-inp">
+                            <option value="In Person" {{ req.meetingMethod=='In Person'?'selected':'' }}>In Person</option>
+                            <option value="Online" {{ req.meetingMethod=='Online'?'selected':'' }}>Online</option>
+                            <option value="Hybrid" {{ req.meetingMethod=='Hybrid'?'selected':'' }}>Hybrid</option>
+                        </select>
+                    </div>
+                    <div class="sa-assign-field"><label>Day</label>
+                        <select name="available_dates" class="sa-inp">
+                            {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}<option value="{{ day }}" {{ req.availableDates==day?'selected':'' }}>{{ day }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="sa-grid2">
+                    <div class="sa-assign-field"><label>Start Time</label>
+                        <input type="time" name="available_time_start" class="sa-inp" value="{{ req.availableTime ? req.availableTime|split(' – ')|first|trim : '' }}">
+                    </div>
+                    <div class="sa-assign-field"><label>End Time</label>
+                        <input type="time" name="available_time_end" class="sa-inp" value="{{ req.availableTime and '–' in req.availableTime ? req.availableTime|split('–')|last|trim : '' }}">
+                    </div>
+                </div>
+                <div class="sa-grid2">
+                    <div class="sa-assign-field"><label>Status</label>
+                        <select name="status" class="sa-inp" required>
+                            {% for s in ['Pending','Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="sa-assign-field" style="margin-bottom:0;"><label>Notes</label>
+                    <textarea name="instructions" class="sa-textarea" placeholder="Write any notes...">{{ req.adminInstructions ?? '' }}</textarea>
+                </div>
+                <div class="sa-arow"><button type="submit" class="sa-btn-send">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send
+                </button></div>
+            </form>
             {% endif %}
         </div>
-    </div>
+        {% endfor %}
 
-    {# ── Right: detail + assignment ── #}
-    <div class="mc-detail-panel" id="mcDetailPanel">
-        {% if requests|length > 0 %}
-            {% for req in requests %}
-            {% set hasChosen = req.mentorProfile is not null %}
-            {% set displayDept = req.departmentCourse
-                ?: (hasChosen and req.mentorProfile.user
-                    ? (req.mentorProfile.user.degreeName ?: req.mentorProfile.user.degree)
-                    : '') %}
-            {% set displaySchedule = req.preferredSchedule
-                ?: (hasChosen and req.mentorProfile.availabilityStart and req.mentorProfile.availabilityEnd
-                    ? ('2000-01-01 ' ~ req.mentorProfile.availabilityStart)|date('g:i A') ~ ' – ' ~ ('2000-01-01 ' ~ req.mentorProfile.availabilityEnd)|date('g:i A')
-                    : '') %}
-            {% set displayExpertise = req.preferredExpertise ?: (hasChosen ? req.mentorProfile.specialization : '') %}
-            <div class="mc-detail-inner mc-req-detail" id="mc-req-{{ req.id }}" style="{{ not loop.first ? 'display:none' : '' }}">
-                <div class="mc-detail-header">
-                    <div class="mc-detail-user">
-                        <div class="mc-detail-avatar">
-                            {{ (req.fullName ?: req.student.firstName)|slice(0,1)|upper }}
-                        </div>
-                        <div>
-                            <div class="mc-detail-name">{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</div>
-                            <div class="mc-detail-email">{{ req.student.email }}</div>
-                        </div>
-                    </div>
-                    <div class="mc-detail-time">{{ req.createdAt|date('H:i a') }}</div>
+        {# ── Application detail panes ── #}
+        {% for app in applications %}
+        <div class="sa-det" id="sa-det-apply-{{ app.id }}" style="display:none">
+            <div class="sa-det-ts">{{ app.createdAt|date('h:i a') }}</div>
+            <div class="sa-det-hero">
+                <div class="sa-det-av">{{ (app.firstName ~ app.lastName)|slice(0,1)|upper }}</div>
+                <div>
+                    <div class="sa-det-name">{{ app.firstName }} {{ app.lastName }}</div>
+                    <div class="sa-det-sub">{{ app.email }}</div>
                 </div>
-
-                <p class="mc-request-label">Request Details</p>
-                <div class="mc-request-grid">
-                    <div class="mc-req-field">
-                        <label>Full Name</label>
-                        <p>{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</p>
-                    </div>
-                    <div class="mc-req-field">
-                        <label>Time</label>
-                        <p>{{ displaySchedule ?: '—' }}</p>
-                    </div>
-                    <div class="mc-req-field">
-                        <label>Preferred Expertise</label>
-                        <p>{{ displayExpertise ?: '—' }}</p>
-                    </div>
-                    <div class="mc-req-field sub">
-                        <label>Department / Course</label>
-                        <p>{{ displayDept ?: '—' }}</p>
-                    </div>
-                    <div class="mc-req-field sub" style="grid-column:span 2;">
-                        <label>Status</label>
-                        <p><span class="status-badge status-{{ req.status|lower }}">{{ req.status }}</span></p>
-                    </div>
-                </div>
-
-                {% if req.message %}
-                <div class="mc-notes-label">Notes</div>
-                <div class="mc-notes-text">{{ req.message }}</div>
-                {% endif %}
-
-                {% if hasChosen %}
-                {# User already picked a mentor — no manual assignment allowed #}
-                <div class="mc-assign-section">
-                    <div class="mc-chosen-notice">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-                        User already selected: <strong>{{ req.mentorProfile.displayName }}</strong>
-                        ({{ req.mentorProfile.specialization }})
-                    </div>
-                    <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ req.id) }}">
-                        <input type="hidden" name="mentor_name" value="{{ req.mentorProfile.displayName }}">
-                        <input type="hidden" name="expertise" value="{{ req.mentorProfile.specialization }}">
-                        <input type="hidden" name="available_dates" value="{{ req.availableDates }}">
-                        <input type="hidden" name="available_time" value="{{ req.availableTime }}">
-                        <input type="hidden" name="meeting_method" value="{{ req.meetingMethod ?: 'Online' }}">
-                        <div class="mc-assign-grid">
-                            <div class="mc-assign-field">
-                                <label>Status</label>
-                                <select name="status" class="mc-assign-input" required>
-                                    {% for s in ['Reviewing', 'Assigned', 'Completed'] %}
-                                        <option value="{{ s }}" {{ req.status == s ? 'selected' : '' }}>{{ s }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mc-assign-field" style="margin-top:10px;">
-                            <label>Notes / Instructions</label>
-                            <textarea name="instructions" class="mc-notes-input" placeholder="Add any notes for the student...">{{ req.adminInstructions ?? '' }}</textarea>
-                        </div>
-                        <button type="submit" class="mc-send-btn">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                            Update Status
-                        </button>
-                    </form>
-                </div>
-                {% else %}
-                {# No mentor chosen — show full assignment form #}
-                <div class="mc-assign-section">
-                    <h4 class="mc-assign-title">Mentor Assignment</h4>
-                    <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ req.id) }}">
-                        <div class="mc-assign-grid">
-                            <div class="mc-assign-field">
-                                <label>Select Existing Mentor</label>
-                                <select name="mentor_id" class="mc-assign-input" id="mc-mentor-sel-{{ req.id }}"
-                                    onchange="mcAutoFill({{ req.id }})">
-                                    <option value="">— Pick from system —</option>
-                                    {% for mentor in mentors %}
-                                    <option value="{{ mentor.id }}"
-                                        data-name="{{ mentor.displayName }}"
-                                        data-spec="{{ mentor.specialization }}"
-                                        {{ req.assignedMentorName == mentor.displayName ? 'selected' : '' }}>
-                                        {{ mentor.displayName }} ({{ mentor.specialization }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="mc-assign-field">
-                                <label>Or Outside Mentor Name</label>
-                                <input type="text" name="mentor_name" id="mc-mentor-name-{{ req.id }}" class="mc-assign-input"
-                                    value="{{ req.assignedMentorName }}" placeholder="Type name if not in system">
-                            </div>
-                        </div>
-                        <div class="mc-assign-grid">
-                            <div class="mc-assign-field">
-                                <label>Specialization</label>
-                                <select name="expertise" class="mc-assign-input" id="mc-spec-{{ req.id }}">
-                                    <option value="">Select specialization…</option>
-                                    {% set specs = ['BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity',
-                                                    'Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
-                                    {% for spec in specs %}
-                                    <option value="{{ spec }}" {{ req.assignedMentorExpertise == spec ? 'selected' : '' }}>{{ spec }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="mc-assign-field">
-                                <label>Status</label>
-                                <select name="status" class="mc-assign-input" required>
-                                    {% for s in ['Reviewing', 'Assigned', 'Completed'] %}
-                                        <option value="{{ s }}" {{ req.status == s ? 'selected' : '' }}>{{ s }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mc-assign-grid three">
-                            <div class="mc-assign-field">
-                                <label>Day</label>
-                                <select name="available_dates" class="mc-assign-input">
-                                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
-                                    <option value="{{ day }}" {{ req.availableDates == day ? 'selected' : '' }}>{{ day }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="mc-assign-field">
-                                <label>Start Time</label>
-                                <input type="time" name="available_time_start" class="mc-assign-input" min="07:00" max="21:00"
-                                    value="{{ req.availableTime ? req.availableTime|split(' – ')|first|trim : '' }}">
-                            </div>
-                            <div class="mc-assign-field">
-                                <label>End Time</label>
-                                <input type="time" name="available_time_end" class="mc-assign-input" min="07:00" max="21:00"
-                                    value="{{ req.availableTime and '–' in req.availableTime ? req.availableTime|split('–')|last|trim : '' }}">
-                            </div>
-                        </div>
-                        <div class="mc-assign-grid">
-                            <div class="mc-assign-field">
-                                <label>Meeting Method</label>
-                                <select name="meeting_method" class="mc-assign-input">
-                                    <option value="In Person" {{ req.meetingMethod == 'In Person' ? 'selected' : '' }}>In Person</option>
-                                    <option value="Online" {{ req.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
-                                    <option value="Hybrid" {{ req.meetingMethod == 'Hybrid' ? 'selected' : '' }}>Hybrid</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mc-assign-field" style="margin-top:10px;">
-                            <label>Notes / Instructions</label>
-                            <textarea name="instructions" class="mc-notes-input" placeholder="Write any additional notes...">{{ req.adminInstructions ?? '' }}</textarea>
-                        </div>
-                        <button type="submit" class="mc-send-btn">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                            Send & Notify
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="mc-detail-empty">No mentor requests found.</div>
-        {% endif %}
+            <div class="sa-sec">Mentoring Application</div>
+            <div class="sa-hr"></div>
+            <div class="sa-sec">Personal Information</div>
+            <div class="sa-grid4">
+                <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: '—' }}</p></div>
+                <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: '—' }}</p></div>
+                <div class="sa-field"><label>Contact Number</label><p>{{ app.contactNumber ?: '—' }}</p></div>
+                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ app.email }}</p></div>
+            </div>
+            <div class="sa-sec">Academic Background &amp; Mentoring</div>
+            <div class="sa-grid4">
+                <div class="sa-field"><label>Specialization</label><p>{{ app.specialization }}</p></div>
+                <div class="sa-field"><label>Experience</label><p>{{ app.yearsOfExperience ? app.yearsOfExperience~' months' : '—' }}</p></div>
+                <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: '—' }}</p></div>
+                <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
+            </div>
+            <div class="sa-grid2">
+                <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: '—' }}</p></div>
+                <div class="sa-field"><label>Highest Education</label><p>{{ app.highestEducation ?: '—' }}</p></div>
+            </div>
+            {% if app.reason %}
+            <div class="sa-sec">Reason / Message</div>
+            <div class="sa-notes">{{ app.reason }}</div>
+            {% endif %}
+            {% if app.supportingDescription %}
+            <div class="sa-sec">Supporting Description</div>
+            <div class="sa-notes">{{ app.supportingDescription }}</div>
+            {% endif %}
+            {% if app.proofOfExpertise %}
+            <div class="sa-sec">Proof of Expertise</div>
+            <div class="sa-proof-row">
+                {% for file in app.proofOfExpertise %}
+                    {% if file ends with '.pdf' %}
+                    <a href="/uploads/profiles/{{ file }}" target="_blank" class="sa-proof-pdf">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
+                    </a>
+                    {% else %}
+                    <img src="/uploads/profiles/{{ file }}" class="sa-proof-img" alt="proof" onclick="window.open(this.src)">
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if app.status in ['Pending','Pending Review'] %}
+            <form method="post" action="{{ path('mentoring_review_application', {'id': app.id, 'decision': 'approve'}) }}" id="approve-form-{{ app.id }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_'~app.id) }}">
+                <div class="sa-arow" style="margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+                    <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+                        <label style="font-size:10.5px;font-weight:600;color:#6b7280;">Valid Until <span style="color:#ef4444;">*</span></label>
+                        <input type="date" name="valid_until" class="sa-inp" required min="{{ "now"|date("Y-m-d") }}" id="valid-until-{{ app.id }}">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" class="sa-btn-reject" onclick="saDeclineApp({{ app.id }})">Reject</button>
+                        <button type="submit" class="sa-btn-approve">Approve</button>
+                    </div>
+                </div>
+            </form>
+            <form method="post" action="{{ path('mentoring_review_application', {'id': app.id, 'decision': 'decline'}) }}" id="decline-form-{{ app.id }}" style="display:none">
+                <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_'~app.id) }}">
+                <input type="hidden" name="admin_note" id="decline-note-{{ app.id }}">
+            </form>
+            {% else %}
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;align-items:center;gap:10px;">
+                <span class="badge {{ app.status|lower }}" style="font-size:12px;padding:4px 14px;">{{ app.status }}</span>
+                {% if app.validUntil %}<span style="font-size:11.5px;color:#6b7280;">Valid until {{ app.validUntil|date('M d, Y') }}</span>{% endif %}
+                {% if app.adminNote %}<span style="font-size:11.5px;color:#9ca3af;font-style:italic;">Note: {{ app.adminNote }}</span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+    </div>{# end center #}
+
+</div>{# end sa-dashboard #}
+
+{# ── Create Mentor Modal ── #}
+<div class="sa-modal-overlay" id="createMentorModal">
+    <div class="sa-modal-backdrop" onclick="closeCreateMentor()"></div>
+    <div class="sa-modal">
+        <button class="sa-modal-close" onclick="closeCreateMentor()">×</button>
+        <h3>Create Mentor Profile</h3>
+        <form method="post" action="{{ path('mentoring_create_mentor') }}" data-turbo="false">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('create_mentor') }}">
+            <input type="hidden" name="user_id" id="cm_user_id">
+            <div style="margin-bottom:16px;">
+                <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px;">Select User</label>
+                <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required>
+                    <option value="">— Select a user —</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}" data-role="{{ user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}">
+                        {{ user.firstName }} {{ user.lastName }} — {{ user.email }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="sa-modal-row cols-4">
+                <div class="sa-modal-field"><label>First Name</label><input type="text" id="cm_first" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Middle Name</label><input type="text" id="cm_middle" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Last Name</label><input type="text" id="cm_last" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Institutional Email</label><input type="text" id="cm_email" class="sa-modal-input readonly" readonly placeholder="—"></div>
+            </div>
+            <div class="sa-modal-row cols-2">
+                <div class="sa-modal-field"><label>Program</label><input type="text" id="cm_program" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Specialization</label>
+                    <select name="specialization" class="sa-modal-input" required>
+                        <option value="">Select specialization…</option>
+                        {% for spec in ['Business Analytics','BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
+                        <option value="{{ spec }}">{{ spec }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="sa-modal-row cols-3">
+                <div class="sa-modal-field"><label>Role</label><input type="text" id="cm_role" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Mentoring Day</label>
+                    <select name="availability_day" class="sa-modal-input">
+                        <option value="">Select day…</option>
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F','Saturday'] %}
+                        <option value="{{ day }}">{{ day }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="sa-modal-field"><label>Mentoring Time</label>
+                    <div class="sa-modal-time-row">
+                        <input type="time" name="availability_start" class="sa-modal-input" min="07:00" max="21:00">
+                        <span class="sa-modal-time-sep">–</span>
+                        <input type="time" name="availability_end" class="sa-modal-input" min="07:00" max="21:00">
+                    </div>
+                </div>
+            </div>
+            <div class="sa-modal-row cols-1">
+                <div class="sa-modal-field"><label>Mentoring Bio</label>
+                    <textarea name="bio" class="sa-modal-input" rows="4" placeholder="Short bio about this mentor…" style="resize:vertical;min-height:90px;"></textarea>
+                </div>
+            </div>
+            <div class="sa-modal-footer"><button type="submit" class="sa-modal-save">Save</button></div>
+        </form>
     </div>
 </div>
 
 <script>
-function selectRequest(id) {
-    document.querySelectorAll('.mc-req-detail').forEach(function(el){ el.style.display = 'none'; });
-    var detail = document.getElementById('mc-req-' + id);
-    if (detail) detail.style.display = '';
-    document.querySelectorAll('.mc-list-item').forEach(function(el){ el.classList.remove('active'); });
-    var item = document.querySelector('.mc-list-item[data-id="' + id + '"]');
-    if (item) item.classList.add('active');
+/* ── toast ── */
+function _saToast(msg,ok){
+    var n=document.createElement('div');
+    n.style.cssText='position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
+    n.style.background=ok?'#d1fae5':'#fee2e2'; n.style.color=ok?'#065f46':'#991b1b';
+    n.textContent=msg; document.body.appendChild(n);
+    setTimeout(function(){n.style.opacity='0';setTimeout(function(){n.remove();},300);},3200);
 }
-function filterRequests() {
-    var status = document.getElementById('mcStatusFilter').value.toLowerCase();
-    var search = document.getElementById('mcSearch').value.toLowerCase();
-    document.querySelectorAll('.mc-list-item').forEach(function(el) {
-        var matchStatus = !status || el.dataset.status === status;
-        var matchSearch = !search || el.dataset.name.includes(search);
-        el.style.display = (matchStatus && matchSearch) ? '' : 'none';
+/* ── Create Mentor modal ── */
+function openCreateMentor(){document.getElementById('createMentorModal').classList.add('open');}
+function closeCreateMentor(){document.getElementById('createMentorModal').classList.remove('open');}
+(function(){
+    var m=document.getElementById('createMentorModal');
+    if(m&&m.parentNode!==document.body) document.body.appendChild(m);
+    closeCreateMentor();
+})();
+function cmFillUser(sel){
+    var o=sel.options[sel.selectedIndex];
+    document.getElementById('cm_user_id').value=o.value;
+    document.getElementById('cm_first').value=o.dataset.first||'';
+    document.getElementById('cm_middle').value=o.dataset.middle||'';
+    document.getElementById('cm_last').value=o.dataset.last||'';
+    document.getElementById('cm_email').value=o.dataset.email||'';
+    document.getElementById('cm_program').value=o.dataset.program||'';
+    document.getElementById('cm_role').value=o.dataset.role||'';
+}
+/* ── type dropdown toggle ── */
+function saOnTypeChange(){
+    var v=document.getElementById('saTypeSelect').value;
+    document.getElementById('sa-list-all').style.display   = v==='all'    ? '' : 'none';
+    document.getElementById('sa-list-custom').style.display = v==='custom' ? '' : 'none';
+    document.getElementById('sa-list-apply').style.display  = v==='apply'  ? '' : 'none';
+    saClearCenter();
+}
+/* init on load */
+document.addEventListener('DOMContentLoaded', function(){ saOnTypeChange(); });
+/* ── item selection ── */
+function saClearCenter(){
+    document.getElementById('saCenterEmpty').style.display='';
+    document.querySelectorAll('.sa-det').forEach(function(el){el.style.display='none';});
+    document.querySelectorAll('.sa-item').forEach(function(el){el.classList.remove('active');});
+}
+function saSelectItem(el,type,id){
+    saClearCenter();
+    var pane=document.getElementById('sa-det-'+type+'-'+id);
+    if(pane){pane.style.display='';document.getElementById('saCenterEmpty').style.display='none';}
+    if(el) el.classList.add('active');
+}
+/* ── mentor input toggle ── */
+function rqToggle(id){
+    var sel=document.getElementById('rq-sel-'+id);
+    var txt=document.getElementById('rq-txt-'+id);
+    var lbl=document.getElementById('rq-tlbl-'+id);
+    if(!sel||!txt||!lbl) return;
+    var manual=txt.style.display!=='none';
+    if(manual){txt.style.display='none';txt.removeAttribute('required');sel.style.display='';lbl.textContent='Type manually';}
+    else{sel.style.display='none';sel.value='';txt.style.display='';lbl.textContent='Pick from system';}
+}
+function rqFill(id){
+    var sel=document.getElementById('rq-sel-'+id);
+    var spec=document.getElementById('rq-spec-'+id);
+    if(!sel||!spec) return;
+    var o=sel.options[sel.selectedIndex];
+    if(o&&o.value&&o.dataset.spec){for(var i=0;i<spec.options.length;i++){if(spec.options[i].value===o.dataset.spec){spec.selectedIndex=i;break;}}}
+}
+/* ── decline application ── */
+function saDeclineApp(id){
+    var note=prompt('Reason for rejection (optional):','');
+    if(note===null) return;
+    document.getElementById('decline-note-'+id).value=note;
+    document.getElementById('decline-form-'+id).submit();
+}
+/* ── search filter ── */
+function saFilterList(){
+    var q=document.getElementById('saSearch').value.toLowerCase();
+    document.querySelectorAll('.sa-item').forEach(function(el){
+        el.style.display=(!q||el.dataset.name.includes(q))?'':'none';
     });
 }
-function mcAutoFill(reqId) {
-    var sel = document.getElementById('mc-mentor-sel-' + reqId);
-    var nameInput = document.getElementById('mc-mentor-name-' + reqId);
-    var specSel = document.getElementById('mc-spec-' + reqId);
-    if (!sel) return;
-    var opt = sel.options[sel.selectedIndex];
-    if (opt && opt.value) {
-        if (nameInput && !nameInput.value) nameInput.value = opt.dataset.name || '';
-        if (specSel && opt.dataset.spec) {
-            for (var i = 0; i < specSel.options.length; i++) {
-                if (specSel.options[i].value === opt.dataset.spec) { specSel.selectedIndex = i; break; }
-            }
-        }
-    }
-}
-
-function _mcToast(msg, ok) {
-    var n = document.createElement('div');
-    n.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
-    n.style.background = ok ? '#d1fae5' : '#fee2e2';
-    n.style.color = ok ? '#065f46' : '#991b1b';
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(function(){ n.style.opacity='0'; setTimeout(function(){ n.remove(); }, 300); }, 3200);
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    // ── AJAX submit for all forms with data-ajax ──
-    document.querySelectorAll('form[data-ajax="true"]').forEach(function (form) {
-        form.addEventListener('submit', function (e) {
+/* ── AJAX for assign forms ── */
+document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('form[data-ajax="true"]').forEach(function(form){
+        form.addEventListener('submit',function(e){
             e.preventDefault();
-            var btn = form.querySelector('button[type="submit"]');
-            var origHTML = btn ? btn.innerHTML : '';
-            if (btn) { btn.disabled = true; btn.innerHTML = 'Saving…'; }
-            fetch(form.action, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: new FormData(form)
+            var btn=form.querySelector('button[type="submit"]');
+            var orig=btn?btn.innerHTML:'';
+            if(btn){btn.disabled=true;btn.innerHTML='Saving…';}
+            fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:new FormData(form)})
+            .then(function(r){if(!r.ok)throw new Error();return r.json();})
+            .then(function(j){
+                if(btn){btn.disabled=false;btn.innerHTML=orig;}
+                _saToast(j.message||(j.success?'Updated.':'Error.'),!!j.success);
             })
-            .then(function(r) {
-                if (!r.ok) throw new Error('Server error');
-                return r.json();
-            })
-            .then(function(json) {
-                if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
-                _mcToast(json.message || (json.success ? 'Updated.' : 'Error.'), !!json.success);
-                if (json.success) {
-                    var m = form.action.match(/\/(\d+)\//);
-                    if (m) {
-                        var item = document.querySelector('.mc-list-item[data-id="' + m[1] + '"]');
-                        var statusSel = form.querySelector('select[name="status"]');
-                        if (item && statusSel) item.dataset.status = statusSel.value.toLowerCase();
-                    }
-                }
-            })
-            .catch(function() {
-                if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
-                _mcToast('Could not save. Please try again.', false);
+            .catch(function(){
+                if(btn){btn.disabled=false;btn.innerHTML=orig;}
+                _saToast('Could not save. Please try again.',false);
             });
         });
     });
-
-    // ── 30-second polling: refresh left-panel list only ──
-    setInterval(function () {
-        fetch(window.location.href, { cache: 'no-store' })
-            .then(function(r) { return r.text(); })
-            .then(function(html) {
-                var doc = new DOMParser().parseFromString(html, 'text/html');
-                var newList = doc.getElementById('mcListScroll');
-                var curList = document.getElementById('mcListScroll');
-                if (!newList || !curList) return;
-                var activeEl = document.querySelector('.mc-list-item.active');
-                var activeId = activeEl ? activeEl.dataset.id : null;
-                curList.innerHTML = newList.innerHTML;
-                if (activeId) {
-                    var r = curList.querySelector('.mc-list-item[data-id="' + activeId + '"]');
-                    if (r) r.classList.add('active');
-                }
-            })
-            .catch(function(){});
-    }, 30000);
+    document.addEventListener('keydown',function(e){if(e.key==='Escape') closeCreateMentor();});
 });
 </script>
 {% endblock %}
