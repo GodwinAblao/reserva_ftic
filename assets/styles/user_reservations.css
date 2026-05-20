@@ -43,7 +43,7 @@
     justify-content: center;
     gap: 10px;
     padding: 16px 20px;
-    background: #19aa0c;
+    background: var(--feu-green);
     color: #ffffff;
     border-radius: 10px;
     text-decoration: none;
@@ -54,7 +54,7 @@
 }
 
 .reserve-btn-large:hover {
-    background: #0e8d2d;
+    background: var(--feu-green-dark);
     box-shadow: 0 4px 12px rgba(25, 170, 12, 0.4);
     transform: translateY(-1px);
 }
@@ -104,12 +104,6 @@
     font-style: normal;
     line-height: 1.5;
     max-width: none;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.reservations-info-card p:hover {
-    box-shadow: 0 0 18px rgba(25, 170, 12, 0.28);
-    border-color: rgba(0, 102, 51, 0.18);
 }
 
 /* Quick Stats */
@@ -625,7 +619,7 @@
     padding: 12px 20px;
     border: none;
     background: #f5f5f5;
-    color: #888;
+    color: #f4b437;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -635,34 +629,12 @@
 }
 
 .filter-tab:hover {
-    background: #e8e8e8;
-    color: #555;
-}
-
-/* Approved - Green */
-.filter-tab.active[data-filter="approved"] {
-    background: #19aa0c;
+    background: var(--feu-green);
     color: #ffffff;
 }
 
-/* Pending - Orange/Yellow */
-.filter-tab.pending-tab.active,
-.filter-tab.pending-tab:hover {
-    background: #ff9800;
-    color: #ffffff;
-}
-
-/* Rejected - Red */
-.filter-tab.rejected-tab.active,
-.filter-tab.rejected-tab:hover {
-    background: #dc3545;
-    color: #ffffff;
-}
-
-/* Cancelled - Gray */
-.filter-tab.cancelled-tab.active,
-.filter-tab.cancelled-tab:hover {
-    background: #6c757d;
+.filter-tab.active {
+    background: var(--feu-green);
     color: #ffffff;
 }
 
@@ -829,3 +801,4 @@
         grid-template-columns: 1fr;
     }
 }
+

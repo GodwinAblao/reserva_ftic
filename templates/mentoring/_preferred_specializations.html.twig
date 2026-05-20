@@ -1,10 +1,12 @@
-<h3>Preferred Specializations</h3>
+<div class="reservations-side-card-head">
+    <h3>Preferred Specializations</h3>
+</div>
 {% for row in specializations %}
-    <div class="list-row specialization-row" data-specialization="{{ row.specialization }}">
+    <div class="quick-stat-item specialization-row" data-specialization="{{ row.specialization }}" style="margin-bottom: 8px;">
         <a href="{{ path('mentoring_index', { specialization: row.specialization, search: app.request.query.get('search', '') }) }}" class="specialization-link{% if app.request.query.get('specialization') == row.specialization %} active{% endif %}">
-            <strong>{{ row.specialization }}</strong>
+            <span class="quick-stat-label">{{ row.specialization }}</span>
         </a>
-        <span>{{ row.total }} requests</span>
+        <span class="quick-stat-value">{{ row.total }} requests</span>
     </div>
 {% else %}
     <p>No specialization analytics yet.</p>

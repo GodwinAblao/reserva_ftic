@@ -1402,6 +1402,203 @@
   font-weight: 600;
 }
 
+/* ============= EXTRACTED INLINE STYLES ============= */
+
+/* Modal sizing */
+.mentor-modal-panel {
+  max-width: 1000px;
+  width: 95%;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.mentor-modal-header {
+  padding: 12px 16px;
+}
+
+.mentor-modal-title {
+  font-size: 16px;
+  margin: 0;
+}
+
+.mentor-modal-subtitle {
+  font-size: 11px;
+  margin: 2px 0 0 0;
+  color: #666;
+}
+
+.mentor-modal-close {
+  font-size: 14px;
+}
+
+.mentor-application-layout-custom {
+  padding: 15px;
+  gap: 20px;
+}
+
+.mentor-application-summary-custom {
+  font-size: 11px;
+  padding: 10px;
+}
+
+.mentor-application-eyebrow {
+  font-size: 9px;
+}
+
+.mentor-application-heading {
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.mentor-application-desc {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.mentor-application-points-custom {
+  gap: 8px;
+}
+
+.mentor-point-title {
+  font-size: 11px;
+}
+
+.mentor-point-desc {
+  font-size: 9px;
+  display: block;
+  margin-top: 2px;
+}
+
+.mentor-modal-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.mentor-modal-cancel {
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+/* Card actions */
+.card-actions-mt {
+  margin-top: 15px;
+}
+
+.btn-mt {
+  margin-top: 15px;
+}
+
+.text-yellow-mt {
+  margin-top: 15px;
+  color: #f4b437;
+}
+
+.button-group-mt {
+  margin-top: 10px;
+}
+
+/* Quick actions */
+.quick-actions-flex {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-full-width {
+  width: 100%;
+  text-align: center;
+}
+
+/* Form card styles */
+.mentor-form-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.mentor-form-section {
+  margin-bottom: 20px;
+}
+
+.mentor-form-title {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.mentor-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mentor-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mentor-form-label {
+  display: block;
+  font-size: 11px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.mentor-form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.mentor-form-input-bg {
+  background: #f5f5f5;
+}
+
+.mentor-form-group {
+  margin-bottom: 12px;
+}
+
+.mentor-required {
+  color: #e74c3c;
+}
+
+.mentor-form-hint {
+  font-size: 10px;
+  color: #e74c3c;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.mentor-form-hint-secondary {
+  font-size: 10px;
+  color: #999;
+}
+
+.mentor-form-submit {
+  text-align: right;
+  margin-top: 15px;
+}
+
+.mentor-submit-btn {
+  background: var(--feu-green);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .availability-duration {
   margin: 1rem 0;
 }

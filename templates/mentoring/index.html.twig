@@ -2,242 +2,419 @@
 
 {% block title %}Mentoring | Reserva FTIC{% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('styles/user_reservations.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="mentor-page-container">
-    <div class="content-header mentoring-header" style="align-items:center; justify-content:space-between;">
-        <div class="button-group">
-            <button type="button" class="btn-secondary" onclick="openMentorAssistance()">Need Help Finding a Mentor?</button>
-            {% if canApplyAsMentor %}
-                <button type="button" class="btn-primary" onclick="openMentorApplication()">Apply as Mentor</button>
-            {% elseif is_granted('ROLE_MENTOR') %}
-                <a href="{{ path('app_profile') }}" class="btn-secondary">View Profile</a>
-            {% elseif applications|length > 0 %}
-                <button type="button" class="btn-secondary" disabled>Application Pending</button>
-            {% endif %}
-            {% if is_granted('ROLE_ADMIN') %}
-                <a href="{{ path('mentoring_super-admin') }}" class="btn-primary">Manage Mentoring</a>
-            {% endif %}
-        </div>
-    </div>
+<div class="reservations-page-layout">
+    <!-- Main Content Column -->
+    <div class="reservations-main-column">
 
-    <section class="mentor-section">
-        <div class="section-heading">
-            <h2>Featured Mentors</h2>
-            <span>{{ mentors|length }} available profiles</span>
-        </div>
-
-        <!-- Search and Filter Section -->
-        <div class="mentor-search-filters">
-            <form method="get" action="{{ path('mentoring_index') }}" class="search-form" id="mentorSearchForm">
-                <div class="search-input-group">
-                    <input 
-                        type="text" 
-                        id="mentorSearchInput"
-                        name="search" 
-                        class="search-input" 
-                        placeholder="Search mentor by name..."
-                        value="{{ app.request.query.get('search', '') }}"
-                        autocomplete="off"
-                    >
-                </div>
-
-                <div class="filter-group">
-                    <select id="specializationFilter" name="specialization" class="filter-dropdown">
-                        <option value="">All Specializations</option>
-                        {% for spec in allSpecializations %}
-                            <option value="{{ spec.specialization }}" {% if app.request.query.get('specialization') == spec.specialization %}selected{% endif %}>
-                                {{ spec.specialization }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </form>
-        </div>
-
-        <div class="mentor-card-grid" id="mentorCardGrid">
-            {% include 'mentoring/_mentor_cards.html.twig' with { mentors: mentors } only %}
-        </div>
-    </section>
-
-
-
-    <div class="module-grid">
-        <section class="card-panel">
-            <h3>My Pending Submission</h3>
-            {% set pendingApplications = applications|filter(application => application.status in ['Pending', 'Pending Review']) %}
-
-            {% for application in pendingApplications %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ application.specialization }}</strong>
-                        <p>
-                            Submitted {{ application.createdAt|date('M d, Y h:i A') }}
-                            {% if application.currentProfession %} - {{ application.currentProfession }}{% endif %}
-                        </p>
+        <!-- Mentors Section -->
+        <div class="mentoring-section" id="mentors-section">
+            <!-- Search and Filter Section -->
+            <div class="mentor-search-filters">
+                <form method="get" action="{{ path('mentoring_index') }}" class="search-form" id="mentorSearchForm">
+                    <div class="search-input-group">
+                        <input
+                            type="text"
+                            id="mentorSearchInput"
+                            name="search"
+                            class="search-input"
+                            placeholder="Search Mentor Name"
+                            value="{{ app.request.query.get('search', '') }}"
+                            autocomplete="off"
+                        >
                     </div>
-                    <span class="status-badge status-pending">{{ application.status }}</span>
-                </div>
-            {% else %}
-                <p>No pending mentor submission right now.</p>
-            {% endfor %}
-        </section>
 
-        <section class="card-panel">
-            <h3>My Mentor Applications</h3>
-            {% for application in applications %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ application.specialization }}</strong>
-                        <p>Submitted {{ application.createdAt|date('M d, Y h:i A') }}</p>
+                    <div class="filter-group">
+                        <select id="specializationFilter" name="specialization" class="filter-dropdown">
+                            <option value="">All Specialization</option>
+                            {% for spec in allSpecializations %}
+                                <option value="{{ spec.specialization }}" {% if app.request.query.get('specialization') == spec.specialization %}selected{% endif %}>
+                                    {{ spec.specialization }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <span class="status-badge status-{{ application.status|lower|replace({' ': '-'}) }}">{{ application.status }}</span>
-                </div>
-            {% else %}
-                <p>You have not submitted a mentor application yet.</p>
-            {% endfor %}
-        </section>
-    </div>
+                </form>
+            </div>
 
-    <div class="module-grid" id="my-custom-requests">
-        <section class="card-panel">
-            <h3>My Custom Requests</h3>
-            {% for request in sentCustomRequests %}
-                <div class="list-row">
-                    <div>
-                        <strong>{{ request.mentorProfile ? request.mentorProfile.displayName : 'Mentor assistance request' }}</strong>
-                        <p>
-                            Submitted {{ request.createdAt|date('M d, Y h:i A') }}
-                            {% if request.updatedAt %} - Updated {{ request.updatedAt|date('M d, Y h:i A') }}{% endif %}
-                        </p>
-                        {% if request.isAssistanceRequest %}
-                            <p class="muted">{{ request.departmentCourse }} - {{ request.preferredExpertise }} - {{ request.preferredSchedule }}</p>
-                        {% endif %}
-                        <p class="muted">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</p>
-                        {% if request.assignedMentorName %}
-                            <div class="mentor-request-card__response">
-                                <strong>Mentor details:</strong>
-                                <p>{{ request.assignedMentorName }} - {{ request.assignedMentorExpertise }}</p>
-                                <p>{{ request.availableDates }} at {{ request.availableTime }} - {{ request.meetingMethod }}</p>
-                                {% if request.adminInstructions %}<p>{{ request.adminInstructions }}</p>{% endif %}
-                            </div>
-                        {% endif %}
-                        {% if request.mentorResponse %}
-                            <p class="muted"><strong>Response:</strong> {{ request.mentorResponse }}</p>
-                        {% endif %}
-                        {% if request.isAssistanceRequest and request.status == 'Pending' %}
-                            <details class="mentor-inline-editor">
-                                <summary>Update request</summary>
-                                <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" class="mentor-request-actions">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
-                                    <input class="form-input" name="full_name" value="{{ request.fullName }}" required>
-                                    <input class="form-input" name="department_course" value="{{ request.departmentCourse }}" required>
-                                    <input class="form-input" name="preferred_expertise" value="{{ request.preferredExpertise }}" required>
-                                    <input class="form-input" name="preferred_schedule" value="{{ request.preferredSchedule }}" required>
-                                    <textarea class="form-input" name="message" rows="3">{{ request.message }}</textarea>
-                                    <div class="button-group">
-                                        <button class="btn-primary" type="submit" name="action" value="update">Save Changes</button>
-                                        <button class="btn-secondary" type="submit" name="action" value="cancel">Cancel Request</button>
+            <!-- Mentor Cards - Always Visible Above Filter Tabs -->
+            <div class="mentor-card-grid" id="mentorCardGrid">
+                {% include 'mentoring/_mentor_cards.html.twig' with { mentors: mentors } only %}
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="filter-tabs-container">
+                <button class="filter-tab active" onclick="switchMentoringTab('custom-requests', this); return false;">
+                    <span class="tab-text">My Custom Request</span>
+                </button>
+                <button class="filter-tab pending-tab" onclick="switchMentoringTab('applications', this); return false;">
+                    <span class="tab-text">My Pending Submission</span>
+                </button>
+                <button class="filter-tab" onclick="switchMentoringTab('mentor-application', this); return false;">
+                    <span class="tab-text">My Mentor Application</span>
+                </button>
+                <button class="filter-tab cancelled-tab" onclick="switchMentoringTab('incoming', this); return false;">
+                    <span class="tab-text">Incoming Custom Request</span>
+                </button>
+            </div>
+
+            <!-- Content Section -->
+            <div class="mentoring-content-section">
+
+                <!-- Custom Requests Cards -->
+                <div class="mentoring-content" id="custom-requests-content">
+                    <div class="reservations-grid">
+                        {% if sentCustomRequests|length > 0 %}
+                            {% for request in sentCustomRequests %}
+                                <div class="reservation-card-new">
+                                    <div class="card-title">{{ request.mentorProfile ? request.mentorProfile.displayName : 'Mentor Assistance Request' }}</div>
+                                    <div class="card-divider"></div>
+                                    <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Status</span>
+                                            <span class="info-value status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Submitted</span>
+                                            <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
+                                        </div>
+                                        {% if request.isAssistanceRequest %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Details</span>
+                                            <span class="info-value">{{ request.departmentCourse }} - {{ request.preferredExpertise }}</span>
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                </form>
-                            </details>
+                                    <div class="card-info-footer">
+                                        <div class="info-item wide">
+                                            <span class="info-label">Message</span>
+                                            <span class="info-value">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% if request.assignedMentorName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Assigned Mentor</span>
+                                            <span class="info-value status-approved">{{ request.assignedMentorName }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-mini-state">
+                                <p>You have not sent a custom request yet.</p>
+                            </div>
                         {% endif %}
                     </div>
-                    <span class="status-badge status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
                 </div>
-            {% else %}
-                <p>You have not sent a custom request yet.</p>
-            {% endfor %}
+
+                <!-- Applications Cards -->
+                <div class="mentoring-content hidden" id="applications-content">
+                    <div class="reservations-grid">
+                        {% set pendingApplications = applications|filter(application => application.status in ['Pending', 'Pending Review']) %}
+                        {% if pendingApplications|length > 0 %}
+                            {% for application in pendingApplications %}
+                                <div class="reservation-card-new">
+                                    <div class="card-title">{{ application.specialization }}</div>
+                                    <div class="card-divider"></div>
+                                    <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Status</span>
+                                            <span class="info-value status-pending">{{ application.status }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Submitted</span>
+                                            <span class="info-value">{{ application.createdAt|date('M d, Y') }}</span>
+                                        </div>
+                                        {% if application.currentProfession %}
+                                        <div class="info-item">
+                                            <span class="info-label">Profession</span>
+                                            <span class="info-value">{{ application.currentProfession }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {% for application in applications %}
+                            {% if application.status not in ['Pending', 'Pending Review'] %}
+                                <div class="reservation-card-new">
+                                    <div class="card-title">{{ application.specialization }}</div>
+                                    <div class="card-divider"></div>
+                                    <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Status</span>
+                                            <span class="info-value status-{{ application.status|lower|replace({' ': '-'}) }}">{{ application.status }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Submitted</span>
+                                            <span class="info-value">{{ application.createdAt|date('M d, Y') }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            {% if pendingApplications|length == 0 %}
+                                <div class="empty-mini-state">
+                                    <p>You have not submitted a mentor application yet.</p>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Mentor Application Cards -->
+                <div class="mentoring-content hidden" id="mentor-application-content">
+                    <div class="reservations-grid">
+                        {% if is_granted('ROLE_MENTOR') %}
+                            {% set mentorProfile = app.user.mentorProfile %}
+                            {% if mentorProfile %}
+                                <div class="reservation-card-new">
+                                    <div class="card-title">My Mentor Profile</div>
+                                    <div class="card-divider"></div>
+                                    <div class="card-info-grid">
+                                        <div class="info-item wide">
+                                            <span class="info-label">Display Name</span>
+                                            <span class="info-value">{{ mentorProfile.displayName }}</span>
+                                        </div>
+                                        <div class="info-item wide">
+                                            <span class="info-label">Bio</span>
+                                            <span class="info-value">{{ mentorProfile.bio }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Expertise</span>
+                                            <span class="info-value">{{ mentorProfile.expertise }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Engagement Points</span>
+                                            <span class="info-value">{{ mentorProfile.engagementPoints }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-actions card-actions-mt">
+                                        <a href="{{ path('app_profile') }}" class="btn btn-primary">Edit Profile</a>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="empty-mini-state">
+                                    <p>You are a mentor but your profile is not fully set up yet.</p>
+                                    <a href="{{ path('app_profile') }}" class="btn btn-primary btn-mt">Complete Profile</a>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="empty-mini-state">
+                                <p>You are not a mentor yet. Apply to become a mentor and share your expertise with others.</p>
+                                {% if canApplyAsMentor %}
+                                    <button type="button" class="btn btn-primary btn-mt" onclick="openMentorApplication()">Apply as Mentor</button>
+                                {% elseif applications|length > 0 %}
+                                    <p class="text-yellow-mt"><strong>Your application is pending review.</strong></p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Incoming Requests Cards -->
+                <div class="mentoring-content hidden" id="incoming-content">
+                    <div class="reservations-grid">
+                        {% if is_granted('ROLE_MENTOR') %}
+                            {% if incomingCustomRequests|length > 0 %}
+                                {% for request in incomingCustomRequests %}
+                                    <div class="reservation-card-new">
+                                        <div class="card-title">{{ request.student.firstName ?: request.student.email }}</div>
+                                        <div class="card-divider"></div>
+                                        <div class="card-info-grid">
+                                            <div class="info-item">
+                                                <span class="info-label">Status</span>
+                                                <span class="info-value status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <span class="info-label">Submitted</span>
+                                                <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
+                                            </div>
+                                            <div class="info-item wide">
+                                                <span class="info-label">Student Email</span>
+                                                <span class="info-value">{{ request.student.email }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="card-info-footer">
+                                            <div class="info-item wide">
+                                                <span class="info-label">Message</span>
+                                                <span class="info-value">{{ request.message }}</span>
+                                            </div>
+                                        </div>
+                                        {% if request.status == 'Pending' %}
+                                        <div class="card-actions">
+                                            <form method="post" action="{{ path('mentoring_custom_request_review', {'id': request.id}) }}" data-no-loading="true">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_review_' ~ request.id) }}">
+                                                <textarea name="mentor_response" class="form-input" rows="2" placeholder="Optional response..."></textarea>
+                                                <div class="button-group button-group-mt">
+                                                    <button type="submit" name="decision" value="accept" class="btn btn-primary-small">Accept</button>
+                                                    <button type="submit" name="decision" value="decline" class="btn btn-danger-small">Decline</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-mini-state">
+                                    <p>No incoming custom requests yet.</p>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="empty-mini-state">
+                                <p>Only mentors can view incoming requests. Apply to become a mentor to receive mentoring requests.</p>
+                                {% if canApplyAsMentor %}
+                                    <button type="button" class="btn btn-primary btn-mt" onclick="openMentorApplication()">Apply as Mentor</button>
+                                {% elseif applications|length > 0 %}
+                                    <p class="text-yellow-mt"><strong>Your application is pending review.</strong></p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div><!-- End Content Section -->
+        </div><!-- End Mentors Section -->
+
+    </div><!-- End Main Column -->
+
+    <!-- Right Side Column - Summary -->
+    <aside class="reservations-side-column">
+        <!-- Request Mentor Button -->
+        <section class="reservations-side-card reserve-action-card">
+            <a href="#" onclick="openMentorAssistance(); return false;" class="reserve-btn-large">
+                <span class="reserve-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                </span>
+                <span class="reserve-text">Request a Mentor</span>
+            </a>
         </section>
 
-        {% if is_granted('ROLE_MENTOR') %}
-            <section class="card-panel" id="custom-requests">
-                <h3>Incoming Custom Requests</h3>
-                {% for request in incomingCustomRequests %}
-                    <div class="mentor-request-card {{ request.status == 'Pending' ? 'is-pending' : '' }}">
-                        <div class="mentor-request-card__header">
-                            <div>
-                                <strong>{{ request.student.firstName ?: request.student.email }}</strong>
-                                <p>{{ request.student.email }}</p>
-                            </div>
-                            <span class="status-badge status-{{ request.status|lower }}">{{ request.status|capitalize }}</span>
-                        </div>
+        <!-- Quick Actions -->
+        <section class="reservations-side-card">
+            <div class="quick-actions-flex">
+                {% if is_granted('ROLE_ADMIN') %}
+                    <a href="{{ path('mentoring_super-admin') }}" class="btn-primary btn-full-width">Manage</a>
+                {% endif %}
+            </div>
+        </section>
 
-                        <p class="mentor-request-card__meta">Submitted {{ request.createdAt|date('M d, Y h:i A') }}</p>
-                        <div class="mentor-request-card__message">{{ request.message }}</div>
+        <!-- Recent Request Summary -->
+        <section class="reservations-side-card reservations-info-card">
+            <div class="reservations-side-card-head">
+                <h3>Recent Request</h3>
+            </div>
+            {% set recentRequest = sentCustomRequests|first %}
+            {% if recentRequest %}
+                <p>
+                    <strong>{{ recentRequest.mentorProfile ? recentRequest.mentorProfile.displayName : 'Mentor Request' }}</strong> —
+                    {{ recentRequest.status|capitalize }}
+                    on {{ recentRequest.createdAt|date('M d, Y') }}.
+                </p>
+            {% else %}
+                <p>You have no mentoring requests yet. Submit a request to get started!</p>
+            {% endif %}
+        </section>
 
-                        {% if request.mentorResponse %}
-                            <div class="mentor-request-card__response">
-                                <strong>Your response:</strong>
-                                <p>{{ request.mentorResponse }}</p>
-                            </div>
-                        {% endif %}
+        <!-- Quick Stats -->
+        <section class="reservations-side-card reservations-info-card">
+            <div class="reservations-side-card-head">
+                <h3>Quick Overview</h3>
+            </div>
+            <div class="quick-stats-list">
+                <div class="quick-stat-item">
+                    <span class="quick-stat-label">Available Mentors</span>
+                    <span class="quick-stat-value">{{ mentors|length }}</span>
+                </div>
+                <div class="quick-stat-item">
+                    <span class="quick-stat-label">My Requests</span>
+                    <span class="quick-stat-value stat-yellow">{{ sentCustomRequests|length }}</span>
+                </div>
+                {% if is_granted('ROLE_MENTOR') %}
+                <div class="quick-stat-item">
+                    <span class="quick-stat-label">Incoming Pending</span>
+                    <span class="quick-stat-value stat-green">{{ incomingCustomRequests|filter(r => r.status == 'Pending')|length }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </section>
 
-                        {% if request.status == 'Pending' %}
-                            <form method="post" action="{{ path('mentoring_custom_request_review', {'id': request.id}) }}" class="mentor-request-actions" data-no-loading="true">
-                                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_review_' ~ request.id) }}">
-                                <textarea name="mentor_response" class="form-input" rows="3" placeholder="Optional response to the student"></textarea>
-                                <div class="button-group">
-                                    <button type="submit" name="decision" value="accept" class="btn-primary">Accept</button>
-                                    <button type="submit" name="decision" value="decline" class="btn-secondary">Decline</button>
-                                </div>
-                            </form>
-                        {% endif %}
+        <!-- Leaderboard Mini -->
+        <section class="reservations-side-card reservations-info-card">
+            <div class="reservations-side-card-head">
+                <h3>Top Mentors</h3>
+            </div>
+            <div class="quick-stats-list">
+                {% for mentor in leaderboard|slice(0, 3) %}
+                    <div class="quick-stat-item">
+                        <span class="quick-stat-label">{{ loop.index }}. {{ mentor.displayName }}</span>
+                        <span class="quick-stat-value">{{ mentor.engagementPoints }} pts</span>
                     </div>
                 {% else %}
-                    <p>No incoming custom requests yet.</p>
+                    <p>No leaderboard data yet.</p>
                 {% endfor %}
-            </section>
-        {% endif %}
-    </div>
-
-    <div class="module-grid">
-        <section class="card-panel">
-            <h3>Traceability Leaderboard</h3>
-            {% for mentor in leaderboard %}
-                <div class="list-row">
-                    <strong>{{ loop.index }}. {{ mentor.displayName }}</strong>
-                    <span>{{ mentor.engagementPoints }} points</span>
-                </div>
-            {% else %}
-                <p>No leaderboard data yet.</p>
-            {% endfor %}
+            </div>
         </section>
 
-        <section class="card-panel" id="preferredSpecializationsPanel">
-            {% include 'mentoring/_preferred_specializations.html.twig' with { specializations: specializations } only %}
+        <!-- Specializations -->
+        <section class="reservations-side-card reservations-info-card" id="preferredSpecializationsPanel">
+            <div class="reservations-side-card-head">
+                <h3>Preferred Specializations</h3>
+            </div>
+            <div class="quick-stats-list">
+                {% for row in specializations %}
+                    <div class="quick-stat-item specialization-row" data-specialization="{{ row.specialization }}">
+                        <a href="{{ path('mentoring_index', { specialization: row.specialization, search: app.request.query.get('search', '') }) }}" class="specialization-link{% if app.request.query.get('specialization') == row.specialization %} active{% endif %}">
+                            <span class="quick-stat-label">{{ row.specialization }}</span>
+                        </a>
+                        <span class="quick-stat-value">{{ row.total }} requests</span>
+                    </div>
+                {% else %}
+                    <p>No specialization analytics yet.</p>
+                {% endfor %}
+            </div>
         </section>
-    </div>
+    </aside>
+</div><!-- End Layout -->
 
     {% if canApplyAsMentor %}
         <div id="mentorApplicationModal" class="app-modal" aria-hidden="true">
             <div class="app-modal-backdrop" onclick="closeMentorApplication()"></div>
-            <div class="app-modal-panel app-modal-large" role="dialog" aria-modal="true" aria-labelledby="mentorApplicationTitle">
-                <div class="app-modal-header">
+            <div class="app-modal-panel app-modal-large mentor-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mentorApplicationTitle">
+                <div class="app-modal-header mentor-modal-header">
                     <div>
-                        <h3 id="mentorApplicationTitle">Apply as Mentor</h3>
-                        <p>Fill out the form below. Your application will be reviewed by the Super Admin.</p>
+                        <h3 id="mentorApplicationTitle" class="mentor-modal-title">Apply as Mentor</h3>
+                        <p class="mentor-modal-subtitle">Your application will be reviewed by the Super Admin.</p>
                     </div>
-                    <button type="button" class="icon-button" onclick="closeMentorApplication()" aria-label="Close">x</button>
+                    <button type="button" class="icon-button mentor-modal-close" onclick="closeMentorApplication()" aria-label="Close">x</button>
                 </div>
 
-                <div class="mentor-application-layout">
-                    <aside class="mentor-application-summary">
-                        <div class="mentor-application-summary__eyebrow">Mentor application</div>
-                        <h4>Share your strengths with the team</h4>
-                        <p>Your application is reviewed by the Super Admin. Keep it clear, specific, and professional.</p>
+                <div class="mentor-application-layout mentor-application-layout-custom">
+                    <aside class="mentor-application-summary mentor-application-summary-custom">
+                        <div class="mentor-application-summary__eyebrow mentor-application-eyebrow">Mentor application</div>
+                        <h4 class="mentor-application-heading">Share your strengths with the team</h4>
+                        <p class="mentor-application-desc">Your application is reviewed by the Super Admin. Keep it clear, specific, and professional.</p>
 
-                        <div class="mentor-application-points">
+                        <div class="mentor-application-points mentor-application-points-custom">
                             <div>
-                                <strong>Complete profile</strong>
-                                <span>We use these details to review your background.</span>
+                                <strong class="mentor-point-title">Complete profile</strong>
+                                <span class="mentor-point-desc">We use these details to review your background.</span>
                             </div>
                             <div>
-                                <strong>Professional proof</strong>
-                                <span>Attach certificates, IDs, or samples if available.</span>
+                                <strong class="mentor-point-title">Professional proof</strong>
+                                <span class="mentor-point-desc">Attach certificates, IDs, or samples if available.</span>
                             </div>
                             <div>
-                                <strong>Fast review</strong>
-                                <span>Applications are kept organized for quick checking.</span>
+                                <strong class="mentor-point-title">Fast review</strong>
+                                <span class="mentor-point-desc">Applications are kept organized for quick checking.</span>
                             </div>
                         </div>
                     </aside>
@@ -245,9 +422,8 @@
                     <form method="post" action="{{ path('mentoring_apply') }}" class="mentor-form" enctype="multipart/form-data">
                         <input type="hidden" name="_token" value="{{ csrf_token('mentor_application') }}">
                         {% include 'mentoring/_mentor_application_form_fields.html.twig' with { defaultUser: app.user } only %}
-                        <div class="app-modal-actions">
-                            <button type="button" class="btn-secondary" onclick="closeMentorApplication()">Cancel</button>
-                            <button class="btn-primary" type="submit">Submit Application</button>
+                        <div class="app-modal-actions mentor-modal-actions">
+                            <button type="button" class="btn-secondary mentor-modal-cancel" onclick="closeMentorApplication()">Cancel</button>
                         </div>
                     </form>
                 </div>
@@ -306,11 +482,51 @@
 {% block javascripts %}
     {{ parent() }}
     <script>
-        let searchTimeout;
-        const DEBOUNCE_DELAY = 300; // 300ms delay before searching
+        // ===== TAB SWITCHING - Global function for inline onclick =====
+        function switchMentoringTab(filter, clickedTab) {
+            // Update active tab styling
+            const tabsContainer = document.querySelector('.filter-tabs-container');
+            if (tabsContainer) {
+                const allTabs = tabsContainer.querySelectorAll('.filter-tab');
+                allTabs.forEach(function(tab) { tab.classList.remove('active'); });
+            }
+            clickedTab.classList.add('active');
 
-        // Real-time search and filter
+            // Show/hide content sections
+            const contents = document.querySelectorAll('.mentoring-content');
+            contents.forEach(function(content) {
+                if (content.id === filter + '-content') {
+                    content.classList.remove('hidden');
+                    content.style.display = 'block';
+                } else {
+                    content.classList.add('hidden');
+                    content.style.display = 'none';
+                }
+            });
+        }
+
+        // Set initial state on page load
         document.addEventListener('DOMContentLoaded', function() {
+            const activeTab = document.querySelector('.filter-tab.active');
+            if (activeTab) {
+                const filter = activeTab.getAttribute('onclick').match(/'([^']+)'/)[1];
+                const contents = document.querySelectorAll('.mentoring-content');
+                contents.forEach(function(content) {
+                    if (content.id === filter + '-content') {
+                        content.classList.remove('hidden');
+                        content.style.display = 'block';
+                    } else {
+                        content.classList.add('hidden');
+                        content.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        // ===== REAL-TIME SEARCH =====
+        document.addEventListener('DOMContentLoaded', function() {
+            let searchTimeout;
+            const DEBOUNCE_DELAY = 300;
             const searchInput = document.getElementById('mentorSearchInput');
             const specializationFilter = document.getElementById('specializationFilter');
             const mentorCardGrid = document.getElementById('mentorCardGrid');
@@ -378,18 +594,15 @@
             function bindSpecializationLinks() {
                 const specializationLinks = document.querySelectorAll('.specialization-link');
                 specializationLinks.forEach(link => {
-                    link.removeEventListener('click', handleSpecializationLinkClick);
-                    link.addEventListener('click', handleSpecializationLinkClick);
+                    link.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        const specialization = this.closest('.specialization-row')?.dataset.specialization || '';
+                        if (specializationFilter) {
+                            specializationFilter.value = specialization;
+                        }
+                        performSearch();
+                    });
                 });
-            }
-
-            function handleSpecializationLinkClick(event) {
-                event.preventDefault();
-                const specialization = this.closest('.specialization-row')?.dataset.specialization || '';
-                if (specializationFilter) {
-                    specializationFilter.value = specialization;
-                }
-                performSearch();
             }
 
             bindSpecializationLinks();
