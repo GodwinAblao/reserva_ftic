@@ -42,9 +42,9 @@ export default class extends Controller {
                 });
             });
 
-        // Immediate poll on connect, then every 15 s
+        // Immediate poll on connect, then every 5 s
         this._poll();
-        this._pollTimer = setInterval(() => this._poll(), 15000);
+        this._pollTimer = setInterval(() => this._poll(), 5000);
     }
 
     disconnect() {

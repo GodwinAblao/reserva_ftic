@@ -42,6 +42,22 @@
         </div>
 
         <div class="form-group">
+            <label for="mentor_education">Education (Where graduated)</label>
+            <input type="text" id="mentor_education" name="mentor_education" class="form-input" value="{{ mentor.education }}" placeholder="e.g. BS Computer Science – FEU Tech 2023">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label for="availability_start">Available Time — Start</label>
+                <input type="time" id="availability_start" name="availability_start" class="form-input" min="07:00" max="21:00" value="{{ mentor.availabilityStart }}">
+            </div>
+            <div class="form-group">
+                <label for="availability_end">Available Time — End</label>
+                <input type="time" id="availability_end" name="availability_end" class="form-input" min="07:00" max="21:00" value="{{ mentor.availabilityEnd }}">
+            </div>
+        </div>
+
+        <div class="form-group">
             <label>User Information</label>
             <div class="user-info">
                 <p><strong>Name:</strong> {{ mentor.user.firstName }} {{ mentor.user.lastName }}</p>

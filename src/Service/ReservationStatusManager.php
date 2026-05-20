@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Reservation;
 use App\Repository\ReservationRepository;
+use App\Service\ReservationMailer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,7 @@ class ReservationStatusManager
         private readonly EntityManagerInterface $em,
         private readonly ReservationRepository $reservationRepo,
         private readonly ReservationAuditLogger $auditLogger,
+        private readonly ReservationMailer $reservationMailer,
     ) {
     }
 
@@ -42,6 +44,8 @@ class ReservationStatusManager
         $this->auditLogger->logStatusChange($reservation, $previous, 'Approved', 'approve');
         $this->em->flush();
 
+        $this->reservationMailer->notifyApproved($reservation);
+
         return $this->success('Reservation approved successfully.', $isAjax);
     }
 
@@ -53,6 +57,8 @@ class ReservationStatusManager
         $reservation->setUpdatedAt(new \DateTime());
         $this->auditLogger->logStatusChange($reservation, $previous, 'Rejected', 'reject', $reason);
         $this->em->flush();
+
+        $this->reservationMailer->notifyRejected($reservation);
 
         return $this->success('Reservation rejected successfully.', $isAjax);
     }
@@ -98,6 +104,13 @@ class ReservationStatusManager
         $reservation->setUpdatedAt(new \DateTime());
         $this->auditLogger->logStatusChange($reservation, $previous, $newStatus, $action, $note);
         $this->em->flush();
+
+        match ($newStatus) {
+            'Approved'  => $this->reservationMailer->notifyApproved($reservation),
+            'Rejected'  => $this->reservationMailer->notifyRejected($reservation),
+            'Cancelled' => $this->reservationMailer->notifyCancelled($reservation),
+            default     => null,
+        };
 
         return ['ok' => true];
     }

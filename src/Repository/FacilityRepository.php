@@ -23,6 +23,11 @@ class FacilityRepository extends ServiceEntityRepository
         return $this->findBy([], ['name' => 'ASC']);
     }
 
+    public function findEnabled(): array
+    {
+        return $this->findBy(['availableForReservation' => true], ['name' => 'ASC']);
+    }
+
     public function save(Facility $entity, bool $flush = false): void
     {
         $this->getEntityManager()->persist($entity);

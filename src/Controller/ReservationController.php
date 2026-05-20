@@ -9,6 +9,7 @@ use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
 use App\Service\FacilityAvailabilityService;
+use App\Service\ReservationMailer;
 use App\Service\ScheduleRevisionService;
 use App\Repository\UserRepository;
 use App\Repository\NotificationRepository;
@@ -331,7 +332,8 @@ public function reserve(
         Reservation $reservation,
         Request $request,
         ReservationRepository $reservationRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
     ): Response {
         if (!$this->isCsrfTokenValid('cancel_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -345,6 +347,8 @@ public function reserve(
         $reservation->setStatus('Cancelled');
         $em->flush();
 
+        $reservationMailer->notifyCancelled($reservation);
+
         $this->addFlash('success', 'Reservation cancelled successfully.');
 
         return $this->redirectToRoute('user_reservations');
@@ -355,7 +359,8 @@ public function reserve(
     public function acceptSuggestion(
         Reservation $reservation,
         ReservationRepository $reservationRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
     ): Response {
         if ($reservation->getUser() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
@@ -383,6 +388,8 @@ public function reserve(
         $reservation->setStatus('Approved');
         $em->flush();
 
+        $reservationMailer->notifySuggestionAccepted($reservation);
+
         $this->addFlash('success', 'Suggestion accepted. Your reservation is now booked.');
 
         return $this->redirectToRoute('user_reservations');
@@ -393,7 +400,8 @@ public function reserve(
     public function declineSuggestion(
         Reservation $reservation,
         ReservationRepository $reservationRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
     ): Response {
         if ($reservation->getUser() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
@@ -418,6 +426,8 @@ public function reserve(
         $reservation->setSuggestedFacility(null);
         $reservation->setStatus('Approved');
         $em->flush();
+
+        $reservationMailer->notifySuggestionDeclined($reservation);
 
         $this->addFlash('success', 'Suggestion declined. Your original reservation is now booked.');
 
@@ -462,7 +472,8 @@ public function reserve(
         Request $request,
         EntityManagerInterface $em,
         MailerInterface $mailer,
-        UserRepository $userRepository
+        UserRepository $userRepository,
+        ReservationMailer $reservationMailer
     ): Response {
         if (!$this->isCsrfTokenValid('select_alternative_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -487,6 +498,9 @@ public function reserve(
         // Send notification to super admin
         $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
 
+        // Send confirmation email + in-app notification to user
+        $reservationMailer->notifyPending($reservation);
+
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
 
         return $this->redirectToRoute('user_reservations');
@@ -499,7 +513,8 @@ public function reserve(
         Request $request,
         EntityManagerInterface $em,
         MailerInterface $mailer,
-        UserRepository $userRepository
+        UserRepository $userRepository,
+        ReservationMailer $reservationMailer
     ): Response {
         if (!$this->isCsrfTokenValid('keep_original_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -516,6 +531,9 @@ public function reserve(
 
         // Send notification to super admin
         $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
+
+        // Send confirmation email + in-app notification to user
+        $reservationMailer->notifyPending($reservation);
 
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
 

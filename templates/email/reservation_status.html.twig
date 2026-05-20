@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Update – Reserva FTIC</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 0;">
+    <tr>
+        <td align="center">
+            <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background:
+                        {% if status == 'Approved' %}#16a34a
+                        {% elseif status == 'Rejected' %}#dc2626
+                        {% elseif status == 'Cancelled' %}#6b7280
+                        {% elseif status == 'Suggested' %}#d97706
+                        {% else %}#2563eb{% endif %};
+                        padding:28px 36px;text-align:center;">
+                        <h1 style="margin:0;color:#ffffff;font-size:1.4rem;font-weight:700;letter-spacing:0.3px;">
+                            {% if status == 'Approved' %}✅ Reservation Approved
+                            {% elseif status == 'Rejected' %}❌ Reservation Rejected
+                            {% elseif status == 'Cancelled' %}🚫 Reservation Cancelled
+                            {% elseif status == 'Suggested' %}📋 Alternative Suggested
+                            {% elseif status == 'Pending' %}📥 Reservation Received
+                            {% else %}Reservation Update{% endif %}
+                        </h1>
+                        <p style="margin:6px 0 0;color:rgba(255,255,255,0.88);font-size:0.92rem;">Reserva FTIC</p>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:32px 36px;">
+                        <p style="margin:0 0 16px;color:#374151;font-size:0.97rem;">Hi <strong>{{ name }}</strong>,</p>
+                        <p style="margin:0 0 24px;color:#374151;font-size:0.97rem;line-height:1.6;">{{ message }}</p>
+
+                        <!-- Reservation Details Box -->
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:24px;">
+                            <tr><td style="padding:20px 22px;">
+                                <p style="margin:0 0 4px;font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px;">Reservation Details</p>
+                                <table width="100%" cellpadding="4" cellspacing="0" style="margin-top:10px;font-size:0.91rem;color:#374151;">
+                                    <tr>
+                                        <td style="color:#6b7280;width:38%;padding:3px 0;">Facility</td>
+                                        <td><strong>{{ reservation.facility ? reservation.facility.name : 'N/A' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color:#6b7280;padding:3px 0;">Date</td>
+                                        <td><strong>{{ reservation.reservationDate ? reservation.reservationDate|date('F j, Y') : 'N/A' }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color:#6b7280;padding:3px 0;">Time</td>
+                                        <td><strong>{{ reservation.reservationStartTime ? reservation.reservationStartTime|date('g:i A') : '' }} – {{ reservation.reservationEndTime ? reservation.reservationEndTime|date('g:i A') : '' }}</strong></td>
+                                    </tr>
+                                    {% if reservation.eventName %}
+                                    <tr>
+                                        <td style="color:#6b7280;padding:3px 0;">Event</td>
+                                        <td><strong>{{ reservation.eventName }}</strong></td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <td style="color:#6b7280;padding:3px 0;">Purpose</td>
+                                        <td>{{ reservation.purpose }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color:#6b7280;padding:3px 0;">Status</td>
+                                        <td>
+                                            <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:0.82rem;font-weight:700;
+                                                background:{% if status == 'Approved' %}#dcfce7{% elseif status == 'Rejected' %}#fee2e2{% elseif status == 'Cancelled' %}#f3f4f6{% elseif status == 'Suggested' %}#fef3c7{% else %}#dbeafe{% endif %};
+                                                color:{% if status == 'Approved' %}#166534{% elseif status == 'Rejected' %}#991b1b{% elseif status == 'Cancelled' %}#374151{% elseif status == 'Suggested' %}#92400e{% else %}#1e40af{% endif %};">
+                                                {{ status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% if status == 'Rejected' and reservation.rejectionReason %}
+                                    <tr>
+                                        <td style="color:#6b7280;padding:3px 0;">Reason</td>
+                                        <td style="color:#dc2626;">{{ reservation.rejectionReason }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </td></tr>
+                        </table>
+
+                        {% if extra_message is defined and extra_message %}
+                        <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;padding:14px 18px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;">
+                            {{ extra_message }}
+                        </p>
+                        {% endif %}
+
+                        <p style="margin:0;color:#6b7280;font-size:0.88rem;">If you have questions, please contact the FTIC office.</p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="padding:18px 36px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
+                        <p style="margin:0;color:#9ca3af;font-size:0.8rem;">© {{ "now"|date("Y") }} Reserva FTIC. This is an automated message, please do not reply.</p>
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

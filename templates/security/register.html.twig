@@ -438,6 +438,9 @@
             .then(data => {
                 if (data.success) {
                     showVerifyRegistrationModal(data.email);
+                    if (data.notice) {
+                        showNotice(data.notice, 'error');
+                    }
                 }
             })
             .catch(error => {

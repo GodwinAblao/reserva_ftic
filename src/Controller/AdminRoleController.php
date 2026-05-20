@@ -17,6 +17,10 @@ use App\Service\CalendarDataService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
 use App\Service\ReservationStatusManager;
+use App\Service\NotificationService;
+use App\Entity\User;
+use App\Entity\MentorCustomRequest;
+use App\Entity\MentorApplication;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -76,7 +80,10 @@ class AdminRoleController extends AbstractController
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r
              LEFT JOIN facility f ON r.facility_id = f.id
-             ORDER BY r.created_at DESC LIMIT 8'
+             WHERE r.status NOT IN (:statuses)
+             ORDER BY r.created_at DESC LIMIT 8',
+            ['statuses' => ['AwaitingFacilitySelection']],
+            ['statuses' => \Doctrine\DBAL\ArrayParameterType::STRING]
         )->fetchAllAssociative();
 
         $response = $this->json([
@@ -91,7 +98,7 @@ class AdminRoleController extends AbstractController
             }, $rows),
             'ts' => time(),
         ]);
-        $response->headers->set('Cache-Control', 'private, max-age=10');
+        $response->headers->set('Cache-Control', 'private, no-store');
         return $response;
     }
 
@@ -517,7 +524,7 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/mentorship-coordination/{id}/assign', name: 'admin_role_mentorship_assign', methods: ['POST'])]
-    public function mentorshipAssign(int $id, Request $request, EntityManagerInterface $em): Response
+    public function mentorshipAssign(int $id, Request $request, EntityManagerInterface $em, NotificationService $notifService): Response
     {
         if (!$this->isCsrfTokenValid('mentorship_assign_' . $id, (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -525,17 +532,47 @@ class AdminRoleController extends AbstractController
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
         $req = $em->getRepository(\App\Entity\MentorCustomRequest::class)->find($id);
         if ($req) {
-            $mentorId = $request->request->get('mentor_id');
-            if ($mentorId) {
-                $mentor = $em->getRepository(MentorProfile::class)->find((int)$mentorId);
-                if ($mentor) { $req->setAssignedMentorName($mentor->getDisplayName()); $req->setAssignedMentorExpertise($mentor->getSpecialization()); }
+            $mentorId = (int) $request->request->get('mentor_id', 0);
+            $mentorNameManual = trim((string) $request->request->get('mentor_name_manual', ''));
+            $specialization   = trim((string) $request->request->get('specialization', ''));
+            if ($mentorId > 0) {
+                $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
+                if ($mentor) {
+                    $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
+                    $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
+                }
+            } else {
+                if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
+                if ($specialization !== '') $req->setAssignedMentorExpertise($specialization);
             }
-            $req->setMeetingMethod($request->request->get('meeting_method') ?: null);
+            $timeStart = trim((string) $request->request->get('available_time_start', ''));
+            $timeEnd   = trim((string) $request->request->get('available_time_end', ''));
+            $fmtTime = static function (string $t): string {
+                $dt = \DateTime::createFromFormat('H:i', $t);
+                return $dt ? $dt->format('g:i A') : $t;
+            };
+            $availableTime = ($timeStart !== '' && $timeEnd !== '')
+                ? $fmtTime($timeStart) . ' – ' . $fmtTime($timeEnd)
+                : trim((string) $request->request->get('available_time', ''));
+            $meetingMethod = trim((string) $request->request->get('meeting_method_override', '')) ?: trim((string) $request->request->get('meeting_method', ''));
+            $req->setMeetingMethod($meetingMethod ?: null);
             $req->setAvailableDates($request->request->get('available_dates') ?: null);
-            $req->setAvailableTime($request->request->get('available_time') ?: null);
+            $req->setAvailableTime($availableTime ?: null);
             $req->setAdminInstructions($request->request->get('admin_instructions') ?: null);
-            $req->setStatus('approved');
+            $submittedStatus = trim((string) $request->request->get('status', 'approved'));
+            $req->setStatus(in_array($submittedStatus, ['pending','reviewing','assigned','completed','cancelled','approved'], true) ? $submittedStatus : 'approved');
             $em->flush();
+            $actor = $this->getUser();
+            $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Admin';
+            $student = $req->getStudent();
+            $requesterName = $req->getFullName() ?: ($student ? trim($student->getFirstName() . ' ' . $student->getLastName()) : 'Student');
+            foreach ($em->getRepository(User::class)->findAll() as $u) {
+                if ($u === $actor) continue;
+                $roles = $u->getRoles();
+                if (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true)) {
+                    $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName, ucfirst($submittedStatus), $requesterName);
+                }
+            }
             if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
             $this->addFlash('success', 'Mentor assigned successfully.');
         } else {
@@ -549,9 +586,10 @@ class AdminRoleController extends AbstractController
     {
         return $this->render('admin/mentorship_coordination.html.twig', [
             'applications' => $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
-            'requests' => $em->getRepository(\App\Entity\MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 20),
+            'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
         ]);

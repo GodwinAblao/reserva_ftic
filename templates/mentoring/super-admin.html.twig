@@ -6,7 +6,7 @@
 <div class="content-header" style="align-items:center; justify-content:space-between;">
     <h2>Mentoring</h2>
     <div class="button-group">
-        <a href="{{ path('mentoring_admin_requests') }}" class="btn-primary">Mentor Requests</a>
+        <a href="{{ path('mentoring_superadmin_requests') }}" class="btn-primary">Mentor Requests (Super Admin)</a>
         <a href="{{ path('mentoring_index') }}" class="btn-secondary">Back to Mentoring</a>
     </div>
 </div>
@@ -118,40 +118,28 @@
             </thead>
             <tbody>
             {% for request in mentorRequests %}
+                {% set hasChosen = request.mentorProfile is not null %}
+                {% set displayDept = request.departmentCourse
+                    ?: (hasChosen and request.mentorProfile.user
+                        ? (request.mentorProfile.user.degreeName ?: request.mentorProfile.user.degree)
+                        : '—') %}
+                {% set displaySchedule = request.preferredSchedule
+                    ?: (hasChosen and request.mentorProfile.availabilityStart and request.mentorProfile.availabilityEnd
+                        ? ('2000-01-01 ' ~ request.mentorProfile.availabilityStart)|date('g:i A') ~ ' – ' ~ ('2000-01-01 ' ~ request.mentorProfile.availabilityEnd)|date('g:i A')
+                        : '—') %}
                 <tr>
                     <td>
                         <strong>{{ request.fullName ?: request.student.email }}</strong>
                         <span>{{ request.student.email }}</span>
+                        {% if hasChosen %}<span class="badge-chosen" style="display:block;margin-top:.25rem;">Chose: {{ request.mentorProfile.displayName }}</span>{% endif %}
                     </td>
-                    <td>{{ request.departmentCourse }}</td>
-                    <td>{{ request.preferredExpertise }}</td>
-                    <td>{{ request.preferredSchedule }}</td>
+                    <td>{{ displayDept }}</td>
+                    <td>{{ request.preferredExpertise ?: (hasChosen ? request.mentorProfile.specialization : '—') }}</td>
+                    <td>{{ displaySchedule }}</td>
                     <td><span class="status-badge status-{{ request.status|lower }}">{{ request.status }}</span></td>
                     <td>{{ request.createdAt|date('M d, Y h:i A') }}</td>
                     <td>
-                        <details class="mentor-response-details">
-                            <summary>{{ request.assignedMentorName ? 'Update response' : 'Send details' }}</summary>
-                            <p class="muted">{{ request.message }}</p>
-                            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': request.id}) }}" class="mentor-admin-response-form">
-                                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ request.id) }}">
-                                <select name="status" class="form-input" required>
-                                    {% for status in ['Reviewing', 'Assigned', 'Completed'] %}
-                                        <option value="{{ status }}" {{ request.status == status ? 'selected' : '' }}>{{ status }}</option>
-                                    {% endfor %}
-                                </select>
-                                <input class="form-input" name="mentor_name" placeholder="Mentor Name" value="{{ request.assignedMentorName }}">
-                                <input class="form-input" name="expertise" placeholder="Expertise / Specialty" value="{{ request.assignedMentorExpertise }}">
-                                <input type="date" class="form-input" name="available_dates" aria-label="Available Date" value="{{ request.availableDates }}">
-                                <input type="time" class="form-input" name="available_time" aria-label="Available Time" value="{{ request.availableTime }}">
-                                <select name="meeting_method" class="form-input">
-                                    <option value="">Meeting Method</option>
-                                    <option value="Online" {{ request.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
-                                    <option value="Face-to-Face" {{ request.meetingMethod == 'Face-to-Face' ? 'selected' : '' }}>Face-to-Face</option>
-                                </select>
-                                <textarea class="form-input" name="instructions" rows="3" placeholder="Additional instructions or notes">{{ request.adminInstructions }}</textarea>
-                                <button class="btn-primary" type="submit">Notify User</button>
-                            </form>
-                        </details>
+                        {{ include('mentoring/_mentor_request_response_form.html.twig', {'request': request, 'mentors': mentors}) }}
                     </td>
                 </tr>
             {% else %}
@@ -418,6 +406,33 @@
     background: #b91c1c;
 }
 </style>
+
+{# ── Leaderboard ── #}
+{% if leaderboard is defined and leaderboard|length > 0 %}
+<section class="card-panel">
+    <h3>Top Mentors — Leaderboard</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <thead>
+            <tr style="border-bottom:2px solid #f3f4f6;">
+                <th style="text-align:left;padding:8px 12px;color:#9ca3af;font-weight:700;font-size:11px;text-transform:uppercase;">Rank</th>
+                <th style="text-align:left;padding:8px 12px;color:#9ca3af;font-weight:700;font-size:11px;text-transform:uppercase;">Mentor</th>
+                <th style="text-align:left;padding:8px 12px;color:#9ca3af;font-weight:700;font-size:11px;text-transform:uppercase;">Specialization</th>
+                <th style="text-align:right;padding:8px 12px;color:#9ca3af;font-weight:700;font-size:11px;text-transform:uppercase;">Points</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for mentor in leaderboard %}
+            <tr style="border-bottom:1px solid #f9fafb;">
+                <td style="padding:9px 12px;font-weight:700;color:#f59e0b;">{{ loop.index }}</td>
+                <td style="padding:9px 12px;font-weight:600;color:#111827;">{{ mentor.displayName }}</td>
+                <td style="padding:9px 12px;color:#6b7280;">{{ mentor.specialization ?: '—' }}</td>
+                <td style="padding:9px 12px;text-align:right;font-weight:700;color:#111827;">{{ mentor.engagementPoints }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
 
 {% block javascripts %}
 {{ parent() }}

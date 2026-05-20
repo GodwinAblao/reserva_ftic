@@ -116,11 +116,13 @@ class ProfileController extends AbstractController
                         $mentorProfile->setUser($user);
                     }
 
-                    $displayName = $request->request->get('display_name');
-                    $specialization = $request->request->get('specialization');
-                    $bio = $request->request->get('bio');
+                    $displayName      = $request->request->get('display_name');
+                    $specialization   = $request->request->get('specialization');
+                    $bio              = $request->request->get('bio');
+                    $education        = $request->request->get('mentor_education');
+                    $availStart       = trim((string) $request->request->get('availability_start'));
+                    $availEnd         = trim((string) $request->request->get('availability_end'));
 
-                    // Only update if values are provided
                     if ($displayName) {
                         $mentorProfile->setDisplayName($displayName);
                     }
@@ -130,6 +132,11 @@ class ProfileController extends AbstractController
                     if ($bio !== null) {
                         $mentorProfile->setBio($bio);
                     }
+                    if ($education !== null) {
+                        $mentorProfile->setEducation($education ?: null);
+                    }
+                    $mentorProfile->setAvailabilityStart($availStart !== '' ? $availStart : null);
+                    $mentorProfile->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 
                     $em->persist($mentorProfile);
                 }

@@ -32,15 +32,6 @@
             <div class="dashboard-stat-foot">Pending approval</div>
         </div>
 
-        <div class="dashboard-stat-card stat-purple">
-            <div class="dashboard-stat-top">
-                <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></span>
-                <span class="dashboard-stat-title">Suggested</span>
-            </div>
-            <div class="dashboard-stat-value">{{ reservations['Suggested']|length }}</div>
-            <div class="dashboard-stat-foot">Suggested alternatives</div>
-        </div>
-
         <div class="dashboard-stat-card stat-danger">
             <div class="dashboard-stat-top">
                 <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></span>
@@ -379,8 +370,8 @@
     </div>
 
     <!-- Empty State Message -->
-    {% if reservations['Approved']|length == 0 and reservations['Pending']|length == 0 
-        and reservations['Suggested']|length == 0 and reservations['Rejected']|length == 0 and reservations['Cancelled']|length == 0 %}
+    {% if reservations['Approved']|length == 0 and reservations['Pending']|length == 0
+        and reservations['Rejected']|length == 0 and reservations['Cancelled']|length == 0 %}
         <div class="empty-state card-panel">
             <h3>No Reservations Yet</h3>
             <p>You haven't made any facility reservations.</p>
@@ -409,7 +400,7 @@
                 <div class="reservations-side-card-head">
                     <h3>Recent Reservation</h3>
                 </div>
-                {% set allReservations = reservations['Approved']|merge(reservations['Pending'])|merge(reservations['Suggested']) %}
+                {% set allReservations = reservations['Approved']|merge(reservations['Pending']) %}
                 {% set recentReservation = allReservations|sort((a, b) => b.createdAt <=> a.createdAt)|first %}
                 {% if recentReservation %}
                     <p>
@@ -431,7 +422,7 @@
                 <div class="quick-stats-list">
                     <div class="quick-stat-item">
                         <span class="quick-stat-label">Total</span>
-                        <span class="quick-stat-value">{{ reservations['Approved']|length + reservations['Pending']|length + reservations['Suggested']|length + reservations['Rejected']|length + reservations['Cancelled']|length }}</span>
+                        <span class="quick-stat-value">{{ reservations['Approved']|length + reservations['Pending']|length + reservations['Rejected']|length + reservations['Cancelled']|length }}</span>
                     </div>
                     <div class="quick-stat-item">
                         <span class="quick-stat-label">Approved</span>

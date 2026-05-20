@@ -377,57 +377,104 @@
     const calendarEndHour = 20;
     const calendarHourHeight = 60;
 
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('prevDate').addEventListener('click', () => navigateDate(-1));
-        document.getElementById('nextDate').addEventListener('click', () => navigateDate(1));
-        document.getElementById('todayBtn').addEventListener('click', () => {
-            currentDate = new Date();
-            renderCalendar();
-        });
-        document.getElementById('viewMode').addEventListener('change', (e) => {
-            viewMode = e.target.value;
-            renderCalendar();
-        });
-        document.getElementById('facilityFilter').addEventListener('change', (e) => {
-            selectedFacility = e.target.value;
-            renderCalendar();
-        });
-        document.getElementById('statusFilter').addEventListener('change', (e) => {
-            selectedStatus = e.target.value;
-            renderCalendar();
-        });
-        document.querySelector('.modal-close').addEventListener('click', closeModal);
-        window.addEventListener('click', (e) => {
+    function destroyPreviousCalendarInstance() {
+        const prev = window.__calendarInstance;
+        if (!prev) return;
+        clearInterval(prev.timer);
+        if (prev.abortCtrl) prev.abortCtrl.abort();
+        prev.listeners.forEach(({ el, type, fn }) => el.removeEventListener(type, fn));
+        window.__calendarInstance = null;
+    }
+
+    function on(el, type, fn, store) {
+        if (!el) return;
+        el.addEventListener(type, fn);
+        store.push({ el, type, fn });
+    }
+
+    function bootCalendar() {
+        if (!document.getElementById('calendarView')) return;
+
+        destroyPreviousCalendarInstance();
+
+        calendarEventsCache.clear();
+        calendarRequestId = 0;
+        selectedFacility = document.getElementById('facilityFilter')?.value || '';
+        selectedStatus   = document.getElementById('statusFilter')?.value  || '';
+        viewMode         = document.getElementById('viewMode')?.value       || 'week';
+
+        const inst = { timer: null, abortCtrl: null, listeners: [] };
+        window.__calendarInstance = inst;
+
+        const L = inst.listeners;
+
+        on(document.getElementById('prevDate'),   'click',  () => navigateDate(-1), L);
+        on(document.getElementById('nextDate'),   'click',  () => navigateDate(1),  L);
+        on(document.getElementById('todayBtn'),   'click',  () => { currentDate = new Date(); calendarEventsCache.clear(); renderCalendar(true); }, L);
+        on(document.getElementById('viewMode'),   'change', (e) => { viewMode = e.target.value; calendarEventsCache.clear(); renderCalendar(true); }, L);
+        on(document.getElementById('facilityFilter'), 'change', (e) => { selectedFacility = e.target.value; calendarEventsCache.clear(); renderCalendar(true); }, L);
+        on(document.getElementById('statusFilter'),   'change', (e) => { selectedStatus   = e.target.value; calendarEventsCache.clear(); renderCalendar(true); }, L);
+        on(document.querySelector('.modal-close'), 'click', closeModal, L);
+        on(document.getElementById('calendarRetryBtn'), 'click', () => renderCalendar(true), L);
+
+        const winClickFn = (e) => {
             if (e.target.id === 'eventModal') closeModal();
             if (e.target.id === 'deleteScheduleModal') closeDeleteScheduleModal();
-        });
-        document.getElementById('calendarRetryBtn').addEventListener('click', () => renderCalendar(true));
+        };
+        on(window, 'click', winClickFn, L);
+
+        const focusFn = () => renderCalendar(true);
+        on(window, 'focus', focusFn, L);
+
+        const visFn = () => { if (!document.hidden) renderCalendar(true); };
+        on(document, 'visibilitychange', visFn, L);
+
         if (calendarConfig.canImport) {
-            document.getElementById('scheduleImportForm').addEventListener('submit', importScheduleInBackground);
-            document.getElementById('scheduleDeleteSubmit').addEventListener('click', openDeleteScheduleModal);
-            document.getElementById('cancelDeleteSchedule').addEventListener('click', closeDeleteScheduleModal);
-            document.getElementById('confirmDeleteSchedule').addEventListener('click', deleteImportedScheduleInBackground);
+            on(document.getElementById('scheduleImportForm'),    'submit', importScheduleInBackground,      L);
+            on(document.getElementById('scheduleDeleteSubmit'),  'click',  openDeleteScheduleModal,         L);
+            on(document.getElementById('cancelDeleteSchedule'),  'click',  closeDeleteScheduleModal,        L);
+            on(document.getElementById('confirmDeleteSchedule'), 'click',  deleteImportedScheduleInBackground, L);
         }
         if (calendarConfig.fullMode) {
-            document.getElementById('manualBlockForm').addEventListener('submit', saveManualBlockInBackground);
-            document.getElementById('manualBlockCancelEdit').addEventListener('click', resetManualBlockForm);
+            on(document.getElementById('manualBlockForm'),       'submit', saveManualBlockInBackground, L);
+            on(document.getElementById('manualBlockCancelEdit'), 'click',  resetManualBlockForm,        L);
             ['manualScheduleDate', 'manualStartTime', 'manualEndTime'].forEach((id) => {
-                document.getElementById(id).addEventListener('change', () => {
-                    if (document.getElementById('manualEditMode').value === 'class') {
-                        refreshFacilityAllocation();
-                    }
-                });
+                on(document.getElementById(id), 'change', () => {
+                    if (document.getElementById('manualEditMode').value === 'class') refreshFacilityAllocation();
+                }, L);
             });
         }
-        window.addEventListener('focus', () => renderCalendar(true));
-        document.addEventListener('visibilitychange', () => {
+
+        inst.timer = setInterval(() => {
             if (!document.hidden) renderCalendar(true);
-        });
-        window.setInterval(() => {
-            if (!document.hidden) renderCalendar(true);
-        }, 15000);
+        }, 10000);
+
         renderCalendar();
+    }
+
+    // Boot the calendar once per page visit, regardless of Turbo or hard-load.
+    // _calendarBootedAt guards against double-boot when both turbo:load and the
+    // immediate call below fire within the same visit (< 300 ms apart).
+    let _calendarBootedAt = 0;
+    function guardedBoot() {
+        const now = Date.now();
+        if (now - _calendarBootedAt < 300) return;
+        _calendarBootedAt = now;
+        bootCalendar();
+    }
+
+    document.addEventListener('turbo:load', guardedBoot);
+    document.addEventListener('turbo:before-visit', () => {
+        const inst = window.__calendarInstance;
+        if (inst) { clearInterval(inst.timer); if (inst.abortCtrl) inst.abortCtrl.abort(); }
     });
+
+    // Immediate boot for hard loads (and non-Turbo environments).
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', guardedBoot);
+    } else {
+        guardedBoot();
+    }
 
     function broadcastScheduleRevision(revision) {
         if (!revision) {
@@ -775,7 +822,7 @@
         const next = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
         next.setDate(next.getDate() + (viewMode === 'week' ? direction * 7 : direction));
         currentDate = next;
-        renderCalendar();
+        renderCalendar(true);
     }
 
     function parseDateOnly(value) {
@@ -796,6 +843,7 @@
         const renderDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
         const requestId = ++calendarRequestId;
         const cacheKey = getCalendarCacheKey(startDate, endDate, renderDate, renderMode);
+        if (forceRefresh) calendarEventsCache.delete(cacheKey);
         const cachedEvents = calendarEventsCache.get(cacheKey);
 
         if (cachedEvents) {
@@ -813,6 +861,7 @@
         }
 
         calendarAbortController = new AbortController();
+        if (window.__calendarInstance) window.__calendarInstance.abortCtrl = calendarAbortController;
         const activeController = calendarAbortController;
         const slowTimer = window.setTimeout(() => {
             if (requestId === calendarRequestId) {
@@ -833,12 +882,6 @@
             if (requestId !== calendarRequestId) {
                 return;
             }
-
-            // Debug logging
-            console.log('Calendar data loaded:', events.length, 'events');
-            console.log('Events:', events);
-            console.log('Current status filter:', selectedStatus);
-            console.log('Date range:', formatDateForAPI(startDate), 'to', formatDateForAPI(endDate));
 
             calendarEventsCache.set(cacheKey, events);
             renderCalendarEvents(events, startDate, renderDate, renderMode);

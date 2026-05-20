@@ -18,6 +18,7 @@ use App\Service\ScheduleRevisionService;
 use App\Service\ClassScheduleImportService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
+use App\Service\ReservationMailer;
 use App\Service\ReservationStatusManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -137,7 +138,8 @@ class SuperAdminReservationController extends AbstractController
         Reservation $reservation,
         int $facilityId,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
     ): Response {
         if (!$this->isCsrfTokenValid('admin_suggest_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -155,6 +157,8 @@ class SuperAdminReservationController extends AbstractController
         $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
 
+        $reservationMailer->notifySuggested($reservation);
+
         $this->addFlash('success', 'Alternative facility suggested to the requester.');
 
         return $this->redirectToRoute('admin_reservations');
@@ -166,7 +170,8 @@ class SuperAdminReservationController extends AbstractController
         Request $request,
         ReservationRepository $reservationRepo,
         FacilityRepository $facilityRepo,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
     ): Response {
         if (!$this->isCsrfTokenValid('admin_suggest_datetime_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -209,6 +214,8 @@ class SuperAdminReservationController extends AbstractController
         $reservation->setSuggestedFacility($facility);
         $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
+
+        $reservationMailer->notifySuggested($reservation);
 
         $this->addFlash('success', 'Alternative schedule suggested successfully. The requester will be notified and can accept or reject this suggestion.');
 

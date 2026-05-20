@@ -1,0 +1,168 @@
+{#
+  Shared partial: Mentor Assignment / Response form for a single MentorCustomRequest.
+  Variables expected:
+    request  – MentorCustomRequest entity
+    mentors  – list of MentorProfile entities (for the existing-mentor selector)
+#}
+{% set hasChosenMentor = request.mentorProfile is not null %}
+{% set dept = request.departmentCourse
+    ?: (hasChosenMentor and request.mentorProfile.user
+        ? (request.mentorProfile.user.degreeName ?: request.mentorProfile.user.degree)
+        : '') %}
+{% set schedule = request.preferredSchedule
+    ?: (hasChosenMentor
+        ? (request.mentorProfile.availabilityStart and request.mentorProfile.availabilityEnd
+            ? ('2000-01-01 ' ~ request.mentorProfile.availabilityStart)|date('g:i A') ~ ' – ' ~ ('2000-01-01 ' ~ request.mentorProfile.availabilityEnd)|date('g:i A')
+            : '')
+        : '') %}
+
+<details class="mentor-response-details">
+    <summary>{{ request.assignedMentorName ? 'Update response' : 'Send details' }}</summary>
+
+    {# ── Request details ── #}
+    <div class="mr-request-details">
+        <div class="mr-detail-row">
+            <span class="mr-label">Message:</span>
+            <span>{{ request.message }}</span>
+        </div>
+        <div class="mr-detail-row">
+            <span class="mr-label">Dept / Course:</span>
+            <span>{{ dept ?: '—' }}</span>
+        </div>
+        <div class="mr-detail-row">
+            <span class="mr-label">Schedule:</span>
+            <span>{{ schedule ?: '—' }}</span>
+        </div>
+        {% if hasChosenMentor %}
+        <div class="mr-detail-row mr-chosen-badge">
+            <span class="mr-label">Chosen Mentor:</span>
+            <span class="badge-chosen">{{ request.mentorProfile.displayName }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ── Assignment form — only shown when user did NOT already pick a mentor ── #}
+    {% if not hasChosenMentor %}
+    <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': request.id}) }}" class="mentor-admin-response-form">
+        <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ request.id) }}">
+
+        <select name="status" class="form-input" required>
+            {% for s in ['Reviewing', 'Assigned', 'Completed'] %}
+                <option value="{{ s }}" {{ request.status == s ? 'selected' : '' }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+
+        {# Mentor selector: pick existing or type manually #}
+        <div class="mr-mentor-selector">
+            <select name="mentor_id" class="form-input mr-mentor-select" data-role="existing-select">
+                <option value="">— Pick an existing mentor —</option>
+                {% for m in mentors %}
+                    <option value="{{ m.id }}"
+                        data-name="{{ m.displayName }}"
+                        data-spec="{{ m.specialization }}"
+                        {{ request.assignedMentorName == m.displayName ? 'selected' : '' }}>
+                        {{ m.displayName }} ({{ m.specialization }})
+                    </option>
+                {% endfor %}
+            </select>
+            <span class="mr-or">or type manually:</span>
+            <input class="form-input" name="mentor_name" placeholder="Outside mentor name"
+                value="{{ request.assignedMentorName }}">
+        </div>
+
+        {# Specialization dropdown #}
+        <select name="expertise" class="form-input">
+            <option value="">Select specialization…</option>
+            {% set specs = ['BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity',
+                            'Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
+            {% for spec in specs %}
+                <option value="{{ spec }}" {{ request.assignedMentorExpertise == spec ? 'selected' : '' }}>{{ spec }}</option>
+            {% endfor %}
+        </select>
+
+        <input type="date" class="form-input" name="available_dates"
+            aria-label="Available Date" value="{{ request.availableDates }}">
+
+        {# Time — Start + End native time inputs #}
+        <div class="mr-time-row">
+            <input type="time" class="form-input" name="available_time_start"
+                aria-label="Start Time" min="07:00" max="21:00"
+                value="{{ request.availableTime ? request.availableTime|split(' – ')|first|trim : '' }}">
+            <span class="mr-time-sep">to</span>
+            <input type="time" class="form-input" name="available_time_end"
+                aria-label="End Time" min="07:00" max="21:00"
+                value="{{ request.availableTime and '–' in request.availableTime ? request.availableTime|split('–')|last|trim : '' }}">
+        </div>
+
+        <select name="meeting_method" class="form-input">
+            <option value="">Meeting Method</option>
+            <option value="Online" {{ request.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
+            <option value="Face-to-Face" {{ request.meetingMethod == 'Face-to-Face' ? 'selected' : '' }}>Face-to-Face</option>
+        </select>
+
+        <textarea class="form-input" name="instructions" rows="3"
+            placeholder="Additional instructions or notes">{{ request.adminInstructions }}</textarea>
+
+        <button class="btn-primary" type="submit">Notify User</button>
+    </form>
+    {% else %}
+    {# User already chose a mentor — show read-only assigned mentor info and allow status update only #}
+    <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': request.id}) }}" class="mentor-admin-response-form">
+        <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ request.id) }}">
+        <input type="hidden" name="mentor_name" value="{{ request.mentorProfile.displayName }}">
+        <input type="hidden" name="expertise" value="{{ request.mentorProfile.specialization }}">
+        <input type="hidden" name="available_dates" value="{{ request.availableDates }}">
+        <input type="hidden" name="available_time" value="{{ request.availableTime }}">
+        <input type="hidden" name="meeting_method" value="{{ request.meetingMethod ?: 'Online' }}">
+        <input type="hidden" name="instructions" value="{{ request.adminInstructions }}">
+        <div class="mr-already-assigned">
+            <span class="badge-info">Mentor already selected by user: <strong>{{ request.mentorProfile.displayName }}</strong></span>
+        </div>
+        <select name="status" class="form-input" required>
+            {% for s in ['Reviewing', 'Assigned', 'Completed'] %}
+                <option value="{{ s }}" {{ request.status == s ? 'selected' : '' }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <textarea class="form-input" name="instructions" rows="3"
+            placeholder="Additional instructions or notes">{{ request.adminInstructions }}</textarea>
+        <button class="btn-primary" type="submit">Update Status</button>
+    </form>
+    {% endif %}
+</details>
+
+<style>
+.mr-request-details { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:.65rem .9rem; margin-bottom:.7rem; font-size:.85rem; }
+.mr-detail-row { display:flex; gap:.5rem; margin-bottom:.3rem; }
+.mr-label { font-weight:600; color:#64748b; min-width:110px; }
+.mr-chosen-badge { margin-top:.3rem; }
+.badge-chosen { background:#dcfce7; color:#166534; padding:.2rem .55rem; border-radius:999px; font-size:.8rem; font-weight:600; }
+.badge-info { background:#eff6ff; color:#1e40af; padding:.35rem .7rem; border-radius:6px; font-size:.85rem; display:inline-block; margin-bottom:.5rem; }
+.mr-already-assigned { margin-bottom:.5rem; }
+.mr-mentor-selector { display:flex; flex-direction:column; gap:.35rem; }
+.mr-or { font-size:.8rem; color:#6b7280; }
+.mr-time-row { display:flex; align-items:center; gap:.5rem; }
+.mr-time-row .form-input { flex:1; }
+.mr-time-sep { color:#6b7280; font-size:.85rem; white-space:nowrap; }
+</style>
+
+<script>
+(function(){
+    document.querySelectorAll('.mr-mentor-select').forEach(function(sel){
+        sel.addEventListener('change', function(){
+            const opt = this.options[this.selectedIndex];
+            const form = this.closest('form');
+            if (!opt || !opt.value) return;
+            const nameInput = form.querySelector('input[name="mentor_name"]');
+            const specSelect = form.querySelector('select[name="expertise"]');
+            if (nameInput && !nameInput.value) nameInput.value = opt.dataset.name || '';
+            if (specSelect) {
+                for (let i = 0; i < specSelect.options.length; i++) {
+                    if (specSelect.options[i].value === opt.dataset.spec) {
+                        specSelect.selectedIndex = i; break;
+                    }
+                }
+            }
+        });
+    });
+})();
+</script>

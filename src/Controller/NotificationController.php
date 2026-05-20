@@ -172,9 +172,9 @@ class NotificationController extends AbstractController
      */
     private function resolveNotificationLink(Notification $n): string
     {
-        if ($n->getType() === 'mentor_assistance' && $this->isGranted('ROLE_ADMIN')) {
+        if (in_array($n->getType(), ['mentor_assistance', 'mentor_request_updated'], true) && $this->isGranted('ROLE_ADMIN')) {
             if ($this->isGranted('ROLE_SUPER_ADMIN')) {
-                return $this->generateUrl('mentoring_admin_requests');
+                return $this->generateUrl('mentoring_superadmin_requests');
             }
 
             return $this->generateUrl('admin_role_mentorship_coordination');

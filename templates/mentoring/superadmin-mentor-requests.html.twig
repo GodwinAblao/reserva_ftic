@@ -1,4 +1,3 @@
-{# DEPRECATED — this file is no longer used. See mentoring/superadmin-mentor-requests.html.twig #}
 {% extends 'layouts/app.html.twig' %}
 
 {% block title %}Mentor Requests | Super Admin | Reserva FTIC{% endblock %}
@@ -184,7 +183,7 @@
                         User already selected: <strong>{{ req.mentorProfile.displayName }}</strong>
                         ({{ req.mentorProfile.specialization }})
                     </div>
-                    <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
+                    <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
                         <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ req.id) }}">
                         <input type="hidden" name="mentor_name" value="{{ req.mentorProfile.displayName }}">
                         <input type="hidden" name="expertise" value="{{ req.mentorProfile.specialization }}">
@@ -215,7 +214,7 @@
                 {# No mentor chosen — show full assignment form #}
                 <div class="mc-assign-section">
                     <h4 class="mc-assign-title">Mentor Assignment</h4>
-                    <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
+                    <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
                         <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_' ~ req.id) }}">
                         <div class="mc-assign-grid">
                             <div class="mc-assign-field">
@@ -342,5 +341,72 @@ function mcAutoFill(reqId) {
         }
     }
 }
+
+function _mcToast(msg, ok) {
+    var n = document.createElement('div');
+    n.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
+    n.style.background = ok ? '#d1fae5' : '#fee2e2';
+    n.style.color = ok ? '#065f46' : '#991b1b';
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(function(){ n.style.opacity='0'; setTimeout(function(){ n.remove(); }, 300); }, 3200);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // ── AJAX submit for all forms with data-ajax ──
+    document.querySelectorAll('form[data-ajax="true"]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = form.querySelector('button[type="submit"]');
+            var origHTML = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = 'Saving…'; }
+            fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: new FormData(form)
+            })
+            .then(function(r) {
+                if (!r.ok) throw new Error('Server error');
+                return r.json();
+            })
+            .then(function(json) {
+                if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
+                _mcToast(json.message || (json.success ? 'Updated.' : 'Error.'), !!json.success);
+                if (json.success) {
+                    var m = form.action.match(/\/(\d+)\//);
+                    if (m) {
+                        var item = document.querySelector('.mc-list-item[data-id="' + m[1] + '"]');
+                        var statusSel = form.querySelector('select[name="status"]');
+                        if (item && statusSel) item.dataset.status = statusSel.value.toLowerCase();
+                    }
+                }
+            })
+            .catch(function() {
+                if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
+                _mcToast('Could not save. Please try again.', false);
+            });
+        });
+    });
+
+    // ── 30-second polling: refresh left-panel list only ──
+    setInterval(function () {
+        fetch(window.location.href, { cache: 'no-store' })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var newList = doc.getElementById('mcListScroll');
+                var curList = document.getElementById('mcListScroll');
+                if (!newList || !curList) return;
+                var activeEl = document.querySelector('.mc-list-item.active');
+                var activeId = activeEl ? activeEl.dataset.id : null;
+                curList.innerHTML = newList.innerHTML;
+                if (activeId) {
+                    var r = curList.querySelector('.mc-list-item[data-id="' + activeId + '"]');
+                    if (r) r.classList.add('active');
+                }
+            })
+            .catch(function(){});
+    }, 30000);
+});
 </script>
 {% endblock %}

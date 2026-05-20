@@ -132,6 +132,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                     'verification_code' => $verificationCode,
                 ]);
 
+                $emailSent = false;
                 try {
                     $verificationEmail = (new Email())
                         ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
@@ -146,28 +147,27 @@ public function register(Request $request, EntityManagerInterface $entityManager
                         ]));
 
                     $logger->info('Sending registration verification email', ['to' => $pendingData['email']]);
-
                     $mailer->send($verificationEmail);
-
                     $logger->info('Registration verification email sent successfully', ['to' => $pendingData['email']]);
+                    $emailSent = true;
                 } catch (\Exception $e) {
                     $logger->error('Failed to send registration verification email', [
                         'to' => $pendingData['email'],
                         'error' => $e->getMessage(),
                     ]);
-                    $errors[] = 'Verification code email could not be sent: ' . $e->getMessage() . '. Please try again.';
                 }
 
-                if (!$errors) {
-                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                        return new JsonResponse([
-                            'success' => true,
-                            'email' => $pendingData['email'],
-                        ]);
-                    }
-
-                    return new RedirectResponse($this->generateUrl('app_verify_registration'));
+                // Always show the OTP modal — session is set so the user can verify or resend
+                if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                    return new JsonResponse([
+                        'success' => true,
+                        'email' => $pendingData['email'],
+                        'emailSent' => $emailSent,
+                        'notice' => $emailSent ? null : 'Verification email could not be sent. Please use "Resend code" to try again.',
+                    ]);
                 }
+
+                return new RedirectResponse($this->generateUrl('app_verify_registration'));
             }
         }
 

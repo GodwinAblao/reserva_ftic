@@ -28,6 +28,15 @@ class MentorProfile
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $bio = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $education = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $availabilityStart = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $availabilityEnd = null;
+
     #[ORM\Column]
     private int $engagementPoints = 0;
 
@@ -91,6 +100,15 @@ class MentorProfile
 
         return $this;
     }
+
+    public function getEducation(): ?string { return $this->education; }
+    public function setEducation(?string $education): self { $this->education = $education; return $this; }
+
+    public function getAvailabilityStart(): ?string { return $this->availabilityStart; }
+    public function setAvailabilityStart(?string $availabilityStart): self { $this->availabilityStart = $availabilityStart; return $this; }
+
+    public function getAvailabilityEnd(): ?string { return $this->availabilityEnd; }
+    public function setAvailabilityEnd(?string $availabilityEnd): self { $this->availabilityEnd = $availabilityEnd; return $this; }
 
     public function getEngagementPoints(): int
     {

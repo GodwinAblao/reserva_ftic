@@ -236,7 +236,9 @@ class ReservationRepository extends ServiceEntityRepository
             ->getRepository(Facility::class)
             ->createQueryBuilder('f')
             ->andWhere('f.capacity >= :capacity')
+            ->andWhere('f.availableForReservation = :available')
             ->setParameter('capacity', $capacity)
+            ->setParameter('available', true)
             ->orderBy('f.capacity', 'ASC')
             ->getQuery()
             ->getResult();
@@ -289,7 +291,9 @@ class ReservationRepository extends ServiceEntityRepository
             ->getRepository(Facility::class)
             ->createQueryBuilder('f')
             ->andWhere('f.capacity >= :capacity')
+            ->andWhere('f.availableForReservation = :available')
             ->setParameter('capacity', $capacity)
+            ->setParameter('available', true)
             ->orderBy('f.capacity', 'ASC')
             ->getQuery()
             ->getResult();

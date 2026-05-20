@@ -5,6 +5,22 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('styles/user_reservations.css') }}">
+    <style>
+        .form-input[type="time"] {
+            padding: 9px 12px;
+            border: 1.5px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            width: 100%;
+            transition: border-color 0.18s, box-shadow 0.18s;
+        }
+        .form-input[type="time"]:focus {
+            outline: none;
+            border-color: #006633;
+            box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.12);
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -172,7 +188,6 @@
                 <div class="mentoring-content hidden" id="mentor-application-content">
                     <div class="reservations-grid">
                         {% if is_granted('ROLE_MENTOR') %}
-                            {% set mentorProfile = app.user.mentorProfile %}
                             {% if mentorProfile %}
                                 <div class="reservation-card-new">
                                     <div class="card-title">My Mentor Profile</div>
@@ -187,8 +202,8 @@
                                             <span class="info-value">{{ mentorProfile.bio }}</span>
                                         </div>
                                         <div class="info-item">
-                                            <span class="info-label">Expertise</span>
-                                            <span class="info-value">{{ mentorProfile.expertise }}</span>
+                                            <span class="info-label">Specialization</span>
+                                            <span class="info-value">{{ mentorProfile.specialization }}</span>
                                         </div>
                                         <div class="info-item">
                                             <span class="info-label">Engagement Points</span>
@@ -452,16 +467,35 @@
                             <input id="assistance_full_name" class="form-input" name="full_name" value="{{ (app.user.firstName ~ ' ' ~ app.user.lastName)|trim }}" required>
                         </div>
                         <div class="form-group">
-                            <label for="assistance_department">Department / Course</label>
+                            <label for="assistance_department">Your Degree / Course</label>
                             <input id="assistance_department" class="form-input" name="department_course" value="{{ app.user.degreeName ?: app.user.degree }}" required>
                         </div>
                         <div class="form-group">
-                            <label for="assistance_expertise">Preferred Expertise or Skill</label>
-                            <input id="assistance_expertise" class="form-input" name="preferred_expertise" placeholder="Example: Software Engineering, Research, UI/UX" required>
+                            <label for="assistance_expertise">Mentor Specialization Needed</label>
+                            <select id="assistance_expertise" class="form-input" name="preferred_expertise" required>
+                                <option value="">Select specialization...</option>
+                                <option value="BSITBA">BSITBA (IT Business Analysis)</option>
+                                <option value="BSCS">BSCS (Computer Science)</option>
+                                <option value="Software Engineering">Software Engineering</option>
+                                <option value="Data Science">Data Science</option>
+                                <option value="Cybersecurity">Cybersecurity</option>
+                                <option value="Cloud Computing">Cloud Computing</option>
+                                <option value="Web Development">Web Development</option>
+                                <option value="Mobile Development">Mobile Development</option>
+                                <option value="UI/UX Design">UI/UX Design</option>
+                                <option value="Research">Research</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid form-grid-2">
+                        <div class="form-group">
+                            <label for="assistance_schedule_start">Preferred Schedule — Start Time <span style="color:#c00">*</span></label>
+                            <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="21:00" required>
                         </div>
                         <div class="form-group">
-                            <label for="assistance_schedule">Preferred Schedule</label>
-                            <input id="assistance_schedule" class="form-input" name="preferred_schedule" placeholder="Example: Mondays 2:00 PM onward" required>
+                            <label for="assistance_schedule_end">End Time <span style="color:#c00">*</span></label>
+                            <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="21:00" required>
                         </div>
                     </div>
                     <div class="form-group">
@@ -482,6 +516,28 @@
 {% block javascripts %}
     {{ parent() }}
     <script>
+        // ===== ASSISTANCE SCHEDULE END-TIME GUARD =====
+        (function () {
+            function init() {
+                const startEl = document.getElementById('assistance_schedule_start');
+                const endEl   = document.getElementById('assistance_schedule_end');
+                if (!startEl || !endEl) return;
+                startEl.addEventListener('change', function () {
+                    if (endEl.value && endEl.value <= startEl.value) {
+                        endEl.value = '';
+                    }
+                    endEl.min = startEl.value;
+                });
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+            document.addEventListener('turbo:load', init);
+        })();
+
+
         // ===== TAB SWITCHING - Global function for inline onclick =====
         function switchMentoringTab(filter, clickedTab) {
             // Update active tab styling

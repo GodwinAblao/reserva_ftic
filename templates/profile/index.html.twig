@@ -189,6 +189,22 @@
                 <label class="pf-label">Bio / Description</label>
                 <textarea class="pf-input" name="bio" rows="4" placeholder="Tell students about your expertise...">{{ mentorProfile.bio }}</textarea>
             </div>
+            <div class="pf-field">
+                <label class="pf-label">Education (Where you graduated)</label>
+                <input class="pf-input" type="text" name="mentor_education" value="{{ mentorProfile.education }}" placeholder="e.g. BS Computer Science – FEU Tech 2023">
+            </div>
+            <div class="pf-row pf-row--2">
+                <div class="pf-field">
+                    <label class="pf-label">Available Time — Start</label>
+                    <input class="pf-input" type="time" name="availability_start" min="07:00" max="21:00"
+                        value="{{ mentorProfile.availabilityStart }}">
+                </div>
+                <div class="pf-field">
+                    <label class="pf-label">Available Time — End</label>
+                    <input class="pf-input" type="time" name="availability_end" min="07:00" max="21:00"
+                        value="{{ mentorProfile.availabilityEnd }}">
+                </div>
+            </div>
             <div class="pf-actions">
                 <button type="submit" class="pf-save-btn">Save Mentor Profile</button>
             </div>

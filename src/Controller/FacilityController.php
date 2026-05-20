@@ -21,7 +21,7 @@ class FacilityController extends AbstractController
     #[Route('', name: 'app_facility_index', methods: ['GET'])]
     public function index(FacilityRepository $facilityRepository): Response
     {
-        $facilities = $facilityRepository->findAll();
+        $facilities = $facilityRepository->findEnabled();
 
         return $this->render('facility/index.html.twig', [
             'facilities' => $facilities,

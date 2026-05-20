@@ -201,6 +201,18 @@ class NotificationService
         );
     }
 
+    public function notifyAdminMentorRequestUpdated(User $adminUser, int $requestId, string $updatedByName, string $newStatus, string $requesterName): void
+    {
+        $this->create(
+            $adminUser,
+            'mentor_request_updated',
+            'Mentor Request Updated',
+            $updatedByName . ' updated the request from ' . $requesterName . ' → Status: ' . $newStatus,
+            $newStatus,
+            $requestId
+        );
+    }
+
     public function notifyMentorAssistanceStatus(User $user, int $requestId, string $status, string $message): void
     {
         $this->create(

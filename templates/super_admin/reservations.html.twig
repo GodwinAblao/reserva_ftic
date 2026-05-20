@@ -2,6 +2,19 @@
 
 {% block title %}Reservation Management - Reserva FTIC{% endblock %}
 
+{% block stylesheets %}
+{{ parent() }}
+<style>
+.rm-table-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 24px; margin-top: 20px; }
+.rm-table-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0 0 6px; }
+.rm-table { width: 100%; border-collapse: collapse; }
+.rm-table th { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; padding: 0 12px 10px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+.rm-table td { padding: 12px; font-size: 13.5px; color: #374151; border-bottom: 1px solid #f9fafb; }
+.rm-table tr:last-child td { border-bottom: none; }
+.rm-table tbody tr:hover td { background: #fafafa; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="sa-page-header">
     <div class="sa-page-header-left">

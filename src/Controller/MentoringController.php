@@ -136,35 +136,30 @@ class MentoringController extends AbstractController
         $departmentFilter = trim((string) $request->query->get('department', ''));
         $dateFilter = trim((string) $request->query->get('date', ''));
 
+        $mentors = $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']);
+
         return $this->render('mentoring/super-admin.html.twig', [
-            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'mentors' => $mentors,
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC']),
             'applications' => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
-            'mentorRequests' => $mentorRequestRepo->findAssistanceRequests($statusFilter ?: null, $departmentFilter ?: null, $dateFilter ?: null),
+            'mentorRequests' => $mentorRequestRepo->findBy([], ['createdAt' => 'DESC'], 50),
             'requestFilters' => [
                 'status' => $statusFilter,
                 'department' => $departmentFilter,
                 'date' => $dateFilter,
             ],
             'users' => $em->getRepository(User::class)->findAll(),
+            'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
         ]);
     }
 
-    #[Route('/admin/mentor-requests', name: 'mentoring_admin_requests', methods: ['GET'])]
+    #[Route('/super-admin/mentor-requests', name: 'mentoring_superadmin_requests', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function adminMentorRequests(Request $request, EntityManagerInterface $em): Response
     {
-        $statusFilter = trim((string) $request->query->get('status', ''));
-        $departmentFilter = trim((string) $request->query->get('department', ''));
-        $dateFilter = trim((string) $request->query->get('date', ''));
-
-        return $this->render('mentoring/admin-requests.html.twig', [
-            'mentorRequests' => $em->getRepository(MentorCustomRequest::class)->findAssistanceRequests($statusFilter ?: null, $departmentFilter ?: null, $dateFilter ?: null),
-            'requestFilters' => [
-                'status' => $statusFilter,
-                'department' => $departmentFilter,
-                'date' => $dateFilter,
-            ],
+        return $this->render('mentoring/superadmin-mentor-requests.html.twig', [
+            'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
+            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
         ]);
     }
 
@@ -444,9 +439,12 @@ $validUntil = $request->request->get('valid_until');
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
             }
 
-            $displayName = trim((string) $request->request->get('display_name'));
+            $displayName    = trim((string) $request->request->get('display_name'));
             $specialization = trim((string) $request->request->get('specialization'));
-            $bio = trim((string) $request->request->get('bio'));
+            $bio            = trim((string) $request->request->get('bio'));
+            $education      = trim((string) $request->request->get('mentor_education'));
+            $availStart     = trim((string) $request->request->get('availability_start'));
+            $availEnd       = trim((string) $request->request->get('availability_end'));
 
             if ($displayName === '') {
                 $this->addFlash('error', 'Display name is required.');
@@ -456,6 +454,9 @@ $validUntil = $request->request->get('valid_until');
             $mentor->setDisplayName($displayName);
             $mentor->setSpecialization($specialization ?: null);
             $mentor->setBio($bio ?: null);
+            $mentor->setEducation($education ?: null);
+            $mentor->setAvailabilityStart($availStart !== '' ? $availStart : null);
+            $mentor->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 
             $em->flush();
 
@@ -698,7 +699,13 @@ $validUntil = $request->request->get('valid_until');
         $fullName = trim((string) $request->request->get('full_name'));
         $departmentCourse = trim((string) $request->request->get('department_course'));
         $preferredExpertise = trim((string) $request->request->get('preferred_expertise'));
-        $preferredSchedule = trim((string) $request->request->get('preferred_schedule'));
+        $scheduleStart = trim((string) $request->request->get('preferred_schedule_start'));
+        $scheduleEnd = trim((string) $request->request->get('preferred_schedule_end'));
+        $fmtTime = static function (string $t): string {
+            $dt = \DateTime::createFromFormat('H:i', $t);
+            return $dt ? $dt->format('g:i A') : $t;
+        };
+        $preferredSchedule = ($scheduleStart !== '' && $scheduleEnd !== '') ? $fmtTime($scheduleStart) . ' – ' . $fmtTime($scheduleEnd) : '';
         $message = trim((string) $request->request->get('message'));
 
         if ($fullName === '' || $departmentCourse === '' || $preferredExpertise === '' || $preferredSchedule === '') {
@@ -789,19 +796,32 @@ $validUntil = $request->request->get('valid_until');
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        if (!$mentorRequest->isAssistanceRequest()) {
-            throw $this->createNotFoundException();
-        }
-
         $status = (string) $request->request->get('status', 'Reviewing');
         if (!in_array($status, ['Pending', 'Reviewing', 'Assigned', 'Completed'], true)) {
             throw $this->createNotFoundException();
         }
 
-        $mentorName = trim((string) $request->request->get('mentor_name'));
+        // Resolve mentor name — either picked from existing mentors or typed manually
+        $mentorId = (int) $request->request->get('mentor_id', 0);
+        $mentorNameManual = trim((string) $request->request->get('mentor_name'));
+        $mentorName = $mentorNameManual;
         $expertise = trim((string) $request->request->get('expertise'));
+        if ($mentorId > 0) {
+            $existingMentor = $em->getRepository(MentorProfile::class)->find($mentorId);
+            if ($existingMentor) {
+                $mentorName = $mentorName ?: $existingMentor->getDisplayName();
+                $expertise = $expertise ?: $existingMentor->getSpecialization();
+            }
+        }
+
         $availableDates = trim((string) $request->request->get('available_dates'));
-        $availableTime = trim((string) $request->request->get('available_time'));
+        $timeStart = trim((string) $request->request->get('available_time_start'));
+        $timeEnd   = trim((string) $request->request->get('available_time_end'));
+        $fmtTime = static function (string $t): string {
+            $dt = \DateTime::createFromFormat('H:i', $t);
+            return $dt ? $dt->format('g:i A') : $t;
+        };
+        $availableTime = ($timeStart !== '' && $timeEnd !== '') ? $fmtTime($timeStart) . ' – ' . $fmtTime($timeEnd) : trim((string) $request->request->get('available_time'));
         $meetingMethod = trim((string) $request->request->get('meeting_method'));
         $instructions = trim((string) $request->request->get('instructions'));
 
@@ -837,9 +857,26 @@ $validUntil = $request->request->get('valid_until');
         }
 
         $em->flush();
+
+        $actor = $this->getUser();
+        $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Super Admin';
+        $requesterName = $mentorRequest->getFullName() ?: ($student ? trim($student->getFirstName() . ' ' . $student->getLastName()) : 'Student');
+        foreach ($em->getRepository(User::class)->findAll() as $u) {
+            if ($u === $actor) continue;
+            $roles = $u->getRoles();
+            if (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true)) {
+                $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, $status, $requesterName);
+            }
+        }
+
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        if ($isAjax) {
+            return $this->json(['success' => true, 'message' => 'Mentor request updated and the requester has been notified.']);
+        }
+
         $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
 
-        return $this->redirectToRoute('mentoring_super-admin', [], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/custom-request/{id}/review', name: 'mentoring_custom_request_review', methods: ['POST'])]
