@@ -6,6 +6,7 @@ USE `reserva_ftic`;
 
 START TRANSACTION;
 
+DROP TABLE IF EXISTS `reservation_status_log`;
 DROP TABLE IF EXISTS `facility_image`;
 DROP TABLE IF EXISTS `facility_schedule_block`;
 DROP TABLE IF EXISTS `reservation`;
@@ -62,6 +63,9 @@ CREATE TABLE IF NOT EXISTS `mentor_profile` (
     `display_name` VARCHAR(255) NOT NULL,
     `specialization` VARCHAR(255) NOT NULL,
     `bio` LONGTEXT DEFAULT NULL,
+    `education` VARCHAR(255) DEFAULT NULL,
+    `availability_start` VARCHAR(100) DEFAULT NULL,
+    `availability_end` VARCHAR(100) DEFAULT NULL,
     `engagement_points` INT NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL,
     UNIQUE INDEX `UNIQ_185C512AA76ED395` (`user_id`),
@@ -338,6 +342,32 @@ CREATE TABLE IF NOT EXISTS `doctrine_migration_versions` (
     PRIMARY KEY (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `reservation_status_log` (
+    `id` INT AUTO_INCREMENT NOT NULL,
+    `reservation_id` INT NOT NULL,
+    `changed_by_id` INT NOT NULL,
+    `previous_status` VARCHAR(50) NOT NULL,
+    `new_status` VARCHAR(50) NOT NULL,
+    `actor_role_label` VARCHAR(30) NOT NULL,
+    `action` VARCHAR(30) NOT NULL,
+    `note` LONGTEXT DEFAULT NULL,
+    `changed_at` DATETIME NOT NULL,
+    INDEX `IDX_31FAF1D3B83297E7` (`reservation_id`),
+    INDEX `IDX_31FAF1D3828AD0A0` (`changed_by_id`),
+    INDEX `idx_reservation_status_log_changed_at` (`changed_at`),
+    INDEX `idx_reservation_status_log_reservation` (`reservation_id`),
+    INDEX `idx_reservation_status_log_user` (`changed_by_id`),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `FK_RSL_RESERVATION`
+        FOREIGN KEY (`reservation_id`)
+        REFERENCES `reservation` (`id`)
+        ON DELETE CASCADE,
+    CONSTRAINT `FK_RSL_USER`
+        FOREIGN KEY (`changed_by_id`)
+        REFERENCES `user` (`id`)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `messenger_messages` (
     `id` BIGINT AUTO_INCREMENT NOT NULL,
     `body` LONGTEXT NOT NULL,
@@ -498,6 +528,7 @@ VALUES
 ('DoctrineMigrations\\Version20260512073552', NOW(), 100),
 ('DoctrineMigrations\\Version20260512082900', NOW(), 100),
 ('DoctrineMigrations\\Version20260512130000', NOW(), 100),
+('DoctrineMigrations\\Version20260515000000', NOW(), 100),
 ('DoctrineMigrations\\Version20261202000000', NOW(), 100);
 
 COMMIT;
