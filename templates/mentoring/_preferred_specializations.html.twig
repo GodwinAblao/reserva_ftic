@@ -2,11 +2,11 @@
     <h3>Preferred Specializations</h3>
 </div>
 {% for row in specializations %}
-    <div class="quick-stat-item specialization-row" data-specialization="{{ row.specialization }}" style="margin-bottom: 8px;">
+    <div class="quick-stat-item specialization-row" data-specialization="{{ row.specialization }}">
         <a href="{{ path('mentoring_index', { specialization: row.specialization, search: app.request.query.get('search', '') }) }}" class="specialization-link{% if app.request.query.get('specialization') == row.specialization %} active{% endif %}">
             <span class="quick-stat-label">{{ row.specialization }}</span>
         </a>
-        <span class="quick-stat-value">{{ row.total }} requests</span>
+        <span class="quick-stat-value">{{ row.total }} request{{ row.total == 1 ? '' : 's' }}</span>
     </div>
 {% else %}
     <p>No specialization analytics yet.</p>

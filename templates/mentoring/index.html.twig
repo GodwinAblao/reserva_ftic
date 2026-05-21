@@ -5,28 +5,13 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('styles/user_reservations.css') }}">
-    <style>
-        .form-input[type="time"] {
-            padding: 9px 12px;
-            border: 1.5px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            width: 100%;
-            transition: border-color 0.18s, box-shadow 0.18s;
-        }
-        .form-input[type="time"]:focus {
-            outline: none;
-            border-color: #006633;
-            box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.12);
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="reservations-page-layout">
+<div class="mentoring-page-layout">
     <!-- Main Content Column -->
-    <div class="reservations-main-column">
+    <div class="mentoring-main-column">
 
         <!-- Mentors Section -->
         <div class="mentoring-section" id="mentors-section">
@@ -239,7 +224,7 @@
                         {% if is_granted('ROLE_MENTOR') %}
                             {% if incomingCustomRequests|length > 0 %}
                                 {% for request in incomingCustomRequests %}
-                                    <div class="reservation-card-new">
+                                    <div class="mentoring-card-new">
                                         <div class="card-title">{{ request.student.firstName ?: request.student.email }}</div>
                                         <div class="card-divider"></div>
                                         <div class="card-info-grid">
@@ -300,9 +285,9 @@
     </div><!-- End Main Column -->
 
     <!-- Right Side Column - Summary -->
-    <aside class="reservations-side-column">
+    <aside class="mentoring-side-column">
         <!-- Request Mentor Button -->
-        <section class="reservations-side-card reserve-action-card">
+        <section class="mentoring-side-card reserve-action-card">
             <a href="#" onclick="openMentorAssistance(); return false;" class="reserve-btn-large">
                 <span class="reserve-icon">
                     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -314,7 +299,7 @@
         </section>
 
         <!-- Quick Actions -->
-        <section class="reservations-side-card">
+        <section class="mentoring-side-card">
             <div class="quick-actions-flex">
                 {% if is_granted('ROLE_ADMIN') %}
                     <a href="{{ path('mentoring_super-admin') }}" class="btn-primary btn-full-width">Manage</a>
@@ -339,63 +324,35 @@
             {% endif %}
         </section>
 
-        <!-- Quick Stats -->
+        <!-- Top Mentors -->
         <section class="reservations-side-card reservations-info-card">
             <div class="reservations-side-card-head">
-                <h3>Quick Overview</h3>
+                <h3>Traceability Leaderboard</h3>
             </div>
-            <div class="quick-stats-list">
-                <div class="quick-stat-item">
-                    <span class="quick-stat-label">Available Mentors</span>
-                    <span class="quick-stat-value">{{ mentors|length }}</span>
-                </div>
-                <div class="quick-stat-item">
-                    <span class="quick-stat-label">My Requests</span>
-                    <span class="quick-stat-value stat-yellow">{{ sentCustomRequests|length }}</span>
-                </div>
-                {% if is_granted('ROLE_MENTOR') %}
-                <div class="quick-stat-item">
-                    <span class="quick-stat-label">Incoming Pending</span>
-                    <span class="quick-stat-value stat-green">{{ incomingCustomRequests|filter(r => r.status == 'Pending')|length }}</span>
-                </div>
-                {% endif %}
-            </div>
-        </section>
-
-        <!-- Leaderboard Mini -->
-        <section class="reservations-side-card reservations-info-card">
-            <div class="reservations-side-card-head">
-                <h3>Top Mentors</h3>
-            </div>
-            <div class="quick-stats-list">
+            <div class="mentor-list">
                 {% for mentor in leaderboard|slice(0, 3) %}
-                    <div class="quick-stat-item">
-                        <span class="quick-stat-label">{{ loop.index }}. {{ mentor.displayName }}</span>
-                        <span class="quick-stat-value">{{ mentor.engagementPoints }} pts</span>
+                    <div class="mentor-item">
+                        <div class="mentor-rank-icon">{{ loop.index == 1 ? '♕' : '♙' }}</div>
+                        <div class="mentor-avatar">
+                            <span>{{ mentor.displayName|first|upper }}</span>
+                        </div>
+                        <div class="mentor-info">
+                            <div class="mentor-name">{{ mentor.displayName }}</div>
+                            <div class="mentor-program">Computer Science</div>
+                        </div>
+                        <div class="mentor-points">
+                            <span>Pts:</span> <strong>{{ mentor.engagementPoints }}</strong>
+                        </div>
                     </div>
                 {% else %}
-                    <p>No leaderboard data yet.</p>
+                    <p>No mentors available yet.</p>
                 {% endfor %}
             </div>
         </section>
 
-        <!-- Specializations -->
-        <section class="reservations-side-card reservations-info-card" id="preferredSpecializationsPanel">
-            <div class="reservations-side-card-head">
-                <h3>Preferred Specializations</h3>
-            </div>
-            <div class="quick-stats-list">
-                {% for row in specializations %}
-                    <div class="quick-stat-item specialization-row" data-specialization="{{ row.specialization }}">
-                        <a href="{{ path('mentoring_index', { specialization: row.specialization, search: app.request.query.get('search', '') }) }}" class="specialization-link{% if app.request.query.get('specialization') == row.specialization %} active{% endif %}">
-                            <span class="quick-stat-label">{{ row.specialization }}</span>
-                        </a>
-                        <span class="quick-stat-value">{{ row.total }} requests</span>
-                    </div>
-                {% else %}
-                    <p>No specialization analytics yet.</p>
-                {% endfor %}
-            </div>
+        <!-- Preferred Specializations -->
+        <section class="mentoring-side-card mentoring-info-card" id="preferredSpecializationsPanel">
+            {% include 'mentoring/_preferred_specializations.html.twig' with { specializations: specializations } only %}
         </section>
     </aside>
 </div><!-- End Layout -->

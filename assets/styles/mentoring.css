@@ -78,12 +78,12 @@
 .mentor-application-layout {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-  gap: 1.5rem;
+  gap: 2.5rem;
   align-items: start;
 }
 
 .mentor-application-summary {
-  padding: 1.5rem;
+  padding: 5.5rem;
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(0, 102, 51, 0.06), rgba(0, 102, 51, 0.02));
   border: 1px solid rgba(0, 102, 51, 0.1);
@@ -1354,22 +1354,256 @@
   object-fit: cover;
 }
 
-.mentor-info h1 {
-  margin: 0 0 0.3rem;
-  font-size: 2rem;
-  color: var(--feu-green-dark);
-  letter-spacing: -0.02em;
+/* ============= MENTORING PAGE SUMMARY STYLES ============= */
+
+/* Form input styles */
+.form-input[type="time"] {
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    width: 100%;
+    transition: border-color 0.18s, box-shadow 0.18s;
 }
 
-.mentor-info .muted {
-  font-size: 1rem;
-  margin-bottom: 1.5rem;
+.form-input[type="time"]:focus {
+    outline: none;
+    border-color: #006633;
+    box-shadow: 0 0 0 3px rgba(0, 102, 51, 0.12);
 }
 
-.mentor-bio {
-  line-height: 1.6;
-  color: #475569;
-  font-size: 1.05rem;
+/* Modern Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 6px;
+    background: white;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #f3f4f6;
+    min-height: 60px;
+    justify-content: center;
+}
+
+.stat-number {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0D9B00;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.stat-label {
+    font-size: 9px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    line-height: 1.2;
+}
+
+/* Modern Mentor List */
+.mentor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.mentor-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: white;
+    border-radius: 8px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.15s ease;
+}
+
+.mentor-item:hover {
+    background: #f0fdf4;
+    border-left: 3px solid #0D9B00;
+}
+
+.mentor-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.mentor-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.mentor-name {
+    font-weight: 700;
+    color: #111827;
+    font-size: 12.5px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mentor-points {
+    font-size: 10.5px;
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+/* Super Admin style card design */
+.reservations-side-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Reduce right column width */
+.reservations-side-column {
+    width: 260px;
+    flex-shrink: 0;
+    padding: 0 8px;
+}
+
+.reservations-side-card-head h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px 0;
+    letter-spacing: 0.3px;
+}
+
+.reservations-side-column .reservations-side-card {
+    background: white;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    box-shadow: none;
+}
+
+.reservations-side-column .reservations-side-card-head h3 {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #319000;
+    margin: 0;
+    letter-spacing: 0;
+}
+
+.reservations-side-column .reservations-info-card {
+    min-height: 112px;
+}
+
+.reservations-side-column .reservations-info-card p {
+    margin: 42px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid #b7e0c3;
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.reservations-side-column .mentor-list {
+    gap: 0;
+    margin-top: 28px;
+    border-top: 1px solid #b7e0c3;
+}
+
+.reservations-side-column .mentor-item {
+    gap: 10px;
+    padding: 9px 0;
+    border-radius: 0;
+    border-bottom: 1px solid #b7e0c3;
+}
+
+.reservations-side-column .mentor-item:hover {
+    background: white;
+    border-left: 0;
+}
+
+.reservations-side-column .mentor-rank-icon {
+    width: 16px;
+    color: #f2a900;
+    font-size: 16px;
+    line-height: 1;
+    text-align: center;
+}
+
+.reservations-side-column .mentor-avatar {
+    width: 38px;
+    height: 38px;
+    background: #2f80ed;
+    color: #fff;
+}
+
+.reservations-side-column .mentor-name {
+    color: #0D9B00;
+    margin-bottom: 1px;
+}
+
+.reservations-side-column .mentor-program {
+    color: #9ca3af;
+    font-size: 10.5px;
+    line-height: 1.2;
+}
+
+.reservations-side-column .mentor-points {
+    white-space: nowrap;
+}
+
+.reservations-side-column .mentor-points strong {
+    color: #0D9B00;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.reservations-side-column .quick-stat-item.specialization-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 8px;
+    border-bottom: 1px solid #b7e0c3;
+}
+
+.reservations-side-column .quick-stat-item.specialization-row:first-of-type {
+    margin-top: 26px;
+    border-top: 1px solid #b7e0c3;
+}
+
+.reservations-side-column .specialization-link {
+    color: #0D9B00;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.reservations-side-column .quick-stat-value {
+    color: #9ca3af;
+    font-size: 10.5px;
+    white-space: nowrap;
 }
 
 .availability-grid {
@@ -1636,7 +1870,7 @@
 }
 
 /* Mentoring wireframe layout overrides */
-.mentoring-layout-grid {
+.mentoring-page-layout-grid {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr);
   gap: 1.25rem;
@@ -1988,6 +2222,621 @@
 
   .mentoring-search-form {
     grid-template-columns: 1fr;
+  }
+}
+
+.mentoring-page-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 50px;
+  align-items: start;
+  padding: 0 18px 18px;
+  background: #fff;
+}
+
+.mentoring-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 28px;
+}
+
+.mentoring-side-column > .reserve-action-card,
+.mentoring-side-column > .mentoring-side-card:not(#preferredSpecializationsPanel) {
+  display: none;
+}
+
+.mentor-search-filters {
+  margin: 0 0 26px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.search-form {
+  display: grid;
+  grid-template-columns: minmax(390px, 520px) minmax(390px, 520px);
+  gap: 34px;
+  align-items: center;
+}
+
+.search-input,
+.filter-dropdown {
+  height: 36px;
+  padding: 8px 14px 8px 36px;
+  border: 1.5px solid #0d9b00;
+  border-radius: 7px;
+  background-color: #fff;
+  color: #6f7672;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.filter-dropdown {
+  padding-left: 20px;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='none' stroke='%230D9B00' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3 9l4-4 4 4'/%3E%3C/svg%3E");
+}
+
+.search-input-group::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border: 1.5px solid #0d9b00;
+  border-radius: 50%;
+}
+
+.search-input-group::after {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 23px;
+  width: 6px;
+  height: 1.5px;
+  transform: rotate(45deg);
+  background: #0d9b00;
+}
+
+.mentor-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 300px));
+  gap: 24px;
+  margin: 0 0 54px 5px;
+}
+
+.mentor-card {
+  width: 100%;
+  min-height: 225px;
+  padding: 16px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.mentor-card-top {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.mentor-card-avatar {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #ddd;
+  display: grid;
+  place-items: center;
+  color: transparent;
+  position: relative;
+}
+
+.mentor-card-avatar::before {
+  content: "";
+  position: absolute;
+  top: 19px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.mentor-card-avatar::after {
+  content: "";
+  position: absolute;
+  bottom: 20px;
+  width: 40px;
+  height: 18px;
+  border-radius: 18px 18px 6px 6px;
+  background: #fff;
+}
+
+.mentor-card-title-wrap h4 {
+  margin: 0;
+  color: #676767;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.mentor-card-subtitle {
+  margin: 4px 0 18px;
+  color: #9b9b9b;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.mentor-card-tags {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.mentor-card .mentor-specialization-tag {
+  min-width: 100px;
+  padding: 8px 12px;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  background: #fff;
+  color: #777;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.mentor-description {
+  margin: 14px 8px 0;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.45;
+  font-style: normal;
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mentor-card-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mentor-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: 3px;
+  background: #0b7d13;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.filter-tabs-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin: 0 0 16px;
+  border-bottom: 2px solid #0d9b00;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.filter-tab {
+  min-height: 28px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: #ff9c00;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+
+.filter-tab.active {
+  min-width: 128px;
+  background: #0d9b00;
+  color: #fff;
+  border-radius: 2px 2px 0 0;
+}
+
+.mentoring-content-section {
+  min-height: 205px;
+  border: 1px solid #cfcfcf;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.mentoring-side-column .reservations-side-card,
+.mentoring-side-column .mentoring-info-card {
+  min-height: 140px;
+  padding: 14px 14px 18px;
+  border: 1px solid #cfcfcf;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.mentoring-side-column .reservations-side-card-head {
+  margin: 0;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.mentoring-side-column .reservations-side-card-head h3 {
+  margin: 0;
+  color: #319000;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mentoring-side-column .reservations-info-card p {
+  margin: 60px 0 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid #b7e0c3;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.mentoring-side-column .mentor-list {
+  gap: 0;
+  margin-top: 28px;
+  border-top: 1px solid #b7e0c3;
+}
+
+.mentoring-side-column .mentor-item {
+  gap: 10px;
+  padding: 12px 0;
+  border-radius: 0;
+  border-bottom: 1px solid #b7e0c3;
+  background: #fff;
+}
+
+.mentoring-side-column .mentor-rank-icon {
+  width: 18px;
+  color: #f2a900;
+  font-size: 17px;
+  text-align: center;
+}
+
+.mentoring-side-column .mentor-item:nth-child(n+2) .mentor-rank-icon {
+  color: #9ca3af;
+}
+
+.mentoring-side-column .mentor-avatar {
+  width: 42px;
+  height: 42px;
+  background: #2f80ed;
+  color: #fff;
+  font-size: 13px;
+}
+
+.mentoring-side-column .mentor-name {
+  color: #0d9b00;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mentoring-side-column .mentor-program,
+.mentoring-side-column .mentor-points {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.mentoring-side-column .mentor-points {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.mentoring-side-column .mentor-points strong {
+  color: #0d9b00;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.mentoring-side-column .quick-stat-item.specialization-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 8px;
+  border-bottom: 1px solid #b7e0c3;
+}
+
+.mentoring-side-column .quick-stat-item.specialization-row:first-of-type {
+  margin-top: 28px;
+  border-top: 1px solid #b7e0c3;
+}
+
+.mentoring-side-column .specialization-link {
+  color: #0d9b00;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.mentoring-side-column .quick-stat-value {
+  color: #9ca3af;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .mentoring-page-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .mentoring-side-column {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .search-form,
+  .mentor-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mentor-card,
+  .mentor-card-grid {
+    width: 100%;
+  }
+
+  .filter-tabs-container {
+    overflow-x: auto;
+  }
+}
+
+#mentorApplicationModal .mentor-modal-panel {
+  width: min(920px, calc(100vw - 32px));
+  max-height: 72vh;
+  padding: 22px 36px 24px;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow-y: auto;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+  transform: translateX(-80px);
+}
+
+#mentorApplicationModal.app-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#mentorApplicationModal .app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+#mentorApplicationModal .mentor-modal-panel {
+  position: relative;
+  z-index: 1;
+}
+
+#mentorApplicationModal .mentor-modal-header {
+  padding: 0;
+  margin-bottom: 14px;
+  border: 0;
+}
+
+#mentorApplicationModal .mentor-modal-title {
+  margin: 0;
+  color: #0b7d13;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#mentorApplicationModal .mentor-modal-subtitle {
+  display: none;
+}
+
+#mentorApplicationModal .mentor-modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #0b7d13;
+  font-size: 14px;
+}
+
+#mentorApplicationModal .mentor-application-layout-custom {
+  display: block;
+  padding: 0;
+}
+
+#mentorApplicationModal .mentor-application-summary-custom {
+  display: none;
+}
+
+#mentorApplicationModal .mentor-form {
+  display: block;
+  max-height: calc(72vh - 96px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+#mentorApplicationModal .mentor-form-card {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#mentorApplicationModal .mentor-form-section {
+  margin: 0 0 14px;
+}
+
+#mentorApplicationModal .mentor-form-title {
+  display: inline-flex;
+  align-items: center;
+  min-width: 240px;
+  min-height: 28px;
+  margin: 0 0 10px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  background: #0b7d13;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+#mentorApplicationModal .mentor-form-grid-3,
+#mentorApplicationModal .mentor-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+
+#mentorApplicationModal .mentor-form-section .form-group,
+#mentorApplicationModal .mentor-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: stretch;
+  margin: 0;
+}
+
+#mentorApplicationModal .mentor-form-section:nth-of-type(3) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+#mentorApplicationModal .mentor-form-section:nth-of-type(3) .mentor-form-title,
+#mentorApplicationModal .mentor-form-section:nth-of-type(3) .form-group:first-of-type {
+  grid-column: 1 / -1;
+}
+
+#mentorApplicationModal .mentor-form-label {
+  margin: 0;
+  color: #27343b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+#mentorApplicationModal .mentor-required {
+  color: #27343b;
+}
+
+#mentorApplicationModal .mentor-form-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #9a9a9a;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #27343b;
+  font-size: 12px;
+  line-height: 1.3;
+  box-shadow: none;
+}
+
+#mentorApplicationModal select.mentor-form-input {
+  padding-right: 22px;
+}
+
+#mentorApplicationModal textarea.mentor-form-input {
+  min-height: 78px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  resize: vertical;
+}
+
+#mentorApplicationModal input[type="file"].mentor-form-input {
+  min-height: 34px;
+  padding: 6px 10px !important;
+  border-radius: 5px;
+  font-size: 11px !important;
+}
+
+#mentorApplicationModal .mentor-form-hint,
+#mentorApplicationModal .mentor-form-hint-secondary {
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+#mentorApplicationModal .mentor-form-submit {
+  margin-top: 10px;
+  text-align: right;
+}
+
+#mentorApplicationModal .mentor-submit-btn {
+  min-height: 34px;
+  padding: 8px 22px;
+  border-radius: 5px;
+  background: #0b7d13;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#mentorApplicationModal .mentor-modal-actions {
+  margin-top: 8px;
+  justify-content: flex-start;
+}
+
+#mentorApplicationModal .mentor-modal-cancel {
+  min-height: 32px;
+  padding: 7px 18px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  #mentorApplicationModal .mentor-modal-panel {
+    padding: 16px;
+  }
+
+  #mentorApplicationModal .mentor-form-grid-3,
+  #mentorApplicationModal .mentor-form-grid-2,
+  #mentorApplicationModal .mentor-form-section .form-group,
+  #mentorApplicationModal .mentor-form-group {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  #mentorApplicationModal .mentor-form-hint,
+  #mentorApplicationModal .mentor-form-hint-secondary {
+    grid-column: 1;
   }
 }
 

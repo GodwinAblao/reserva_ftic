@@ -3,7 +3,7 @@
     <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" class="mentor-card-link">
         <article class="mentor-card">
             <div class="mentor-card-top">
-                <div class="mentor-avatar">
+                <div class="mentor-card-avatar">
                     {% if mentorUser.profilePicture %}
                         <img src="{{ asset('uploads/profiles/' ~ mentorUser.profilePicture) }}" alt="{{ mentor.displayName }}">
                     {% else %}
@@ -16,8 +16,8 @@
                     <p class="mentor-card-subtitle">{{ mentor.specialization ?: 'Faculty member' }}</p>
 
                     <div class="mentor-card-tags">
-                        <span class="mentor-specialization-tag">{{ mentorUser.degreeName ?: mentorUser.degree ?: 'Education' }}</span>
-                        <span class="mentor-specialization-tag">{{ mentor.specialization ?: 'Mentorship' }}</span>
+                        <span class="mentor-specialization-tag">Specialization</span>
+                        <span class="mentor-specialization-tag">Years of experience</span>
                     </div>
                 </div>
             </div>
@@ -29,7 +29,7 @@
             {% endif %}
 
             <div class="mentor-card-footer">
-                <span class="contact-info">{{ mentorUser.email }}</span>
+                <span class="contact-info"></span>
                 <div>
                     <span class="mentor-view-btn">View Profile</span>
                 </div>
