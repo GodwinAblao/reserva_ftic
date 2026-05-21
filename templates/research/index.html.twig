@@ -100,8 +100,8 @@
         {% if item.type == 'Research' %}
             {% set researchCount = researchCount + 1 %}
             <article class="card-panel">
-                <h3 style="color: green;">
-                    <a href="{{ path('research_show', {'id': item.id}) }}" style="color: green; text-decoration: none;">
+                <h3 style="color: var(--feu-green);">
+                    <a href="{{ path('research_show', {'id': item.id}) }}" style="color: var(--feu-green); text-decoration: none;">
                         {{ item.title }}
                     </a>
                 </h3>

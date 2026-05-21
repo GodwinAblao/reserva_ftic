@@ -42,7 +42,7 @@
 
                 {# Backend Logic: Flash Messages and Errors #}
                 {% for message in app.flashes('success') %}
-                    <div class="alert alert-success" style="margin-bottom: 1rem; color: #15803d;">{{ message }}</div>
+                    <div class="alert alert-success" style="margin-bottom: 1rem; color: #0D9B00;">{{ message }}</div>
                 {% endfor %}
                 {% if error %}
                     <div class="alert alert-danger" style="margin-bottom: 1rem; color: #dc2626;">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
@@ -87,7 +87,7 @@
     <div id="forgotPasswordModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 400px; position: relative;">
             <button type="button" onclick="hideForgotPassword()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-            <h3 style="margin-bottom: 1.5rem; color: #16a34a;">Forgot Password</h3>
+            <h3 style="margin-bottom: 1.5rem; color: #0D9B00;">Forgot Password</h3>
             <form method="post" action="{{ path('app_forgot_password') }}" class="form" id="forgotPasswordForm">
                 <div class="form-group">
                     <input type="email" name="email" class="form-input" placeholder="Enter your email" id="forgotPasswordEmail" required>
@@ -102,7 +102,7 @@
     <div id="otpModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 400px; position: relative;">
             <button type="button" onclick="hideOtpModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-            <h3 style="margin-bottom: 1.5rem; color: #16a34a;">Verify OTP</h3>
+            <h3 style="margin-bottom: 1.5rem; color: #0D9B00;">Verify OTP</h3>
             <div id="otpErrorAlert" class="alert alert-danger" style="display: none; margin-bottom: 1rem;"></div>
             <form method="post" id="otpForm" class="form">
                 <div class="form-group">
@@ -115,7 +115,7 @@
                 <button class="submit-button" type="submit" id="verifyOtpButton">Verify OTP</button>
             </form>
             <div style="text-align: center; margin-top: 1rem;">
-                <a href="#" onclick="showForgotPassword(); return false;" style="color: #16a34a; font-weight: 600; text-decoration: none;">Back to Forgot Password</a>
+                <a href="#" onclick="showForgotPassword(); return false;" style="color: #0D9B00; font-weight: 600; text-decoration: none;">Back to Forgot Password</a>
             </div>
         </div>
     </div>
@@ -124,7 +124,7 @@
     <div id="resetPasswordModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 420px; position: relative;">
             <button type="button" onclick="hideResetPasswordModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-            <h3 style="margin-bottom: 1.5rem; color: #16a34a;">Reset Password</h3>
+            <h3 style="margin-bottom: 1.5rem; color: #0D9B00;">Reset Password</h3>
             <div id="resetPasswordErrorAlert" class="alert alert-danger" style="display: none; margin-bottom: 1rem;"></div>
             <div id="resetPasswordSuccessAlert" class="alert alert-success" style="display: none; margin-bottom: 1rem;"></div>
             <form method="post" id="resetPasswordForm" class="form">
@@ -148,7 +148,7 @@
                 <button class="submit-button" type="submit" id="changePasswordButton">Change Password</button>
             </form>
             <div style="text-align: center; margin-top: 1rem;">
-                <a href="#" onclick="showOtpModal(document.getElementById('otpToken').value, document.getElementById('otpCsrfToken').value); return false;" style="color: #16a34a; font-weight: 600; text-decoration: none;">Back to OTP</a>
+                <a href="#" onclick="showOtpModal(document.getElementById('otpToken').value, document.getElementById('otpCsrfToken').value); return false;" style="color: #0D9B00; font-weight: 600; text-decoration: none;">Back to OTP</a>
             </div>
         </div>
     </div>
@@ -180,7 +180,7 @@
                 align-items: center;
                 justify-content: center;
             }
-            .password-toggle:hover { color: #16a34a; }
+            .password-toggle:hover { color: #0D9B00; }
             .password-eye { pointer-events: none; }
             .password-input-wrapper input::-ms-reveal,
             .password-input-wrapper input::-ms-clear {

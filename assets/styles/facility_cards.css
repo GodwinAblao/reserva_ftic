@@ -11,12 +11,12 @@
     box-shadow: 0 2px 8px var(--feu-shadow);
     transition: all 0.3s;
     cursor: pointer;
-    border: 1px solid rgba(0, 102, 51, 0.08);
+    border: 1px solid rgba(13, 155, 0, 0.08);
 }
 
 .facility-list-cards .facility-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0, 102, 51, 0.15);
+    box-shadow: 0 8px 20px rgba(13, 155, 0, 0.15);
 }
 
 .facility-list-cards .facility-image-holder {
@@ -91,13 +91,13 @@
 
 .facility-list-cards .btn-view:hover {
     background: var(--feu-green-dark);
-    box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
+    box-shadow: 0 4px 12px rgba(13, 155, 0, 0.3);
 }
 
 .facility-list-empty.no-facilities {
     text-align: center;
     padding: 60px 20px;
-    background: rgba(0, 102, 51, 0.05);
+    background: rgba(13, 155, 0, 0.05);
     border-radius: 12px;
     color: #999;
 }
@@ -185,7 +185,7 @@
 }
 .facility-modal .modal-thumbnail.is-active {
     border-color: var(--feu-green);
-    box-shadow: 0 0 0 2px rgba(0, 102, 51, 0.12);
+    box-shadow: 0 0 0 2px rgba(13, 155, 0, 0.12);
 }
 .facility-modal .placeholder-image {
     width: 100%;
@@ -221,5 +221,5 @@
 
 .facility-modal .btn-reserve:hover {
     background: var(--feu-green-dark);
-    box-shadow: 0 4px 12px rgba(0,102,51,0.25);
+    box-shadow: 0 4px 12px rgba(13,155,0,0.25);
 }

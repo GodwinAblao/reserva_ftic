@@ -29,7 +29,7 @@
 
 .dashboard-page .dashboard-topbar h1 {
     margin: 0;
-    color: #7fa600;
+    color: #0D9B00;
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 0;
@@ -73,7 +73,7 @@
 
 .dashboard-page .dashboard-stat-card:hover {
     background: #ffffff;
-    box-shadow: 0 0 18px rgba(25, 170, 12, 0.22);
+    box-shadow: 0 0 18px rgba(13, 155, 0, 0.22);
 }
 
 .dashboard-page .dashboard-stat-top {
@@ -117,8 +117,8 @@
     font-weight: 600;
 }
 
-.dashboard-page .stat-green .dashboard-stat-icon { background: #19aa0c; }
-.dashboard-page .stat-success .dashboard-stat-icon { background: #0e8d2d; }
+.dashboard-page .stat-green .dashboard-stat-icon { background: #0D9B00; }
+.dashboard-page .stat-success .dashboard-stat-icon { background: #0D9B00; }
 .dashboard-page .stat-warning .dashboard-stat-icon { background: #f4b437; }
 .dashboard-page .stat-muted .dashboard-stat-icon { background: #8f8f8f; }
 
@@ -137,13 +137,13 @@
 
 .dashboard-page .dashboard-section-head h3 {
     margin: 0;
-    color: #006633;
+    color: #0D9B00;
     font-size: 15px;
     font-weight: 700;
 }
 
 .dashboard-page .dashboard-section-head a {
-    color: #006633;
+    color: #0D9B00;
     font-size: 12px;
     font-weight: 700;
 }
@@ -154,7 +154,7 @@
 }
 
 .dashboard-page .dashboard-section-action a {
-    color: #006633;
+    color: #0D9B00;
     font-size: 12px;
     font-weight: 700;
 }
@@ -172,7 +172,7 @@
     overflow: hidden;
     box-shadow: 0 2px 8px var(--feu-shadow);
     cursor: pointer;
-    border: 1px solid rgba(0, 102, 51, 0.08);
+    border: 1px solid rgba(13, 155, 0, 0.08);
 }
 
 .dashboard-page .facility-card:hover {
@@ -251,13 +251,13 @@
 
 .dashboard-page .btn-view:hover {
     background: var(--feu-green-dark);
-    box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
+    box-shadow: 0 4px 12px rgba(13, 155, 0, 0.3);
 }
 
 .dashboard-page .no-facilities {
     text-align: center;
     padding: 60px 20px;
-    background: rgba(0, 102, 51, 0.05);
+    background: rgba(13, 155, 0, 0.05);
     border-radius: 12px;
     color: #999;
 }
@@ -281,13 +281,13 @@
 
 .dashboard-page .dashboard-article-card:hover {
     background: #f8fff5;
-    box-shadow: 0 0 18px rgba(25, 170, 12, 0.22);
+    box-shadow: 0 0 18px rgba(13, 155, 0, 0.22);
 }
 
 .dashboard-page .dashboard-article-image {
     height: 92px;
     overflow: hidden;
-    background: #186e04;
+    background: #0D9B00;
     display: grid;
     place-items: center;
     color: #ffffff;
@@ -340,7 +340,7 @@
     margin: 0 0 14px;
     padding-bottom: 14px;
     border-bottom: 1px solid #f0f4ee;
-    color: #006633;
+    color: #0D9B00;
     font-size: 15px;
     font-weight: 700;
 }
@@ -353,8 +353,8 @@
 }
 
 .dashboard-page .dashboard-info-card:hover p {
-    box-shadow: 0 0 18px rgba(25, 170, 12, 0.28);
-    border-color: rgba(0, 102, 51, 0.18);
+    box-shadow: 0 0 18px rgba(13, 155, 0, 0.28);
+    border-color: rgba(13, 155, 0, 0.18);
 }
 
 .dashboard-page .dashboard-info-card p {

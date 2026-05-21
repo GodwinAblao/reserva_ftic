@@ -25,7 +25,7 @@
     gap: 0 !important;
     margin: 12px 0 12px 12px;
     padding: 17px 12px 14px;
-    background: #186e04 !important;
+    background: #0D9B00!important;
     background-image: none !important;
     border-radius: 12px;
     border: 1px solid rgba(0,0,0,0.20);
@@ -96,7 +96,7 @@
     gap: 9px;
     padding: 8px 12px;
     border-radius: 8px;
-    background: #186e04;
+    background:#0D9B00;
     border: 1px solid rgba(255, 255, 255, 0.32);
     color: #ffffff;
     font-size: 13px;
@@ -114,7 +114,7 @@
     background: #ffffff;
     border-color: #ffffff;
     border-width: 1.5px;
-    color: #138f00;
+    color:#0D9B00;
     font-weight: 700;
     box-shadow: none;
     transform: none !important;
@@ -124,7 +124,7 @@
 .sidebar.regular-user-sidebar .regular-user-logout:hover {
     background: #ffffff;
     border-color: #ffffff;
-    color: #138f00;
+    color: #0D9B00;
     box-shadow: 0 4px 14px rgba(255, 255, 255, 0.35);
     transform: none !important;
 }
@@ -195,7 +195,7 @@
 .regular-user-page-title {
     padding-top: 30px;
     padding-left: 80px;
-    color: #7fa600;
+    color: #0D9B00;
     font-size: 24px;
     font-weight: 700;
     line-height: 1.1;

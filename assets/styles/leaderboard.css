@@ -34,7 +34,7 @@
   padding: 2.5rem 2rem;
   margin-bottom: 2rem;
   border-radius: var(--lb-radius);
-  background: linear-gradient(135deg, var(--feu-green) 0%, #004d26 100%);
+  background: linear-gradient(135deg, var(--feu-green) 0%, #0D9B00 100%);
   color: #fff;
   overflow: hidden;
 }
@@ -87,7 +87,7 @@
 .leaderboard-filters .filter-input:focus,
 .leaderboard-filters .filter-select:focus {
   border-color: var(--feu-green);
-  box-shadow: 0 0 0 3px rgba(0,102,51,0.12);
+  box-shadow: 0 0 0 3px rgba(13,155,0,0.12);
   transform: translateY(-1px);
 }
 .leaderboard-filters .filter-input {
@@ -119,7 +119,7 @@
   border: 1px solid var(--feu-green);
 }
 .leaderboard-filters .filter-btn-reset:hover {
-  background: rgba(0,102,51,0.06);
+  background: rgba(13,155,0,0.06);
 }
 
 .lb-stats {
@@ -342,7 +342,7 @@
   color: var(--lb-muted);
   margin-bottom: 0.7rem;
   display: inline-block;
-  background: rgba(0,102,51,0.08);
+  background: rgba(13,155,0,0.08);
   padding: 0.2rem 0.6rem;
   border-radius: 20px;
   font-weight: 600;
@@ -449,7 +449,7 @@
 .lb-table tbody tr:hover .lb-cell-avatar {
   transform: scale(1.15);
   border-color: var(--feu-green);
-  box-shadow: 0 2px 8px rgba(0,102,51,0.15);
+  box-shadow: 0 2px 8px rgba(13,155,0,0.15);
 }
 .lb-table .lb-cell-name {
   font-weight: 700;
@@ -483,7 +483,7 @@
 .lb-table .lb-bar-fill {
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--feu-green) 0%, #22c55e 50%, var(--feu-green-light) 100%);
+  background: linear-gradient(90deg, var(--feu-green) 0%, #0D9B00 50%, var(--feu-green-light) 100%);
   background-size: 200% 100%;
   animation: lbBarShimmer 2s linear infinite;
   width: 0;

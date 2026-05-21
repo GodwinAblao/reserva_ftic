@@ -50,12 +50,12 @@
     font-weight: 700;
     font-size: 15px;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(25, 170, 12, 0.3);
+    box-shadow: 0 2px 8px rgba(13, 155, 0, 0.3);
 }
 
 .reserve-btn-large:hover {
     background: var(--feu-green-dark);
-    box-shadow: 0 4px 12px rgba(25, 170, 12, 0.4);
+    box-shadow: 0 4px 12px rgba(13, 155, 0, 0.4);
     transform: translateY(-1px);
 }
 
@@ -81,7 +81,7 @@
 
 .reservations-side-card-head h3 {
     margin: 0;
-    color: #006633;
+    color: #0D9B00;
     font-size: 15px;
     font-weight: 700;
 }
@@ -136,7 +136,7 @@
 }
 
 .quick-stat-value.stat-green {
-    color: #0e8d2d;
+    color: #0D9B00;
 }
 
 .quick-stat-value.stat-yellow {
@@ -184,7 +184,7 @@
 
 .dashboard-stat-card:hover {
     background: #ffffff;
-    box-shadow: 0 0 18px rgba(25, 170, 12, 0.22);
+    box-shadow: 0 0 18px rgba(13, 155, 0, 0.22);
 }
 
 .dashboard-stat-top {
@@ -229,7 +229,7 @@
 }
 
 /* Icon background colors */
-.stat-success .dashboard-stat-icon { background: #0e8d2d; }
+.stat-success .dashboard-stat-icon { background: #0D9B00; }
 .stat-warning .dashboard-stat-icon { background: #f4b437; }
 .stat-purple .dashboard-stat-icon { background: #6f42c1; }
 .stat-danger .dashboard-stat-icon { background: #dc3545; }
@@ -301,7 +301,7 @@
 }
 
 .reservation-card-new:hover {
-    box-shadow: 0 4px 16px rgba(0, 102, 51, 0.1);
+    box-shadow: 0 4px 16px rgba(13, 155, 0, 0.1);
     border-color: #c8e6c9;
 }
 
@@ -356,7 +356,7 @@
 }
 
 .status-approved {
-    color: #0e8d2d;
+    color: #0D9B00;
 }
 
 .status-pending {
@@ -388,7 +388,7 @@
 }
 
 .reservation-card:hover {
-    box-shadow: 0 8px 16px rgba(0, 102, 51, 0.15);
+    box-shadow: 0 8px 16px rgba(13, 155, 0, 0.15);
     border-color: var(--feu-green-light);
 }
 
@@ -606,7 +606,7 @@
     display: flex;
     gap: 0;
     margin-bottom: 0;
-    border-bottom: 3px solid #19aa0c;
+    border-bottom: 3px solid #0D9B00;
     background: #f9f9f9;
     border-radius: 8px 8px 0 0;
     overflow: hidden;
@@ -700,7 +700,7 @@
     justify-content: center;
 }
 
-.approved-header .detail-icon { background: #0e8d2d; color: white; }
+.approved-header .detail-icon { background: #0D9B00; color: white; }
 .pending-header .detail-icon { background: #f4b437; color: white; }
 .rejected-header .detail-icon { background: #dc3545; color: white; }
 .cancelled-header .detail-icon { background: #8f8f8f; color: white; }

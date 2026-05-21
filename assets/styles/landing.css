@@ -60,7 +60,7 @@ body.page-landing {
 }
 
 .header-nav a:hover {
-    color: #5ca110;
+    color: #0D9B00;
 }
 
 .header-auth {
@@ -72,13 +72,13 @@ body.page-landing {
 .btn-login {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #5ca110;
+    color: #0D9B00;
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .btn-signup {
-    background-color: #5ca110;
+    background-color: #0D9B00;
     color: white !important;
     padding: 0.5rem 1.5rem;
     border-radius: 0.375rem;
@@ -89,11 +89,11 @@ body.page-landing {
 }
 
 .btn-signup:hover {
-    background-color: #4a8d0c;
+    background-color: #0D9B00;
 }
 
 .btn-get-started {
-    background-color: #5ca110;
+    background-color: #0D9B00;
     color: white !important;
     padding: 0.75rem 2rem;
     border-radius: 0.375rem;
@@ -122,7 +122,7 @@ body.page-landing {
 .page-loading-spinner {
     width: 1rem;
     height: 1rem;
-    border: 2px solid #16a34a;
+    border: 2px solid #0D9B00;
     border-right-color: transparent;
     border-radius: 9999px;
     animation: page-loading-spin 0.75s linear infinite;
@@ -130,7 +130,7 @@ body.page-landing {
 
 .page-loading-text {
     font-size: 0.9rem;
-    color: #166534;
+    color: #0D9B00;
     font-weight: 600;
 }
 
@@ -149,7 +149,7 @@ body.page-landing {
     height: 32rem;
     overflow: hidden;
     border-bottom: 5px solid;
-    border-image: linear-gradient(to right, rgba(0, 151, 13, 0.623), rgb(213, 170, 0)) 1;
+    border-image: linear-gradient(to right, #0D9B00, rgb(213, 170, 0)) 1;
 }
 
 .hero-image {
@@ -198,7 +198,7 @@ body.page-landing {
 }
 
 .btn-hero-primary {
-    background-color: #16a34a;
+    background-color: #0D9B00;
     color: white !important;
     padding: 0.75rem 1.5rem;
     border-radius: 9999px;
@@ -207,17 +207,17 @@ body.page-landing {
     text-decoration: none;
     transition: all 0.2s ease;
     display: inline-block;
-    border: 2px solid #16a34a;
+    border: 2px solid #0D9B00;
 }
 
 .btn-hero-primary:hover {
-    background-color: #15803d;
-    border-color: #15803d;
+    background-color: #0D9B00;
+    border-color: #0D9B00;
 }
 
 .btn-hero-secondary {
     background-color: transparent;
-    color: #16a34a !important;
+    color: #0D9B00 !important;
     padding: 0.75rem 1.5rem;
     border-radius: 9999px;
     font-size: 0.875rem;
@@ -225,11 +225,11 @@ body.page-landing {
     text-decoration: none;
     transition: all 0.2s ease;
     display: inline-block;
-    border: 2px solid #16a34a;
+    border: 2px solid #0D9B00;
 }
 
 .btn-hero-secondary:hover {
-    background-color: #16a34a;
+    background-color: #0D9B00;
     color: white !important;
 }
 
@@ -590,7 +590,7 @@ body.page-landing {
 .research-section {
     padding: 4rem 0;
     border-bottom: 5px solid;
-    border-image: linear-gradient(to right, #16a34a, #d5a900) 1;
+    border-image: linear-gradient(to right, #0D9B00, #d5a900) 1;
 }
 
 .research-preview-grid {
@@ -607,7 +607,7 @@ body.page-landing {
     border-radius: 1rem;
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(92, 161, 16, 0.12);
+    border: 1px solid rgba(13, 155, 0, 0.12);
 }
 
 .research-preview-media {
@@ -628,7 +628,7 @@ body.page-landing {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #5ca110, #2f6f10);
+    background: linear-gradient(135deg, #0D9B00, #0D9B00);
     color: #fff;
     font-size: 3rem;
     font-weight: 800;
@@ -643,8 +643,8 @@ body.page-landing {
     margin-bottom: .65rem;
     padding: .2rem .55rem;
     border-radius: 999px;
-    background: rgba(92, 161, 16, .12);
-    color: #2f6f10;
+    background: rgba(13, 155, 0, .12);
+    color: #0D9B00;
     font-size: .75rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -669,7 +669,7 @@ body.page-landing {
     text-align: center;
     padding: 2rem 1rem;
     color: #6b7280;
-    background: rgba(109, 200, 10, .07);
+    background: rgba(13, 155, 0, .07);
     border-radius: 1rem;
 }
 
@@ -677,7 +677,7 @@ body.page-landing {
     padding: 4.5rem 0 1rem;
     background: linear-gradient(to bottom, rgba(234, 239, 206, .3), #fff);
     border-bottom: 5px solid;
-    border-image: linear-gradient(to right, #16a34a, #d5a900) 1;
+    border-image: linear-gradient(to right, #0D9B00, #d5a900) 1;
 }
 
 .about-grid {
@@ -822,7 +822,7 @@ body.page-landing {
 
 .accordion-item summary::after {
     content: "▼";
-    color: #5ca110;
+    color: #0D9B00;
     font-size: .875rem;
     font-weight: 500;
     transition: transform .2s ease;
@@ -1080,7 +1080,7 @@ body.page-landing {
 }
 
 .btn-book-now {
-    background: #16a34a;
+    background: #0D9B00;
     color: white;
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -1093,7 +1093,7 @@ body.page-landing {
 }
 
 .btn-book-now:hover {
-    background: #15803d;
+    background: #0D9B00;
 }
 
 .facilities-empty {

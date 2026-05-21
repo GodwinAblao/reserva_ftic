@@ -8,11 +8,20 @@
     --feu-green: #006633;
     --feu-green-dark: #004d26;
     --feu-green-light: #008844;
+    --feu-green-rgb: 0, 102, 51;
     --feu-gold: #fdb813;
     --feu-gold-soft: #ffe199;
     --feu-cream: #ffffff;
     --feu-ink: #222222;
     --feu-shadow: rgba(0, 102, 51, 0.18);
+}
+
+body.regular-user-theme {
+    --feu-green: #0D9B00;
+    --feu-green-dark: #0D9B00;
+    --feu-green-light: #0D9B00;
+    --feu-green-rgb: 13, 155, 0;
+    --feu-shadow: rgba(13, 155, 0, 0.18);
 }
 
 * {
@@ -407,7 +416,7 @@ a {
     padding: 48px 20px;
     background:
         radial-gradient(circle at 15% 20%, rgba(253, 184, 19, 0.35), transparent 55%),
-        radial-gradient(circle at 85% 0%, rgba(0, 102, 51, 0.35), transparent 50%),
+        radial-gradient(circle at 85% 0%, rgba(var(--feu-green-rgb), 0.35), transparent 50%),
         linear-gradient(140deg, #ffffff 0%, #fff2c7 40%, #fdb813 100%);
 }
 
@@ -483,7 +492,7 @@ a {
     margin-right: 12px;
     border: none;
     border-radius: 8px;
-    background: linear-gradient(135deg, #006633 0%, #004d26 100%);
+    background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
     color: white;
     font-weight: 600;
     font-size: 14px;
@@ -492,9 +501,9 @@ a {
 }
 
 .form-group input[type="file"]::-webkit-file-upload-button:hover {
-    background: linear-gradient(135deg, #004d26 0%, #003d1f 100%);
+    background: linear-gradient(135deg, var(--feu-green-dark) 0%, var(--feu-green) 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
+    box-shadow: 0 4px 12px rgba(var(--feu-green-rgb), 0.3);
 }
 
 .form-group input:focus {
@@ -673,8 +682,8 @@ a {
 }
 
 .accounts-table thead {
-    background: rgba(0, 102, 51, 0.08);
-    border-bottom: 2px solid rgba(0, 102, 51, 0.15);
+    background: rgba(var(--feu-green-rgb), 0.08);
+    border-bottom: 2px solid rgba(var(--feu-green-rgb), 0.15);
 }
 
 .accounts-table th {
@@ -686,11 +695,11 @@ a {
 
 .accounts-table td {
     padding: 12px;
-    border-bottom: 1px solid rgba(0, 102, 51, 0.08);
+    border-bottom: 1px solid rgba(var(--feu-green-rgb), 0.08);
 }
 
 .accounts-table tbody tr:hover {
-    background: rgba(0, 102, 51, 0.04);
+    background: rgba(var(--feu-green-rgb), 0.04);
 }
 
 .btn-link {
@@ -707,7 +716,7 @@ a {
 }
 
 .btn-link:hover {
-    background: rgba(0, 102, 51, 0.1);
+    background: rgba(var(--feu-green-rgb), 0.1);
 }
 
 .btn-link.btn-danger {
@@ -721,7 +730,7 @@ a {
 .btn-secondary {
     padding: 12px 16px;
     border-radius: 12px;
-    border: 1px solid rgba(0, 102, 51, 0.3);
+    border: 1px solid rgba(var(--feu-green-rgb), 0.3);
     background: transparent;
     color: var(--feu-green);
     font-weight: 700;
@@ -731,7 +740,7 @@ a {
 }
 
 .btn-secondary:hover {
-    background: rgba(0, 102, 51, 0.08);
+    background: rgba(var(--feu-green-rgb), 0.08);
 }
 
 .admin-actions {
@@ -794,7 +803,7 @@ a {
 select {
     padding: 12px 14px;
     border-radius: 12px;
-    border: 1px solid rgba(0, 102, 51, 0.2);
+    border: 1px solid rgba(var(--feu-green-rgb), 0.2);
     font-size: 15px;
     outline: none;
     transition: border 0.2s ease, box-shadow 0.2s ease;
@@ -811,7 +820,7 @@ select:focus {
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid var(--feu-green);
-    box-shadow: 0 8px 24px rgba(0, 102, 51, 0.2);
+    box-shadow: 0 8px 24px rgba(var(--feu-green-rgb), 0.2);
 }
 
 .profile-picture-holder img {
@@ -826,7 +835,7 @@ select:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(0, 102, 51, 0.1) 0%, rgba(253, 184, 19, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(var(--feu-green-rgb), 0.1) 0%, rgba(253, 184, 19, 0.1) 100%);
     color: var(--feu-green);
 }
 
@@ -842,7 +851,7 @@ select:focus {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
+    box-shadow: 0 4px 12px rgba(var(--feu-green-rgb), 0.3);
     transition: all 0.3s ease;
     border: 3px solid white;
 }
@@ -853,7 +862,7 @@ select:focus {
 
 .profile-upload-btn:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(0, 102, 51, 0.4);
+    box-shadow: 0 6px 16px rgba(var(--feu-green-rgb), 0.4);
 }
 
 @keyframes liftIn {
@@ -990,7 +999,7 @@ select:focus {
 }
 
 .notification-dropdown-header button:hover {
-    background: rgba(0, 102, 51, 0.1);
+    background: rgba(var(--feu-green-rgb), 0.1);
 }
 
 .notification-list {
@@ -1019,7 +1028,7 @@ select:focus {
 }
 
 .notification-item.unread {
-    background: rgba(0, 102, 51, 0.04);
+    background: rgba(var(--feu-green-rgb), 0.04);
 }
 
 .notification-item.unread::before {
@@ -1040,7 +1049,7 @@ select:focus {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: rgba(0, 102, 51, 0.1);
+    background: rgba(var(--feu-green-rgb), 0.1);
     color: var(--feu-green);
 }
 
@@ -1078,7 +1087,7 @@ select:focus {
 }
 
 .notification-status.text-success {
-    color: #16a34a;
+    color: var(--feu-green);
 }
 
 .notification-status.text-warning {
@@ -1105,7 +1114,7 @@ select:focus {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: #006633;
+    background: var(--feu-green);
     border: none;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1174,7 +1183,7 @@ select:focus {
 }
 
 .floating-notification-bell .notification-dropdown-floating .notification-list a.unread {
-    background: rgba(0, 102, 51, 0.04);
+    background: rgba(13, 155, 0, 0.04);
 }
 
 .floating-notification-bell .notification-dropdown-floating .notification-empty {
@@ -1227,7 +1236,7 @@ select:focus {
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 3px;
-    background: var(--feu-green, #006633);
+    background: var(--feu-green, #0D9B00);
     border-radius: 0 2px 2px 0;
 }
 
@@ -1283,8 +1292,8 @@ select:focus {
     margin-bottom: 1rem;
     padding: 0.85rem 1rem;
     border-radius: 14px;
-    background: linear-gradient(180deg, rgba(0, 102, 51, 0.06), rgba(0, 102, 51, 0.02));
-    border: 1px solid rgba(0, 102, 51, 0.1);
+    background: linear-gradient(180deg, rgba(var(--feu-green-rgb), 0.06), rgba(var(--feu-green-rgb), 0.02));
+    border: 1px solid rgba(var(--feu-green-rgb), 0.1);
 }
 
 .verify-summary__label,
@@ -1328,7 +1337,7 @@ select:focus {
 
 .verify-field input:focus {
     border-color: var(--feu-green);
-    box-shadow: 0 0 0 4px rgba(0, 102, 51, 0.12);
+    box-shadow: 0 0 0 4px rgba(var(--feu-green-rgb), 0.12);
 }
 
 .verify-button {
@@ -1359,13 +1368,13 @@ select:focus {
 .verify-button--primary {
     background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
     color: #fff;
-    box-shadow: 0 18px 28px rgba(0, 102, 51, 0.18);
+    box-shadow: 0 18px 28px rgba(var(--feu-green-rgb), 0.18);
 }
 
 .verify-button--secondary {
     background: #f7f5ef;
     color: var(--feu-green-dark);
-    border: 1px solid rgba(0, 102, 51, 0.16);
+    border: 1px solid rgba(var(--feu-green-rgb), 0.16);
 }
 
 .verify-divider {

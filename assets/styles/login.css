@@ -127,7 +127,7 @@ body {
 .page-transition-spinner {
     width: 1rem;
     height: 1rem;
-    border: 2px solid #16a34a;
+    border: 2px solid #0D9B00;
     border-right-color: transparent;
     border-radius: 9999px;
     animation: page-transition-spin 0.75s linear infinite;
@@ -136,7 +136,7 @@ body {
 .page-transition-text {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #166534;
+    color: #0D9B00;
 }
 
 @keyframes page-transition-spin {
@@ -168,7 +168,7 @@ body {
 .form-title {
     font-size: 3rem;
     font-weight: 700;
-    color: #16a34a;
+    color: #0D9B00;
     margin: 0 0 0.5rem;
     line-height: 1.1;
 }
@@ -208,8 +208,8 @@ body {
 }
 
 .form-input:focus {
-    border-color: #16a34a;
-    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    border-color: #0D9B00;
+    box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.1);
 }
 
 .forgot-password-link {
@@ -221,7 +221,7 @@ body {
 .submit-button {
     width: 100%;
     height: 3rem;
-    background: #16a34a;
+    background: #0D9B00;
     color: white;
     font-size: 1rem;
     font-weight: 500;
@@ -266,13 +266,13 @@ body {
 }
 
 .signup-link {
-    color: #16a34a;
+    color: #0D9B00;
     font-weight: 600;
     text-decoration: none;
 }
 
 .signup-link:hover {
-    color: #15803d;
+    color: #0D9B00;
     text-decoration: underline;
 }
 
@@ -288,13 +288,13 @@ body {
 }
 
 .login-link {
-    color: #16a34a;
+    color: #0D9B00;
     font-weight: 600;
     text-decoration: none;
 }
 
 .login-link:hover {
-    color: #15803d;
+    color: #0D9B00;
     text-decoration: underline;
 }
 

@@ -285,7 +285,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
 .pf-strength-seg.weak   { background: #ef4444; }
 .pf-strength-seg.fair   { background: #f59e0b; }
 .pf-strength-seg.good   { background: #3b82f6; }
-.pf-strength-seg.strong { background: #22c55e; }
+.pf-strength-seg.strong { background: #0D9B00; }
 
 .pf-strength-label {
     font-size: 11px;
@@ -297,7 +297,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
 .pf-strength-label.weak   { color: #ef4444; }
 .pf-strength-label.fair   { color: #f59e0b; }
 .pf-strength-label.good   { color: #3b82f6; }
-.pf-strength-label.strong { color: #22c55e; }
+.pf-strength-label.strong { color: #0D9B00; }
 
 /* Requirements list — hidden until user types */
 .pf-pw-reqs {
@@ -330,8 +330,8 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
     color: #ef4444;
     transition: color 0.2s;
 }
-.pf-pw-reqs li.met { color: #22c55e; }
-.pf-pw-reqs li.met::before { content: '✓'; color: #22c55e; }
+.pf-pw-reqs li.met { color: #0D9B00; }
+.pf-pw-reqs li.met::before { content: '✓'; color: #0D9B00; }
 
 /* Match label */
 .pf-match-label {
@@ -341,7 +341,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
     display: block;
     min-height: 16px;
 }
-.pf-match-label.match    { color: #22c55e; }
+.pf-match-label.match    { color: #0D9B00; }
 .pf-match-label.no-match { color: #ef4444; }
 
 /* Save button */
@@ -355,7 +355,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
 
 .pf-save-btn {
     padding: 10px 28px;
-    background: #006633;
+    background: #0D9B00;
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -365,7 +365,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
     transition: background 0.18s;
 }
 
-.pf-save-btn:hover { background: #004d26; }
+.pf-save-btn:hover { background: #0D9B00; }
 
 /* ── Keep old classes alive for availability/requests pages ── */
 .tab-link {
@@ -376,7 +376,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
     border-bottom: 3px solid transparent;
     transition: all 0.2s ease;
 }
-.tab-link:hover { color: var(--feu-green-dark); background: rgba(0,102,51,0.04); }
+.tab-link:hover { color: var(--feu-green-dark); background: rgba(13,155,0,0.04); }
 .tab-link.active { color: var(--feu-green-dark); border-bottom-color: var(--feu-green); }
 
 .availability-list { display: flex; flex-direction: column; gap: 1rem; }
@@ -385,7 +385,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
     justify-content: space-between;
     align-items: center;
     padding: 1.25rem;
-    background: rgba(0,102,51,0.02);
+    background: rgba(13,155,0,0.02);
     border-radius: 12px;
     border-left: 4px solid var(--feu-green);
 }
@@ -399,14 +399,14 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
 .request-item {
     padding: 1.5rem;
     border-radius: 12px;
-    border-left: 4px solid rgba(0,102,51,0.3);
+    border-left: 4px solid rgba(13,155,0,0.3);
     background: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 .request-item.pending { border-left-color: var(--feu-gold); background: rgba(253,184,19,0.05); }
 .request-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .request-message { line-height: 1.55; margin-bottom: 1rem; color: #475569; }
-.mentor-response { background: rgba(0,102,51,0.05); padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+.mentor-response { background: rgba(13,155,0,0.05); padding: 1rem; border-radius: 8px; margin-top: 1rem; }
 .form-inline { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .form-inline textarea { flex: 1; min-width: 300px; }
 

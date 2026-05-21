@@ -1,41 +1,44 @@
 {% extends 'base.html.twig' %}
 
-{% block body %}
-    {% set is_regular_user = not is_granted('ROLE_SUPER_ADMIN') and not is_granted('ROLE_ADMIN') %}
-    {% set route = app.request.attributes.get('_route') %}
-    {% set regular_user_page_name = 'Dashboard' %}
-    {% if route in ['app_profile', 'profile_availability', 'profile_requests'] %}
-        {% set regular_user_page_name = 'Profile' %}
-    {% elseif route == 'app_facility_index' or route starts with 'facility_' or route starts with 'app_facility_view' %}
-        {% set regular_user_page_name = 'Facility' %}
-    {% elseif route starts with 'mentoring_' %}
-        {% set regular_user_page_name = 'Mentoring' %}
-    {% elseif route starts with 'research_' %}
-        {% set regular_user_page_name = 'Innovation Hub' %}
-    {% elseif route in ['user_reservations', 'cancel_reservation', 'accept_suggestion', 'decline_suggestion', 'user_suggest_facility', 'user_select_alternative', 'user_keep_original_facility'] %}
-        {% set regular_user_page_name = 'My Reservation' %}
-    {% elseif route == 'app_leaderboard' %}
-        {% set regular_user_page_name = 'Leaderboard' %}
-    {% endif %}
+{% set is_regular_user = not is_granted('ROLE_SUPER_ADMIN') and not is_granted('ROLE_ADMIN') %}
+{% set route = app.request.attributes.get('_route') %}
+{% set regular_user_page_name = 'Dashboard' %}
+{% if route in ['app_profile', 'profile_availability', 'profile_requests'] %}
+    {% set regular_user_page_name = 'Profile' %}
+{% elseif route == 'app_facility_index' or route starts with 'facility_' or route starts with 'app_facility_view' %}
+    {% set regular_user_page_name = 'Facility' %}
+{% elseif route starts with 'mentoring_' %}
+    {% set regular_user_page_name = 'Mentoring' %}
+{% elseif route starts with 'research_' %}
+    {% set regular_user_page_name = 'Innovation Hub' %}
+{% elseif route in ['user_reservations', 'cancel_reservation', 'accept_suggestion', 'decline_suggestion', 'user_suggest_facility', 'user_select_alternative', 'user_keep_original_facility'] %}
+    {% set regular_user_page_name = 'My Reservation' %}
+{% elseif route == 'app_leaderboard' %}
+    {% set regular_user_page_name = 'Leaderboard' %}
+{% endif %}
 
-    {% set admin_page_name = 'Dashboard' %}
-    {% if route in ['app_profile', 'profile_availability', 'profile_requests'] %}
-        {% set admin_page_name = 'Profile' %}
-    {% elseif route == 'app_account_management' %}
-        {% set admin_page_name = 'Account Management' %}
-    {% elseif route == 'admin_reservations' or route == 'admin_role_reservation_monitoring' %}
-        {% set admin_page_name = 'Reservation Management' %}
-    {% elseif route == 'app_facility_management' %}
-        {% set admin_page_name = 'Facility Management' %}
-    {% elseif route starts with 'mentoring_' %}
-        {% set admin_page_name = 'Mentoring Management' %}
-    {% elseif route starts with 'research_' %}
-        {% set admin_page_name = 'Research Management' %}
-    {% elseif route starts with 'analytics_' or route == 'admin_role_reports' %}
-        {% set admin_page_name = 'Analytics' %}
-    {% elseif route starts with 'admin_calendar' or route starts with 'admin_role_calendar' %}
-        {% set admin_page_name = 'Calendar' %}
-    {% endif %}
+{% set admin_page_name = 'Dashboard' %}
+{% if route in ['app_profile', 'profile_availability', 'profile_requests'] %}
+    {% set admin_page_name = 'Profile' %}
+{% elseif route == 'app_account_management' %}
+    {% set admin_page_name = 'Account Management' %}
+{% elseif route == 'admin_reservations' or route == 'admin_role_reservation_monitoring' %}
+    {% set admin_page_name = 'Reservation Management' %}
+{% elseif route == 'app_facility_management' %}
+    {% set admin_page_name = 'Facility Management' %}
+{% elseif route starts with 'mentoring_' %}
+    {% set admin_page_name = 'Mentoring Management' %}
+{% elseif route starts with 'research_' %}
+    {% set admin_page_name = 'Research Management' %}
+{% elseif route starts with 'analytics_' or route == 'admin_role_reports' %}
+    {% set admin_page_name = 'Analytics' %}
+{% elseif route starts with 'admin_calendar' or route starts with 'admin_role_calendar' %}
+    {% set admin_page_name = 'Calendar' %}
+{% endif %}
+
+{% block body_class %}{{ is_regular_user ? 'regular-user-theme' : '' }}{% endblock %}
+
+{% block body %}
 
     {% set notification_bell_markup %}
     <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user.id }}" style="position: {{ is_regular_user ? 'fixed; top: 20px; right: 20px; z-index: 9999' : 'relative' }};">
@@ -43,7 +46,7 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background: #006633;
+            background: var(--feu-green);
             border: none;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -82,7 +85,7 @@
                 <button data-action="click->notification#markAllAsRead" style="
                     background: none;
                     border: none;
-                    color: #006633;
+                    color: var(--feu-green);
                     cursor: pointer;
                     font-size: 13px;
                 ">Mark all read</button>

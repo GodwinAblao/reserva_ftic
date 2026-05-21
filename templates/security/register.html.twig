@@ -113,7 +113,7 @@
     <div id="verifyRegistrationModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 420px; position: relative;">
             <button type="button" onclick="hideVerifyRegistrationModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
-            <h3 style="margin-bottom: 0.6rem; color: #16a34a;">Confirm your Institutional Email</h3>
+            <h3 style="margin-bottom: 0.6rem; color: #0D9B00;">Confirm your Institutional Email</h3>
             <p style="margin-top: 0; margin-bottom: 1.2rem; color: #6b7280; font-size: 0.95rem;">Enter the code we sent to your email to complete registration.</p>
             <div id="verifyRegistrationNotice" class="verify-notice" style="display:none; margin-bottom: 1rem;"></div>
             <form method="post" id="verifyRegistrationForm" class="form">
@@ -134,7 +134,7 @@
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
                     <p style="margin: 0; font-size: 0.78rem; color: #6b7280;">
                         Didn't receive it?
-                        <button type="submit" id="resendVerificationButton" class="verify-button verify-button--secondary" style="width:auto; padding: 0; background: none; border: none; color: #16a34a; font-weight: 600; cursor: pointer; font-size: 0.78rem;">Resend code</button>
+                        <button type="submit" id="resendVerificationButton" class="verify-button verify-button--secondary" style="width:auto; padding: 0; background: none; border: none; color: #0D9B00; font-weight: 600; cursor: pointer; font-size: 0.78rem;">Resend code</button>
                     </p>
                 </form>
                 <p id="resendVerificationHint" style="margin: 0.3rem 0 0; font-size: 0.74rem; color: #6b7280;">We will only resend every 2 minutes</p>
@@ -180,7 +180,7 @@
             justify-content: center;
         }
         .password-toggle:hover {
-            color: #16a34a;
+            color: #0D9B00;
         }
         .password-eye {
             pointer-events: none;
