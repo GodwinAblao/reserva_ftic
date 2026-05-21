@@ -104,11 +104,16 @@ class FacilityController extends AbstractController
     }
 
     #[Route('/{id}/view', name: 'app_facility_view', methods: ['GET'])]
-    public function view(Facility $facility): Response
+    public function view(Request $request, Facility $facility): Response
     {
-        return $this->render('facility/view.html.twig', [
-            'facility' => $facility,
-        ]);
+        if ($request->isXmlHttpRequest()) {
+            return $this->render('facility/_preview.html.twig', [
+                'facility' => $facility,
+            ]);
+        }
+
+        // Prevent full page view; redirect to facility index
+        return $this->redirectToRoute('app_facility_index');
     }
 
     #[Route('/{id}/delete', name: 'app_facility_delete', methods: ['POST'])]

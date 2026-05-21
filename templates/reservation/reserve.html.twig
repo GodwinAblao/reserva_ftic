@@ -5,9 +5,8 @@
 {% block content %}
 <div class="reservation-container">
     <div class="content-header">
-        <a href="{{ path('app_facility_view', {'id': facility.id}) }}" class="back-link">← Back to {{ facility.name }}</a>
-        <h2>Reserve {{ facility.name }}</h2>
-        <p class="facility-capacity">Maximum Capacity: <strong>{{ facility.capacity }} people</strong></p>
+        <h2 class="room-name">{{ facility.name }}</h2>
+        <p class="facility-capacity">Capacity: <strong>{{ facility.capacity }} people</strong></p>
     </div>
 
     <div class="reservation-main">
@@ -133,57 +132,83 @@
         padding: 2rem 0;
     }
 
+    .content-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 0.25rem;
+        padding-top: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .room-name {
+        margin: 0;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--feu-green-dark);
+    }
+
+    .facility-capacity {
+        color: #666;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
     .reservation-main {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 2rem;
         margin-top: 2rem;
+        padding-bottom: 2rem;
     }
 
     .calendar-section, .form-section {
         background: white;
         border-radius: 12px;
-        padding: 2rem;
+        padding: 1.5rem;
         box-shadow: var(--feu-shadow);
     }
 
     .calendar-section h3, .form-section h3 {
         color: var(--feu-green-dark);
         margin-bottom: 1rem;
-        font-size: 1.25rem;
+        font-size: 1.1rem;
     }
 
     .info-text {
         color: #666;
-        margin-bottom: 1.5rem;
-        font-size: 0.95rem;
+        margin-bottom: 1rem;
+        font-size: 0.85rem;
     }
 
     /* Calendar Styles */
     .calendar-wrapper {
-        margin-bottom: 2rem;
+        margin-bottom: 1.25rem;
     }
 
     .month-navigation {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
 
     .month-navigation h4 {
         color: var(--feu-green-dark);
         margin: 0;
+        font-size: 0.95rem;
     }
 
     .btn-nav {
         background: var(--feu-green);
         color: white;
         border: none;
-        padding: 0.5rem 1rem;
+        padding: 0.35rem 0.75rem;
         border-radius: 6px;
         cursor: pointer;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         transition: background 0.3s ease;
     }
 
@@ -194,16 +219,16 @@
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+        gap: 0.25rem;
+        margin-bottom: 0.6rem;
     }
 
     .calendar-grid .day-header {
         text-align: center;
         font-weight: bold;
         color: var(--feu-green-dark);
-        padding: 0.5rem 0;
-        font-size: 0.85rem;
+        padding: 0.35rem 0;
+        font-size: 0.75rem;
     }
 
     .calendar-grid .date-cell {
@@ -216,8 +241,9 @@
         cursor: pointer;
         transition: all 0.3s ease;
         background: white;
-        font-size: 0.9rem;
+        font-size: 0.72rem;
         font-weight: 500;
+        min-width: 0;
     }
 
     .calendar-grid .date-cell:hover:not(.disabled):not(.past) {
@@ -255,30 +281,31 @@
 
     /* Time Slots */
     .time-slots-section {
-        margin-top: 2rem;
-        padding-top: 2rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
         border-top: 2px solid #f0f0f0;
     }
 
     .time-slots-section h4 {
         color: var(--feu-green-dark);
-        margin-bottom: 1rem;
+        margin-bottom: 0.6rem;
+        font-size: 0.88rem;
     }
 
     .time-grid {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 0.5rem;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.25rem;
     }
 
     .time-slot {
-        padding: 0.5rem 0.35rem;
+        padding: 0.25rem 0.2rem;
         border: 2px solid #e0e0e0;
         border-radius: 6px;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s ease;
-        font-size: 0.9rem;
+        font-size: 0.7rem;
         background: white;
     }
 
@@ -323,23 +350,24 @@
     /* Legend */
     .calendar-legend {
         display: flex;
-        gap: 2rem;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
         border-top: 1px solid #f0f0f0;
+        flex-wrap: wrap;
     }
 
     .legend-item {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        font-size: 0.9rem;
+        gap: 0.5rem;
+        font-size: 0.78rem;
         color: #666;
     }
 
     .legend-item .slot {
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         border-radius: 4px;
         border: 2px solid #ddd;
     }
@@ -546,11 +574,6 @@
 
     .back-link:hover {
         color: var(--feu-green-dark);
-    }
-
-    .facility-capacity {
-        color: #666;
-        margin-top: 0.5rem;
     }
 
     /* Responsive */

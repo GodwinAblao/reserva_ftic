@@ -3,321 +3,290 @@
 {% block title %}Suggest Alternative Facility - Reserva FTIC{% endblock %}
 
 {% block content %}
-    <div class="content-header">
-        <h2>Suggested Alternative Facilities</h2>
-    </div>
-
-    <!-- Original Reservation Details -->
-    <div class="card-panel">
-        <h3 class="section-title">Your Reservation Request</h3>
-        <div class="reservation-details-grid">
-            <div class="detail-item">
-                <label>Facility:</label>
-                <span class="highlight">{{ reservation.facility.name }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Date:</label>
-                <span>{{ reservation.reservationDate|date('M d, Y') }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Time:</label>
-                <span>{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
-            </div>
-            <div class="detail-item">
-                <label>Attendees:</label>
-                <span>{{ reservation.capacity }} people</span>
-            </div>
-            <div class="detail-item">
-                <label>Facility Capacity:</label>
-                <span>{{ reservation.facility.capacity }} people</span>
-            </div>
-            {% if reservation.purpose %}
-                <div class="detail-item full-width">
-                    <label>Purpose:</label>
-                    <span>{{ reservation.purpose }}</span>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Alternative Suggestions -->
-    <div class="card-panel">
-        <h3 class="section-title">Better-Fit Facilities Available</h3>
-        <p class="section-description">We found these facilities that are better suited for your group size ({{ reservation.capacity }} people) and available at your preferred date and time:</p>
-        
-        <div class="alternatives-grid">
-            {% for facility in alternatives %}
-                <div class="facility-card">
-                    <div class="facility-header">
-                        <h4>{{ facility.name }}</h4>
-                        <span class="capacity-badge">
-                            <i class="fas fa-users"></i> {{ facility.capacity }} capacity
-                        </span>
-                    </div>
-
-                    <div class="facility-body">
-                        {% if facility.description %}
-                            <p class="facility-description">{{ facility.description }}</p>
-                        {% endif %}
-
-                        <div class="facility-info">
-                            <div class="info-row">
-                                <span class="label">Capacity:</span>
-                                <span class="value">{{ facility.capacity }} people</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">Fit Score:</span>
-                                <span class="value fit-score">✓ Perfect fit for {{ reservation.capacity }} attendees</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">Status:</span>
-                                <span class="value status-available">✓ Available</span>
-                            </div>
+    <div class="suggest-alternatives-page">
+        <div class="suggest-alt-grid">
+            <section class="reservation-column">
+                <h3 class="mini-section-title">Reservation request details</h3>
+                <div class="request-card">
+                    <div class="request-card-grid">
+                        <div class="request-field">
+                            <span class="field-label">Facility:</span>
+                            <span class="field-value field-emphasis">{{ reservation.facility.name }}</span>
                         </div>
-                    </div>
-
-                    <div class="facility-footer">
-                        <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}">
-                            <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.id) }}">
-                            <button type="submit" class="btn btn-primary-full">
-                                <i class="fas fa-check"></i> Accept This Facility
-                            </button>
-                        </form>
+                        <div class="request-field">
+                            <span class="field-label">Date:</span>
+                            <span class="field-value">{{ reservation.reservationDate|date('M d, Y') }}</span>
+                        </div>
+                        <div class="request-field">
+                            <span class="field-label">Time:</span>
+                            <span class="field-value">{{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</span>
+                        </div>
+                        <div class="request-field">
+                            <span class="field-label">Attendees:</span>
+                            <span class="field-value">{{ reservation.capacity }}</span>
+                        </div>
+                        <div class="request-field">
+                            <span class="field-label">Facility Capacity:</span>
+                            <span class="field-value">{{ reservation.facility.capacity }}</span>
+                        </div>
+                        {% if reservation.purpose %}
+                            <div class="request-field request-field-full">
+                                <span class="field-label">Purpose:</span>
+                                <span class="field-value purpose-text">{{ reservation.purpose }}</span>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
-            {% endfor %}
+
+                <div class="keep-card">
+                    <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.id) }}">
+                        <button type="submit" class="keep-button">Keep this Facility</button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="alternatives-column">
+                <h3 class="alternatives-title">Better-Fit Facilities Available</h3>
+                <p class="alternatives-subtitle">We found these facilities that are better suited for your group size ({{ reservation.capacity }} people) and available at your preferred date and time.</p>
+
+                {% if alternatives|length > 0 %}
+                    <div class="alternatives-grid">
+                        {% for facility in alternatives %}
+                            <article class="alt-card">
+                                <h4 class="alt-name">{{ facility.name }}</h4>
+                                <p class="alt-description">{% if facility.description %}{{ facility.description }}{% else %}Professional classroom or meeting space with advanced audiovisual equipment for seminars and presentations.{% endif %}</p>
+
+                                <div class="alt-stats">
+                                    <div class="alt-stat-row">
+                                        <span>Facility Capacity:</span>
+                                        <strong>{{ facility.capacity }} people</strong>
+                                    </div>
+                                    <div class="alt-stat-row">
+                                        <span>Fit Score:</span>
+                                        <strong class="stat-positive">Perfect fit</strong>
+                                    </div>
+                                    <div class="alt-stat-row">
+                                        <span>Status:</span>
+                                        <strong class="stat-positive">Available</strong>
+                                    </div>
+                                </div>
+
+                                <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.id) }}">
+                                    <button type="submit" class="accept-button">Accept this Facility</button>
+                                </form>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-alternative">
+                        <p>No better-fit facilities are available for your requested date and time.</p>
+                    </div>
+                {% endif %}
+            </section>
         </div>
-
-        {% if alternatives|length == 0 %}
-            <div class="empty-alternative">
-                <p>No better-fit facilities are available for your requested date and time.</p>
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- Keep Original Reservation -->
-    <div class="card-panel keep-original-section">
-        <h3 class="section-title">Keep My Original Facility</h3>
-        <p class="section-description">You can also proceed with your original choice of {{ reservation.facility.name }}, even though it has a larger capacity than needed.</p>
-        
-        <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.id}) }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.id) }}">
-            <button type="submit" class="btn btn-secondary-large">
-                <i class="fas fa-arrow-right"></i> Keep {{ reservation.facility.name }}
-            </button>
-        </form>
     </div>
 
 <style>
-    .content-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
+    .suggest-alternatives-page {
+        padding: 10px 0 18px;
     }
 
-    .reservation-details-grid {
+    .suggest-alt-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
+        gap: 14px;
+        align-items: start;
     }
 
-    .detail-item {
+    .mini-section-title,
+    .alternatives-title {
+        margin: 0 0 8px;
+        font-size: 20px;
+        line-height: 1.2;
+        color: var(--feu-green);
+        font-weight: 700;
+        letter-spacing: 0.1px;
+    }
+
+    .alternatives-subtitle {
+        margin: 0 0 12px;
+        color: #8a8f98;
+        font-size: 14px;
+        line-height: 1.35;
+        max-width: 430px;
+        font-style: italic;
+    }
+
+    .request-card,
+    .keep-card,
+    .alt-card {
+        background: #fff;
+        border: 1px solid #dfe5d7;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    }
+
+    .request-card {
+        padding: 8px 10px 10px;
+        min-height: 188px;
+    }
+
+    .request-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px 12px;
+    }
+
+    .request-field {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 2px;
+        min-width: 0;
     }
 
-    .detail-item.full-width {
+    .request-field-full {
         grid-column: 1 / -1;
     }
 
-    .detail-item label {
-        font-weight: 600;
-        color: #666;
-        font-size: 0.875rem;
+    .field-label {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1d1d1d;
     }
 
-    .detail-item span {
-        color: #333;
-        font-size: 1rem;
+    .field-value {
+        font-size: 15px;
+        line-height: 1.35;
+        color: #5f9f13;
+        font-weight: 700;
+        word-break: break-word;
     }
 
-    .detail-item .highlight {
-        color: #2563eb;
-        font-weight: 600;
+    .field-emphasis { text-transform: uppercase; }
+
+    .purpose-text {
+        color: #2d2d2d;
+        font-weight: 500;
+        text-transform: none;
     }
 
-    .section-title {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        color: #1f2937;
+    .keep-card {
+        margin-top: 14px;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: center;
     }
 
-    .section-description {
-        color: #6b7280;
-        margin-bottom: 1.5rem;
-        line-height: 1.6;
+    .keep-card form { width: 100%; max-width: 160px; }
+
+    .keep-button,
+    .accept-button {
+        width: 100%;
+        border: 0;
+        border-radius: 8px;
+        background: #72ad14;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 7px 12px;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+        transition: transform .15s ease, background .15s ease;
+    }
+
+    .keep-button:hover,
+    .accept-button:hover {
+        background: #689f12;
+        transform: translateY(-1px);
+    }
+
+    .alternatives-column {
+        padding-top: 2px;
     }
 
     .alternatives-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 1.5rem;
-        margin-top: 1.5rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
     }
 
-    .facility-card {
-        background: white;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    .alt-card {
+        padding: 9px 9px 10px;
+        min-height: 154px;
     }
 
-    .facility-card:hover {
-        border-color: #2563eb;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
-        transform: translateY(-2px);
+    .alt-name {
+        margin: 0 0 3px;
+        text-align: center;
+        color: var(--feu-green);
+        font-size: 20px;
+        line-height: 1.2;
+        font-weight: 700;
     }
 
-    .facility-header {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        color: white;
-        padding: 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .alt-description {
+        margin: 0 0 8px;
+        font-size: 13px;
+        line-height: 1.3;
+        color: #8c8c8c;
+        text-align: left;
+        min-height: 20px;
     }
 
-    .facility-header h4 {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-    }
-
-    .capacity-badge {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 0.375rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        white-space: nowrap;
-    }
-
-    .facility-body {
-        padding: 1.25rem;
-    }
-
-    .facility-description {
-        color: #6b7280;
-        margin-bottom: 1rem;
-        line-height: 1.5;
-    }
-
-    .facility-info {
+    .alt-stats {
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 5px;
+        margin-bottom: 8px;
     }
 
-    .info-row {
+    .alt-stat-row {
         display: flex;
         justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .info-row:last-child {
-        border-bottom: none;
-    }
-
-    .info-row .label {
-        font-weight: 600;
-        color: #6b7280;
-    }
-
-    .info-row .value {
-        color: #1f2937;
-    }
-
-    .fit-score {
-        color: #10b981 !important;
-        font-weight: 600;
-    }
-
-    .status-available {
-        color: #10b981;
-        font-weight: 600;
-    }
-
-    .facility-footer {
-        padding: 1rem 1.25rem;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-    }
-
-    .btn-primary-full {
-        width: 100%;
-        background: #2563eb;
-        color: white;
-        padding: 0.75rem 1.5rem;
-        border: none;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
-        display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
+        border-bottom: 1px solid #ebebeb;
+        padding-bottom: 3px;
+        font-size: 13px;
+        color: #4c4c4c;
     }
 
-    .btn-primary-full:hover {
-        background: #1d4ed8;
+    .alt-stat-row strong {
+        color: #5f9f13;
+        font-size: 13px;
+        font-weight: 700;
     }
 
-    .btn-primary-full i {
-        font-size: 1rem;
-    }
+    .stat-positive { color: #2f7f0f !important; }
 
-    .keep-original-section {
-        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
-        border: 2px solid #d1fae5;
-        margin-top: 2rem;
-    }
-
-    .btn-secondary-large {
-        width: 100%;
-        background: transparent;
-        color: var(--feu-green);
-        border: 2px solid var(--feu-green);
-        padding: 0.875rem 1.75rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
-    .btn-secondary-large:hover {
-        background: rgba(0, 102, 51, 0.08);
+    .accept-button {
+        margin-top: 2px;
+        border-radius: 7px;
+        font-size: 13px;
+        padding: 6px 10px;
     }
 
     .empty-alternative {
-        text-align: center;
-        padding: 2rem;
+        padding: 18px 12px;
         color: #6b7280;
+        font-size: 16px;
+    }
+
+    @media (max-width: 1100px) {
+        .suggest-alt-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .alternatives-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 768px) {
+        .request-card-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .alternatives-grid {
             grid-template-columns: 1fr;
         }

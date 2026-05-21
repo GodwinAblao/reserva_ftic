@@ -7,10 +7,16 @@
             <p>No facilities available at the moment.</p>
         </div>
     {% else %}
+        <div class="facility-top-row">
+            <div class="search-bar">
+                <input id="facilitySearch" type="search" placeholder="Search facility" aria-label="Search facilities" />
+            </div>
+            <div class="facility-count" id="facilityCount" style="display:none;">{{ facilities|length }} facilities</div>
+        </div>
         <div class="facilities-grid">
             {% for facility in facilities %}
                 {% if facility.availableForReservation %}
-                    <div class="facility-card-wrapper">
+                    <div class="facility-card-wrapper" data-name="{{ facility.name|lower }}">
                         <div class="facility-card">
                             <div class="facility-image-holder">
                                 {% if facility.image %}
@@ -29,8 +35,8 @@
                                 {% if facility.description %}
                                     <p class="description">{{ facility.description }}</p>
                                 {% endif %}
-                                <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
-                                    View Details
+                                <a href="#" data-preview-url="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
+                                    View
                                 </a>
                             </div>
                         </div>
@@ -68,7 +74,7 @@
                                             </div>
                                         {% endif %}
                                     </div>
-                                    <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-hover-view">
+                                    <a href="#" data-preview-url="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-hover-view">
                                         View Facility
                                     </a>
                                 </div>
@@ -81,10 +87,51 @@
     {% endif %}
 
 <style>
+    .facility-top-row {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 28px;
+    }
+
+    .search-bar {
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .search-bar input {
+        width: 100%;
+        height: 34px;
+        border-radius: 7px;
+        border: 1px solid #31a24c;
+        font-size: 12px;
+        color: #666;
+        padding: 0 12px;
+        background: #ffffff;
+        outline: none;
+    }
+
     .facilities-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 24px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    @media (max-width: 1200px) {
+        .facilities-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 900px) {
+        .facilities-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .facilities-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .facility-card-wrapper {
@@ -92,34 +139,41 @@
     }
 
     .facility-card {
-        background: white;
+        background: #f6f6f6;
         border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 2px 8px var(--feu-shadow);
+        box-shadow: none;
         transition: all 0.3s;
         cursor: pointer;
-        border: 1px solid rgba(0, 102, 51, 0.08);
+        border: 1px solid #cdcdcd;
+        display:flex;
+        flex-direction:column;
+        height: 312px;
     }
 
     .facility-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 20px rgba(0, 102, 51, 0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
     }
 
     .facility-image-holder {
         width: 100%;
-        height: 200px;
+        height: 145px;
+        flex: 0 0 145px;
         background: #f0f0f0;
         overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: block;
+        position: relative;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
     }
 
     .facility-image-holder img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
+        transform-origin: center center;
     }
 
     .placeholder-image {
@@ -129,50 +183,71 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 60px;
+        font-size: 42px;
         color: white;
         font-weight: bold;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
     }
 
     .facility-details {
-        padding: 20px;
+        padding: 12px 14px 10px;
+        flex: 1 1 auto;
+        display:flex;
+        flex-direction:column;
+        gap: 4px;
     }
 
     .facility-details h3 {
-        margin: 0 0 10px 0;
-        font-size: 18px;
-        color: var(--feu-ink);
+        margin: 0;
+        font-size: 30px;
+        color: #686868;
+        line-height: 1.12;
+        font-weight: 700;
+        letter-spacing: 0;
+        max-height: 68px;
+        overflow: hidden;
     }
 
     .capacity {
-        margin: 8px 0;
-        font-size: 14px;
-        color: var(--feu-ink);
+        margin: -6px 0 0 0;
+        font-size: 10px;
+        color: #8f8f8f;
+        line-height: 1.1;
+    }
+
+    .capacity strong {
+        font-weight: 600;
     }
 
     .description {
-        margin: 10px 0;
-        font-size: 13px;
-        color: #888;
-        line-height: 1.5;
+        margin: 4px 0 0;
+        font-size: 10px;
+        color: #848484;
+        line-height: 1.15;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
-        -webkit-line-clamp: 2;
+        -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
     }
 
     .btn-view {
-        display: inline-block;
-        margin-top: 12px;
-        padding: 8px 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: auto;
+        margin-left: auto;
+        padding: 0 14px;
+        height: 18px;
         background: var(--feu-green);
         color: white;
         text-decoration: none;
-        border-radius: 6px;
-        font-size: 13px;
+        border-radius: 3px;
+        font-size: 9px;
         font-weight: 600;
-        transition: all 0.3s;
+        line-height: 1;
+        transition: all 0.2s;
     }
 
     .btn-view:hover {
@@ -190,27 +265,11 @@
 
     /* Hover Card Styles */
     .hover-card {
-        position: absolute;
-        top: 0;
-        left: 100%;
-        width: 320px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        opacity: 0;
-        visibility: hidden;
-        transform: translateX(-10px);
-        transition: all 0.3s ease;
-        z-index: 100;
-        pointer-events: none;
-        margin-left: 16px;
+        display: none !important;
     }
 
     .facility-card-wrapper:hover .hover-card {
-        opacity: 1;
-        visibility: visible;
-        transform: translateX(0);
-        pointer-events: auto;
+        display: none !important;
     }
 
     .hover-card-content {
@@ -322,25 +381,225 @@
         background: var(--feu-green-dark);
         box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
     }
+.facility-preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    padding: 24px;
+    overflow: auto;
+}
+.facility-preview-overlay.open {
+    display: flex;
+}
+.facility-preview-body {
+    max-width: 1100px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: auto;
+    position: relative;
+}
+/* Preview card appearance (kept here so injected partials inherit consistent sizing) */
+.facility-preview-body .facility-popup-card {
+    border-radius: 18px;
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.14);
+    position: relative;
+}
+.facility-preview-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 20px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--feu-ink);
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.08);
+    z-index:2100;
+}
+.facility-preview-body .facility-view-content {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 28px;
+    align-items: start;
+}
+.facility-preview-body .image-gallery-section {
+    background: transparent;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.facility-preview-body .main-image { height: 300px; background: transparent; overflow: hidden; }
+.facility-preview-body .main-image img { width:100%; height:100%; object-fit:cover; }
+.facility-preview-body .thumbnail-strip { display:flex; gap:10px; padding-top:12px; background:transparent; overflow-x:auto; }
+.facility-preview-body .thumbnail { width:72px; height:54px; border-radius:6px; overflow:hidden; cursor:pointer; border:3px solid transparent; flex-shrink:0; }
+.facility-preview-body .thumbnail.active { border-color: var(--feu-green); }
+.facility-preview-body .thumbnail img { width:100%; height:100%; object-fit:cover; }
+.facility-preview-body .details-section { display:flex; flex-direction:column; gap:12px; }
+.facility-preview-body .facility-header { background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow:none !important; }
+.facility-preview-body .info-card { background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow:none !important; }
+.facility-preview-body .capacity-number { font-size:34px; font-weight:700; color:var(--feu-green); }
+.facility-preview-body .action-section { background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow:none !important; display:flex; justify-content:center; }
+.facility-preview-body .btn-reserve { background: var(--feu-green); color: white; width:auto; font-size:15px; padding:10px 28px; border-radius:10px; display:inline-flex; justify-content:center; }
+.facility-preview-body .btn-reserve:hover { background: var(--feu-green-dark); }
+.facility-preview-body { position: relative; }
+
 </style>
 
+<!-- Facility preview modal -->
+<div id="facilityPreviewOverlay" class="facility-preview-overlay" aria-hidden="true">
+    <div class="facility-preview-body" id="facilityPreviewBody" role="document" aria-labelledby="facilityPreviewTitle"></div>
+</div>
+
 <script>
-(function () {
+// Facility preview: prefetch previews to avoid click loading, inject close button inside card
+(() => {
+    const previewCache = new Map();
+    const overlay = document.getElementById('facilityPreviewOverlay');
+    const body = document.getElementById('facilityPreviewBody');
+
+    async function fetchPreview(url) {
+        if (!url) return null;
+        if (previewCache.has(url)) return previewCache.get(url);
+        try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!res.ok) return null;
+            const html = await res.text();
+            previewCache.set(url, html);
+            return html;
+        } catch (err) {
+            return null;
+        }
+    }
+
+    // Prefetch all previews on DOM ready (background, non-blocking)
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-preview-url]').forEach(el => {
+            const url = el.dataset.previewUrl;
+            if (url) fetchPreview(url);
+        });
+        // Facility search: update counts and wire input
+        const search = document.getElementById('facilitySearch');
+        const countEl = document.getElementById('facilityCount');
+        function updateCount() {
+            const visible = document.querySelectorAll('.facility-card-wrapper:not([style*="display: none"])').length;
+            if (countEl) countEl.textContent = visible + ' facilities';
+        }
+        if (search) {
+            search.addEventListener('input', (e) => {
+                const q = e.target.value.trim().toLowerCase();
+                document.querySelectorAll('.facility-card-wrapper').forEach(w => {
+                    const name = (w.dataset.name || '').toLowerCase();
+                    if (!q || name.includes(q)) {
+                        w.style.display = '';
+                    } else {
+                        w.style.display = 'none';
+                    }
+                });
+                updateCount();
+            });
+        }
+    });
+
+    // Close overlay helper
+    function closeOverlay() {
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        body.innerHTML = '';
+    }
+
+    // Close when clicking outside the card
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeOverlay();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) {
+            closeOverlay();
+        }
+    });
+
+    // Delegate click to open preview (uses prefetched content when available)
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-preview-url]');
+        if (!btn) return;
+        e.preventDefault();
+        const url = btn.dataset.previewUrl;
+        if (!url) return;
+
+        let html = previewCache.get(url) || null;
+        if (!html) html = await fetchPreview(url);
+        if (!html) return;
+
+        body.innerHTML = html;
+
+        // Ensure close button inside the card
+        const card = body.querySelector('.facility-popup-card');
+        let closeBtn = body.querySelector('.facility-preview-close');
+        if (!closeBtn) {
+            closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'facility-preview-close';
+            closeBtn.setAttribute('aria-label', 'Close preview');
+            closeBtn.innerHTML = '×';
+            if (card) card.appendChild(closeBtn);
+            else body.appendChild(closeBtn);
+        }
+
+        // Thumbnail click handling
+        body.querySelectorAll('.thumbnail').forEach(t => {
+            t.addEventListener('click', function () {
+                const src = this.dataset.imgSrc;
+                const main = body.querySelector('#mainImage');
+                if (main && src) main.src = src;
+                body.querySelectorAll('.thumbnail').forEach(x => x.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Wire close (per-instance)
+        closeBtn.addEventListener('click', closeOverlay);
+
+        // Global delegated close handler (works if button exists in injected HTML or gets recreated)
+        // This ensures clicks on any element with the close class will close the overlay.
+        if (!document._facilityCloseDelegated) {
+            document.addEventListener('click', function (ev) {
+                if (ev.target.closest && ev.target.closest('.facility-preview-close')) {
+                    closeOverlay();
+                }
+            });
+            document._facilityCloseDelegated = true;
+        }
+
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        closeBtn.focus();
+    });
+
+    // existing schedule revision polling (kept intact)
     const revisionUrl = '{{ path('facility_schedule_revision') }}';
     let knownRevision = null;
 
     async function pollScheduleRevision() {
-        if (document.hidden) {
-            return;
-        }
+        if (document.hidden) return;
         try {
             const response = await fetch(revisionUrl, {
                 cache: 'no-store',
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
-            if (!response.ok) {
-                return;
-            }
+            if (!response.ok) return;
             const data = await response.json();
             if (knownRevision && data.revision && data.revision !== knownRevision) {
                 try {
@@ -364,6 +623,7 @@
             knownRevision = event.detail.revision;
         }
     });
+
 })();
 </script>
 {% endblock %}

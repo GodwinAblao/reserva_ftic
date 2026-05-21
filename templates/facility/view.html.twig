@@ -2,17 +2,11 @@
 
 {% block content %}
 <div class="facility-view-container">
-    <!-- Breadcrumb -->
-    <div class="breadcrumb">
-        <a href="{{ path('app_facility_index') }}" class="breadcrumb-link">Facilities</a>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">{{ facility.name }}</span>
-    </div>
-
-    <!-- Main Content -->
-    <div class="facility-view-content">
-        <!-- Image Gallery Section -->
-        <div class="image-gallery-section">
+    <div class="facility-popup-card">
+        <!-- Main Content -->
+        <div class="facility-view-content">
+            <!-- Image Gallery Section -->
+            <div class="image-gallery-section">
             {% if facility.images|length > 0 %}
                 <div class="main-gallery">
                     <div class="main-image">
@@ -37,10 +31,10 @@
                     <span>{{ facility.name | first }}</span>
                 </div>
             {% endif %}
-        </div>
+            </div>
 
-        <!-- Details Section -->
-        <div class="details-section">
+            <!-- Details Section -->
+            <div class="details-section">
             <!-- Header -->
             <div class="facility-header">
                 <h1 class="facility-title">{{ facility.name }}</h1>
@@ -80,21 +74,6 @@
                 <div class="capacity-display">
                     <span class="capacity-number">{{ facility.capacity }}</span>
                     <span class="capacity-label">persons</span>
-                </div>
-            </div>
-
-            <!-- Additional Info -->
-            <div class="info-card">
-                <h2 class="card-title">Additional Information</h2>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Created</span>
-                        <span class="info-value">{{ facility.createdAt | format_datetime('medium', 'none') }}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Last Updated</span>
-                        <span class="info-value">{{ facility.updatedAt | format_datetime('medium', 'none') }}</span>
-                    </div>
                 </div>
             </div>
 
@@ -160,11 +139,21 @@ function changeMainImage(src, thumbnail) {
 
 <style>
     .facility-view-container {
-        padding: 40px;
+        padding: 24px;
         max-width: 1400px;
         margin: 0 auto;
-        background: #f8f9fa;
-        min-height: 100vh;
+        background: #f1f5f9;
+        min-height: auto;
+    }
+
+    .facility-popup-card {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 20px;
+        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 22px 54px rgba(15, 23, 42, 0.14);
     }
 
     /* Breadcrumb */
@@ -172,12 +161,11 @@ function changeMainImage(src, thumbnail) {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 24px;
-        font-size: 14px;
+        margin-bottom: 16px;
+        font-size: 13px;
     }
 
     .breadcrumb-link {
-        color: #6b7280;
         text-decoration: none;
         transition: color 0.2s;
     }
@@ -199,7 +187,7 @@ function changeMainImage(src, thumbnail) {
     .facility-view-content {
         display: grid;
         grid-template-columns: 1.2fr 1fr;
-        gap: 32px;
+        gap: 20px;
         align-items: start;
     }
 
@@ -218,7 +206,7 @@ function changeMainImage(src, thumbnail) {
 
     .main-image {
         width: 100%;
-        height: 500px;
+        height: 360px;
         background: #f0f0f0;
         overflow: hidden;
     }
@@ -233,14 +221,14 @@ function changeMainImage(src, thumbnail) {
     .thumbnail-strip {
         display: flex;
         gap: 8px;
-        padding: 16px;
+        padding: 10px;
         background: white;
         overflow-x: auto;
     }
 
     .thumbnail {
-        width: 80px;
-        height: 80px;
+        width: 64px;
+        height: 64px;
         border-radius: 8px;
         overflow: hidden;
         cursor: pointer;
@@ -265,7 +253,7 @@ function changeMainImage(src, thumbnail) {
 
     .single-image {
         width: 100%;
-        height: 500px;
+        height: 360px;
         background: #f0f0f0;
         overflow: hidden;
     }
@@ -278,12 +266,12 @@ function changeMainImage(src, thumbnail) {
 
     .placeholder-image {
         width: 100%;
-        height: 500px;
+        height: 360px;
         background: linear-gradient(135deg, var(--feu-green) 0%, var(--feu-green-dark) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 120px;
+        font-size: 90px;
         color: white;
         font-weight: bold;
     }
@@ -292,28 +280,28 @@ function changeMainImage(src, thumbnail) {
     .details-section {
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 14px;
     }
 
     /* Facility Header */
     .facility-header {
         background: white;
-        padding: 24px;
+        padding: 18px;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
 
     .facility-title {
-        font-size: 32px;
+        font-size: 26px;
         font-weight: 700;
-        margin: 0 0 16px 0;
+        margin: 0 0 10px 0;
         color: #1f2937;
         line-height: 1.2;
     }
 
     .facility-meta {
         display: flex;
-        gap: 16px;
+        gap: 10px;
         flex-wrap: wrap;
     }
 
@@ -321,10 +309,10 @@ function changeMainImage(src, thumbnail) {
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 14px;
+        font-size: 12px;
         color: #6b7280;
         background: #f3f4f6;
-        padding: 8px 12px;
+        padding: 6px 10px;
         border-radius: 8px;
     }
 
@@ -335,23 +323,23 @@ function changeMainImage(src, thumbnail) {
     /* Info Cards */
     .info-card {
         background: white;
-        padding: 24px;
+        padding: 16px;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
 
     .card-title {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
-        margin: 0 0 16px 0;
+        margin: 0 0 10px 0;
         color: #1f2937;
     }
 
     .description-text {
         margin: 0;
         color: #4b5563;
-        line-height: 1.7;
-        font-size: 15px;
+        line-height: 1.55;
+        font-size: 13px;
     }
 
     .capacity-display {
@@ -361,14 +349,14 @@ function changeMainImage(src, thumbnail) {
     }
 
     .capacity-number {
-        font-size: 48px;
+        font-size: 38px;
         font-weight: 700;
         color: var(--feu-green);
         line-height: 1;
     }
 
     .capacity-label {
-        font-size: 18px;
+        font-size: 15px;
         color: #6b7280;
         font-weight: 500;
     }
@@ -376,7 +364,7 @@ function changeMainImage(src, thumbnail) {
     .info-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 16px;
+        gap: 10px;
     }
 
     .info-item {
@@ -386,7 +374,7 @@ function changeMainImage(src, thumbnail) {
     }
 
     .info-label {
-        font-size: 12px;
+        font-size: 11px;
         color: #9ca3af;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -394,7 +382,7 @@ function changeMainImage(src, thumbnail) {
     }
 
     .info-value {
-        font-size: 14px;
+        font-size: 13px;
         color: #4b5563;
         font-weight: 500;
     }
@@ -402,7 +390,7 @@ function changeMainImage(src, thumbnail) {
     /* Action Buttons */
     .action-section {
         background: white;
-        padding: 24px;
+        padding: 16px;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
@@ -410,7 +398,7 @@ function changeMainImage(src, thumbnail) {
     .admin-actions,
     .user-actions {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
     }
 
@@ -418,12 +406,12 @@ function changeMainImage(src, thumbnail) {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 14px 28px;
+        padding: 11px 20px;
         border: none;
         border-radius: 12px;
         cursor: pointer;
         text-decoration: none;
-        font-size: 15px;
+        font-size: 13px;
         font-weight: 600;
         transition: all 0.3s ease;
         justify-content: center;
@@ -455,8 +443,8 @@ function changeMainImage(src, thumbnail) {
         background: var(--feu-green);
         color: white;
         width: 100%;
-        font-size: 16px;
-        padding: 16px 28px;
+        font-size: 14px;
+        padding: 12px 22px;
     }
 
     .btn-reserve:hover {
@@ -474,27 +462,32 @@ function changeMainImage(src, thumbnail) {
         .main-image,
         .single-image,
         .placeholder-image {
-            height: 400px;
+            height: 320px;
         }
     }
 
     @media (max-width: 768px) {
         .facility-view-container {
-            padding: 20px;
+            padding: 14px;
+        }
+
+        .facility-popup-card {
+            padding: 14px;
+            border-radius: 14px;
         }
 
         .facility-title {
-            font-size: 24px;
+            font-size: 22px;
         }
 
         .main-image,
         .single-image,
         .placeholder-image {
-            height: 300px;
+            height: 250px;
         }
 
         .capacity-number {
-            font-size: 36px;
+            font-size: 30px;
         }
 
         .info-grid {

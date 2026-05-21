@@ -1,0 +1,123 @@
+<style>
+/* Preview card specific styles to match design */
+.facility-popup-card {
+    border-radius: 18px;
+    background: #ffffff;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.14);
+}
+.facility-view-content {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 36px;
+    align-items: start;
+}
+.main-image { height: 300px; border-radius: 12px; overflow: hidden; }
+.main-image img { width:100%; height:100%; object-fit:cover; display:block; }
+.thumbnail-strip { display:flex; gap:10px; padding-top:12px; }
+.thumbnail { width:72px; height:54px; border-radius:6px; overflow:hidden; cursor:pointer; border:3px solid transparent; }
+.thumbnail img { width:100%; height:100%; object-fit:cover; display:block; }
+.thumbnail.active { border-color: var(--feu-green); }
+.facility-title { font-size:32px; color:#6b6b6b; margin:0 0 8px 0; font-weight:700; }
+.facility-header .facility-meta { color:#9aa0a6; display:flex; gap:12px; align-items:center; margin-top:6px; }
+.description-text { color:#707070; line-height:1.6; }
+.capacity-display { display:flex; gap:12px; align-items:center; }
+.capacity-number { font-size:34px; color:var(--feu-green); font-weight:700; }
+.capacity-label { color:#666; }
+.action-section { display:flex; justify-content:center; margin-top:18px; }
+.btn-reserve { background: var(--feu-green); color: white; padding:10px 28px; border-radius:10px; font-size:15px; text-decoration:none; display:inline-block; }
+.btn-reserve:hover { background: var(--feu-green-dark); }
+@media (max-width:900px) {
+    .facility-view-content { grid-template-columns: 1fr; }
+    .main-image { height: 220px; }
+}
+</style>
+
+<div class="facility-popup-card" role="dialog" aria-modal="true">
+    <div class="facility-view-content">
+        <!-- Image Gallery Section -->
+        <div class="image-gallery-section">
+        {% if facility.images|length > 0 %}
+            <div class="main-gallery">
+                <div class="main-image">
+                    <img src="{{ facility.images[0].path }}" alt="{{ facility.name }}" id="mainImage">
+                </div>
+                {% if facility.images|length > 1 %}
+                    <div class="thumbnail-strip">
+                        {% for image in facility.images %}
+                            <div class="thumbnail {% if loop.first %}active{% endif %}" data-img-src="{{ image.path }}">
+                                <img src="{{ image.path }}" alt="{{ facility.name }}">
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% elseif facility.image %}
+            <div class="single-image">
+                <img src="{{ facility.image }}" alt="{{ facility.name }}">
+            </div>
+        {% else %}
+            <div class="placeholder-image">
+                <span>{{ facility.name | first }}</span>
+            </div>
+        {% endif %}
+        </div>
+
+        <!-- Details Section -->
+        <div class="details-section">
+            <div class="facility-header">
+                <h1 class="facility-title">{{ facility.name }}</h1>
+                <div class="facility-meta">
+                    <span class="meta-item">👥 Capacity: <strong>{{ facility.capacity }}</strong></span>
+                    <span class="meta-item">{% if facility.isAvailableForReservation() %}<span style="color:#2d6a2f;font-weight:600;">Available for reservation</span>{% else %}Not available{% endif %}</span>
+                </div>
+            </div>
+
+            {% if facility.description %}
+                <div class="info-card">
+                    <h2 class="card-title">About this Facility</h2>
+                    <p class="description-text">{{ facility.description }}</p>
+                </div>
+            {% endif %}
+
+            <div class="info-card">
+                <h2 class="card-title">Capacity</h2>
+                <div class="capacity-display">
+                    <span class="capacity-number">{{ facility.capacity }}</span>
+                    <span class="capacity-label">persons</span>
+                </div>
+            </div>
+
+            <div class="action-section">
+                {% if is_granted('ROLE_SUPER_ADMIN') %}
+                    <div class="admin-actions">
+                        <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn btn-primary">Edit Facility</a>
+                        <a href="{{ path('app_facility_management') }}" class="btn btn-secondary">Back to Management</a>
+                    </div>
+                {% else %}
+                    <div class="user-actions">
+                        {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                            <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-reserve">Reserve Now</a>
+                        {% else %}
+                            <a href="{{ path('app_login') }}" class="btn-reserve" data-turbo="false" target="_self">Sign In to Reserve</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// thumbnail click handling delegated from parent script
+document.querySelectorAll('.thumbnail').forEach(t => {
+    t.addEventListener('click', function () {
+        const src = this.dataset.imgSrc;
+        const main = document.getElementById('mainImage');
+        if (main && src) main.src = src;
+        document.querySelectorAll('.thumbnail').forEach(x => x.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+</script>
