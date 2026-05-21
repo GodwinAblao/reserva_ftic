@@ -1,91 +1,350 @@
-<div class="mentor-form-card">
-    {# Personal Information Section #}
-    <div class="mentor-form-section">
-        <h4 class="mentor-form-title">Personal Information</h4>
-        <div class="mentor-form-grid-3">
-            <div class="form-group">
-                <label class="mentor-form-label">First Name <span class="mentor-required">*</span></label>
-                <input type="text" name="firstName" id="mentor_firstName" class="form-input mentor-form-input" value="{{ defaultUser.firstName|default('') }}" required>
-            </div>
-            <div class="form-group">
-                <label class="mentor-form-label">Middle Name</label>
-                <input type="text" name="middleName" id="mentor_middleName" class="form-input mentor-form-input" value="{{ defaultUser.middleName|default('') }}">
-            </div>
-            <div class="form-group">
-                <label class="mentor-form-label">Last Name <span class="mentor-required">*</span></label>
-                <input type="text" name="lastName" id="mentor_lastName" class="form-input mentor-form-input" value="{{ defaultUser.lastName|default('') }}" required>
+<div class="maf-card" id="mentorAppFormCard">
+    {# ── Section 1: Personal Information ── #}
+    <div class="maf-section">
+        <div class="maf-section-header">
+            <span class="maf-section-icon">👤</span>
+            <div>
+                <h4 class="maf-section-title">Personal Information</h4>
+                <p class="maf-section-desc">Provide your basic details so we can identify your application.</p>
             </div>
         </div>
-        <div class="mentor-form-grid-2">
-            <div class="form-group">
-                <label class="mentor-form-label">Student Email <span class="mentor-required">*</span></label>
-                <input type="email" name="email" id="mentor_email" class="form-input mentor-form-input" value="{{ defaultUser.email|default('') }}" required>
+        <div class="maf-row maf-cols-3">
+            <div class="maf-field">
+                <label class="maf-label">First Name <span class="maf-req">*</span></label>
+                <input type="text" name="firstName" id="mentor_firstName" class="maf-input" value="{{ defaultUser.firstName|default('') }}" required placeholder="Juan">
+                <span class="maf-error" id="err_firstName"></span>
             </div>
-            <div class="form-group">
-                <label class="mentor-form-label">Contact Number</label>
-                <input type="tel" name="contactNumber" id="mentor_contactNumber" class="form-input mentor-form-input" placeholder="e.g. 09123456789">
+            <div class="maf-field">
+                <label class="maf-label">Middle Name</label>
+                <input type="text" name="middleName" id="mentor_middleName" class="maf-input" value="{{ defaultUser.middleName|default('') }}" placeholder="Optional">
+            </div>
+            <div class="maf-field">
+                <label class="maf-label">Last Name <span class="maf-req">*</span></label>
+                <input type="text" name="lastName" id="mentor_lastName" class="maf-input" value="{{ defaultUser.lastName|default('') }}" required placeholder="Dela Cruz">
+                <span class="maf-error" id="err_lastName"></span>
+            </div>
+        </div>
+        <div class="maf-row maf-cols-2">
+            <div class="maf-field">
+                <label class="maf-label">Institutional Email <span class="maf-req">*</span></label>
+                <input type="email" name="email" id="mentor_email" class="maf-input" value="{{ defaultUser.email|default('') }}" required readonly>
+                <span class="maf-hint">Auto-filled from your account.</span>
+            </div>
+            <div class="maf-field">
+                <label class="maf-label">Contact Number <span class="maf-req">*</span></label>
+                <input type="tel" name="contactNumber" id="mentor_contactNumber" class="maf-input" required
+                       placeholder="09XX XXX XXXX" maxlength="13"
+                       pattern="^(\+?63|0)9\d{9}$"
+                       title="Enter a valid PH mobile number (e.g. 09123456789 or +639123456789)">
+                <span class="maf-hint">Philippine mobile only — 09XX or +639XX format.</span>
+                <span class="maf-error" id="err_contactNumber"></span>
+            </div>
+        </div>
+        <div class="maf-row maf-cols-1">
+            <div class="maf-field">
+                <label class="maf-label">Program / Course</label>
+                <input type="text" name="programCourse" id="mentor_programCourse" class="maf-input" value="{{ defaultUser.degreeName|default(defaultUser.degree|default('')) }}" placeholder="e.g. BS Information Technology">
+                <span class="maf-hint">Your current degree program.</span>
             </div>
         </div>
     </div>
 
-    {# Professional Background Section #}
-    <div class="mentor-form-section">
-        <h4 class="mentor-form-title">Professional Background</h4>
-        <div class="mentor-form-grid-2">
-            <div class="form-group">
-                <label class="mentor-form-label">Mentoring Specialization <span class="mentor-required">*</span></label>
-                <select name="specialization" id="mentor_specialization" class="form-input mentor-form-input" required>
-                    <option value="">Select specialization...</option>
-                    <option value="BSITBA">BSITBA (IT Business Analysis)</option>
-                    <option value="BSCS">BSCS (Computer Science)</option>
-                    <option value="Software Engineering">Software Engineering</option>
-                    <option value="Data Science">Data Science</option>
-                    <option value="Cybersecurity">Cybersecurity</option>
-                    <option value="Cloud Computing">Cloud Computing</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Mobile Development">Mobile Development</option>
-                    <option value="UI/UX Design">UI/UX Design</option>
-                    <option value="Research">Research</option>
-                    <option value="Other">Other</option>
+    {# ── Section 2: Academic & Professional Background ── #}
+    <div class="maf-section">
+        <div class="maf-section-header">
+            <span class="maf-section-icon">🎓</span>
+            <div>
+                <h4 class="maf-section-title">Academic &amp; Professional Background</h4>
+                <p class="maf-section-desc">Help us understand your qualifications and area of expertise.</p>
+            </div>
+        </div>
+        <div class="maf-row maf-cols-2">
+            <div class="maf-field">
+                <label class="maf-label">Mentoring Specialization <span class="maf-req">*</span></label>
+                <select name="specialization" id="mentor_specialization" class="maf-input maf-select" required>
+                    <option value="">Select specialization…</option>
+                    {% for spec in ['Business Analytics','BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
+                    <option value="{{ spec }}">{{ spec }}</option>
+                    {% endfor %}
+                </select>
+                <span class="maf-error" id="err_specialization"></span>
+            </div>
+            <div class="maf-field">
+                <label class="maf-label">Years of Experience</label>
+                <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="maf-input" min="0" max="50" step="1" placeholder="e.g. 2">
+                <span class="maf-hint">In months or years — approximate is fine.</span>
+            </div>
+        </div>
+        <div class="maf-row maf-cols-2">
+            <div class="maf-field">
+                <label class="maf-label">Current Profession</label>
+                <input type="text" name="currentProfession" id="mentor_currentProfession" class="maf-input" placeholder="e.g. Student, Intern, Freelancer">
+            </div>
+            <div class="maf-field">
+                <label class="maf-label">Highest Educational Attainment</label>
+                <select name="highestEducation" id="mentor_highestEducation" class="maf-input maf-select">
+                    <option value="">Select…</option>
+                    <option value="High School Diploma">High School Diploma</option>
+                    <option value="Some College (Undergraduate)">Some College (Undergraduate)</option>
+                    <option value="Associate Degree">Associate Degree</option>
+                    <option value="Bachelor's Degree">Bachelor's Degree</option>
+                    <option value="Master's Degree">Master's Degree</option>
+                    <option value="Doctorate / PhD">Doctorate / PhD</option>
+                    <option value="Professional Certificate">Professional Certificate</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label class="mentor-form-label">Years of Experience</label>
-                <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="form-input mentor-form-input" min="0" max="50" placeholder="Optional">
+        </div>
+    </div>
+
+    {# ── Section 3: Mentoring Availability ── #}
+    <div class="maf-section">
+        <div class="maf-section-header">
+            <span class="maf-section-icon">📅</span>
+            <div>
+                <h4 class="maf-section-title">Mentoring Availability</h4>
+                <p class="maf-section-desc">When are you available for mentoring sessions?</p>
             </div>
         </div>
-        <div class="mentor-form-grid-2">
-            <div class="form-group">
-                <label class="mentor-form-label">Current Profession</label>
-                <input type="text" name="currentProfession" id="mentor_currentProfession" class="form-input mentor-form-input" placeholder="e.g. Student, Intern, Freelancer">
+        <div class="maf-row maf-cols-3">
+            <div class="maf-field">
+                <label class="maf-label">Mentoring Day(s)</label>
+                <select name="availabilityDay" id="mentor_availabilityDay" class="maf-input maf-select">
+                    <option value="">Select day…</option>
+                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F'] %}
+                    <option value="{{ day }}">{{ day }}</option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="form-group">
-                <label class="mentor-form-label">Highest Educational Attainment</label>
-                <input type="text" name="highestEducation" id="mentor_highestEducation" class="form-input mentor-form-input" placeholder="e.g. BS Computer Science 3rd Year">
+            <div class="maf-field">
+                <label class="maf-label">Start Time</label>
+                <input type="time" name="availabilityStart" id="mentor_availabilityStart" class="maf-input" min="07:00" max="21:00">
+            </div>
+            <div class="maf-field">
+                <label class="maf-label">End Time</label>
+                <input type="time" name="availabilityEnd" id="mentor_availabilityEnd" class="maf-input" min="07:00" max="21:00">
+                <span class="maf-error" id="err_availabilityEnd"></span>
+            </div>
+        </div>
+        <span class="maf-hint" style="margin-top:-4px;">Combined value is saved as your availability summary.</span>
+        {# Hidden field carries the merged value for backward compatibility #}
+        <input type="hidden" name="availabilityTime" id="mentor_availabilityTime">
+    </div>
+
+    {# ── Section 4: Supporting Details ── #}
+    <div class="maf-section">
+        <div class="maf-section-header">
+            <span class="maf-section-icon">📝</span>
+            <div>
+                <h4 class="maf-section-title">Supporting Details</h4>
+                <p class="maf-section-desc">Tell us why you'd be a great mentor.</p>
+            </div>
+        </div>
+        <div class="maf-row maf-cols-1">
+            <div class="maf-field">
+                <label class="maf-label">Mentoring Bio / Description <span class="maf-req">*</span></label>
+                <textarea name="supportingDescription" id="mentor_supportingDescription" class="maf-input maf-textarea" rows="4" required
+                          placeholder="Share your strengths, relevant experience, certifications, and what motivates you to mentor other students." maxlength="2000"></textarea>
+                <div class="maf-textarea-footer">
+                    <span class="maf-hint">Be specific — this is reviewed by the Super Admin.</span>
+                    <span class="maf-charcount" id="mentor_descCharCount">0 / 2000</span>
+                </div>
+                <span class="maf-error" id="err_supportingDescription"></span>
             </div>
         </div>
     </div>
 
-    {# Additional Details Section #}
-    <div class="mentor-form-section">
-        <h4 class="mentor-form-title">Additional Details</h4>
-        <div class="form-group mentor-form-group">
-            <label class="mentor-form-label">Supporting Description <span class="mentor-required">*</span></label>
-            <textarea name="supportingDescription" id="mentor_supportingDescription" class="form-input mentor-form-input" rows="3" placeholder="Share your strengths, experience, and why you want to mentor other students." required></textarea>
+    {# ── Section 5: Supporting Documents ── #}
+    <div class="maf-section">
+        <div class="maf-section-header">
+            <span class="maf-section-icon">📎</span>
+            <div>
+                <h4 class="maf-section-title">Proof of Expertise <span class="maf-req">*</span></h4>
+                <p class="maf-section-desc">Upload certificates, IDs, transcripts, or portfolio samples.</p>
+            </div>
         </div>
-        <div class="form-group mentor-form-group">
-            <label class="mentor-form-label">Availability Time</label>
-            <input type="text" name="availabilityTime" id="mentor_availabilityTime" class="form-input mentor-form-input" placeholder="e.g. Weekdays 2-5 PM, Weekends anytime">
+        <div class="maf-upload-zone" id="mafDropZone">
+            <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" multiple accept=".jpg,.jpeg,.png,.pdf" required class="maf-upload-input">
+            <div class="maf-upload-placeholder" id="mafUploadPlaceholder">
+                <span class="maf-upload-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0D9B00" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </span>
+                <span class="maf-upload-text"><strong>Click to upload</strong> or drag files here</span>
+                <span class="maf-upload-meta">JPG, PNG, PDF — max 5 MB per file</span>
+            </div>
+            <div class="maf-file-list" id="mafFileList"></div>
         </div>
-        <div class="form-group">
-            <label class="mentor-form-label">Proof of Expertise <span class="mentor-required">*</span></label>
-            <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" multiple accept=".jpg,.jpeg,.png,.pdf" required class="mentor-form-input" style="padding: 6px; font-size: 11px; margin-bottom: 4px;">
-            <span class="mentor-form-hint"><strong>At least one file is required.</strong></span>
-            <span class="mentor-form-hint-secondary">Accepted formats: JPG, PNG, PDF. Max 5MB per file. You can select multiple files.</span>
-        </div>
+        <span class="maf-error" id="err_proofOfExpertise"></span>
     </div>
 
-    <div class="mentor-form-submit">
-        <button type="submit" class="mentor-submit-btn">Submit Application</button>
+    {# ── Submit ── #}
+    <div class="maf-submit-row">
+        <button type="submit" class="maf-submit-btn" id="mafSubmitBtn">
+            <span class="maf-submit-label">Submit Application</span>
+            <span class="maf-submit-spinner" style="display:none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".8s" repeatCount="indefinite"/></circle></svg>
+                Submitting…
+            </span>
+        </button>
     </div>
 </div>
+
+<script>
+(function(){
+    /* ── PH Contact Number live validation ── */
+    const phoneInput = document.getElementById('mentor_contactNumber');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            let v = this.value.replace(/[^0-9+]/g, '');
+            if (v.length > 0 && v[0] !== '+' && v[0] !== '0') v = '0' + v;
+            if (v.startsWith('+') && v.length > 13) v = v.slice(0, 13);
+            if (v.startsWith('0') && v.length > 11) v = v.slice(0, 11);
+            this.value = v;
+            const re = /^(\+?63|0)9\d{9}$/;
+            const err = document.getElementById('err_contactNumber');
+            if (v.length > 3 && !re.test(v)) {
+                this.classList.add('maf-input-error');
+                if (err) err.textContent = 'Enter a valid PH mobile number';
+            } else {
+                this.classList.remove('maf-input-error');
+                if (err) err.textContent = '';
+            }
+        });
+        phoneInput.addEventListener('keydown', function(e) {
+            if (e.key.length === 1 && !/[0-9+]/.test(e.key) && !e.ctrlKey && !e.metaKey) e.preventDefault();
+        });
+    }
+
+    /* ── Availability time merger ── */
+    function mergeAvailability() {
+        const day   = document.getElementById('mentor_availabilityDay')?.value || '';
+        const start = document.getElementById('mentor_availabilityStart')?.value || '';
+        const end   = document.getElementById('mentor_availabilityEnd')?.value || '';
+        const hidden = document.getElementById('mentor_availabilityTime');
+        if (!hidden) return;
+        let parts = [];
+        if (day) parts.push(day);
+        if (start && end) parts.push(start + ' – ' + end);
+        else if (start) parts.push('from ' + start);
+        hidden.value = parts.join(', ');
+    }
+    ['mentor_availabilityDay','mentor_availabilityStart','mentor_availabilityEnd'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', mergeAvailability);
+    });
+
+    /* ── End time > Start time validation ── */
+    const startTime = document.getElementById('mentor_availabilityStart');
+    const endTime   = document.getElementById('mentor_availabilityEnd');
+    if (startTime && endTime) {
+        endTime.addEventListener('change', function() {
+            const err = document.getElementById('err_availabilityEnd');
+            if (startTime.value && endTime.value && endTime.value <= startTime.value) {
+                endTime.classList.add('maf-input-error');
+                if (err) err.textContent = 'End time must be after start time';
+            } else {
+                endTime.classList.remove('maf-input-error');
+                if (err) err.textContent = '';
+            }
+        });
+    }
+
+    /* ── Character counter ── */
+    const descTA = document.getElementById('mentor_supportingDescription');
+    const descCount = document.getElementById('mentor_descCharCount');
+    if (descTA && descCount) {
+        descTA.addEventListener('input', function() {
+            descCount.textContent = descTA.value.length + ' / 2000';
+        });
+    }
+
+    /* ── Drag-and-drop upload zone ── */
+    const dropZone    = document.getElementById('mafDropZone');
+    const fileInput   = document.getElementById('mentor_proofOfExpertise');
+    const fileList    = document.getElementById('mafFileList');
+    const placeholder = document.getElementById('mafUploadPlaceholder');
+
+    if (dropZone && fileInput) {
+        ['dragenter','dragover'].forEach(function(ev) {
+            dropZone.addEventListener(ev, function(e) { e.preventDefault(); dropZone.classList.add('maf-drop-active'); });
+        });
+        ['dragleave','drop'].forEach(function(ev) {
+            dropZone.addEventListener(ev, function(e) { e.preventDefault(); dropZone.classList.remove('maf-drop-active'); });
+        });
+        dropZone.addEventListener('drop', function(e) {
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                renderFileList();
+            }
+        });
+        fileInput.addEventListener('change', renderFileList);
+
+        function renderFileList() {
+            if (!fileList) return;
+            fileList.innerHTML = '';
+            var files = fileInput.files;
+            var errEl = document.getElementById('err_proofOfExpertise');
+            if (errEl) errEl.textContent = '';
+
+            if (!files || files.length === 0) {
+                if (placeholder) placeholder.style.display = '';
+                return;
+            }
+            if (placeholder) placeholder.style.display = 'none';
+
+            for (var i = 0; i < files.length; i++) {
+                var f = files[i];
+                var valid = ['image/jpeg','image/png','application/pdf'].indexOf(f.type) !== -1;
+                var sizeOk = f.size <= 5 * 1024 * 1024;
+                var row = document.createElement('div');
+                row.className = 'maf-file-row' + (!valid || !sizeOk ? ' maf-file-invalid' : '');
+                var icon = f.type === 'application/pdf' ? '📄' : '🖼️';
+                var sizeStr = (f.size / 1024 / 1024).toFixed(2) + ' MB';
+                var errorMsg = !valid ? ' — invalid type' : (!sizeOk ? ' — exceeds 5 MB' : '');
+                row.innerHTML = '<span class="maf-file-icon">' + icon + '</span>'
+                    + '<span class="maf-file-name">' + f.name + '</span>'
+                    + '<span class="maf-file-size">' + sizeStr + errorMsg + '</span>';
+                fileList.appendChild(row);
+
+                if (!valid || !sizeOk) {
+                    if (errEl) errEl.textContent = 'One or more files are invalid. Please fix before submitting.';
+                }
+            }
+        }
+    }
+
+    /* ── Prevent double submit + loading state ── */
+    var form = document.getElementById('mentorAppFormCard')?.closest('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var btn = document.getElementById('mafSubmitBtn');
+            if (!btn) return;
+            if (btn.dataset.submitting === '1') { e.preventDefault(); return; }
+
+            /* Front-end validation gate */
+            var hasError = false;
+            var phone = document.getElementById('mentor_contactNumber');
+            if (phone && phone.value && !/^(\+?63|0)9\d{9}$/.test(phone.value.replace(/\s/g,''))) {
+                hasError = true;
+                phone.classList.add('maf-input-error');
+                var pe = document.getElementById('err_contactNumber');
+                if (pe) pe.textContent = 'Enter a valid PH mobile number';
+            }
+            var et = document.getElementById('mentor_availabilityEnd');
+            var st = document.getElementById('mentor_availabilityStart');
+            if (st && et && st.value && et.value && et.value <= st.value) {
+                hasError = true;
+                et.classList.add('maf-input-error');
+                var ee = document.getElementById('err_availabilityEnd');
+                if (ee) ee.textContent = 'End time must be after start time';
+            }
+            if (hasError) { e.preventDefault(); return; }
+
+            mergeAvailability();
+            btn.dataset.submitting = '1';
+            btn.disabled = true;
+            btn.querySelector('.maf-submit-label').style.display = 'none';
+            btn.querySelector('.maf-submit-spinner').style.display = '';
+        });
+    }
+})();
+</script>

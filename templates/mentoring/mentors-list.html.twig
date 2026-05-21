@@ -1,6 +1,7 @@
 {% extends 'layouts/app.html.twig' %}
 {% block title %}Mentors | Reserva FTIC{% endblock %}
 {% block stylesheets %}{{ parent() }}
+<link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
 <style>
 .ml-page { display:flex; flex-direction:column; gap:18px; }
 .ml-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -99,10 +100,10 @@
                         {{ mentor.engagementPoints }} pts
                     </p>
                 </div>
-                {% if mentor.availabilityStart and mentor.availabilityEnd %}
+                {% if mentor.availabilityDay or (mentor.availabilityStart and mentor.availabilityEnd) %}
                 <div class="ml-meta-item">
                     <label>Availability</label>
-                    <p>{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}</p>
+                    <p>{% if mentor.availabilityDay %}{{ mentor.availabilityDay }}{% endif %}{% if mentor.availabilityStart and mentor.availabilityEnd %}{% if mentor.availabilityDay %}, {% endif %}{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}{% endif %}</p>
                 </div>
                 {% endif %}
                 {% if mentor.user %}

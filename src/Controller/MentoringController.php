@@ -212,6 +212,7 @@ class MentoringController extends AbstractController
         $middleName = trim((string) $request->request->get('middleName'));
         $lastName = trim((string) $request->request->get('lastName'));
         $contactNumber = trim((string) $request->request->get('contactNumber'));
+        $programCourse = trim((string) $request->request->get('programCourse'));
         $specialization = trim((string) $request->request->get('specialization'));
         $yearsOfExperience = $request->request->get('yearsOfExperience') ? (int)$request->request->get('yearsOfExperience') : null;
         $currentProfession = trim((string) $request->request->get('currentProfession'));
@@ -225,6 +226,15 @@ class MentoringController extends AbstractController
 
             return $this->redirectToRoute('mentoring_index');
         }
+
+        // PH mobile number validation (required, must match 09XXXXXXXXX or +639XXXXXXXXX)
+        $cleanPhone = preg_replace('/\s+/', '', $contactNumber);
+        if ($cleanPhone === '' || !preg_match('/^(\+?63|0)9\d{9}$/', $cleanPhone)) {
+            $this->addFlash('error', 'A valid Philippine mobile number is required (e.g. 09123456789 or +639123456789).');
+
+            return $this->redirectToRoute('mentoring_index');
+        }
+        $contactNumber = $cleanPhone;
 
         // Validate proof of expertise is required
         $files = $request->files->get('proofOfExpertise');
@@ -297,6 +307,7 @@ class MentoringController extends AbstractController
             ->setMiddleName($middleName ?: null)
             ->setLastName($lastName)
             ->setContactNumber($contactNumber ?: null)
+            ->setProgramCourse($programCourse ?: null)
             ->setSpecialization($specialization)
             ->setYearsOfExperience($yearsOfExperience)
             ->setCurrentProfession($currentProfession ?: null)
@@ -442,11 +453,18 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_super-admin');
         }
 
+        $availDay   = trim((string) $request->request->get('availability_day'));
+        $availStart = trim((string) $request->request->get('availability_start'));
+        $availEnd   = trim((string) $request->request->get('availability_end'));
+
         $profile = (new MentorProfile())
             ->setUser($user)
             ->setDisplayName((string) $request->request->get('display_name', $user->getEmail()))
             ->setSpecialization((string) $request->request->get('specialization', 'General'))
-            ->setBio($request->request->get('bio'));
+            ->setBio($request->request->get('bio'))
+            ->setAvailabilityDay($availDay !== '' ? $availDay : null)
+            ->setAvailabilityStart($availStart !== '' ? $availStart : null)
+            ->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 
         $roles = $user->getRoles();
         $roles[] = 'ROLE_MENTOR';
@@ -476,18 +494,25 @@ $validUntil = $request->request->get('valid_until');
             $specialization = trim((string) $request->request->get('specialization'));
             $bio            = trim((string) $request->request->get('bio'));
             $education      = trim((string) $request->request->get('mentor_education'));
+            $availDay       = trim((string) $request->request->get('availability_day'));
             $availStart     = trim((string) $request->request->get('availability_start'));
             $availEnd       = trim((string) $request->request->get('availability_end'));
 
-            if ($displayName === '') {
-                $this->addFlash('error', 'Display name is required.');
+            if ($displayName === '' || $specialization === '') {
+                $this->addFlash('error', 'Display name and specialization are required.');
+                return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
+            }
+
+            if ($availStart !== '' && $availEnd !== '' && $availEnd <= $availStart) {
+                $this->addFlash('error', 'End time must be after start time.');
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
             $mentor->setDisplayName($displayName);
-            $mentor->setSpecialization($specialization ?: null);
+            $mentor->setSpecialization($specialization);
             $mentor->setBio($bio ?: null);
             $mentor->setEducation($education ?: null);
+            $mentor->setAvailabilityDay($availDay !== '' ? $availDay : null);
             $mentor->setAvailabilityStart($availStart !== '' ? $availStart : null);
             $mentor->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 

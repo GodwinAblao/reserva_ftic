@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `mentor_profile` (
     `specialization` VARCHAR(255) NOT NULL,
     `bio` LONGTEXT DEFAULT NULL,
     `education` VARCHAR(255) DEFAULT NULL,
+    `availability_day` VARCHAR(100) DEFAULT NULL,
     `availability_start` VARCHAR(100) DEFAULT NULL,
     `availability_end` VARCHAR(100) DEFAULT NULL,
     `engagement_points` INT NOT NULL DEFAULT 0,
@@ -83,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `mentor_application` (
     `middle_name` VARCHAR(100) DEFAULT NULL,
     `last_name` VARCHAR(100) DEFAULT NULL,
     `contact_number` VARCHAR(20) DEFAULT NULL,
+    `program_course` VARCHAR(255) DEFAULT NULL,
     `specialization` VARCHAR(255) NOT NULL,
     `reason` LONGTEXT DEFAULT NULL,
     `years_of_experience` INT DEFAULT NULL,
@@ -498,13 +500,14 @@ VALUES
 );
 
 INSERT INTO `mentor_profile`
-(`user_id`, `display_name`, `specialization`, `bio`, `engagement_points`, `created_at`)
+(`user_id`, `display_name`, `specialization`, `bio`, `availability_day`, `engagement_points`, `created_at`)
 VALUES
 (
     3,
     'Faculty Tester',
     'Faculty Mentor',
     'Automatically added faculty mentor for testing.',
+    NULL,
     0,
     NOW()
 );
@@ -529,6 +532,7 @@ VALUES
 ('DoctrineMigrations\\Version20260512082900', NOW(), 100),
 ('DoctrineMigrations\\Version20260512130000', NOW(), 100),
 ('DoctrineMigrations\\Version20260515000000', NOW(), 100),
-('DoctrineMigrations\\Version20261202000000', NOW(), 100);
+('DoctrineMigrations\\Version20261202000000', NOW(), 100),
+('DoctrineMigrations\\Version20260522000000', NOW(), 100);
 
 COMMIT;

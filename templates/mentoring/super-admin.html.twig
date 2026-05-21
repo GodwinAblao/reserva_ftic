@@ -124,8 +124,8 @@
                         ? (request.mentorProfile.user.degreeName ?: request.mentorProfile.user.degree)
                         : '—') %}
                 {% set displaySchedule = request.preferredSchedule
-                    ?: (hasChosen and request.mentorProfile.availabilityStart and request.mentorProfile.availabilityEnd
-                        ? ('2000-01-01 ' ~ request.mentorProfile.availabilityStart)|date('g:i A') ~ ' – ' ~ ('2000-01-01 ' ~ request.mentorProfile.availabilityEnd)|date('g:i A')
+                    ?: (hasChosen and (request.mentorProfile.availabilityDay or (request.mentorProfile.availabilityStart and request.mentorProfile.availabilityEnd))
+                        ? ((request.mentorProfile.availabilityDay ?: '') ~ (request.mentorProfile.availabilityStart and request.mentorProfile.availabilityEnd ? (request.mentorProfile.availabilityDay ? ', ' : '') ~ ('2000-01-01 ' ~ request.mentorProfile.availabilityStart)|date('g:i A') ~ ' – ' ~ ('2000-01-01 ' ~ request.mentorProfile.availabilityEnd)|date('g:i A') : ''))
                         : '—') %}
                 <tr>
                     <td>

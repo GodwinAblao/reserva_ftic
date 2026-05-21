@@ -32,6 +32,9 @@ class MentorProfile
     private ?string $education = null;
 
     #[ORM\Column(length: 100, nullable: true)]
+    private ?string $availabilityDay = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
     private ?string $availabilityStart = null;
 
     #[ORM\Column(length: 100, nullable: true)]
@@ -103,6 +106,9 @@ class MentorProfile
 
     public function getEducation(): ?string { return $this->education; }
     public function setEducation(?string $education): self { $this->education = $education; return $this; }
+
+    public function getAvailabilityDay(): ?string { return $this->availabilityDay; }
+    public function setAvailabilityDay(?string $availabilityDay): self { $this->availabilityDay = $availabilityDay; return $this; }
 
     public function getAvailabilityStart(): ?string { return $this->availabilityStart; }
     public function setAvailabilityStart(?string $availabilityStart): self { $this->availabilityStart = $availabilityStart; return $this; }

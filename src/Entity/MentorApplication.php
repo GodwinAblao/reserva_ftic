@@ -34,6 +34,9 @@ class MentorApplication
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $contactNumber = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $programCourse = null;
+
     #[ORM\Column(length: 255)]
     private string $specialization = '';
 
@@ -96,6 +99,9 @@ class MentorApplication
 
     public function getContactNumber(): ?string { return $this->contactNumber; }
     public function setContactNumber(?string $contactNumber): self { $this->contactNumber = $contactNumber; $this->touch(); return $this; }
+
+    public function getProgramCourse(): ?string { return $this->programCourse; }
+    public function setProgramCourse(?string $programCourse): self { $this->programCourse = $programCourse; $this->touch(); return $this; }
 
     public function getSpecialization(): string { return $this->specialization; }
     public function setSpecialization(string $specialization): self { $this->specialization = $specialization; $this->touch(); return $this; }

@@ -120,6 +120,7 @@ class ProfileController extends AbstractController
                     $specialization   = $request->request->get('specialization');
                     $bio              = $request->request->get('bio');
                     $education        = $request->request->get('mentor_education');
+                    $availDay         = trim((string) $request->request->get('availability_day'));
                     $availStart       = trim((string) $request->request->get('availability_start'));
                     $availEnd         = trim((string) $request->request->get('availability_end'));
 
@@ -135,6 +136,7 @@ class ProfileController extends AbstractController
                     if ($education !== null) {
                         $mentorProfile->setEducation($education ?: null);
                     }
+                    $mentorProfile->setAvailabilityDay($availDay !== '' ? $availDay : null);
                     $mentorProfile->setAvailabilityStart($availStart !== '' ? $availStart : null);
                     $mentorProfile->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 

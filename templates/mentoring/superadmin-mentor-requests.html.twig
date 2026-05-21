@@ -410,16 +410,20 @@
             <div class="sa-sec">Personal Information</div>
             <div class="sa-grid4">
                 <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: '—' }}</p></div>
+                <div class="sa-field"><label>Middle Name</label><p>{{ app.middleName ?: '—' }}</p></div>
                 <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: '—' }}</p></div>
                 <div class="sa-field"><label>Contact Number</label><p>{{ app.contactNumber ?: '—' }}</p></div>
+            </div>
+            <div class="sa-grid4">
                 <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ app.email }}</p></div>
+                <div class="sa-field"><label>Program / Course</label><p>{{ app.programCourse ?: '—' }}</p></div>
+                <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
             </div>
             <div class="sa-sec">Academic Background &amp; Mentoring</div>
             <div class="sa-grid4">
                 <div class="sa-field"><label>Specialization</label><p>{{ app.specialization }}</p></div>
                 <div class="sa-field"><label>Experience</label><p>{{ app.yearsOfExperience ? app.yearsOfExperience~' months' : '—' }}</p></div>
                 <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: '—' }}</p></div>
-                <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
             </div>
             <div class="sa-grid2">
                 <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: '—' }}</p></div>

@@ -15,6 +15,8 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
     static targets = ['badge', 'dropdown', 'list', 'empty'];
 
+    static POLL_INTERVAL = 20000;  // 20 s (was 5 s)
+
     initialize() {
         this._pollTimer    = null;
         this._fetching     = false;
@@ -26,6 +28,8 @@ export default class extends Controller {
         this._outsideClick = null;
         this._initialized  = false;   // true after first successful poll
         this._soundKey     = `reservaNotifSound:${this.element.dataset.userId || 'u'}`;
+        this._abortCtrl    = null;
+        this._visHandler   = null;
     }
 
     connect() {
@@ -42,15 +46,31 @@ export default class extends Controller {
                 });
             });
 
-        // Immediate poll on connect, then every 5 s
+        // Immediate poll on connect, then at interval
         this._poll();
-        this._pollTimer = setInterval(() => this._poll(), 5000);
+        this._pollTimer = setInterval(() => {
+            // Skip poll when tab is hidden — saves CPU/network
+            if (document.hidden) return;
+            this._poll();
+        }, this.constructor.POLL_INTERVAL);
+
+        // Resume immediately when tab becomes visible again
+        this._visHandler = () => {
+            if (!document.hidden) this._poll();
+        };
+        document.addEventListener('visibilitychange', this._visHandler);
     }
 
     disconnect() {
         clearInterval(this._pollTimer);
         this._pollTimer   = null;
         this._initialized = false;
+        // Abort any in-flight request
+        if (this._abortCtrl) { this._abortCtrl.abort(); this._abortCtrl = null; }
+        if (this._visHandler) {
+            document.removeEventListener('visibilitychange', this._visHandler);
+            this._visHandler = null;
+        }
         if (this._outsideClick) {
             document.removeEventListener('click', this._outsideClick);
             this._outsideClick = null;
@@ -61,10 +81,14 @@ export default class extends Controller {
     async _poll() {
         if (this._fetching) return;
         this._fetching = true;
+        // Cancel any previous in-flight poll request
+        if (this._abortCtrl) this._abortCtrl.abort();
+        this._abortCtrl = new AbortController();
         try {
             const r = await fetch('/api/notifications/poll', {
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                signal: this._abortCtrl.signal,
             });
             if (!r.ok) return;
             const { unreadCount, newestId } = await r.json();

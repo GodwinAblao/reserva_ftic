@@ -423,10 +423,19 @@
         };
         on(window, 'click', winClickFn, L);
 
-        const focusFn = () => renderCalendar(true);
-        on(window, 'focus', focusFn, L);
+        // Removed window.focus auto-refresh (too aggressive; visibilitychange is sufficient)
 
-        const visFn = () => { if (!document.hidden) renderCalendar(true); };
+        // Throttled visibility handler: refresh at most once per 30 s when tab becomes visible
+        let _lastVisRefresh = 0;
+        const visFn = () => {
+            if (!document.hidden) {
+                const now = Date.now();
+                if (now - _lastVisRefresh > 30000) {
+                    _lastVisRefresh = now;
+                    renderCalendar(true);
+                }
+            }
+        };
         on(document, 'visibilitychange', visFn, L);
 
         if (calendarConfig.canImport) {
@@ -447,7 +456,7 @@
 
         inst.timer = setInterval(() => {
             if (!document.hidden) renderCalendar(true);
-        }, 10000);
+        }, 60000);  // 60 s — calendar data rarely changes; user actions trigger immediate refresh
 
         renderCalendar();
     }

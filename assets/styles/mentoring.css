@@ -1760,91 +1760,394 @@
   text-align: center;
 }
 
-/* Form card styles */
-.mentor-form-card {
+/* ============= MAF — Mentor Application Form Design System ============= */
+
+.maf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Section cards */
+.maf-section {
+  padding: 20px 22px 18px;
+  border: 1px solid rgba(0, 102, 51, 0.10);
+  border-radius: 14px;
   background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
 }
 
-.mentor-form-section {
-  margin-bottom: 20px;
-}
-
-.mentor-form-title {
-  color: #666;
-  font-size: 14px;
-  margin: 0 0 12px 0;
-  font-weight: 600;
-}
-
-.mentor-form-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.maf-section-header {
+  display: flex;
+  align-items: flex-start;
   gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 102, 51, 0.08);
+}
+
+.maf-section-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.maf-section-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--feu-green-dark, #004d26);
+  line-height: 1.25;
+}
+
+.maf-section-desc {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Grid rows */
+.maf-row {
+  display: grid;
+  gap: 12px 14px;
   margin-bottom: 12px;
 }
+.maf-row:last-child { margin-bottom: 0; }
+.maf-cols-1 { grid-template-columns: 1fr; }
+.maf-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.maf-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
-.mentor-form-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+/* Fields */
+.maf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.mentor-form-label {
-  display: block;
-  font-size: 11px;
-  color: #999;
-  margin-bottom: 4px;
+.maf-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #27343b;
+  line-height: 1.25;
 }
 
-.mentor-form-input {
+.maf-req {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+/* Inputs */
+.maf-input {
   width: 100%;
+  min-height: 36px;
   padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 12px;
+  border: 1px solid #c8cfd5;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
 }
 
-.mentor-form-input-bg {
-  background: #f5f5f5;
+.maf-input:focus {
+  outline: none;
+  border-color: #0D9B00;
+  box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.10);
 }
 
-.mentor-form-group {
-  margin-bottom: 12px;
+.maf-input[readonly] {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: default;
 }
 
-.mentor-required {
-  color: #e74c3c;
+.maf-input-error {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08) !important;
 }
 
-.mentor-form-hint {
-  font-size: 10px;
-  color: #e74c3c;
-  display: block;
-  margin-bottom: 2px;
+.maf-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23006633' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
 }
 
-.mentor-form-hint-secondary {
-  font-size: 10px;
-  color: #999;
+.maf-textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.55;
 }
 
-.mentor-form-submit {
-  text-align: right;
-  margin-top: 15px;
+/* Hints, errors, char count */
+.maf-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.35;
 }
 
-.mentor-submit-btn {
-  background: var(--feu-green);
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 6px;
-  font-size: 13px;
+.maf-error {
+  font-size: 0.75rem;
+  color: #dc2626;
+  font-weight: 500;
+  min-height: 0;
+  line-height: 1.35;
+}
+
+.maf-textarea-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.maf-charcount {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* Upload zone */
+.maf-upload-zone {
+  position: relative;
+  border: 2px dashed rgba(13, 155, 0, 0.25);
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
   cursor: pointer;
-  font-weight: 600;
+  transition: border-color 0.2s, background 0.2s;
+  background: rgba(13, 155, 0, 0.02);
+}
+
+.maf-upload-zone:hover,
+.maf-drop-active {
+  border-color: #0D9B00;
+  background: rgba(13, 155, 0, 0.06);
+}
+
+.maf-upload-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.maf-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.maf-upload-icon { line-height: 1; }
+
+.maf-upload-text {
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.maf-upload-text strong {
+  color: #0D9B00;
+}
+
+.maf-upload-meta {
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+/* File list */
+.maf-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.maf-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(13, 155, 0, 0.06);
+  font-size: 0.82rem;
+  color: #1e293b;
+}
+
+.maf-file-row.maf-file-invalid {
+  background: rgba(220, 38, 38, 0.06);
+  color: #dc2626;
+}
+
+.maf-file-icon { font-size: 1.05rem; flex-shrink: 0; }
+.maf-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.maf-file-size { flex-shrink: 0; color: #64748b; font-size: 0.76rem; }
+.maf-file-invalid .maf-file-size { color: #dc2626; }
+
+/* Submit row */
+.maf-submit-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.maf-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 10px 28px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0D9B00 0%, #0a7d00 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 4px 12px rgba(13, 155, 0, 0.2);
+}
+
+.maf-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0a7d00 0%, #086a00 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(13, 155, 0, 0.28);
+}
+
+.maf-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.maf-submit-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Modal context overrides ── */
+#mentorApplicationModal .maf-card {
+  gap: 14px;
+}
+
+#mentorApplicationModal .maf-section {
+  padding: 16px 18px 14px;
+  border-radius: 12px;
+}
+
+/* ── MAF responsive ── */
+@media (max-width: 640px) {
+  .maf-cols-2, .maf-cols-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .maf-section {
+    padding: 14px;
+  }
+
+  .maf-upload-zone {
+    padding: 18px 12px;
+  }
+
+  .maf-submit-btn {
+    width: 100%;
+  }
+}
+
+/* Legacy compat — keep old classes functional but invisible in new form */
+.mentor-form-card { display: none; }
+.mentor-required { color: #dc2626; }
+
+/* ============= EM — Edit Mentor Form ============= */
+.em-container { max-width: 800px; margin: 0 auto; }
+.em-form { display: flex; flex-direction: column; gap: 20px; }
+
+.em-section {
+  padding: 22px 24px 20px;
+  border: 1px solid rgba(0, 102, 51, 0.10);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.em-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(0, 102, 51, 0.08);
+}
+
+.em-section-icon { font-size: 1.35rem; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+.em-section-title { margin: 0; font-size: 1rem; font-weight: 700; color: var(--feu-green-dark, #004d26); line-height: 1.25; }
+.em-section-desc { margin: 2px 0 0; font-size: 0.82rem; color: #64748b; line-height: 1.4; }
+
+.em-row { display: grid; gap: 14px; margin-bottom: 14px; }
+.em-row:last-child { margin-bottom: 0; }
+.em-cols-1 { grid-template-columns: 1fr; }
+.em-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.em-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.em-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.em-field { display: flex; flex-direction: column; gap: 5px; }
+.em-label { font-size: 0.78rem; font-weight: 600; color: #6b7280; letter-spacing: 0.02em; }
+.em-req { color: #dc2626; font-weight: 700; }
+
+.em-input {
+  width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 0.88rem; color: #374151; background: #fff; font-family: inherit;
+  box-sizing: border-box; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.em-input:focus { outline: none; border-color: #0D9B00; box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.10); }
+.em-readonly { background: #f3f4f6; color: #6b7280; cursor: default; }
+
+.em-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23006633' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+
+.em-textarea { min-height: 100px; resize: vertical; line-height: 1.55; }
+.em-error { font-size: 0.75rem; color: #dc2626; font-weight: 500; }
+
+.em-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 4px; }
+
+.em-btn-cancel {
+  display: inline-flex; align-items: center; padding: 10px 24px;
+  border: 1px solid #d1d5db; border-radius: 10px; background: #fff;
+  color: #374151; font-size: 0.88rem; font-weight: 600; text-decoration: none;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.em-btn-cancel:hover { background: #f9fafb; border-color: #9ca3af; }
+
+.em-btn-save {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 32px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, #0D9B00 0%, #0a7d00 100%);
+  color: #fff; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+  box-shadow: 0 4px 12px rgba(13, 155, 0, 0.2);
+}
+.em-btn-save:hover:not(:disabled) { background: linear-gradient(135deg, #0a7d00 0%, #086a00 100%); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(13, 155, 0, 0.28); }
+.em-btn-save:disabled { opacity: 0.7; cursor: not-allowed; }
+.em-btn-spinner { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 768px) {
+  .em-cols-2, .em-cols-3, .em-cols-4 { grid-template-columns: 1fr; }
+  .em-section { padding: 16px; }
+  .em-actions { flex-direction: column-reverse; }
+  .em-btn-cancel, .em-btn-save { width: 100%; justify-content: center; }
 }
 
 .availability-duration {
@@ -2770,124 +3073,7 @@
   overflow-y: auto;
 }
 
-#mentorApplicationModal .mentor-form-card {
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-#mentorApplicationModal .mentor-form-section {
-  margin: 0 0 14px;
-}
-
-#mentorApplicationModal .mentor-form-title {
-  display: inline-flex;
-  align-items: center;
-  min-width: 240px;
-  min-height: 28px;
-  margin: 0 0 10px;
-  padding: 6px 16px;
-  border-radius: 6px;
-  background: #0b7d13;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-#mentorApplicationModal .mentor-form-grid-3,
-#mentorApplicationModal .mentor-form-grid-2 {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 14px;
-  margin-bottom: 10px;
-}
-
-#mentorApplicationModal .mentor-form-section .form-group,
-#mentorApplicationModal .mentor-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  align-items: stretch;
-  margin: 0;
-}
-
-#mentorApplicationModal .mentor-form-section:nth-of-type(3) {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 16px;
-}
-
-#mentorApplicationModal .mentor-form-section:nth-of-type(3) .mentor-form-title,
-#mentorApplicationModal .mentor-form-section:nth-of-type(3) .form-group:first-of-type {
-  grid-column: 1 / -1;
-}
-
-#mentorApplicationModal .mentor-form-label {
-  margin: 0;
-  color: #27343b;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-#mentorApplicationModal .mentor-required {
-  color: #27343b;
-}
-
-#mentorApplicationModal .mentor-form-input {
-  width: 100%;
-  min-height: 34px;
-  padding: 7px 11px;
-  border: 1px solid #9a9a9a;
-  border-radius: 5px;
-  background: #ffffff;
-  color: #27343b;
-  font-size: 12px;
-  line-height: 1.3;
-  box-shadow: none;
-}
-
-#mentorApplicationModal select.mentor-form-input {
-  padding-right: 22px;
-}
-
-#mentorApplicationModal textarea.mentor-form-input {
-  min-height: 78px;
-  padding: 10px 12px;
-  border-radius: 5px;
-  resize: vertical;
-}
-
-#mentorApplicationModal input[type="file"].mentor-form-input {
-  min-height: 34px;
-  padding: 6px 10px !important;
-  border-radius: 5px;
-  font-size: 11px !important;
-}
-
-#mentorApplicationModal .mentor-form-hint,
-#mentorApplicationModal .mentor-form-hint-secondary {
-  font-size: 10px;
-  line-height: 1.3;
-}
-
-#mentorApplicationModal .mentor-form-submit {
-  margin-top: 10px;
-  text-align: right;
-}
-
-#mentorApplicationModal .mentor-submit-btn {
-  min-height: 34px;
-  padding: 8px 22px;
-  border-radius: 5px;
-  background: #0b7d13;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
-}
-
+/* ── Modal-specific tweaks for new MAF form ── */
 #mentorApplicationModal .mentor-modal-actions {
   margin-top: 8px;
   justify-content: flex-start;
@@ -2909,19 +3095,6 @@
   #mentorAssistanceModal .app-modal-panel,
   #mentorPreviewModal .app-modal-panel {
     transform: none;
-  }
-
-  #mentorApplicationModal .mentor-form-grid-3,
-  #mentorApplicationModal .mentor-form-grid-2,
-  #mentorApplicationModal .mentor-form-section .form-group,
-  #mentorApplicationModal .mentor-form-group {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-
-  #mentorApplicationModal .mentor-form-hint,
-  #mentorApplicationModal .mentor-form-hint-secondary {
-    grid-column: 1;
   }
 
   .mentoring-side-column .reservations-side-card-head h3 {

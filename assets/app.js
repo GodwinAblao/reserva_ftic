@@ -383,8 +383,10 @@ const NavProgress = (() => {
                 }
             }, 9000);
 
-            // Fixed 15 s repeating poll
-            _pollTimer = setInterval(() => pollReservations(url), POLL_MS);
+            // Fixed 15 s repeating poll — skip when tab is hidden
+            _pollTimer = setInterval(() => {
+                if (!document.hidden) pollReservations(url);
+            }, POLL_MS);
 
             // Cancel guard once first data lands
             _clearGuard = setInterval(() => {
@@ -403,6 +405,14 @@ const NavProgress = (() => {
     /* ── turbo:load fires on EVERY navigation — initial page + every
        sidebar click. This is the single entry point for boot(). ── */
     document.addEventListener('turbo:load', boot);
+
+    // Resume poll immediately when tab becomes visible
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && _pollTimer) {
+            const url = document.querySelector('meta[name="admin-recent-api"]')?.content;
+            if (url) pollReservations(url);
+        }
+    });
 
     // Fallback for non-Turbo environments: turbo:load won't fire so
     // boot() must be called directly. Check readyState to handle both
@@ -515,11 +525,21 @@ const NavProgress = (() => {
 
         const url = meta.content;
         poll(url);                                        // immediate first fetch
-        _timer = setInterval(() => poll(url), POLL_MS);  // then every 15 s
+        _timer = setInterval(() => {                      // then every 15 s — skip when hidden
+            if (!document.hidden) poll(url);
+        }, POLL_MS);
     }
 
     // turbo:load fires on every Turbo navigation (and initial visit)
     document.addEventListener('turbo:load', boot);
+
+    // Resume immediately when tab becomes visible
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && _timer) {
+            const meta = document.querySelector('meta[name="rm-api"]');
+            if (meta) poll(meta.content);
+        }
+    });
 
     // DOMContentLoaded covers initial hard load when turbo:load hasn't fired yet
     if (document.readyState === 'loading') {
@@ -566,11 +586,23 @@ const NavProgress = (() => {
         });
     }
 
+    let _statsTimer = null;
+
     function initStats() {
+        // Clear previous timer to prevent stacking on Turbo navigations
+        if (_statsTimer) { clearInterval(_statsTimer); _statsTimer = null; }
+
         const meta = document.querySelector('meta[name="stats-api"]');
         if (!meta || !document.getElementById('stat-total-reservations')) return;
-        setInterval(() => tick(meta.content), 30000);
+
+        // Immediate first tick, then every 30 s — skip when tab is hidden
+        tick(meta.content);
+        _statsTimer = setInterval(() => {
+            if (!document.hidden) tick(meta.content);
+        }, 30000);
     }
+
+    document.addEventListener('turbo:load', initStats);
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initStats);
     } else {

@@ -49,11 +49,11 @@
                         <span class="credential-label">Education</span>
                         <span class="credential-value">{{ mentor.education ?: (user.degreeName ?: user.degree ?: 'N/A') }}</span>
                     </div>
-                    {% if mentor.availabilityStart and mentor.availabilityEnd %}
+                    {% if mentor.availabilityDay or (mentor.availabilityStart and mentor.availabilityEnd) %}
                     <div class="credential-item">
                         <span class="credential-label">Available</span>
                         <span class="credential-value">
-                            {{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}
+                            {% if mentor.availabilityDay %}{{ mentor.availabilityDay }}{% endif %}{% if mentor.availabilityStart and mentor.availabilityEnd %}{% if mentor.availabilityDay %}, {% endif %}{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}{% endif %}
                         </span>
                     </div>
                     {% endif %}

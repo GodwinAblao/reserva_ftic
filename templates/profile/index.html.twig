@@ -193,7 +193,16 @@
                 <label class="pf-label">Education (Where you graduated)</label>
                 <input class="pf-input" type="text" name="mentor_education" value="{{ mentorProfile.education }}" placeholder="e.g. BS Computer Science – FEU Tech 2023">
             </div>
-            <div class="pf-row pf-row--2">
+            <div class="pf-row pf-row--3">
+                <div class="pf-field">
+                    <label class="pf-label">Mentoring Day</label>
+                    <select class="pf-input" name="availability_day">
+                        <option value="">Select day…</option>
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F'] %}
+                        <option value="{{ day }}" {% if mentorProfile.availabilityDay == day %}selected{% endif %}>{{ day }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="pf-field">
                     <label class="pf-label">Available Time — Start</label>
                     <input class="pf-input" type="time" name="availability_start" min="07:00" max="21:00"
