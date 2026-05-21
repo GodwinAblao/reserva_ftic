@@ -1,0 +1,64 @@
+<div class="mentor-preview-content">
+    <div class="mentor-preview-header" style="display:flex; gap:1rem; align-items:flex-start; margin-bottom:1rem;">
+        <div class="mentor-card-avatar" style="flex-shrink:0;">
+            {% set user = mentor.user %}
+            {% if user and user.profilePicture %}
+                <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="{{ mentor.displayName }}">
+            {% else %}
+                <span>{{ mentor.displayName|first|upper }}</span>
+            {% endif %}
+        </div>
+        <div style="flex:1; min-width:0;">
+            <h3 style="margin:0 0 .25rem 0;">{{ mentor.displayName }}</h3>
+            <p style="margin:0 0 .5rem 0; color:#4b5563;">{{ mentor.specialization }} Mentor</p>
+            <div class="mentor-card-tags">
+                <span class="mentor-specialization-tag">{{ mentor.specialization }}</span>
+                <span class="mentor-specialization-tag">{{ mentor.engagementPoints }} pts</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+        <h4 style="margin:0 0 .35rem 0;">About</h4>
+        <p style="margin:0; color:#4b5563;">{{ mentor.bio|default('This mentor has not added a bio yet.') }}</p>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+        <h4 style="margin:0 0 .35rem 0;">Contact</h4>
+        <p style="margin:0; color:#4b5563;">{{ mentor.user ? mentor.user.email : 'N/A' }}</p>
+    </div>
+
+    <div class="custom-request-section" style="margin:0; padding:0; background:transparent; box-shadow:none;">
+        <div class="request-header" style="margin-bottom:.75rem;">
+            <h3 style="margin:0 0 .3rem 0;">Send a Custom Mentoring Request</h3>
+            <p class="request-subtitle" style="margin:0;">Share your goals and preferred mentoring support.</p>
+        </div>
+
+        {% if canSendCustomRequest %}
+            <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form" data-mentor-preview-form="1">
+                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
+
+                <div class="form-section" style="margin-bottom:.75rem;">
+                    <label for="custom_message_preview_{{ mentor.id }}" class="form-label">Your Message <span class="form-required">*</span></label>
+                    <textarea
+                        name="message"
+                        id="custom_message_preview_{{ mentor.id }}"
+                        class="custom-textarea"
+                        rows="5"
+                        placeholder="Share your mentoring goals, preferred topics, and availability..."
+                        required
+                        maxlength="500"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Send Custom Request</button>
+                    <p class="form-note">{{ mentor.displayName }} will be notified by email and in-site notification.</p>
+                </div>
+            </form>
+        {% else %}
+            <div class="custom-request-disabled">
+                <p class="alert alert-info" style="margin:0;">You cannot send a custom request to your own mentor profile.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>

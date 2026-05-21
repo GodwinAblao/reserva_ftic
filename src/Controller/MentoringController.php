@@ -62,6 +62,40 @@ class MentoringController extends AbstractController
         }
 
         $mentors = $qb->getQuery()->getResult();
+        $mentorApplicationMeta = [];
+
+        $mentorUserIds = array_values(array_filter(array_map(
+            static fn (MentorProfile $mentor): ?int => $mentor->getUser()?->getId(),
+            $mentors
+        )));
+
+        if ($mentorUserIds !== []) {
+            $approvedApplications = $em->getRepository(MentorApplication::class)->createQueryBuilder('ma')
+                ->leftJoin('ma.student', 's')
+                ->andWhere('s.id IN (:userIds)')
+                ->andWhere('ma.status = :status')
+                ->setParameter('userIds', $mentorUserIds)
+                ->setParameter('status', 'Approved')
+                ->orderBy('ma.createdAt', 'DESC')
+                ->getQuery()
+                ->getResult();
+
+            foreach ($approvedApplications as $application) {
+                if (!$application instanceof MentorApplication) {
+                    continue;
+                }
+
+                $studentId = $application->getStudent()?->getId();
+                if ($studentId === null || isset($mentorApplicationMeta[$studentId])) {
+                    continue;
+                }
+
+                $mentorApplicationMeta[$studentId] = [
+                    'specialization' => $application->getSpecialization(),
+                    'yearsOfExperience' => $application->getYearsOfExperience(),
+                ];
+            }
+        }
         $specializations = $this->specializationStats($em);
 
         // Check if this is an AJAX request
@@ -70,6 +104,7 @@ class MentoringController extends AbstractController
             // Return the mentor cards and preferred specialization section as HTML
             $mentorHtml = $this->renderView('mentoring/_mentor_cards.html.twig', [
                 'mentors' => $mentors,
+                'mentorApplicationMeta' => $mentorApplicationMeta,
             ]);
             $specializationsHtml = $this->renderView('mentoring/_preferred_specializations.html.twig', [
                 'specializations' => $specializations,
@@ -112,6 +147,7 @@ class MentoringController extends AbstractController
 
         return $this->render('mentoring/index.html.twig', [
             'mentors' => $mentors,
+            'mentorApplicationMeta' => $mentorApplicationMeta,
             'appointments' => $appointments,
             'leaderboard' => $leaderboard,
             'specializations' => $specializations,
@@ -555,6 +591,22 @@ $validUntil = $request->request->get('valid_until');
             'mentor' => $profile,
             'availabilities' => $availabilities,
             'myAppointments' => $appointmentsWithThisMentor,
+            'canSendCustomRequest' => $canSendCustomRequest,
+        ]);
+    }
+
+    #[Route('/{id}/preview', name: 'mentoring_preview', methods: ['GET'])]
+    public function preview(MentorProfile $profile, EntityManagerInterface $em): Response
+    {
+        $this->ensureFacultyMentorProfiles($em);
+
+        $currentUser = $this->getUser();
+        $canSendCustomRequest = $currentUser instanceof User
+            && $profile->getUser() !== null
+            && $profile->getUser()->getId() !== $currentUser->getId();
+
+        return $this->render('mentoring/_mentor_preview_modal_content.html.twig', [
+            'mentor' => $profile,
             'canSendCustomRequest' => $canSendCustomRequest,
         ]);
     }
