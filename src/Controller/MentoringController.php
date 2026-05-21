@@ -174,6 +174,7 @@ class MentoringController extends AbstractController
     {
         return $this->render('mentoring/mentors-list.html.twig', [
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'is_super_admin' => $this->isGranted('ROLE_SUPER_ADMIN'),
         ]);
     }
 
@@ -193,6 +194,7 @@ class MentoringController extends AbstractController
             'users'              => $em->getRepository(User::class)->findAll(),
             'applications'       => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
+            'is_super_admin'     => $this->isGranted('ROLE_SUPER_ADMIN'),
         ]);
     }
 
@@ -338,6 +340,12 @@ class MentoringController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function reviewApplication(MentorApplication $application, string $decision, Request $request, EntityManagerInterface $em): Response
     {
+        // Only Super Admin can approve or decline mentor applications
+        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
+            $this->addFlash('error', 'Only Super Admin can approve or decline mentor applications.');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
+        }
+
         if (!$this->isCsrfTokenValid('review_mentor_application_' . $application->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
@@ -350,7 +358,7 @@ class MentoringController extends AbstractController
         if (!in_array($application->getStatus(), ['Pending', 'Pending Review'], true)) {
             $this->addFlash('error', 'Only pending applications can be reviewed.');
 
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         if ($decision === 'decline') {
@@ -364,14 +372,14 @@ class MentoringController extends AbstractController
 
             $this->addFlash('success', 'Mentor application rejected.');
 
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         // Approve - set validity period if provided
 $validUntil = $request->request->get('valid_until');
         if (!$validUntil) {
             $this->addFlash('error', 'Valid until date is required when approving a mentor application.');
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
         $validUntilDate = \DateTime::createFromFormat('Y-m-d', $validUntil);
         if ($validUntilDate) {
@@ -408,11 +416,11 @@ $validUntil = $request->request->get('valid_until');
 
         $this->addFlash('success', 'Student approved as mentor.');
 
-        return $this->redirectToRoute('mentoring_super-admin');
+        return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
     #[Route('/admin/application/{id}/delete', name: 'mentoring_delete_application', methods: ['POST'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function deleteApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('delete_mentor_application_' . $application->getId(), (string) $request->request->get('_token'))) {
@@ -428,11 +436,11 @@ $validUntil = $request->request->get('valid_until');
         $this->notificationService->notifyMentorApplicationRejected($student, $applicationId, 'Your mentor application was deleted by Super Admin.');
         $this->addFlash('success', 'Mentor application deleted and the user has been notified.');
 
-        return $this->redirectToRoute('mentoring_super-admin');
+        return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
     #[Route('/admin/mentor', name: 'mentoring_create_mentor', methods: ['POST'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function createMentor(Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('create_mentor', (string) $request->request->get('_csrf_token'))) {
@@ -443,14 +451,14 @@ $validUntil = $request->request->get('valid_until');
         if (!$user) {
             $this->addFlash('error', 'User not found.');
 
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         $existing = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
         if ($existing) {
             $this->addFlash('error', 'This user already has a mentor profile.');
 
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         $availDay   = trim((string) $request->request->get('availability_day'));
@@ -478,11 +486,11 @@ $validUntil = $request->request->get('valid_until');
 
         $this->addFlash('success', 'Mentor profile created.');
 
-        return $this->redirectToRoute('mentoring_super-admin');
+        return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
     #[Route('/admin/mentor/{id}/edit', name: 'mentoring_edit_mentor', methods: ['GET', 'POST'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function editMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
     {
         if ($request->isMethod('POST')) {
@@ -519,7 +527,7 @@ $validUntil = $request->request->get('valid_until');
             $em->flush();
 
             $this->addFlash('success', 'Mentor profile updated successfully.');
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         return $this->render('mentoring/edit_mentor.html.twig', [
@@ -528,7 +536,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/admin/mentor/{id}/delete', name: 'mentoring_delete_mentor', methods: ['POST'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function deleteMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('delete_mentor_' . $mentor->getId(), (string) $request->request->get('_token'))) {
@@ -557,7 +565,7 @@ $validUntil = $request->request->get('valid_until');
         $em->flush();
 
         $this->addFlash('success', 'Mentor profile deleted successfully and user has been notified.');
-        return $this->redirectToRoute('mentoring_super-admin');
+        return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
     #[Route('/admin/mentor/{id}/availability', name: 'mentoring_add_availability', methods: ['POST'])]
@@ -575,7 +583,7 @@ $validUntil = $request->request->get('valid_until');
         if (!$date || !$start || !$end || $end <= $start) {
             $this->addFlash('error', 'Please enter a valid availability date and time range.');
 
-            return $this->redirectToRoute('mentoring_super-admin');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         $availability = (new MentorAvailability())
@@ -589,7 +597,7 @@ $validUntil = $request->request->get('valid_until');
 
         $this->addFlash('success', 'Availability added.');
 
-        return $this->redirectToRoute('mentoring_super-admin');
+        return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
     #[Route('/{id}', name: 'mentoring_show', methods: ['GET'])]
@@ -773,6 +781,7 @@ $validUntil = $request->request->get('valid_until');
         $fullName = trim((string) $request->request->get('full_name'));
         $departmentCourse = trim((string) $request->request->get('department_course'));
         $preferredExpertise = trim((string) $request->request->get('preferred_expertise'));
+        $availableDates = trim((string) $request->request->get('available_dates'));
         $scheduleStart = trim((string) $request->request->get('preferred_schedule_start'));
         $scheduleEnd = trim((string) $request->request->get('preferred_schedule_end'));
         $fmtTime = static function (string $t): string {
@@ -782,7 +791,7 @@ $validUntil = $request->request->get('valid_until');
         $preferredSchedule = ($scheduleStart !== '' && $scheduleEnd !== '') ? $fmtTime($scheduleStart) . ' – ' . $fmtTime($scheduleEnd) : '';
         $message = trim((string) $request->request->get('message'));
 
-        if ($fullName === '' || $departmentCourse === '' || $preferredExpertise === '' || $preferredSchedule === '') {
+        if ($fullName === '' || $departmentCourse === '' || $preferredExpertise === '' || $availableDates === '' || $preferredSchedule === '') {
             $this->addFlash('error', 'Please complete the required mentor request fields.');
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -793,6 +802,7 @@ $validUntil = $request->request->get('valid_until');
             ->setFullName($fullName)
             ->setDepartmentCourse($departmentCourse)
             ->setPreferredExpertise($preferredExpertise)
+            ->setAvailableDates($availableDates)
             ->setPreferredSchedule($preferredSchedule)
             ->setMessage($message !== '' ? $message : 'No additional notes provided.')
             ->setStatus('Pending');
@@ -805,7 +815,7 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
         }
 
-        $adminUrl = $this->generateUrl('mentoring_super-admin', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
+        $adminUrl = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
         $admins = $em->getRepository(User::class)->findAdmins();
         foreach ($admins as $admin) {
             $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
@@ -853,6 +863,7 @@ $validUntil = $request->request->get('valid_until');
             ->setFullName(trim((string) $request->request->get('full_name')) ?: $mentorRequest->getFullName())
             ->setDepartmentCourse(trim((string) $request->request->get('department_course')) ?: $mentorRequest->getDepartmentCourse())
             ->setPreferredExpertise(trim((string) $request->request->get('preferred_expertise')) ?: $mentorRequest->getPreferredExpertise())
+            ->setAvailableDates(trim((string) $request->request->get('available_dates')) ?: $mentorRequest->getAvailableDates())
             ->setPreferredSchedule(trim((string) $request->request->get('preferred_schedule')) ?: $mentorRequest->getPreferredSchedule())
             ->setMessage(trim((string) $request->request->get('message')) ?: $mentorRequest->getMessage());
 
@@ -1101,7 +1112,7 @@ $validUntil = $request->request->get('valid_until');
 
         $em->flush();
 
-        return $this->redirectToRoute('mentoring_super-admin');
+        return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
     private function specializationStats(EntityManagerInterface $em): array

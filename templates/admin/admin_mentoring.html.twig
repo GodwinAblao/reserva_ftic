@@ -1,6 +1,6 @@
 {% extends 'layouts/app.html.twig' %}
 
-{% block title %}Mentoring Dashboard | Super Admin | Reserva FTIC{% endblock %}
+{% block title %}Mentoring Dashboard | Admin | Reserva FTIC{% endblock %}
 
 {% block stylesheets %}
 {{ parent() }}
@@ -70,7 +70,7 @@
 .sa-proof-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
 .sa-proof-img{width:72px;height:72px;border-radius:8px;border:1px solid #e5e7eb;object-fit:cover;cursor:pointer;}
 .sa-proof-pdf{width:72px;height:72px;border-radius:8px;border:1px solid #e5e7eb;background:#f3f4f6;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#6b7280;font-weight:600;text-decoration:none;gap:4px;}
-/* Create Mentor modal */
+/* Create Mentor modal - hidden by default for admin */
 .sa-modal-overlay{display:none !important;position:fixed;top:90px;left:0;right:0;bottom:0;z-index:9100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:0;}
 .sa-modal-overlay.open{display:flex !important;}
 .sa-modal-backdrop{position:fixed;top:90px;left:0;right:0;bottom:0;background:rgba(255,255,255,0.08);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);z-index:0;}
@@ -95,6 +95,9 @@
 .sa-modal-close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer;line-height:1;}
 @media(max-width:900px){.sa-dashboard{grid-template-columns:210px 1fr;}}
 @media(max-width:600px){.sa-dashboard{grid-template-columns:1fr;}.sa-left{height:auto;max-height:280px;}}
+/* Read-only notice for admin */
+.admin-readonly-notice{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12.5px;color:#166534;display:flex;align-items:center;gap:8px;}
+.admin-readonly-notice svg{flex-shrink:0;}
 </style>
 {% endblock %}
 
@@ -106,17 +109,26 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="saSearch" placeholder="Search by name…" oninput="saFilterList()">
     </div>
+    {# Only Super Admin can create mentors #}
     {% if is_super_admin %}
     <button class="sa-create-btn" onclick="openCreateMentor()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Create Mentor
     </button>
     {% endif %}
-    <a href="{{ path('mentoring_mentors_list') }}" class="sa-mentors-btn">
+    <a href="{{ path('admin_role_mentors_list') }}" class="sa-mentors-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         Mentors
     </a>
 </div>
+
+{# ── Admin Read-Only Notice ── #}
+{% if not is_super_admin %}
+<div class="admin-readonly-notice">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
+    <span><strong>View-Only Mode:</strong> As an Admin, you can view mentors, requests, and applications but cannot create, edit, or delete mentors. Contact a Super Admin for mentor management.</span>
+</div>
+{% endif %}
 
 {# ── 2-col dashboard ── #}
 <div class="sa-dashboard">
@@ -306,8 +318,8 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
                 Student selected: <strong>{{ req.mentorProfile.displayName }}</strong> ({{ req.mentorProfile.specialization }})
             </div>
-            <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
-                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+            <form method="post" data-ajax="true" action="{{ path('admin_role_mentorship_assign', {'id': req.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('mentorship_assign_'~req.id) }}">
                 <input type="hidden" name="mentor_name" value="{{ req.mentorProfile.displayName }}">
                 <input type="hidden" name="expertise" value="{{ req.mentorProfile.specialization }}">
                 <input type="hidden" name="available_dates" value="{{ req.availableDates }}">
@@ -336,8 +348,8 @@
                 </button></div>
             </form>
             {% else %}
-            <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
-                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+            <form method="post" data-ajax="true" action="{{ path('admin_role_mentorship_assign', {'id': req.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('mentorship_assign_'~req.id) }}">
                 <div class="sa-grid2">
                     <div class="sa-assign-field">
                         <label style="display:flex;align-items:center;justify-content:space-between;">Mentor
@@ -453,7 +465,8 @@
                 {% endfor %}
             </div>
             {% endif %}
-            {% if app.status in ['Pending','Pending Review'] %}
+            {# Admin can view applications but not approve/reject - only Super Admin can #}
+            {% if is_super_admin and app.status in ['Pending','Pending Review'] %}
             <form method="post" action="{{ path('mentoring_review_application', {'id': app.id, 'decision': 'approve'}) }}" id="approve-form-{{ app.id }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('review_mentor_application_'~app.id) }}">
                 <div class="sa-arow" style="margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6;align-items:flex-end;gap:12px;flex-wrap:wrap;">
@@ -477,6 +490,11 @@
                 {% if app.validUntil %}<span style="font-size:11.5px;color:#6b7280;">Valid until {{ app.validUntil|date('M d, Y') }}</span>{% endif %}
                 {% if app.adminNote %}<span style="font-size:11.5px;color:#9ca3af;font-style:italic;">Note: {{ app.adminNote }}</span>{% endif %}
             </div>
+            {% if not is_super_admin and app.status in ['Pending','Pending Review'] %}
+            <div style="margin-top:12px;padding:10px 14px;background:#fef9c3;border-radius:8px;font-size:12px;color:#854d0e;">
+                <strong>Note:</strong> Only Super Admin can approve or reject mentor applications.
+            </div>
+            {% endif %}
             {% endif %}
         </div>
         {% endfor %}

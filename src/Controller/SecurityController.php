@@ -43,13 +43,30 @@ public function register(Request $request, EntityManagerInterface $entityManager
             return $this->redirectToRoute('app_dashboard');
         }
 
+        $session = $request->getSession();
+
+        // Ensure session is started and CSRF tokens exist (needed for fresh sessions/email links)
+        // Only do this on GET requests to avoid invalidating tokens when forms are submitted
+        if ($request->isMethod('GET')) {
+            if (!$session->isStarted()) {
+                $session->start();
+            }
+            $csrfTokenManager->refreshToken('register');
+            $csrfTokenManager->refreshToken('verify_registration');
+            $csrfTokenManager->refreshToken('resend_verification');
+        }
+
         $errors = [];
         $data = [
             'firstName' => '',
             'middleName' => '',
             'lastName' => '',
-            'email' => '',
+            'email' => trim($request->query->get('email', '')),
         ];
+
+        // Check if coming from email verification link
+        $showVerifyModal = $request->query->get('verify') === '1';
+        $preFilledCode = trim($request->query->get('code', ''));
 
         if ($request->isMethod('POST')) {
             $data = [
@@ -181,6 +198,8 @@ public function register(Request $request, EntityManagerInterface $entityManager
         return $this->render('security/register.html.twig', [
             'errors' => $errors,
             'data' => $data,
+            'show_verify_modal' => $showVerifyModal,
+            'prefilled_code' => $preFilledCode,
         ]);
     }
 
@@ -207,6 +226,15 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
         if (!$pendingData) {
             $errors[] = 'No pending registration found. Please start registration first.';
+        }
+
+        // Ensure session is started and CSRF token exists (needed for fresh sessions/email links)
+        // Only do this on GET requests to avoid invalidating tokens when forms are submitted
+        if ($request->isMethod('GET')) {
+            if (!$session->isStarted()) {
+                $session->start();
+            }
+            $csrfTokenManager->refreshToken('verify_registration');
         }
 
         if ($request->isMethod('POST')) {

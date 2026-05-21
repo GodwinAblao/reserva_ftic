@@ -453,18 +453,12 @@ class AdminController extends AbstractController
     #[Route('/mentorship-coordination', name: 'admin_mentorship_coordination', methods: ['GET'])]
     public function mentorshipCoordination(EntityManagerInterface $em): Response
     {
-        if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
-            return $this->redirectToRoute('admin_role_mentorship_coordination');
+        // Redirect Super Admin to the full-featured mentoring interface
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('mentoring_superadmin_requests');
         }
-        return $this->render('admin/mentorship_coordination.html.twig', [
-            'applications' => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
-            'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
-            'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
-            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
-            'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
-            'statusCounts' => $this->mentoringStatusCounts($em),
-            'topExpertise' => $this->topExpertise($em),
-        ]);
+        // Regular Admins are redirected to the Admin role controller
+        return $this->redirectToRoute('admin_role_mentorship_coordination');
     }
 
     #[Route('/reports', name: 'admin_reports', methods: ['GET'])]

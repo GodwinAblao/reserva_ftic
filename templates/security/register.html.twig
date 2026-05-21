@@ -572,6 +572,22 @@
                 }, 280);
             });
         });
+
+        // Auto-open verification modal when coming from email link
+        {% if show_verify_modal %}
+        (function() {
+            const email = {{ data.email|json_encode|raw }};
+            const code = {{ prefilled_code|json_encode|raw }};
+            if (email) {
+                document.getElementById('verifyRegistrationEmail').value = email;
+                document.getElementById('resendVerificationEmail').value = email;
+            }
+            if (code) {
+                document.getElementById('verifyRegistrationCode').value = code;
+            }
+            showVerifyRegistrationModal(email);
+        })();
+        {% endif %}
     </script>
 
     <div id="pageTransitionOverlay" class="page-transition-overlay" style="display: none;" aria-hidden="true">

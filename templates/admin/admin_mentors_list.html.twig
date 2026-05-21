@@ -1,5 +1,5 @@
 {% extends 'layouts/app.html.twig' %}
-{% block title %}Mentors | Reserva FTIC{% endblock %}
+{% block title %}Mentors | Admin | Reserva FTIC{% endblock %}
 {% block stylesheets %}{{ parent() }}
 <link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
 <style>
@@ -30,9 +30,6 @@
 .ml-meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .ml-meta-item label { font-size:10px; color:#9ca3af; font-weight:600; display:block; margin-bottom:2px; }
 .ml-meta-item p { font-size:12px; font-weight:600; color:#374151; margin:0; }
-.ml-actions { display:flex; gap:8px; margin-top:2px; }
-.ml-edit-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:8px; background:#f9fafb; color:#374151; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; transition:background .15s; }
-.ml-edit-btn:hover { background:#f3f4f6; }
 .ml-pts { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:#0D9B00; }
 
 /* empty state */
@@ -41,14 +38,24 @@
 
 /* no-result message */
 #mlNoResult { display:none; text-align:center; padding:40px; color:#9ca3af; font-size:13px; }
+
+/* read-only notice */
+.admin-readonly-notice { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:12.5px; color:#166534; display:flex; align-items:center; gap:8px; }
+.admin-readonly-notice svg { flex-shrink:0; }
 </style>
 {% endblock %}
 
 {% block content %}
+{# Read-only notice for admin #}
+<div class="admin-readonly-notice">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
+    <span><strong>View-Only Mode:</strong> As an Admin, you can view mentors but cannot edit or delete them. Contact a Super Admin for mentor management.</span>
+</div>
+
 <div class="ml-page">
 
     <div class="ml-toolbar">
-        <a href="{{ path('mentoring_superadmin_requests') }}" class="ml-back">
+        <a href="{{ path('admin_role_mentorship_coordination') }}" class="ml-back">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             Back
         </a>
@@ -72,7 +79,7 @@
     {% if mentors is empty %}
     <div class="ml-empty">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        <div>No mentors found. Create one from the dashboard.</div>
+        <div>No mentors found.</div>
     </div>
     {% else %}
     <div id="mlNoResult">No mentors match your search.</div>
@@ -116,112 +123,14 @@
             {% if mentor.bio %}
             <div style="font-size:11.5px;color:#6b7280;line-height:1.5;background:#f9fafb;border-radius:8px;padding:8px 11px;">{{ mentor.bio|slice(0,120) }}{% if mentor.bio|length > 120 %}…{% endif %}</div>
             {% endif %}
-            {% if is_super_admin %}
-            <div class="ml-actions">
-                <button type="button" class="ml-edit-btn" onclick="mlOpenEdit('{{ path('mentoring_edit_mentor', {'id': mentor.id}) }}', {{ mentor.id }})">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Edit
-                </button>
-                <form method="post" action="{{ path('mentoring_delete_mentor', {'id': mentor.id}) }}" onsubmit="return confirm('Delete {{ mentor.displayName }}?')" style="flex:1;display:flex;">
-                    <input type="hidden" name="_token" value="{{ csrf_token('delete_mentor_' ~ mentor.id) }}">
-                    <button type="submit" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#fff;color:#ef4444;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        Delete
-                    </button>
-                </form>
-            </div>
-            {% endif %}
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
 </div>
-{# ── Edit Mentor Modal - Only for Super Admin ── #}
-{% if is_super_admin %}
-<div id="mlEditModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9200;align-items:center;justify-content:center;overflow-y:auto;padding:24px 16px;">
-    <div id="mlEditBackdrop" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);z-index:0;" onclick="mlCloseEdit()"></div>
-    <div style="position:relative;z-index:1;background:#fff;border-radius:16px;padding:32px 36px 28px;width:100%;max-width:620px;margin:auto;box-shadow:0 24px 64px rgba(0,0,0,.18);">
-        <button onclick="mlCloseEdit()" style="position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer;line-height:1;">×</button>
-        <h3 id="mlEditTitle" style="font-size:17px;font-weight:700;color:#111827;margin:0 0 22px;">Edit Mentor</h3>
-        <div id="mlEditBody">
-            <div style="padding:40px;text-align:center;color:#9ca3af;font-size:13px;">Loading…</div>
-        </div>
-    </div>
-</div>
-{% endif %}{# end is_super_admin check for modal #}
 
 <script>
-{% if is_super_admin %}
-function mlOpenEdit(url, id) {
-    var modal = document.getElementById('mlEditModal');
-    var body  = document.getElementById('mlEditBody');
-    modal.style.display = 'flex';
-    body.innerHTML = '<div style="padding:40px;text-align:center;color:#9ca3af;font-size:13px;">Loading…</div>';
-
-    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(function(r){ return r.ok ? r.text() : Promise.reject(r.status); })
-        .then(function(html) {
-            /* Parse the returned full page and extract form fields */
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            var form = doc.querySelector('form[action*="/edit"]') || doc.querySelector('form');
-            if (!form) { body.innerHTML = '<div style="padding:20px;color:#ef4444;">Could not load edit form.</div>'; return; }
-
-            /* Restyle form for modal context */
-            form.style.cssText = '';
-            /* Replace any btn-primary / btn-secondary styling */
-            form.querySelectorAll('.btn-primary').forEach(function(b){ b.style.cssText='padding:10px 28px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;'; });
-            form.querySelectorAll('.btn-secondary').forEach(function(b){ b.style.display='none'; });
-            form.querySelectorAll('.form-input').forEach(function(i){ i.style.cssText='width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;background:#fff;box-sizing:border-box;font-family:inherit;'; });
-            form.querySelectorAll('.form-group label').forEach(function(l){ l.style.cssText='display:block;margin-bottom:5px;font-size:11px;font-weight:600;color:#6b7280;'; });
-            form.querySelectorAll('.form-group').forEach(function(g){ g.style.marginBottom='14px'; });
-            /* Remove user-info read-only section to keep modal clean */
-            form.querySelectorAll('.user-info').forEach(function(u){ u.closest('.form-group') && (u.closest('.form-group').style.display='none'); });
-
-            body.innerHTML = '';
-            body.appendChild(form);
-
-            /* Intercept submit → AJAX */
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                var btn = form.querySelector('button[type="submit"]');
-                var orig = btn ? btn.innerHTML : '';
-                if (btn) { btn.disabled = true; btn.innerHTML = 'Saving…'; }
-                fetch(form.action, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: new FormData(form)
-                })
-                .then(function(r) {
-                    /* Controller redirects on success — treat any 2xx/3xx as success */
-                    if (r.ok || r.redirected) { mlCloseEdit(); window.location.reload(); }
-                    else { throw new Error(); }
-                })
-                .catch(function() {
-                    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
-                    mlToast('Could not save. Please try again.', false);
-                });
-            });
-        })
-        .catch(function(err) {
-            body.innerHTML = '<div style="padding:20px;color:#ef4444;">Failed to load (' + err + '). <a href="' + url + '" style="color:#0D9B00;">Open in full page</a></div>';
-        });
-}
-function mlCloseEdit() {
-    document.getElementById('mlEditModal').style.display = 'none';
-}
-document.addEventListener('keydown', function(e){ if (e.key === 'Escape') mlCloseEdit(); });
-{% endif %}
-function mlToast(msg, ok) {
-    var n = document.createElement('div');
-    n.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
-    n.style.background = ok ? '#d1fae5' : '#fee2e2';
-    n.style.color = ok ? '#065f46' : '#991b1b';
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(function(){ n.style.opacity = '0'; setTimeout(function(){ n.remove(); }, 300); }, 3200);
-}
-
 function mlFilter() {
     var q    = document.getElementById('mlSearch').value.toLowerCase();
     var spec = document.getElementById('mlSpecFilter').value.toLowerCase();

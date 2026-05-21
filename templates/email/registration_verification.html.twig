@@ -89,7 +89,7 @@
                 <p>Welcome to Reserva FTIC! Use the code below to verify your account and complete registration.</p>
                 <div class="verification-code">{{ verificationCode }}</div>
                 <p>Enter this code on the verification page to complete your account setup.</p>
-                <a class="button" href="{{ url('app_verify_registration') }}">Verify My Account</a>
+                <a class="button" href="{{ url('app_register', {'verify': '1', 'email': user ? user.email : null, 'code': verificationCode}) }}">Verify My Account</a>
                 <p class="small">If you did not request this email, you can safely ignore it.</p>
             </div>
             <div class="footer">

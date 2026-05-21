@@ -89,6 +89,10 @@
                                             <span class="info-label">Details</span>
                                             <span class="info-value">{{ request.departmentCourse }} - {{ request.preferredExpertise }}</span>
                                         </div>
+                                        <div class="info-item wide">
+                                            <span class="info-label">Preferred Schedule</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates : 'Not specified' }} {{ request.preferredSchedule ? '(' ~ request.preferredSchedule ~ ')' : '' }}</span>
+                                        </div>
                                         {% endif %}
                                     </div>
                                     <div class="card-info-footer">
@@ -447,9 +451,28 @@
                     </div>
                     <div class="form-grid form-grid-2">
                         <div class="form-group">
-                            <label for="assistance_schedule_start">Preferred Schedule — Start Time <span style="color:#c00">*</span></label>
+                            <label for="assistance_available_dates">Preferred Day(s) <span style="color:#c00">*</span></label>
+                            <select id="assistance_available_dates" class="form-input" name="available_dates" required>
+                                <option value="">Select day(s)...</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Monday | M-W-TH">Monday | M-W-TH</option>
+                                <option value="Tuesday | T-TH">Tuesday | T-TH</option>
+                                <option value="Wednesday | M-W">Wednesday | M-W</option>
+                                <option value="Thursday | T-TH-S">Thursday | T-TH-S</option>
+                                <option value="Friday | M-F">Friday | M-F</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="assistance_schedule_start">Preferred Time — Start <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="21:00" required>
                         </div>
+                    </div>
+                    <div class="form-grid form-grid-2">
                         <div class="form-group">
                             <label for="assistance_schedule_end">End Time <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="21:00" required>

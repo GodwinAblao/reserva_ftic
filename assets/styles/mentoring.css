@@ -2558,10 +2558,7 @@
   padding-top: 28px;
 }
 
-.mentoring-side-column > .reserve-action-card,
-.mentoring-side-column > .mentoring-side-card:not(#preferredSpecializationsPanel) {
-  display: none;
-}
+/* Sidebar cards are visible by default */
 
 .mentor-search-filters {
   margin: 0 0 26px;

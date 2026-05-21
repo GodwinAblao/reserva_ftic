@@ -585,14 +585,34 @@ class AdminRoleController extends AbstractController
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
     public function mentorshipCoordination(EntityManagerInterface $em): Response
     {
-        return $this->render('admin/mentorship_coordination.html.twig', [
+        // Redirect Super Admin to the full-featured Super Admin interface
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('mentoring_superadmin_requests');
+        }
+
+        return $this->render('admin/admin_mentoring.html.twig', [
             'applications' => $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
             'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
+            'users' => $em->getRepository(User::class)->findAll(),
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
+            'is_super_admin' => false,
+        ]);
+    }
+
+    #[Route('/mentors', name: 'admin_role_mentors_list', methods: ['GET'])]
+    public function adminMentorsList(EntityManagerInterface $em): Response
+    {
+        // Redirect Super Admin to the full-featured Super Admin mentors list
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->redirectToRoute('mentoring_mentors_list');
+        }
+
+        return $this->render('admin/admin_mentors_list.html.twig', [
+            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
         ]);
     }
 
