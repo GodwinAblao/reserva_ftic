@@ -29,9 +29,9 @@
 {% elseif route starts with 'mentoring_' %}
     {% set admin_page_name = 'Mentoring Management' %}
 {% elseif route starts with 'research_' %}
-    {% set admin_page_name = 'Research Management' %}
+    {% set admin_page_name = 'Innovation Hub' %}
 {% elseif route starts with 'analytics_' or route == 'admin_role_reports' %}
-    {% set admin_page_name = 'Analytics' %}
+    {% set admin_page_name = 'Managerial Function' %}
 {% elseif route starts with 'admin_calendar' or route starts with 'admin_role_calendar' %}
     {% set admin_page_name = 'Calendar' %}
 {% endif %}
@@ -180,19 +180,18 @@
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V7.5L12 3l9 4.5V20h-4v-7H7v7H3Zm6-2h6v-5H9v5Zm2-7h2V9h-2v2Z" fill="currentColor"/></svg></span>
                     <span>Facilities</span>
                 </a>
-                <span class="nav-section-label">Mentoring</span>
+                <a class="nav-link {{ route starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 6.5V9l10-4.5L22 9V6.5L12 2Zm-7 9.2 7 3.15 7-3.15V18l-7 3-7-3V11.2Zm3 2.25v1.85l4 1.7 4-1.7v-1.85l-4 1.8-4-1.8Z" fill="currentColor"/></svg></span>
+                    <span>Innovation Hub</span>
+                </a>
                 <a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_superadmin_requests') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
                     <span>Mentoring</span>
                 </a>
                 <span class="nav-section-label">Reports and Analytics</span>
-                <a class="nav-link {{ route starts with 'research_' ? 'active' : '' }}" href="{{ path('research_index') }}">
-                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 6.5V9l10-4.5L22 9V6.5L12 2Zm-7 9.2 7 3.15 7-3.15V18l-7 3-7-3V11.2Zm3 2.25v1.85l4 1.7 4-1.7v-1.85l-4 1.8-4-1.8Z" fill="currentColor"/></svg></span>
-                    <span>Research</span>
-                </a>
                 <a class="nav-link {{ route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg></span>
-                    <span>Analytics</span>
+                    <span>Managerial Function</span>
                 </a>
                 {% elseif is_granted('ROLE_ADMIN') %}
                 <span class="nav-section-label">General</span>
