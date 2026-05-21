@@ -452,6 +452,7 @@
         min-height: auto;
         max-height: none;
         grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
     }
 
     .dashboard-page .dashboard-stats-grid {
@@ -489,6 +490,9 @@
 
     .dashboard-page .dashboard-side-column {
         gap: 14px;
+        width: 100%;
+        padding: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -520,6 +524,9 @@
     .dashboard-page .dashboard-articles-grid,
     .dashboard-page .dashboard-side-column {
         grid-template-columns: 1fr;
+        width: 100%;
+        padding: 12px;
+        gap: 12px;
     }
 
     .dashboard-page .dashboard-stat-card {
@@ -537,6 +544,20 @@
     .dashboard-page .dashboard-info-card p {
         max-width: none;
     }
+
+    .dashboard-page .dashboard-side-card {
+        padding: 12px;
+    }
+
+    .dashboard-page .dashboard-side-column .dashboard-side-card-head h3 {
+        font-size: 12px;
+    }
+
+    .dashboard-page .dashboard-side-column .dashboard-info-card p {
+        margin: 0;
+        padding-top: 12px;
+        font-size: 10.5px;
+    }
 }
 
 @media (max-width: 420px) {
@@ -550,5 +571,10 @@
 
     .dashboard-page .facility-details {
         padding: 16px;
+    }
+
+    .dashboard-page .dashboard-topbar {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

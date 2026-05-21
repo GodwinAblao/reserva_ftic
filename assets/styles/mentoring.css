@@ -2607,7 +2607,15 @@
   }
 
   .mentoring-side-column {
+    width: 100%;
+    min-width: 0;
     padding-top: 0;
+  }
+
+  .mentoring-side-column .reservations-side-card,
+  .mentoring-side-column .mentoring-info-card {
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -2624,6 +2632,43 @@
 
   .filter-tabs-container {
     overflow-x: auto;
+  }
+
+  .mentoring-page-layout {
+    gap: 16px;
+  }
+
+  .mentoring-side-column {
+    padding: 0;
+  }
+
+  .mentoring-side-column .reservations-side-card,
+  .mentoring-side-column .mentoring-info-card {
+    padding: 12px;
+    min-height: auto;
+  }
+
+  .mentoring-side-column .reservations-info-card p {
+    margin: 18px 0 0;
+    padding-top: 12px;
+    font-size: 10.5px;
+  }
+
+  .mentoring-side-column .mentor-item,
+  .mentoring-side-column .quick-stat-item.specialization-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .mentoring-side-column .mentor-points {
+    margin-left: 0;
+    white-space: normal;
+  }
+
+  .mentoring-side-column .mentor-name,
+  .mentoring-side-column .mentor-program,
+  .mentoring-side-column .quick-stat-value {
+    white-space: normal;
   }
 }
 
@@ -2877,6 +2922,24 @@
   #mentorApplicationModal .mentor-form-hint,
   #mentorApplicationModal .mentor-form-hint-secondary {
     grid-column: 1;
+  }
+
+  .mentoring-side-column .reservations-side-card-head h3 {
+    font-size: 13px;
+  }
+
+  .mentoring-side-column .mentor-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mentoring-side-column .mentor-rank-icon {
+    width: 16px;
+    font-size: 15px;
+  }
+
+  .mentoring-side-column .mentor-points strong {
+    font-size: 15px;
   }
 }
 

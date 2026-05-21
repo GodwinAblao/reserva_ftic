@@ -129,8 +129,80 @@
     }
 
     @media (max-width: 640px) {
+        .facility-top-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .search-bar {
+            max-width: none;
+        }
+
+        .facility-count {
+            text-align: center;
+        }
+
         .facilities-grid {
             grid-template-columns: 1fr;
+        }
+
+        .facility-card {
+            height: auto;
+            min-height: 0;
+        }
+
+        .facility-image-holder {
+            height: 180px;
+            flex-basis: 180px;
+        }
+
+        .facility-details h3 {
+            font-size: 24px;
+        }
+
+        .btn-view,
+        .btn-hover-view {
+            width: 100%;
+            max-width: none;
+            justify-content: center;
+        }
+
+        .btn-view {
+            padding: 12px 16px;
+            font-size: 13px;
+            min-width: 0;
+        }
+
+        .btn-hover-view {
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .facility-details {
+            padding: 10px 12px 12px;
+            gap: 6px;
+        }
+
+        .facility-details h3 {
+            font-size: 20px;
+        }
+
+        .capacity,
+        .description {
+            font-size: 11px;
+        }
+
+        .facility-image-holder {
+            height: 160px;
+            flex-basis: 160px;
+        }
+
+        .hover-card-content {
+            padding: 12px;
         }
     }
 
@@ -211,7 +283,7 @@
 
     .capacity {
         margin: -6px 0 0 0;
-        font-size: 10px;
+        font-size: 13px;
         color: #8f8f8f;
         line-height: 1.1;
     }
@@ -222,7 +294,7 @@
 
     .description {
         margin: 4px 0 0;
-        font-size: 10px;
+        font-size: 12px;
         color: #848484;
         line-height: 1.15;
         overflow: hidden;
@@ -238,21 +310,23 @@
         justify-content: center;
         margin-top: auto;
         margin-left: auto;
-        padding: 0 14px;
-        height: 18px;
+        padding: 10px 18px;
+        height: auto;
         background: var(--feu-green);
         color: white;
         text-decoration: none;
-        border-radius: 3px;
-        font-size: 9px;
-        font-weight: 600;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
         line-height: 1;
-        transition: all 0.2s;
+        transition: all 0.18s ease;
+        min-width: 92px;
     }
 
     .btn-view:hover {
         background: var(--feu-green-dark);
-        box-shadow: 0 4px 12px rgba(13, 155, 0, 0.3);
+        box-shadow: 0 6px 18px rgba(13, 155, 0, 0.28);
+        transform: translateY(-1px);
     }
 
     .no-facilities {
@@ -367,19 +441,20 @@
 
     .btn-hover-view {
         display: inline-block;
-        padding: 8px 20px;
+        padding: 12px 24px;
         background: var(--feu-green);
         color: white;
         text-decoration: none;
-        border-radius: 6px;
-        font-size: 13px;
-        font-weight: 600;
-        transition: all 0.3s;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 700;
+        transition: all 0.22s ease;
     }
 
     .btn-hover-view:hover {
         background: var(--feu-green-dark);
-        box-shadow: 0 4px 12px rgba(13, 155, 0, 0.3);
+        box-shadow: 0 6px 18px rgba(13, 155, 0, 0.3);
+        transform: translateY(-1px);
     }
 .facility-preview-overlay {
     position: fixed;
@@ -451,8 +526,8 @@
 .facility-preview-body .info-card { background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow:none !important; }
 .facility-preview-body .capacity-number { font-size:34px; font-weight:700; color:var(--feu-green); }
 .facility-preview-body .action-section { background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow:none !important; display:flex; justify-content:center; }
-.facility-preview-body .btn-reserve { background: var(--feu-green); color: white; width:auto; font-size:15px; padding:10px 28px; border-radius:10px; display:inline-flex; justify-content:center; }
-.facility-preview-body .btn-reserve:hover { background: var(--feu-green-dark); }
+.facility-preview-body .btn-reserve { background: var(--feu-green); color: white; width: auto; font-size:16px; padding:12px 36px; border-radius:12px; display:inline-flex; justify-content:center; font-weight:700; }
+.facility-preview-body .btn-reserve:hover { background: var(--feu-green-dark); box-shadow: 0 6px 18px rgba(13,155,0,0.28); transform: translateY(-1px); }
 .facility-preview-body { position: relative; }
 
 </style>
