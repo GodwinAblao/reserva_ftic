@@ -414,26 +414,6 @@
                 {% endif %}
             </section>
 
-            <!-- Quick Stats -->
-            <section class="reservations-side-card reservations-info-card">
-                <div class="reservations-side-card-head">
-                    <h3>Quick Overview</h3>
-                </div>
-                <div class="quick-stats-list">
-                    <div class="quick-stat-item">
-                        <span class="quick-stat-label">Total</span>
-                        <span class="quick-stat-value">{{ reservations['Approved']|length + reservations['Pending']|length + reservations['Rejected']|length + reservations['Cancelled']|length }}</span>
-                    </div>
-                    <div class="quick-stat-item">
-                        <span class="quick-stat-label">Approved</span>
-                        <span class="quick-stat-value stat-green">{{ reservations['Approved']|length }}</span>
-                    </div>
-                    <div class="quick-stat-item">
-                        <span class="quick-stat-label">Pending</span>
-                        <span class="quick-stat-value stat-yellow">{{ reservations['Pending']|length }}</span>
-                    </div>
-                </div>
-            </section>
         </aside>
     </div><!-- End Layout Grid -->
 

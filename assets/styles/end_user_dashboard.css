@@ -159,6 +159,49 @@
     font-weight: 700;
 }
 
+/* Right-side summary cards — copy of mentoring summary design */
+.dashboard-side-card {
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.dashboard-side-column {
+    width: 260px;
+    flex-shrink: 0;
+    padding: 0 8px;
+}
+
+.dashboard-side-column .dashboard-side-card {
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    box-shadow: none;
+}
+
+.dashboard-side-column .dashboard-side-card-head h3 {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #319000;
+    margin: 0;
+    letter-spacing: 0;
+}
+
+.dashboard-side-column .dashboard-info-card {
+    min-height: 112px;
+}
+
+.dashboard-side-column .dashboard-info-card p {
+    margin: 42px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid #b7e0c3;
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
 /* Facility overview cards */
 .dashboard-page .facilities-grid {
     display: grid;
@@ -324,7 +367,6 @@
     max-height: calc(100vh - 140px);
     margin: 12px 12px 12px 0;
     padding: 17px 12px 14px;
-    background: #f9fbf8;
     overflow-y: auto;
 }
 
@@ -352,10 +394,6 @@
     transition: box-shadow 0.2s ease;
 }
 
-.dashboard-page .dashboard-info-card:hover p {
-    box-shadow: 0 0 18px rgba(13, 155, 0, 0.28);
-    border-color: rgba(13, 155, 0, 0.18);
-}
 
 .dashboard-page .dashboard-info-card p {
     margin: 0;

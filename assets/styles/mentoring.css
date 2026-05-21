@@ -1488,8 +1488,6 @@
 
 /* Super Admin style card design */
 .reservations-side-card {
-    background: white;
-    border: 1px solid #e5e7eb;
     border-radius: 14px;
     padding: 14px;
     margin-bottom: 12px;
@@ -1521,7 +1519,7 @@
 }
 
 .reservations-side-column .reservations-side-card-head h3 {
-    font-size: 12.5px;
+    font-size: 15px;
     font-weight: 700;
     color: #319000;
     margin: 0;
@@ -1533,11 +1531,11 @@
 }
 
 .reservations-side-column .reservations-info-card p {
-    margin: 42px 0 0;
-    padding-top: 14px;
+    margin: 20px 0 0;
+    padding-top: 10px;
     border-top: 1px solid #b7e0c3;
     color: #9ca3af;
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.4;
 }
 
