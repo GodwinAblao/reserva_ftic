@@ -1154,40 +1154,12 @@ $validUntil = $request->request->get('valid_until');
 
     private function ensureFacultyMentorProfiles(EntityManagerInterface $em): void
     {
-        $users = $em->getRepository(User::class)->findAll();
-        $changed = false;
-
-        foreach ($users as $user) {
-            if (!in_array('ROLE_FACULTY', $user->getRoles(), true)) {
-                continue;
-            }
-
-            if (!in_array('ROLE_MENTOR', $user->getRoles(), true)) {
-                $roles = $user->getRoles();
-                $roles[] = 'ROLE_MENTOR';
-                $user->setRoles(array_values(array_unique($roles)));
-                $changed = true;
-            }
-
-            $profile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
-            if ($profile) {
-                continue;
-            }
-
-            $name = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
-            $profile = (new MentorProfile())
-                ->setUser($user)
-                ->setDisplayName($name)
-                ->setSpecialization('Faculty Mentor')
-                ->setBio('Automatically added faculty mentor.');
-
-            $em->persist($profile);
-            $changed = true;
-        }
-
-        if ($changed) {
-            $em->flush();
-        }
+        // Previously this method automatically granted `ROLE_MENTOR` to all users
+        // with `ROLE_FACULTY` and created `MentorProfile` entries. Per the
+        // product decision, faculty must now apply through the same mentor
+        // application process as students and not be auto-enrolled. Keep this
+        // method as a no-op to preserve backward compatibility for callers.
+        return;
     }
 
     private function sendMentorAssistanceRequestEmail(MailerInterface $mailer, User $admin, MentorCustomRequest $mentorRequest, string $adminUrl): void

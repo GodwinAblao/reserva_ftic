@@ -83,9 +83,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         // Specific roles like ROLE_STUDENT or ROLE_FACULTY remain stored separately.
         $roles[] = 'ROLE_USER';
 
-        if (in_array('ROLE_FACULTY', $roles, true)) {
-            $roles[] = 'ROLE_MENTOR';
-        }
+        // Do not auto-grant ROLE_MENTOR for faculty here. Mentor status
+        // should be granted via the mentor application approval workflow
+        // to ensure faculty must apply and be reviewed before becoming mentors.
 
         return array_values(array_unique($roles));
     }

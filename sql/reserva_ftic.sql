@@ -499,18 +499,18 @@ VALUES
     NOW()
 );
 
-INSERT INTO `mentor_profile`
-(`user_id`, `display_name`, `specialization`, `bio`, `availability_day`, `engagement_points`, `created_at`)
-VALUES
-(
-    3,
-    'Faculty Tester',
-    'Faculty Mentor',
-    'Automatically added faculty mentor for testing.',
-    NULL,
-    0,
-    NOW()
-);
+-- INSERT INTO `mentor_profile`
+-- (`user_id`, `display_name`, `specialization`, `bio`, `availability_day`, `engagement_points`, `created_at`)
+-- VALUES
+-- (
+--     3,
+--     'Faculty Tester',
+--     'Faculty Mentor',
+--     'Automatically added faculty mentor for testing.',
+--     NULL,
+--     0,
+--     NOW()
+-- );
 
 INSERT INTO `doctrine_migration_versions`
 (`version`, `executed_at`, `execution_time`)
