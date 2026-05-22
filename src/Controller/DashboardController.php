@@ -81,13 +81,13 @@ class DashboardController extends AbstractController
 
         $facilities = $em->getRepository(Facility::class)->findBy(
             ['availableForReservation' => true],
-            ['id' => 'ASC'],
-            3
+            ['id' => 'ASC']
         );
 
-        $latestResearchContent = $em->getRepository(ResearchContent::class)->findOneBy(
+        $recentResearch = $em->getRepository(ResearchContent::class)->findBy(
             ['visibility' => 'Public'],
-            ['createdAt' => 'DESC']
+            ['createdAt' => 'DESC'],
+            4
         );
         
         $unreadCount = $em->getRepository(Notification::class)->createQueryBuilder('n')
@@ -117,7 +117,7 @@ class DashboardController extends AbstractController
             'unreadCount' => $unreadCount,
             'stats' => $stats,
             'facilities' => $facilities,
-            'latestResearchContent' => $latestResearchContent,
+            'recentResearch' => $recentResearch,
         ]);
     }
 }

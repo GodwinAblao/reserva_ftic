@@ -94,10 +94,11 @@
                     </a>
                 </div>
 
-                {# Facility overview: shows only the first three available facilities. #}
-                <section class="dashboard-section">
+                {# Facility overview: infinite auto-scroll carousel. #}
+                <section class="dashboard-section dashboard-facility-carousel-section">
                     <div class="dashboard-section-head">
                         <h3>Facilities</h3>
+                        <a href="{{ path('app_facility_index') }}" class="dfc-view-all">View all →</a>
                     </div>
 
                     {% if facilities is empty %}
@@ -105,68 +106,108 @@
                             <p>No facilities available at the moment.</p>
                         </div>
                     {% else %}
-                        <div class="facilities-grid dashboard-facilities-overview">
-                            {% for facility in facilities %}
-                                <div class="facility-card facility-feature-card">
-                                    <div class="facility-image-holder">
-                                        {% if facility.image %}
-                                            <img src="{{ facility.image }}" alt="{{ facility.name }}">
-                                        {% else %}
-                                            <div class="placeholder-image">
-                                                <span>{{ facility.name | first }}</span>
+                        <div class="dfc-viewport">
+                            <div class="dfc-track" id="dfcTrack">
+                                {% for facility in facilities %}
+                                    <div class="dfc-slide">
+                                        <div class="facility-feature-card">
+                                            <div class="facility-image-holder">
+                                                {% if facility.image %}
+                                                    <img src="{{ facility.image }}" alt="{{ facility.name }}" loading="lazy">
+                                                {% else %}
+                                                    <div class="placeholder-image">
+                                                        <span>{{ facility.name|first|upper }}</span>
+                                                    </div>
+                                                {% endif %}
                                             </div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="facility-details">
-                                        <h3>{{ facility.name }}</h3>
-                                        <div class="facility-meta-row">
-                                            <span class="facility-pill">{{ facility.capacity }} pax</span>
+                                            <div class="facility-details">
+                                                <h3>{{ facility.name }}</h3>
+                                                <div class="facility-meta-row">
+                                                    <span class="facility-pill">{{ facility.capacity }} pax</span>
+                                                </div>
+                                                {% if facility.description %}
+                                                    <p class="description">{{ facility.description }}</p>
+                                                {% endif %}
+                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view">Reserve now</a>
+                                            </div>
                                         </div>
-                                        <p class="capacity">
-                                            <strong>Capacity:</strong> {{ facility.capacity }} pax
-                                        </p>
-                                        {% if facility.description %}
-                                            <p class="description">{{ facility.description }}</p>
-                                        {% endif %}
-                                        <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
-                                            Reserve now
-                                        </a>
                                     </div>
-                                </div>
+                                {% endfor %}
+                                {# Duplicate set for seamless loop #}
+                                {% for facility in facilities %}
+                                    <div class="dfc-slide" aria-hidden="true">
+                                        <div class="facility-feature-card">
+                                            <div class="facility-image-holder">
+                                                {% if facility.image %}
+                                                    <img src="{{ facility.image }}" alt="{{ facility.name }}" loading="lazy">
+                                                {% else %}
+                                                    <div class="placeholder-image">
+                                                        <span>{{ facility.name|first|upper }}</span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="facility-details">
+                                                <h3>{{ facility.name }}</h3>
+                                                <div class="facility-meta-row">
+                                                    <span class="facility-pill">{{ facility.capacity }} pax</span>
+                                                </div>
+                                                {% if facility.description %}
+                                                    <p class="description">{{ facility.description }}</p>
+                                                {% endif %}
+                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view">Reserve now</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </section>
+
+                {# Research/articles overview: Innovation Hub card design. #}
+                <section class="dashboard-section">
+                    <div class="dashboard-section-head">
+                        <h3>Innovation Hub</h3>
+                        <a href="{{ path('research_index') }}" class="dfc-view-all">View all →</a>
+                    </div>
+
+                    {% if recentResearch is empty %}
+                        <div class="no-facilities">
+                            <p>No research, articles, or news available yet.</p>
+                        </div>
+                    {% else %}
+                        <div class="research-showcase-grid dashboard-research-grid">
+                            {% for item in recentResearch %}
+                                <article class="research-showcase-card {% if item.type == 'Research' %}document-card{% else %}media-card{% endif %}">
+                                    {% if item.type != 'Research' %}
+                                        <div class="research-card-media {% if item.type == 'News' %}video-media{% endif %}">
+                                            {% if item.type == 'News' and item.embeddedLink %}
+                                                {{ item.embeddedLink|raw }}
+                                                <span class="video-play-indicator">▶</span>
+                                            {% elseif item.filePath %}
+                                                <img src="{{ item.filePath }}" alt="{{ item.title }}">
+                                            {% else %}
+                                                <div class="research-card-placeholder">{{ item.title|first|upper }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="research-card-content">
+                                        <h3>{{ item.title }}</h3>
+                                        <span>{{ item.category ?: item.type }}</span>
+                                        {% if item.type == 'Research' %}
+                                            <strong>Abstract</strong>
+                                            <p>{{ item.abstract ?: 'No abstract provided.' }}</p>
+                                        {% elseif item.body %}
+                                            <p>{{ item.body }}</p>
+                                        {% endif %}
+                                        <div class="research-card-actions">
+                                            <a href="{{ path('research_show', {id: item.id}) }}" class="research-view-btn">View</a>
+                                        </div>
+                                    </div>
+                                </article>
                             {% endfor %}
                         </div>
                     {% endif %}
-                    <div class="dashboard-section-action">
-                        <a href="{{ path('app_facility_index') }}">View more</a>
-                    </div>
-                </section>
-
-                {# Research/articles overview: reserved for super admin posts. #}
-                <section class="dashboard-section">
-                    <div class="dashboard-section-head">
-                        <h3>Research/Articles</h3>
-                    </div>
-
-                    <div class="dashboard-cards-grid dashboard-articles-grid">
-                        {% if latestResearchContent %}
-                            <a href="{{ path('research_show', {id: latestResearchContent.id}) }}" class="dashboard-article-card">
-                                <div class="dashboard-article-image">
-                                    <span>{{ latestResearchContent.type }}</span>
-                                </div>
-                                <div class="dashboard-article-caption">
-                                    <strong>{{ latestResearchContent.title }}</strong>
-                                    <span>{{ latestResearchContent.summary ?: latestResearchContent.abstract ?: latestResearchContent.category }}</span>
-                                </div>
-                            </a>
-                        {% else %}
-                            <div class="no-facilities">
-                                <p>No research, articles, or news available yet.</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <div class="dashboard-section-action">
-                        <a href="{{ path('research_index') }}">View more</a>
-                    </div>
                 </section>
             </section>
 

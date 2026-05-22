@@ -16,6 +16,7 @@
             <div class="search-bar">
                 <select id="facilityFilter" name="facilityFilter" aria-label="Filter facilities">
                     <option value="">All rooms</option>
+                    <option value="3D Printing">3D Printing</option>
                     <option value="COE room">COE room</option>
                     <option value="CS room">CS room</option>
                     <option value="Discussion room">Discussion room</option>
@@ -115,6 +116,7 @@
             if (countEl) countEl.textContent = visible + ' facilities';
         }
         const mapping = {
+            '3D Printing': ['3d', '3d printing', 'printing', '3d print'],
             'COE room': ['coe', 'college of engineering', 'coeroom', 'coe '],
             'CS room': ['cs', 'computer science', 'csroom', 'cs '],
             'Discussion room': ['discussion', 'meeting', 'discussion room', 'discuss'],

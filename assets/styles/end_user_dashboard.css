@@ -249,8 +249,8 @@
 }
 
 .dashboard-page .facility-feature-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 24px 42px rgba(20, 28, 16, 0.28);
+    transform: none;
+    box-shadow: 0 18px 34px rgba(20, 28, 16, 0.2);
 }
 
 .dashboard-page .facility-feature-card::after {
@@ -549,4 +549,87 @@
         flex-direction: column;
         align-items: flex-start;
     }
+}
+
+/* ── Innovation Hub cards in dashboard ── */
+.dashboard-page .dashboard-research-grid {
+    grid-template-columns: repeat(2, minmax(0, 220px));
+    gap: 14px;
+    margin-bottom: 0;
+    padding-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+    .dashboard-page .dashboard-research-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Facility Carousel ── */
+.dashboard-facility-carousel-section .dashboard-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dfc-view-all {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--feu-green);
+    text-decoration: none;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+.dfc-view-all:hover { opacity: 1; }
+
+/* Clipping window — hides overflow on both sides */
+.dfc-viewport {
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+}
+
+/* Scrolling track — width is set dynamically to fit all slides */
+.dfc-track {
+    display: flex;
+    gap: 14px;
+    width: max-content;
+    animation: dfcScroll 32s linear infinite;
+    will-change: transform;
+}
+
+/* Pause on hover */
+.dfc-viewport:hover .dfc-track {
+    animation-play-state: paused;
+}
+
+/* Each card wrapper */
+.dfc-slide {
+    flex: 0 0 220px;
+}
+
+/* Reuse existing facility-feature-card but force full size within slide */
+.dfc-slide .facility-feature-card {
+    display: block;
+    width: 100%;
+    min-height: 280px;
+    text-decoration: none;
+}
+
+/* The animation scrolls exactly half the track width (the original set) */
+@keyframes dfcScroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 768px) {
+    .dfc-slide { flex: 0 0 180px; }
+    .dfc-slide .facility-feature-card { min-height: 240px; }
+    .dfc-track { animation-duration: 24s; }
+}
+
+@media (max-width: 480px) {
+    .dfc-slide { flex: 0 0 150px; }
+    .dfc-slide .facility-feature-card { min-height: 200px; }
+    .dfc-track { animation-duration: 20s; }
 }
