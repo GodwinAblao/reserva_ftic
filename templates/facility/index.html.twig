@@ -110,9 +110,22 @@
 <script>
 // Facility preview: prefetch previews to avoid click loading, inject close button inside card
 (() => {
-    const previewCache = new Map();
-    const overlay = document.getElementById('facilityPreviewOverlay');
-    const body = document.getElementById('facilityPreviewBody');
+    window.__facilityPreviewCache = window.__facilityPreviewCache || new Map();
+    const previewCache = window.__facilityPreviewCache;
+
+    function getOverlay() {
+        const overlays = document.querySelectorAll('#facilityPreviewOverlay');
+        if (overlays.length > 1) {
+            overlays.forEach((node, index) => {
+                if (index > 0) node.remove();
+            });
+        }
+        return document.getElementById('facilityPreviewOverlay');
+    }
+
+    function getBody() {
+        return document.getElementById('facilityPreviewBody');
+    }
 
     async function fetchPreview(url) {
         if (!url) return null;
@@ -184,95 +197,122 @@
     }
 
     // Listen to both DOMContentLoaded and turbo:load
-    document.addEventListener('DOMContentLoaded', () => {
-        prefetchPreviews();
-        initializeFacilityFilter();
-    });
+    if (!window.__facilityPreviewDomReadyBound) {
+        document.addEventListener('DOMContentLoaded', () => {
+            prefetchPreviews();
+            initializeFacilityFilter();
+        });
+        window.__facilityPreviewDomReadyBound = true;
+    }
 
-    document.addEventListener('turbo:load', () => {
-        prefetchPreviews();
-        initializeFacilityFilter();
-    });
+    if (!window.__facilityPreviewTurboLoadBound) {
+        document.addEventListener('turbo:load', () => {
+            prefetchPreviews();
+            initializeFacilityFilter();
+        });
+        window.__facilityPreviewTurboLoadBound = true;
+    }
 
     // Close overlay helper
     function closeOverlay() {
+        const overlay = getOverlay();
+        const body = getBody();
+        if (!overlay || !body) return;
         overlay.classList.remove('open');
         overlay.setAttribute('aria-hidden', 'true');
         body.innerHTML = '';
         document.body.style.overflow = '';
     }
 
-    // Close when clicking outside the card
-    if (!overlay.dataset.facilityCloseBound) {
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeOverlay();
-        });
-        overlay.dataset.facilityCloseBound = '1';
-    }
-
     // Close on Escape
-    if (!document.body.dataset.facilityEscapeBound) {
+    if (!window.__facilityPreviewEscapeBound) {
         document.addEventListener('keydown', (e) => {
+            const overlay = getOverlay();
+            if (!overlay) return;
             if (e.key === 'Escape' && overlay.classList.contains('open')) {
                 closeOverlay();
             }
         });
-        document.body.dataset.facilityEscapeBound = '1';
+        window.__facilityPreviewEscapeBound = true;
     }
 
     // Delegate click to open preview (uses prefetched content when available)
-    document.addEventListener('click', async (e) => {
-        const btn = e.target.closest('[data-preview-url]');
-        if (!btn) return;
-        e.preventDefault();
-        const url = btn.dataset.previewUrl;
-        if (!url) return;
+    if (!window.__facilityPreviewOpenBound) {
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-preview-url]');
+            if (!btn) return;
+            e.preventDefault();
+            const url = btn.dataset.previewUrl;
+            if (!url) return;
 
-        let html = previewCache.get(url) || null;
-        if (!html) html = await fetchPreview(url);
-        if (!html) return;
+            const overlay = getOverlay();
+            const body = getBody();
+            if (!overlay || !body) return;
 
-        if (overlay.parentElement !== document.body) {
-            document.body.appendChild(overlay);
-        }
-        body.innerHTML = html;
+            let html = previewCache.get(url) || null;
+            if (!html) html = await fetchPreview(url);
+            if (!html) return;
 
-        // Ensure close button inside the card
-        const card = body.querySelector('.facility-popup-card');
-        let closeBtn = body.querySelector('.facility-preview-close');
-        if (!closeBtn) {
-            closeBtn = document.createElement('button');
-            closeBtn.type = 'button';
-            closeBtn.className = 'facility-preview-close';
-            closeBtn.setAttribute('aria-label', 'Close preview');
-            closeBtn.innerHTML = '×';
-            if (card) card.appendChild(closeBtn);
-            else body.appendChild(closeBtn);
-        }
+            if (overlay.parentElement !== document.body) {
+                document.body.appendChild(overlay);
+            }
+            body.innerHTML = html;
 
-        // Thumbnail click handling
-        body.querySelectorAll('.thumbnail').forEach(t => {
-            t.addEventListener('click', function () {
-                const src = this.dataset.imgSrc;
-                const main = body.querySelector('#mainImage');
-                if (main && src) main.src = src;
-                body.querySelectorAll('.thumbnail').forEach(x => x.classList.remove('active'));
-                this.classList.add('active');
+            const cards = body.querySelectorAll('.facility-popup-card');
+            if (cards.length > 1) {
+                cards.forEach((node, index) => {
+                    if (index > 0) node.remove();
+                });
+            }
+
+            overlay.onclick = (event) => {
+                if (event.target === overlay) closeOverlay();
+            };
+
+            // Ensure exactly one close button inside the card
+            const card = body.querySelector('.facility-popup-card');
+            const closeButtons = body.querySelectorAll('.facility-preview-close');
+            if (closeButtons.length > 1) {
+                closeButtons.forEach((node, index) => {
+                    if (index > 0) node.remove();
+                });
+            }
+            let closeBtn = body.querySelector('.facility-preview-close');
+            if (!closeBtn) {
+                closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'facility-preview-close';
+                closeBtn.setAttribute('aria-label', 'Close preview');
+                closeBtn.innerHTML = '×';
+                if (card) card.appendChild(closeBtn);
+                else body.appendChild(closeBtn);
+            }
+
+            // Thumbnail click handling
+            body.querySelectorAll('.thumbnail').forEach(t => {
+                t.addEventListener('click', function () {
+                    const src = this.dataset.imgSrc;
+                    const main = body.querySelector('#mainImage');
+                    if (main && src) main.src = src;
+                    body.querySelectorAll('.thumbnail').forEach(x => x.classList.remove('active'));
+                    this.classList.add('active');
+                });
             });
+
+            // One click always closes popup
+            closeBtn.onclick = (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                closeOverlay();
+            };
+
+            overlay.classList.add('open');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            closeBtn.focus();
         });
-
-        // Wire close directly so one click always closes the popup.
-        closeBtn.onclick = (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            closeOverlay();
-        };
-
-        overlay.classList.add('open');
-        overlay.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-        closeBtn.focus();
-    });
+        window.__facilityPreviewOpenBound = true;
+    }
 
     // existing schedule revision polling (kept intact)
     const revisionUrl = '{{ path('facility_schedule_revision') }}';

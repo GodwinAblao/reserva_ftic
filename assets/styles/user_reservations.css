@@ -20,6 +20,13 @@
     width: 100%;
 }
 
+@media (min-width: 1024px) {
+    .reservations-main-column {
+        padding-right: 10px;
+        padding-left: 50px;
+    }
+}
+
 /* Tablet & Up - Two Column Layout (768px+) */
 @media (min-width: 768px) {
     .reservations-page-layout {
@@ -255,10 +262,6 @@
     .reservations-side-column .reservations-side-card {
         margin-bottom: 0;
     }
-
-    .dashboard-stats-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
 }
 
 @media (max-width: 768px) {
@@ -280,10 +283,6 @@
         margin: 0;
     }
 
-    .dashboard-stats-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .card-info-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -293,100 +292,50 @@
     }
 }
 
-/* Dashboard Style Stats Grid - Mobile First */
+/* Dashboard Style Stats Grid - aligned with dashboard page */
 .dashboard-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 170px));
+    justify-content: start;
     gap: 12px;
-    margin-bottom: 2rem;
+    margin-bottom: 14px;
 }
 
-/* Small Mobile (320px - 374px) - 2 columns */
-@media (max-width: 374px) {
+@media (min-width: 768px) {
     .dashboard-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 24px;
     }
 }
 
-/* Mobile (375px - 599px) - 2 columns */
-@media (min-width: 375px) and (max-width: 599px) {
-    .dashboard-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-}
-
-/* Small Tablet (600px - 767px) - 3 columns */
-@media (min-width: 600px) and (max-width: 767px) {
-    .dashboard-stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-    }
-}
-
-/* Tablet (768px - 899px) - 4 columns */
-@media (min-width: 768px) and (max-width: 899px) {
-    .dashboard-stats-grid {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-    }
-}
-
-/* Large Tablet (900px - 1023px) - 4 columns */
-@media (min-width: 900px) and (max-width: 1023px) {
-    .dashboard-stats-grid {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-    }
-}
-
-/* Desktop (1024px+) - 5 columns */
 @media (min-width: 1024px) {
     .dashboard-stats-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 12px;
+        gap: 50px;
     }
 }
 
 .dashboard-stat-card {
-    min-height: 50px;
-    min-width: 0;
-    padding: 12px 10px;
+    width: 100%;
+    max-width: 170px;
+    aspect-ratio: 1.2 / 1;
+    padding: 8px 8px 7px;
     border: 1px solid #e8ebe4;
-    border-radius: 8px;
+    border-radius: 9px;
     background: #ffffff;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    color: inherit;
     text-decoration: none;
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 3px;
     transition: box-shadow 0.2s ease, background 0.2s ease;
     box-sizing: border-box;
 }
 
-@media (max-width: 374px) {
+@media (max-width: 599px) {
     .dashboard-stat-card {
-        padding: 10px 8px;
-        border-radius: 6px;
-    }
-}
-
-@media (min-width: 375px) and (max-width: 599px) {
-    .dashboard-stat-card {
-        padding: 11px 9px;
-        border-radius: 7px;
-    }
-}
-
-@media (min-width: 600px) {
-    .dashboard-stat-card {
-        padding: 12px 10px;
-        border-radius: 8px;
-    }
-}
-
-@media (min-width: 1024px) {
-    .dashboard-stat-card {
-        padding: 12px 11px;
-        border-radius: 10px;
+        max-width: none;
     }
 }
 
@@ -405,103 +354,43 @@
     font-weight: 600;
 }
 
-@media (max-width: 599px) {
-    .dashboard-stat-top {
-        font-size: 11px;
-    }
-}
-
-@media (min-width: 900px) {
-    .dashboard-stat-top {
-        font-size: 13px;
-    }
+.dashboard-stat-title {
+    min-width: 0;
 }
 
 .dashboard-stat-icon {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
     border-radius: 3px;
     display: grid;
     place-items: center;
     color: #ffffff;
-    flex: 0 0 18px;
+    flex: 0 0 17px;
 }
 
 .dashboard-stat-icon svg {
-    width: 12px;
-    height: 12px;
-}
-
-@media (min-width: 1024px) {
-    .dashboard-stat-icon {
-        width: 19px;
-        height: 19px;
-        flex: 0 0 19px;
-    }
-
-    .dashboard-stat-icon svg {
-        width: 13px;
-        height: 13px;
-    }
+    width: 10px;
+    height: 10px;
 }
 
 .dashboard-stat-value {
-    margin-top: 5px;
+    margin: 20px 0 0 0;
     color: #7d7d7d;
-    font-size: 20px;
+    font-size: 30px;
     line-height: 1;
     font-weight: 400;
-}
-
-@media (max-width: 599px) {
-    .dashboard-stat-value {
-        margin-top: 4px;
-        font-size: 18px;
-    }
-}
-
-@media (min-width: 900px) {
-    .dashboard-stat-value {
-        font-size: 22px;
-    }
-}
-
-@media (min-width: 1024px) {
-    .dashboard-stat-value {
-        margin-top: 6px;
-        font-size: 26px;
-    }
+    text-align: center;
 }
 
 .dashboard-stat-foot {
-    margin-top: 6px;
+    margin: 20px 0 0 0;
     color: #b8c3a8;
-    font-size: 9px;
+    font-size: 12px;
     line-height: 1;
     font-weight: 600;
+    text-align: center;
 }
 
-@media (max-width: 599px) {
-    .dashboard-stat-foot {
-        margin-top: 4px;
-        font-size: 8px;
-    }
-}
-
-@media (min-width: 900px) {
-    .dashboard-stat-foot {
-        font-size: 9.5px;
-    }
-}
-
-@media (min-width: 1024px) {
-    .dashboard-stat-foot {
-        margin-top: 8px;
-        font-size: 10px;
-    }
-}
-
-/* Icon background colors */
 .stat-success .dashboard-stat-icon { background: #0D9B00; }
 .stat-warning .dashboard-stat-icon { background: #f4b437; }
 .stat-purple .dashboard-stat-icon { background: #6f42c1; }
@@ -1127,47 +1016,6 @@
     background: var(--feu-green-dark);
 }
 
-/* Filter Tabs - Mobile First */
-.filter-tabs-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    margin-bottom: 0;
-    border-bottom: 2px solid #0D9B00;
-    background: #f9f9f9;
-    border-radius: 8px 8px 0 0;
-    overflow: hidden;
-    box-sizing: border-box;
-}
-
-@media (max-width: 599px) {
-    .filter-tabs-container {
-        gap: 1px;
-        border-radius: 6px 6px 0 0;
-    }
-}
-
-.filter-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 11px 12px;
-    border: none;
-    background: #f5f5f5;
-    color: #7a7a7a;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    text-transform: capitalize;
-    flex: 1;
-    min-width: 100px;
-    box-sizing: border-box;
-    border-right: 1px solid #e0e0e0;
-}
-
 @media (max-width: 599px) {
     .filter-tab {
         flex: 1;
@@ -1202,18 +1050,39 @@
     }
 }
 
-.filter-tab:last-child {
-    border-right: none;
+/* Filter Tabs - use mentoring-style compact tabs (orange text, compact) */
+.filter-tabs-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    margin: 0 0 16px;
+    border-bottom: 2px solid #0d9b00;
+    overflow-x: auto;
+    white-space: nowrap;
 }
 
-.filter-tab:hover {
-    background: var(--feu-green);
-    color: #ffffff;
+.filter-tab {
+    min-height: 28px;
+    padding: 0 14px;
+    border: 0;
+    background: transparent;
+    color: #ff9c00;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    flex: 0 0 auto;
 }
 
 .filter-tab.active {
-    background: var(--feu-green);
-    color: #ffffff;
+    min-width: 128px;
+    background: #0d9b00;
+    color: #fff;
+    border-radius: 2px 2px 0 0;
+}
+
+.filter-tab:hover {
+    background: rgba(13,155,0,0.08);
+    color: #0d9b00;
 }
 
 .tab-text {
@@ -1223,8 +1092,10 @@
 }
 
 @media (max-width: 599px) {
-    .tab-text {
-        display: inline;
+    .filter-tab {
+        padding: 0 10px;
+        font-size: 11px;
+        min-height: 26px;
     }
 }
 

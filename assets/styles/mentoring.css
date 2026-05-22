@@ -1085,7 +1085,7 @@
 .mentor-page-container {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2rem 1.5rem 7rem;
 }
 
 .mentor-breadcrumb {
@@ -2998,20 +2998,73 @@
   }
 }
 
+/* Mobile First - Single Column Layout */
 .mentoring-page-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 50px;
+  grid-template-columns: 1fr;
+  gap: 16px;
   align-items: start;
-  padding: 0 18px 18px;
+  width: 100%;
+  padding: 0 12px 12px;
   background: #fff;
+  box-sizing: border-box;
 }
 
+.mentoring-main-column {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Tablet & Up - Two Column Layout (768px+) */
+@media (min-width: 768px) {
+  .mentoring-page-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 20px;
+    padding: 0 16px 16px;
+  }
+}
+
+/* Large Tablet & Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .mentoring-page-layout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    padding: 0 18px 18px;
+  }
+}
+
+/* Extra Large Screens (1440px+) */
+@media (min-width: 1440px) {
+  .mentoring-page-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 28px;
+    padding: 0 20px 20px;
+  }
+}
+
+/* Right Side Column - Mobile First */
 .mentoring-side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+/* Tablet - Column Layout (768px+) */
+@media (min-width: 768px) {
+  .mentoring-side-column {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 12px;
+    height: auto;
+    overflow: visible;
+    margin: 0;
+    padding-top: 16px;
+  }
 }
 
 .mentoring-side-column > .reserve-action-card,
@@ -3028,13 +3081,38 @@
 
 .search-form {
   display: grid;
-  grid-template-columns: minmax(390px, 520px) minmax(390px, 520px);
-  gap: 34px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   align-items: center;
+}
+
+.search-input-group,
+.filter-group {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Tablet & Up - Two column search form */
+@media (min-width: 768px) {
+  .search-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+/* Desktop - Keep fluid to avoid overflow */
+@media (min-width: 1024px) {
+  .search-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
 }
 
 .search-input,
 .filter-dropdown {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 36px;
   padding: 8px 14px 8px 36px;
   border: 1.5px solid #0d9b00;
@@ -3076,9 +3154,27 @@
 
 .mentor-card-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(280px, 300px));
-  gap: 24px;
-  margin: 0 0 54px 5px;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 0 0 36px 0;
+}
+
+/* Tablet & Up - Two columns */
+@media (min-width: 768px) {
+  .mentor-card-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 20px;
+    margin: 0 0 44px 0;
+  }
+}
+
+/* Desktop & Up - Original layout */
+@media (min-width: 1024px) {
+  .mentor-card-grid {
+    grid-template-columns: repeat(2, minmax(280px, 300px));
+    gap: 24px;
+    margin: 0 0 54px 5px;
+  }
 }
 
 .mentor-card {
@@ -3243,25 +3339,48 @@
 
 .mentoring-side-column .reservations-side-card,
 .mentoring-side-column .mentoring-info-card {
-  min-height: 140px;
-  padding: 14px 14px 18px;
-  border: 1px solid #cfcfcf;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: none;
+  min-height: 0;
+  position: relative;
+  border-radius: 12px;
+  padding: 14px;
+  border: none;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Mobile - Adjust card sizing */
+@media (max-width: 767px) {
+  .mentoring-side-column .reservations-side-card,
+  .mentoring-side-column .mentoring-info-card {
+    min-height: auto;
+    padding: 12px;
+    border-radius: 6px;
+  }
+}
+
+/* Tablet & Up - Stack cards in single column */
+@media (min-width: 768px) {
+  .mentoring-side-column .reservations-side-card,
+  .mentoring-side-column .mentoring-info-card {
+    margin-bottom: 0;
+    padding: 12px 14px;
+  }
 }
 
 .mentoring-side-column .reservations-side-card-head {
-  margin: 0;
-  padding: 0;
-  border-bottom: 0;
+  margin: 0 0 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0f4ee;
 }
 
 .mentoring-side-column .reservations-side-card-head h3 {
   margin: 0;
-  color: #319000;
+  color: #0D9B00;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .mentoring-side-column .reservations-info-card p {
@@ -3359,26 +3478,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 1180px) {
-  .mentoring-page-layout {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
-  .mentoring-side-column {
-    width: 100%;
-    min-width: 0;
-    padding-top: 0;
-  }
-
-  .mentoring-side-column .reservations-side-card,
-  .mentoring-side-column .mentoring-info-card {
-    width: 100%;
-    box-sizing: border-box;
-  }
-}
-
-@media (max-width: 760px) {
+@media (max-width: 767px) {
   .search-form,
   .mentor-card-grid {
     grid-template-columns: 1fr;
@@ -3393,27 +3493,23 @@
     overflow-x: auto;
   }
 
-  .mentoring-page-layout {
-    gap: 16px;
-  }
-
-  .mentoring-side-column {
-    padding: 0;
-  }
-
   .mentoring-side-column .reservations-side-card,
   .mentoring-side-column .mentoring-info-card {
     padding: 12px;
     min-height: auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .mentoring-side-column .reservations-info-card p {
-    margin: 18px 0 0;
+    margin: 12px 0 0 0;
     padding-top: 12px;
-    font-size: 10.5px;
+    border: 1px solid #b7e0c3;
+    border-radius: 6px;
+    color: #0d0d0e;
+    line-height: 1.4;
+    font-size: 12px;
   }
-
-  .mentoring-side-column .mentor-item,
   .mentoring-side-column .quick-stat-item.specialization-row {
     flex-wrap: wrap;
     align-items: flex-start;
@@ -3428,6 +3524,44 @@
   .mentoring-side-column .mentor-program,
   .mentoring-side-column .quick-stat-value {
     white-space: normal;
+  }
+}
+
+/* Match reservations responsive behavior: stack summary below main content on tablet/down */
+@media (max-width: 1024px) {
+  .mentoring-page-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .mentoring-side-column {
+    margin: 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .mentoring-side-column .reservations-side-card,
+  .mentoring-side-column .mentoring-info-card,
+  .mentoring-side-column .mentoring-side-card {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .mentoring-page-layout {
+    gap: 16px;
+  }
+
+  .mentoring-side-column {
+    padding: 14px;
+  }
+
+  .mentoring-side-column .reservations-info-card p {
+    margin: 0;
   }
 }
 
@@ -3521,12 +3655,6 @@
   max-height: min(72vh, calc(100vh - 120px));
   overflow-y: auto;
   transform: translateX(clamp(-120px, -6vw, -36px));
-}
-
-#mentorPreviewBody.mentor-preview-body {
-  max-height: calc(72vh - 170px);
-  min-height: 0;
-  overflow-y: auto;
 }
 
 #mentorApplicationModal .mentor-form-card {

@@ -3,7 +3,7 @@
     {% set mentorMeta = mentorUser and mentorApplicationMeta is defined ? (mentorApplicationMeta[mentorUser.id] ?? null) : null %}
     {% set cardSpecialization = mentorMeta and mentorMeta.specialization ? mentorMeta.specialization : mentor.specialization %}
     {% set years = mentorMeta and mentorMeta.yearsOfExperience is not null ? mentorMeta.yearsOfExperience : null %}
-    <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" data-preview-url="{{ path('mentoring_preview', {'id': mentor.id}) }}" class="mentor-card-link">
+    <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" class="mentor-card-link">
         <article class="mentor-card">
             <div class="mentor-card-top">
                 <div class="mentor-card-avatar">

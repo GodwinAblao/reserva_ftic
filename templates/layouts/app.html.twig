@@ -110,6 +110,11 @@
     {% if is_regular_user %}
         <header class="regular-user-page-header">
             <div class="regular-user-page-header-left">
+                <button type="button" class="sidebar-hamburger" id="sidebarHamburger" aria-label="Open navigation menu" aria-controls="appSidebar" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
                 <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo" class="regular-user-page-logo">
                 <h1 class="regular-user-page-title">{{ regular_user_page_name }}</h1>
             </div>
@@ -120,6 +125,11 @@
     {% else %}
         <header class="admin-page-header">
             <div class="admin-page-header-left">
+                <button type="button" class="sidebar-hamburger" id="sidebarHamburger" aria-label="Open navigation menu" aria-controls="appSidebar" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
                 <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo" class="admin-page-logo">
             </div>
             {% if is_granted('IS_AUTHENTICATED_FULLY') %}
@@ -128,8 +138,10 @@
         </header>
     {% endif %}
 
-    <div class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-shell' : '' }}">
-        <aside class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : 'admin-sidebar' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-sidebar' : '' }}">
+    <button type="button" class="sidebar-mobile-backdrop" id="sidebarBackdrop" aria-label="Close navigation menu"></button>
+
+    <div id="appShell" class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-shell' : '' }}">
+        <aside id="appSidebar" class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : 'admin-sidebar' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-sidebar' : '' }}">
 
             {% if is_regular_user %}
                 <div class="admin-sidebar-user">
@@ -274,5 +286,50 @@
     </div>
     
     {# Right-panel live updates are handled by app.js (section 4) — no inline script needed #}
+
+    <script>
+    (() => {
+        const shell = document.getElementById('appShell');
+        const sidebar = document.getElementById('appSidebar');
+        const hamburger = document.getElementById('sidebarHamburger');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        if (!shell || !sidebar || !hamburger || !backdrop) return;
+
+        const mobileQuery = window.matchMedia('(max-width: 900px)');
+
+        function setOpen(isOpen) {
+            shell.classList.toggle('sidebar-open', isOpen);
+            document.body.classList.toggle('sidebar-menu-open', isOpen);
+            hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        function closeMenu() {
+            setOpen(false);
+        }
+
+        hamburger.addEventListener('click', () => {
+            if (!mobileQuery.matches) return;
+            setOpen(!shell.classList.contains('sidebar-open'));
+        });
+
+        backdrop.addEventListener('click', closeMenu);
+
+        sidebar.querySelectorAll('a.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (mobileQuery.matches) closeMenu();
+            });
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && shell.classList.contains('sidebar-open')) {
+                closeMenu();
+            }
+        });
+
+        mobileQuery.addEventListener('change', (event) => {
+            if (!event.matches) closeMenu();
+        });
+    })();
+    </script>
 
 {% endblock %}

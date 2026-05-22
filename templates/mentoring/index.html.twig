@@ -40,9 +40,6 @@
                         </select>
                     </div>
                 </form>
-                <div style="margin-top:12px;">
-                    <button class="btn btn-primary" type="button" onclick="openMentorAssistance()">Request a Mentor</button>
-                </div>
             </div>
 
             <!-- Mentor Cards - Always Visible Above Filter Tabs -->
@@ -292,17 +289,6 @@
 
     <!-- Right Side Column - Summary -->
     <aside class="mentoring-side-column">
-        <!-- Request Mentor Button -->
-        <section class="mentoring-side-card reserve-action-card">
-            <a href="#" onclick="openMentorAssistance(); return false;" class="reserve-btn-large">
-                <span class="reserve-icon">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                    </svg>
-                </span>
-                <span class="reserve-text">Request a Mentor</span>
-            </a>
-        </section>
 
         <!-- Quick Actions -->
         <section class="mentoring-side-card">
@@ -313,8 +299,18 @@
             </div>
         </section>
 
-        <!-- Recent Request Summary -->
+        <!-- Recent Request Summary (now contains Request button) -->
         <section class="reservations-side-card reservations-info-card">
+            <div style="margin-bottom:12px;">
+                <a href="#" onclick="openMentorAssistance(); return false;" class="reserve-btn-large">
+                    <span class="reserve-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                        </svg>
+                    </span>
+                    <span class="reserve-text">Request a Mentor</span>
+                </a>
+            </div>
             <div class="reservations-side-card-head">
                 <h3>Recent Request</h3>
             </div>
@@ -493,21 +489,6 @@
         </div>
     </div>
 
-    <div id="mentorPreviewModal" class="app-modal" aria-hidden="true">
-        <div class="app-modal-backdrop" onclick="closeMentorPreview()"></div>
-        <div class="app-modal-panel app-modal-large" role="dialog" aria-modal="true" aria-labelledby="mentorPreviewTitle">
-            <div class="app-modal-header">
-                <div>
-                    <h3 id="mentorPreviewTitle">Mentor Profile</h3>
-                    <p>Profile preview</p>
-                </div>
-                <button type="button" class="icon-button" onclick="closeMentorPreview()" aria-label="Close">x</button>
-            </div>
-            <div id="mentorPreviewBody" class="mentor-preview-body" style="border:1px solid #e5e7eb; border-radius:10px; background:#fff; padding:1rem;">
-                <p style="margin:0; color:#6b7280;">Loading mentor details...</p>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -737,115 +718,13 @@
             document.body.style.overflow = '';
         }
 
-        function openMentorPreview(url) {
-            const modal = document.getElementById('mentorPreviewModal');
-            const body = document.getElementById('mentorPreviewBody');
-            if (!modal || !body) {
-                return;
-            }
-
-            body.innerHTML = '<p style="margin:0; color:#6b7280;">Loading mentor details...</p>';
-            modal.style.display = 'flex';
-            modal.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
-
-            fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to load mentor preview');
-                }
-                return response.text();
-            })
-            .then(html => {
-                body.innerHTML = html;
-            })
-            .catch(() => {
-                body.innerHTML = '<p style="margin:0; color:#dc2626;">Failed to load mentor details. Please try again.</p>';
-            });
-        }
-
-        function closeMentorPreview() {
-            const modal = document.getElementById('mentorPreviewModal');
-            const body = document.getElementById('mentorPreviewBody');
-            if (!modal || !body) {
-                return;
-            }
-
-            modal.style.display = 'none';
-            modal.setAttribute('aria-hidden', 'true');
-            body.innerHTML = '<p style="margin:0; color:#6b7280;">Loading mentor details...</p>';
-            document.body.style.overflow = '';
-        }
-
         if (!window.__mentoringGlobalListenersBound) {
             window.__mentoringGlobalListenersBound = true;
-
-            document.addEventListener('click', function (event) {
-                const link = event.target.closest('.mentor-card-link');
-                const mentorCardGrid = document.getElementById('mentorCardGrid');
-                if (!link || !mentorCardGrid || !mentorCardGrid.contains(link)) {
-                    return;
-                }
-
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
-                    return;
-                }
-
-                event.preventDefault();
-                openMentorPreview(link.dataset.previewUrl || link.href);
-            });
-
-            document.addEventListener('submit', function (event) {
-                const form = event.target.closest('form[data-mentor-preview-form="1"]');
-                if (!form) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                const submitButton = form.querySelector('button[type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.textContent = 'Sending...';
-                }
-
-                fetch(form.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    },
-                    body: new FormData(form)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        throw new Error(data.error);
-                    }
-                    closeMentorPreview();
-                    alert(data.message || 'Custom request sent successfully!');
-                })
-                .catch(error => {
-                    alert(error.message || 'Failed to send custom request.');
-                })
-                .finally(() => {
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Send Custom Request';
-                    }
-                });
-            });
 
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape') {
                     closeMentorApplication();
                     closeMentorAssistance();
-                    closeMentorPreview();
                 }
             });
         }

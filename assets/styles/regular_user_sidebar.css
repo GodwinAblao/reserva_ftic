@@ -212,17 +212,27 @@
     }
 
     .sidebar.regular-user-sidebar {
-        position: static !important;
+        position: fixed !important;
+        top: 56px !important;
+        left: 0 !important;
+        bottom: 0 !important;
         height: auto !important;
-        overflow: visible !important;
-        overflow-y: visible !important;
-        margin: 10px !important;
-        width: auto !important;
-        border-radius: 12px;
+        max-height: none !important;
+        overflow-y: auto !important;
+        margin: 0 !important;
+        width: min(320px, 86vw) !important;
+        border-radius: 0 12px 12px 0;
+        z-index: 1100;
+        transform: translateX(-104%);
+        transition: transform 0.2s ease;
+    }
+
+    .app-shell.regular-user-shell.sidebar-open .sidebar.regular-user-sidebar {
+        transform: translateX(0);
     }
 
     .sidebar.regular-user-sidebar .nav-list {
-        overflow-y: visible !important;
+        overflow-y: auto !important;
         flex: none !important;
         min-height: auto !important;
     }

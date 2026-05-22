@@ -631,6 +631,39 @@ a {
     contain: layout;
 }
 
+.sidebar-hamburger {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    background: #ffffff;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0;
+    cursor: pointer;
+}
+
+.sidebar-hamburger span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: #1f2937;
+}
+
+.sidebar-mobile-backdrop {
+    display: none;
+    position: fixed;
+    inset: 56px 0 0 0;
+    z-index: 1090;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.4);
+}
+
 .content-header {
     display: flex;
     align-items: center;
@@ -899,6 +932,19 @@ select:focus {
 
     .content-area {
         padding: 28px 24px;
+    }
+
+    .sidebar-hamburger {
+        display: inline-flex;
+    }
+
+    .sidebar-mobile-backdrop {
+        display: none;
+    }
+
+    .app-shell.sidebar-open + .sidebar-mobile-backdrop,
+    .sidebar-menu-open .sidebar-mobile-backdrop {
+        display: block;
     }
 }
 

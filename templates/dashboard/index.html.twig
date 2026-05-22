@@ -128,7 +128,7 @@
                                         {% if facility.description %}
                                             <p class="description">{{ facility.description }}</p>
                                         {% endif %}
-                                        <a href="#" data-preview-url="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
+                                        <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
                                             Reserve now
                                         </a>
                                     </div>
@@ -225,109 +225,6 @@
         </div>
 </div>
 
-<div id="facilityPreviewOverlay" class="facility-preview-overlay" aria-hidden="true">
-    <div class="facility-preview-body" id="facilityPreviewBody" role="document" aria-labelledby="facilityPreviewTitle"></div>
-</div>
-<script>
-(() => {
-    const previewCache = new Map();
-    const overlay = document.getElementById('facilityPreviewOverlay');
-    const body = document.getElementById('facilityPreviewBody');
-
-    if (!overlay || !body) return;
-
-    async function fetchPreview(url) {
-        if (!url) return null;
-        if (previewCache.has(url)) return previewCache.get(url);
-
-        try {
-            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!res.ok) return null;
-            const html = await res.text();
-            previewCache.set(url, html);
-            return html;
-        } catch (error) {
-            return null;
-        }
-    }
-
-    function closeOverlay() {
-        overlay.classList.remove('open');
-        overlay.setAttribute('aria-hidden', 'true');
-        body.innerHTML = '';
-        document.body.style.overflow = '';
-    }
-
-    function wireThumbnails() {
-        body.querySelectorAll('.thumbnail').forEach(thumbnail => {
-            thumbnail.addEventListener('click', function () {
-                const src = this.dataset.imgSrc;
-                const main = body.querySelector('#mainImage');
-                if (main && src) main.src = src;
-                body.querySelectorAll('.thumbnail').forEach(item => item.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-    }
-
-    function ensureCloseButton() {
-        const card = body.querySelector('.facility-popup-card');
-        let closeBtn = body.querySelector('.facility-preview-close');
-
-        if (!closeBtn) {
-            closeBtn = document.createElement('button');
-            closeBtn.type = 'button';
-            closeBtn.className = 'facility-preview-close';
-            closeBtn.setAttribute('aria-label', 'Close preview');
-            closeBtn.innerHTML = '&times;';
-            if (card) {
-                card.appendChild(closeBtn);
-            } else {
-                body.appendChild(closeBtn);
-            }
-        }
-
-        closeBtn.addEventListener('click', closeOverlay);
-        return closeBtn;
-    }
-
-    document.querySelectorAll('[data-preview-url]').forEach(element => {
-        if (element.dataset.previewUrl) fetchPreview(element.dataset.previewUrl);
-    });
-
-    overlay.addEventListener('click', event => {
-        if (event.target === overlay) closeOverlay();
-    });
-
-    document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && overlay.classList.contains('open')) {
-            closeOverlay();
-        }
-    });
-
-    document.addEventListener('click', async event => {
-        const trigger = event.target.closest('[data-preview-url]');
-        if (!trigger) return;
-
-        event.preventDefault();
-        const url = trigger.dataset.previewUrl;
-        const html = previewCache.get(url) || await fetchPreview(url);
-        if (!html) return;
-
-        if (overlay.parentElement !== document.body) {
-            document.body.appendChild(overlay);
-        }
-        body.innerHTML = html;
-        wireThumbnails();
-        const closeBtn = ensureCloseButton();
-
-        overlay.classList.add('open');
-        overlay.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-        closeBtn.focus();
-    });
-})();
-</script>
 {% endblock %}
 
 {% block javascripts %}
