@@ -4,6 +4,7 @@
 
 {% block stylesheets %}
 {{ parent() }}
+<link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}">
 <meta name="stats-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_stats') : path('admin_role_api_stats') }}">
 <style>
     /* ── Dashboard-specific styles (stat cards, activity feed, chart tabs) ── */
@@ -195,9 +196,12 @@
                 <svg width="18" height="18" style="color: #006633;"><use href="#icon-trending"></use></svg>
                 Analytics Overview
             </h3>
-            <div class="filter-tabs-pro">
-                <button class="filter-tab-pro active" data-chart="reservations" onclick="loadChart('reservations')">Reservations</button>
-                <button class="filter-tab-pro" data-chart="mentoring" onclick="loadChart('mentoring')">Mentoring</button>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span id="chart-source-badge" class="an-pro-badge demo" style="font-size:11px;padding:4px 10px;">Loading</span>
+                <div class="filter-tabs-pro">
+                    <button class="filter-tab-pro active" data-chart="reservations" onclick="loadChart('reservations')">Reservations</button>
+                    <button class="filter-tab-pro" data-chart="mentoring" onclick="loadChart('mentoring')">Mentoring</button>
+                </div>
             </div>
         </div>
         <div class="chart-container-pro">
@@ -442,14 +446,28 @@
         });
 
         const FASTAPI_BASE = 'http://127.0.0.1:8002';
+        const SYMFONY_FALLBACK = '{{ path('admin_role_api_analytics') }}';
+        let data = null;
 
         try {
             const response = await fetch(FASTAPI_BASE + '/api/analytics/overview', { mode: 'cors' });
-            if (!response.ok) {
-                throw new Error('FastAPI analytics returned HTTP ' + response.status);
-            }
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            data = await response.json();
+        } catch (e) {
+            try {
+                const fb = await fetch(SYMFONY_FALLBACK);
+                if (fb.ok) data = await fb.json();
+            } catch (_) {}
+        }
 
-            const data = await response.json();
+        const badge = document.getElementById('chart-source-badge');
+        if (badge && data) {
+            const live = data.source === 'live' || data.source === 'database';
+            badge.className = 'an-pro-badge ' + (live ? 'live' : 'demo');
+            badge.textContent = data.dataSourceLabel || (live ? 'Live data' : 'Demo / fallback');
+        }
+
+        if (data && dashboardState.chart) {
             const recentStats = (data.dailyStats || []).slice(-30);
             const isReservations = type === 'reservations';
             const color = isReservations ? '#006633' : '#7c3aed';
@@ -463,14 +481,16 @@
                     label: isReservations ? 'Reservations' : 'Mentoring',
                     data: recentStats.map(d => isReservations ? d.reservations : d.mentoring),
                     borderColor: color,
-                    backgroundColor: color + '20',
+                    backgroundColor: isReservations ? 'rgba(0,102,51,0.15)' : 'rgba(124,58,237,0.15)',
                     fill: true,
-                    borderWidth: 2
+                    borderWidth: 2.5,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
                 }]
             };
-        } catch (e) {
+        } else if (dashboardState.chart) {
             dashboardState.chart.data = { labels: [], datasets: [] };
-            console.error('FastAPI analytics overview failed:', e);
         }
 
         dashboardState.chart.update('none');

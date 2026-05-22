@@ -2,15 +2,22 @@
 
 {% block title %}Admin Reports | Reserva FTIC{% endblock %}
 
+{% block stylesheets %}
+{{ parent() }}
+<link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="content-header">
+<div class="content-header an-pro-header">
     <div>
-        <h2>Reports</h2>
-        <p class="muted">Generate and download operational reports for reservations and mentoring.</p>
+        <h2>Reports &amp; Downloads</h2>
+        <p class="muted">Operational CSV exports and ARIMA managerial reports for FTIC scheduling decisions.</p>
     </div>
-    <div class="button-group">
-        <a class="btn-secondary" href="{{ path('admin_reports_download', {type: 'reservations'}) }}">Download Reservations CSV</a>
-        <a class="btn-secondary" href="{{ path('admin_reports_download', {type: 'mentoring'}) }}">Download Mentoring CSV</a>
+    <div class="an-pro-toolbar">
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports_download', {type: 'reservations'}) }}">Reservations CSV</a>
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports_download', {type: 'mentoring'}) }}">Mentoring CSV</a>
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_this_week') }}">This week snapshot</a>
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_weekly') }}">ARIMA weekly forecast</a>
         <a class="btn-secondary" href="{{ path('analytics_dashboard') }}">Open Analytics</a>
     </div>
 </div>
@@ -19,18 +26,10 @@
     <section class="card-panel">
         <h3>Reservation Summaries</h3>
         <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Status</th><th>Total</th></tr></thead>
             <tbody>
                 {% for status, total in reservationStatusCounts %}
-                    <tr>
-                        <td>{{ status }}</td>
-                        <td>{{ total }}</td>
-                    </tr>
+                    <tr><td>{{ status }}</td><td>{{ total }}</td></tr>
                 {% else %}
                     <tr><td colspan="2">No reservation data yet.</td></tr>
                 {% endfor %}
@@ -41,27 +40,13 @@
     <section class="card-panel">
         <h3>Mentoring</h3>
         <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Record</th>
-                    <th>Status</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Record</th><th>Status</th><th>Total</th></tr></thead>
             <tbody>
                 {% for status, total in mentoringStatusCounts.appointments %}
-                    <tr>
-                        <td>Session</td>
-                        <td>{{ status }}</td>
-                        <td>{{ total }}</td>
-                    </tr>
+                    <tr><td>Session</td><td>{{ status }}</td><td>{{ total }}</td></tr>
                 {% endfor %}
                 {% for status, total in mentoringStatusCounts.requests %}
-                    <tr>
-                        <td>Request</td>
-                        <td>{{ status }}</td>
-                        <td>{{ total }}</td>
-                    </tr>
+                    <tr><td>Request</td><td>{{ status }}</td><td>{{ total }}</td></tr>
                 {% else %}
                     {% if mentoringStatusCounts.appointments is empty %}
                         <tr><td colspan="3">No mentoring data yet.</td></tr>
@@ -74,20 +59,12 @@
 
 <div class="module-grid">
     <section class="card-panel">
-        <h3>Most Requested Experties</h3>
+        <h3>Most Requested Expertise</h3>
         <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Expertise</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Expertise</th><th>Total</th></tr></thead>
             <tbody>
                 {% for expertise, total in topExpertise %}
-                    <tr>
-                        <td>{{ expertise }}</td>
-                        <td>{{ total }}</td>
-                    </tr>
+                    <tr><td>{{ expertise }}</td><td>{{ total }}</td></tr>
                 {% else %}
                     <tr><td colspan="2">No expertise data yet.</td></tr>
                 {% endfor %}
@@ -96,25 +73,11 @@
     </section>
 
     <section class="card-panel">
-        <h3>Function Coverage</h3>
-        <table class="accounts-table">
-            <thead>
-                <tr>
-                    <th>Area</th>
-                    <th>Priority</th>
-                    <th>Weight</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for module in modules %}
-                    <tr>
-                        <td>{{ module.area }}</td>
-                        <td><span class="priority-chip priority-{{ module.priority|lower }}">{{ module.priority }}</span></td>
-                        <td>{{ module.weight }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <h3>Analytics data mode</h3>
+        <p class="muted" style="font-size:13px;line-height:1.6;">
+            Charts use <strong>live SQL data</strong> when reservations exist. If the database is empty, the system automatically shows the <strong>demo dataset</strong> so panelists can still evaluate ARIMA and managerial functions.
+        </p>
+        <p class="muted" style="font-size:13px;">Start the analytics server: <code>cd analytics && .venv\Scripts\python main.py</code></p>
     </section>
 </div>
 {% endblock %}

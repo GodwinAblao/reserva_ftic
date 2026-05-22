@@ -71,6 +71,50 @@ class AdminRoleController extends AbstractController
         return $response;
     }
 
+    #[Route('/api/analytics', name: 'admin_role_api_analytics', methods: ['GET'])]
+    public function apiAnalytics(EntityManagerInterface $em): JsonResponse
+    {
+        $conn = $em->getConnection();
+        $dates = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $dates[] = (new \DateTime())->modify("-$i days")->format('Y-m-d');
+        }
+
+        $resByDate = $conn->executeQuery(
+            'SELECT DATE(reservation_date) AS dt, COUNT(*) AS cnt
+             FROM reservation
+             WHERE status IN (\'Approved\', \'Pending\', \'Suggested\')
+               AND DATE(reservation_date) >= ? AND DATE(reservation_date) <= ?
+             GROUP BY DATE(reservation_date)',
+            [$dates[0], $dates[\count($dates) - 1]]
+        )->fetchAllKeyValue();
+
+        $mentByDate = $conn->executeQuery(
+            'SELECT DATE(scheduled_at) AS dt, COUNT(*) AS cnt
+             FROM mentoring_appointment
+             WHERE DATE(scheduled_at) >= ? AND DATE(scheduled_at) <= ?
+             GROUP BY DATE(scheduled_at)',
+            [$dates[0], $dates[\count($dates) - 1]]
+        )->fetchAllKeyValue();
+
+        $dailyStats = [];
+        foreach ($dates as $date) {
+            $dailyStats[] = [
+                'date' => $date,
+                'reservations' => (int) ($resByDate[$date] ?? 0),
+                'mentoring' => (int) ($mentByDate[$date] ?? 0),
+            ];
+        }
+
+        $liveTotal = array_sum(array_column($dailyStats, 'reservations'));
+
+        return $this->json([
+            'source' => $liveTotal > 0 ? 'live' : 'demo',
+            'dataSourceLabel' => $liveTotal > 0 ? 'Live reservation data' : 'No live data — start analytics service for demo charts',
+            'dailyStats' => $dailyStats,
+        ]);
+    }
+
     #[Route('/api/recent-reservations', name: 'admin_role_api_recent_reservations', methods: ['GET'])]
     public function apiRecentReservations(EntityManagerInterface $em): JsonResponse
     {
