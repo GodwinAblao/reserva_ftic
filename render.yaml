@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: reserva-ftic
+    runtime: php
+    plan: free
+    branch: main
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader
+      php bin/console cache:clear --env=prod
+      php bin/console assets:install --env=prod
+    startCommand: heroku-php-apache2 public/
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: APP_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reserva-ftic-db
+          property: connectionString
+      - key: MAILER_DSN
+        sync: false
+    healthCheckPath: /
+
+databases:
+  - name: reserva-ftic-db
+    plan: free
+    type: postgres
+    ipAllowList: []
