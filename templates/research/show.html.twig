@@ -12,10 +12,10 @@
     {% endif %}
 </div>
 
-<section class="card-panel">
+<section class="research-detail-page">
     {% if item.type == 'Research' %}
         <div class="research-header">
-            <h1 style="color: var(--feu-green);">{{ item.title }}</h1>
+            <h1>{{ item.title }}</h1>
             <p><strong>Repository Type:</strong> {{ item.repositoryType }}</p>
         </div>
 
@@ -63,77 +63,30 @@
             {% endif %}
         </div>
     {% else %}
-        <h1>{{ item.title }}</h1>
-        {% if item.filePath and item.type == 'Article' %}
-            <div class="article-image-wrapper">
-                <img src="{{ item.filePath }}" alt="{{ item.title }}" class="article-image">
+        <article class="research-detail-card">
+            <div class="research-detail-media">
+                {% if item.filePath and item.type == 'Article' %}
+                    <img src="{{ item.filePath }}" alt="{{ item.title }}">
+                {% elseif item.embeddedLink %}
+                    {{ item.embeddedLink|raw }}
+                {% else %}
+                    <div class="research-detail-placeholder">{{ item.title|first|upper }}</div>
+                {% endif %}
             </div>
-        {% endif %}
-        {% if item.body %}
-            <div class="content-body">
-                {{ item.body }}
+
+            <div class="research-detail-content">
+                <h1>{{ item.title }}</h1>
+                <p class="research-detail-author">Author : {{ item.author.email }}</p>
+                {% if item.body %}
+                    <div class="research-detail-body">
+                        {{ item.body }}
+                    </div>
+                {% endif %}
+                {% if item.externalLink %}
+                    <a href="{{ item.externalLink }}" target="_blank" rel="noopener" class="research-view-btn">View Source</a>
+                {% endif %}
             </div>
-        {% endif %}
-        {% if item.embeddedLink %}
-            <div class="embedded-content">
-                {{ item.embeddedLink|raw }}
-            </div>
-        {% endif %}
+        </article>
     {% endif %}
 </section>
-
-<style>
-    .research-header {
-        margin-bottom: 2rem;
-        border-bottom: 2px solid #f0f0f0;
-        padding-bottom: 1rem;
-    }
-
-    .research-details {
-        margin: 2rem 0;
-    }
-
-    .details-section {
-        margin: 1.5rem 0;
-        padding: 1rem;
-        background-color: #f9f9f9;
-        border-left: 4px solid #007bff;
-        border-radius: 4px;
-    }
-
-    .details-section h3 {
-        margin-top: 0;
-        color: #333;
-    }
-
-    .pdf-section {
-        margin: 2rem 0;
-        padding: 1.5rem;
-        background-color: #f5f5f5;
-        border-radius: 8px;
-    }
-
-    .pdf-controls {
-        margin: 1rem 0;
-    }
-
-    .pdf-icon {
-        margin-right: 0.5rem;
-    }
-
-    .pdf-viewer {
-        margin-top: 1.5rem;
-        background-color: white;
-        padding: 1rem;
-        border-radius: 4px;
-    }
-
-    .research-metadata {
-        margin-top: 2rem;
-        padding-top: 1rem;
-        border-top: 1px solid #ddd;
-        color: #666;
-        font-size: 0.9rem;
-    }
-</style>
 {% endblock %}
