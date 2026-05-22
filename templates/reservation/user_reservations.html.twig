@@ -369,15 +369,6 @@
         </div>
     </div>
 
-    <!-- Empty State Message -->
-    {% if reservations['Approved']|length == 0 and reservations['Pending']|length == 0
-        and reservations['Rejected']|length == 0 and reservations['Cancelled']|length == 0 %}
-        <div class="empty-state card-panel">
-            <h3>No Reservations Yet</h3>
-            <p>You haven't made any facility reservations.</p>
-            <a href="{{ path('app_facility_index') }}" class="btn btn-primary">Browse Facilities</a>
-        </div>
-    {% endif %}
 
         </div><!-- End Main Column -->
 

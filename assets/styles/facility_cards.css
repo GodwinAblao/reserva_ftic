@@ -240,7 +240,9 @@
 .facility-preview-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(18, 24, 28, 0.38);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
     display: none;
     align-items: center;
     justify-content: center;
@@ -442,7 +444,9 @@
 .facility-modal-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(18, 24, 28, 0.38);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 .facility-modal-dialog {
     position: relative;
@@ -878,5 +882,56 @@
 
     .facility-fact-row {
         grid-template-columns: 88px 1fr;
+    }
+}
+
+/* Final facility detail modal overlay: full-page dim/blur with centered card */
+.facility-preview-overlay,
+.facility-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483000 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px !important;
+    background: rgba(18, 24, 28, 0.38) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+
+.facility-preview-overlay.open {
+    display: flex !important;
+}
+
+.facility-modal[style*="grid"] {
+    display: grid !important;
+}
+
+.facility-modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(255, 255, 255, 0.34) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.facility-preview-body,
+.facility-modal-dialog {
+    position: relative !important;
+    z-index: 1 !important;
+    margin: 0 auto !important;
+    transform: none !important;
+}
+
+@media (max-width: 720px) {
+    .facility-preview-overlay,
+    .facility-modal {
+        padding: 14px !important;
     }
 }

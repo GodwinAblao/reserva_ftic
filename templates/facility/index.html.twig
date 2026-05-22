@@ -199,19 +199,26 @@
         overlay.classList.remove('open');
         overlay.setAttribute('aria-hidden', 'true');
         body.innerHTML = '';
+        document.body.style.overflow = '';
     }
 
     // Close when clicking outside the card
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeOverlay();
-    });
+    if (!overlay.dataset.facilityCloseBound) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeOverlay();
+        });
+        overlay.dataset.facilityCloseBound = '1';
+    }
 
     // Close on Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && overlay.classList.contains('open')) {
-            closeOverlay();
-        }
-    });
+    if (!document.body.dataset.facilityEscapeBound) {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && overlay.classList.contains('open')) {
+                closeOverlay();
+            }
+        });
+        document.body.dataset.facilityEscapeBound = '1';
+    }
 
     // Delegate click to open preview (uses prefetched content when available)
     document.addEventListener('click', async (e) => {
@@ -225,6 +232,9 @@
         if (!html) html = await fetchPreview(url);
         if (!html) return;
 
+        if (overlay.parentElement !== document.body) {
+            document.body.appendChild(overlay);
+        }
         body.innerHTML = html;
 
         // Ensure close button inside the card
@@ -251,22 +261,16 @@
             });
         });
 
-        // Wire close (per-instance)
-        closeBtn.addEventListener('click', closeOverlay);
-
-        // Global delegated close handler (works if button exists in injected HTML or gets recreated)
-        // This ensures clicks on any element with the close class will close the overlay.
-        if (!document._facilityCloseDelegated) {
-            document.addEventListener('click', function (ev) {
-                if (ev.target.closest && ev.target.closest('.facility-preview-close')) {
-                    closeOverlay();
-                }
-            });
-            document._facilityCloseDelegated = true;
-        }
+        // Wire close directly so one click always closes the popup.
+        closeBtn.onclick = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            closeOverlay();
+        };
 
         overlay.classList.add('open');
         overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
         closeBtn.focus();
     });
 

@@ -255,6 +255,7 @@
         overlay.classList.remove('open');
         overlay.setAttribute('aria-hidden', 'true');
         body.innerHTML = '';
+        document.body.style.overflow = '';
     }
 
     function wireThumbnails() {
@@ -313,12 +314,16 @@
         const html = previewCache.get(url) || await fetchPreview(url);
         if (!html) return;
 
+        if (overlay.parentElement !== document.body) {
+            document.body.appendChild(overlay);
+        }
         body.innerHTML = html;
         wireThumbnails();
         const closeBtn = ensureCloseButton();
 
         overlay.classList.add('open');
         overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
         closeBtn.focus();
     });
 })();

@@ -5,7 +5,6 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('styles/user_reservations.css') }}">
-    <link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -41,6 +40,9 @@
                         </select>
                     </div>
                 </form>
+                <div style="margin-top:12px;">
+                    <button class="btn btn-primary" type="button" onclick="openMentorAssistance()">Request a Mentor</button>
+                </div>
             </div>
 
             <!-- Mentor Cards - Always Visible Above Filter Tabs -->
@@ -557,8 +559,7 @@
             });
         }
 
-        // Set initial state on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        function syncMentoringTabState() {
             const activeTab = document.querySelector('.filter-tab.active');
             if (activeTab) {
                 const filter = activeTab.getAttribute('onclick').match(/'([^']+)'/)[1];
@@ -573,10 +574,24 @@
                     }
                 });
             }
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', syncMentoringTabState, { once: true });
+        } else {
+            syncMentoringTabState();
+        }
+        document.addEventListener('turbo:load', syncMentoringTabState);
 
         // ===== REAL-TIME SEARCH =====
-        document.addEventListener('DOMContentLoaded', function() {
+        function initMentoringSearch() {
+            const mentorSearchForm = document.getElementById('mentorSearchForm');
+            if (!mentorSearchForm || mentorSearchForm.dataset.mentoringSearchBound === '1') {
+                return;
+            }
+
+            mentorSearchForm.dataset.mentoringSearchBound = '1';
+
             let searchTimeout;
             const DEBOUNCE_DELAY = 300;
             const searchInput = document.getElementById('mentorSearchInput');
@@ -659,14 +674,18 @@
 
             bindSpecializationLinks();
 
-            const mentorSearchForm = document.getElementById('mentorSearchForm');
-            if (mentorSearchForm) {
-                mentorSearchForm.addEventListener('submit', function(event) {
-                    event.preventDefault();
-                    performSearch();
-                });
-            }
-        });
+            mentorSearchForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                performSearch();
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMentoringSearch, { once: true });
+        } else {
+            initMentoringSearch();
+        }
+        document.addEventListener('turbo:load', initMentoringSearch);
 
         function openMentorApplication() {
             const modal = document.getElementById('mentorApplicationModal');
@@ -674,6 +693,9 @@
                 return;
             }
 
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
             modal.style.display = 'flex';
             modal.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
@@ -696,6 +718,9 @@
                 return;
             }
 
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
             modal.style.display = 'flex';
             modal.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
@@ -757,69 +782,73 @@
             document.body.style.overflow = '';
         }
 
-        document.addEventListener('click', function (event) {
-            const link = event.target.closest('.mentor-card-link');
-            const mentorCardGrid = document.getElementById('mentorCardGrid');
-            if (!link || !mentorCardGrid || !mentorCardGrid.contains(link)) {
-                return;
-            }
+        if (!window.__mentoringGlobalListenersBound) {
+            window.__mentoringGlobalListenersBound = true;
 
-            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
-                return;
-            }
-
-            event.preventDefault();
-            openMentorPreview(link.dataset.previewUrl || link.href);
-        });
-
-        document.addEventListener('submit', function (event) {
-            const form = event.target.closest('form[data-mentor-preview-form="1"]');
-            if (!form) {
-                return;
-            }
-
-            event.preventDefault();
-
-            const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.textContent = 'Sending...';
-            }
-
-            fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: new FormData(form)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
+            document.addEventListener('click', function (event) {
+                const link = event.target.closest('.mentor-card-link');
+                const mentorCardGrid = document.getElementById('mentorCardGrid');
+                if (!link || !mentorCardGrid || !mentorCardGrid.contains(link)) {
+                    return;
                 }
-                closeMentorPreview();
-                alert(data.message || 'Custom request sent successfully!');
-            })
-            .catch(error => {
-                alert(error.message || 'Failed to send custom request.');
-            })
-            .finally(() => {
+
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+                    return;
+                }
+
+                event.preventDefault();
+                openMentorPreview(link.dataset.previewUrl || link.href);
+            });
+
+            document.addEventListener('submit', function (event) {
+                const form = event.target.closest('form[data-mentor-preview-form="1"]');
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const submitButton = form.querySelector('button[type="submit"]');
                 if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Send Custom Request';
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Sending...';
+                }
+
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: new FormData(form)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    closeMentorPreview();
+                    alert(data.message || 'Custom request sent successfully!');
+                })
+                .catch(error => {
+                    alert(error.message || 'Failed to send custom request.');
+                })
+                .finally(() => {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Send Custom Request';
+                    }
+                });
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeMentorApplication();
+                    closeMentorAssistance();
+                    closeMentorPreview();
                 }
             });
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                closeMentorApplication();
-                closeMentorAssistance();
-                closeMentorPreview();
-            }
-        });
+        }
 
         document.querySelectorAll('form[data-loading-label]').forEach(form => {
             if (form.dataset.noLoading === 'true') {
@@ -834,26 +863,6 @@
             });
         });
 
-        // Auto-refresh button group state to detect real-time updates from super admin
-        const refreshButtonState = () => {
-            fetch(window.location.href, { cache: 'no-store' })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const newDoc = parser.parseFromString(html, 'text/html');
-                    const newButtonGroup = newDoc.querySelector('div.button-group');
-                    const oldButtonGroup = document.querySelector('div.button-group');
-                    
-                    if (newButtonGroup && oldButtonGroup && newButtonGroup.innerHTML !== oldButtonGroup.innerHTML) {
-                        oldButtonGroup.innerHTML = newButtonGroup.innerHTML;
-                        console.log('Button state updated due to admin actions');
-                    }
-                })
-                .catch(err => console.debug('Auto-refresh check completed'));
-        };
-        
-        // Check button state every 5 seconds
-        setInterval(refreshButtonState, 5000);
     </script>
 
     <style>

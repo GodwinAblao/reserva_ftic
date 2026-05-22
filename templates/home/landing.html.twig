@@ -429,6 +429,9 @@
                     reserveBtn.setAttribute('target', '_self');
                 }
 
+                if (modal.parentElement !== document.body) {
+                    document.body.appendChild(modal);
+                }
                 modal.style.display = 'grid';
                 document.body.style.overflow = 'hidden';
             }
