@@ -212,19 +212,23 @@
     </style>
 
     <script>
-        let resendCountdownInterval = null;
-        let resendCooldownSeconds = 0;
-        let noticeTransitionTimer = null;
-        const minimumLoadingMs = 450;
+        window.__reservaRegisterState = window.__reservaRegisterState || {
+            resendCountdownInterval: null,
+            resendCooldownSeconds: 0,
+            noticeTransitionTimer: null
+        };
+        var registerState = window.__reservaRegisterState;
+        window.__reservaMinimumLoadingMs = window.__reservaMinimumLoadingMs || 450;
+        var minimumLoadingMs = window.__reservaMinimumLoadingMs;
 
         function updateResendButtonState() {
             const button = document.getElementById('resendVerificationButton');
             const hint = document.getElementById('resendVerificationHint');
             if (!button) return;
 
-            if (resendCooldownSeconds > 0) {
-                const minutes = Math.floor(resendCooldownSeconds / 60);
-                const seconds = String(resendCooldownSeconds % 60).padStart(2, '0');
+            if (registerState.resendCooldownSeconds > 0) {
+                const minutes = Math.floor(registerState.resendCooldownSeconds / 60);
+                const seconds = String(registerState.resendCooldownSeconds % 60).padStart(2, '0');
                 button.disabled = true;
                 button.textContent = 'Resend code';
                 button.style.cursor = 'not-allowed';
@@ -246,9 +250,9 @@
         function clearNotice() {
             const notice = document.getElementById('verifyRegistrationNotice');
             if (!notice) return;
-            if (noticeTransitionTimer) {
-                window.clearTimeout(noticeTransitionTimer);
-                noticeTransitionTimer = null;
+            if (registerState.noticeTransitionTimer) {
+                window.clearTimeout(registerState.noticeTransitionTimer);
+                registerState.noticeTransitionTimer = null;
             }
             notice.classList.remove('is-visible', 'verify-notice--success', 'verify-notice--error');
             notice.textContent = '';
@@ -271,10 +275,10 @@
 
             if (notice.classList.contains('is-visible')) {
                 notice.classList.remove('is-visible');
-                if (noticeTransitionTimer) {
-                    window.clearTimeout(noticeTransitionTimer);
+                if (registerState.noticeTransitionTimer) {
+                    window.clearTimeout(registerState.noticeTransitionTimer);
                 }
-                noticeTransitionTimer = window.setTimeout(fadeIn, 250);
+                registerState.noticeTransitionTimer = window.setTimeout(fadeIn, 250);
                 return;
             }
 
@@ -364,25 +368,25 @@
         initializePasswordToggles();
 
         function startResendCooldown(seconds) {
-            resendCooldownSeconds = Math.max(0, seconds);
-            if (resendCountdownInterval) {
-                window.clearInterval(resendCountdownInterval);
-                resendCountdownInterval = null;
+            registerState.resendCooldownSeconds = Math.max(0, seconds);
+            if (registerState.resendCountdownInterval) {
+                window.clearInterval(registerState.resendCountdownInterval);
+                registerState.resendCountdownInterval = null;
             }
 
             updateResendButtonState();
 
-            if (resendCooldownSeconds <= 0) {
+            if (registerState.resendCooldownSeconds <= 0) {
                 return;
             }
 
-            resendCountdownInterval = window.setInterval(function() {
-                resendCooldownSeconds -= 1;
-                if (resendCooldownSeconds <= 0) {
-                    resendCooldownSeconds = 0;
+            registerState.resendCountdownInterval = window.setInterval(function() {
+                registerState.resendCooldownSeconds -= 1;
+                if (registerState.resendCooldownSeconds <= 0) {
+                    registerState.resendCooldownSeconds = 0;
                     updateResendButtonState();
-                    window.clearInterval(resendCountdownInterval);
-                    resendCountdownInterval = null;
+                    window.clearInterval(registerState.resendCountdownInterval);
+                    registerState.resendCountdownInterval = null;
                     return;
                 }
 

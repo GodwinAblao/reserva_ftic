@@ -22,11 +22,13 @@
     <div class="sa-loading">Loading analytics...</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
-let currentCharts = [];
-const localAnalytics = {{ localAnalytics|json_encode|raw }};
+window.__reservaCurrentCharts = window.__reservaCurrentCharts || [];
+var currentCharts = window.__reservaCurrentCharts;
+window.__reservaLocalAnalytics = window.__reservaLocalAnalytics || {{ localAnalytics|json_encode|raw }};
+var localAnalytics = window.__reservaLocalAnalytics;
 
 function loadAnalytics(functionName) {
     document.querySelectorAll('.analytics-btn').forEach((btn) => {

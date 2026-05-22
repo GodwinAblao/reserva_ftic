@@ -155,7 +155,8 @@
 
 {# ORIGINAL SCRIPTS RESTORED #}
 <script>
-    const minimumLoadingMs = 450;
+    window.__reservaMinimumLoadingMs = window.__reservaMinimumLoadingMs || 450;
+    var minimumLoadingMs = window.__reservaMinimumLoadingMs;
 
     (function appendPasswordToggleStyles() {
         const styleTag = document.createElement('style');

@@ -296,16 +296,18 @@
 
 {% block javascripts %}
 {{ parent() }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
     // Dashboard JavaScript - Data loaded from server initially
-    const dashboardState = {
+    window.__reservaDashboardState = window.__reservaDashboardState || {
         chart: null,
         lastUpdate: new Date()
     };
+    var dashboardState = window.__reservaDashboardState;
 
     // Stats already loaded from server via initialData
-    const initialStats = {{ initialData|json_encode|raw }};
+    window.__reservaInitialStats = window.__reservaInitialStats || {{ initialData|json_encode|raw }};
+    var initialStats = window.__reservaInitialStats;
 
     // Initialize when DOM is ready
     function initDashboard() {
