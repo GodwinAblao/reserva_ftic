@@ -25,5 +25,5 @@ services:
 databases:
   - name: reserva-ftic-db
     plan: free
-    type: mysql
+    type: postgres
     ipAllowList: []
