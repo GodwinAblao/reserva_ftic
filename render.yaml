@@ -1,14 +1,10 @@
 services:
   - type: web
     name: reserva-ftic
-    runtime: php
+    runtime: docker
     plan: free
     branch: main
-    buildCommand: |
-      composer install --no-dev --optimize-autoloader
-      php bin/console cache:clear --env=prod
-      php bin/console assets:install --env=prod
-    startCommand: heroku-php-apache2 public/
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: APP_ENV
         value: prod
@@ -25,5 +21,4 @@ services:
 databases:
   - name: reserva-ftic-db
     plan: free
-    type: postgres
     ipAllowList: []
