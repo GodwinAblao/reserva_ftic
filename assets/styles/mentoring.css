@@ -3005,9 +3005,11 @@
   gap: 16px;
   align-items: start;
   width: 100%;
-  padding: 0 12px 12px;
+  padding: 60px 12px 12px;
   background: #fff;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .mentoring-main-column {

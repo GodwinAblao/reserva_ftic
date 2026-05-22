@@ -126,7 +126,7 @@ class AdminRoleController extends AbstractController
              LEFT JOIN facility f ON r.facility_id = f.id
              WHERE r.status NOT IN (:statuses)
              ORDER BY r.created_at DESC LIMIT 8',
-            ['statuses' => ['AwaitingFacilitySelection']],
+            ['statuses' => []],
             ['statuses' => \Doctrine\DBAL\ArrayParameterType::STRING]
         )->fetchAllAssociative();
 
@@ -541,8 +541,7 @@ class AdminRoleController extends AbstractController
              WHERE DATE(reservation_date) = :today GROUP BY status',
             ['today' => $today]
         );
-        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0,
-                          'AwaitingFacilitySelection' => 0, 'Suggested' => 0];
+        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Suggested' => 0];
         foreach ($statusRows as $sr) {
             $statusCounts[$sr['status']] = (int) $sr['cnt'];
         }

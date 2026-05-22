@@ -149,8 +149,8 @@ public function reserve(
                 $reservation->setReservationEndTime($endTime);
                 $reservation->setCapacity($capacity);
                 $reservation->setPurpose($purpose);
-                // Set initial status to AwaitingFacilitySelection - will be set to Pending after user selects facility
-                $reservation->setStatus('AwaitingFacilitySelection');
+                // Set initial status to Pending
+                $reservation->setStatus('Pending');
 
                 $em->persist($reservation);
                 $em->flush();

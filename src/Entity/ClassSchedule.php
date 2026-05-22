@@ -65,6 +65,9 @@ class ClassSchedule
     #[ORM\Column(options: ['default' => false])]
     private bool $isRelocated = false;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $status = null;
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdAt;
 
@@ -258,6 +261,18 @@ class ClassSchedule
     public function setIsRelocated(bool $isRelocated): self
     {
         $this->isRelocated = $isRelocated;
+
+        return $this;
+    }
+
+    public function getStatus(): ?string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(?string $status): self
+    {
+        $this->status = $status;
 
         return $this;
     }

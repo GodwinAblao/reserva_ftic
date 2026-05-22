@@ -444,11 +444,16 @@
             <div class="sa-proof-row">
                 {% for file in app.proofOfExpertise %}
                     {% if file ends with '.pdf' %}
-                    <a href="{{ asset('uploads/profiles/' ~ file) }}" target="_blank" class="sa-proof-pdf">
+                    <a href="{{ asset('uploads/profiles/' ~ file) }}" target="_blank" class="sa-proof-pdf" title="View PDF">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
                     </a>
                     {% else %}
-                    <img src="{{ asset('uploads/profiles/' ~ file) }}" class="sa-proof-img" alt="proof" onclick="window.open(this.src)">
+                    <div class="sa-proof-thumb-wrapper" onclick="openFilePreviewModal('{{ asset('uploads/profiles/' ~ file) }}', '{{ file }}')">
+                        <img src="{{ asset('uploads/profiles/' ~ file) }}" class="sa-proof-img" alt="proof" loading="lazy">
+                        <div class="sa-proof-overlay">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                    </div>
                     {% endif %}
                 {% endfor %}
             </div>
@@ -496,8 +501,9 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('create_mentor') }}">
             <input type="hidden" name="user_id" id="cm_user_id">
             <div style="margin-bottom:16px;">
-                <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px;">Select User</label>
-                <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required>
+                <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px;">Search & Select User</label>
+                <input type="text" id="cm_user_search" class="sa-modal-input" placeholder="Type to search users..." onkeyup="cmFilterUsers(this.value)" style="margin-bottom:8px;">
+                <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required size="5" style="min-height:120px;">
                     <option value="">— Select a user —</option>
                     {% for user in users %}
                     <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}" data-role="{{ user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}">
@@ -523,7 +529,13 @@
                 </div>
             </div>
             <div class="sa-modal-row cols-3">
-                <div class="sa-modal-field"><label>Role</label><input type="text" id="cm_role" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Role <span style="color:#ef4444;">*</span></label>
+                    <select name="role" id="cm_role_select" class="sa-modal-input" required>
+                        <option value="">Select role…</option>
+                        <option value="Student">Student</option>
+                        <option value="Faculty">Faculty</option>
+                    </select>
+                </div>
                 <div class="sa-modal-field"><label>Mentoring Day</label>
                     <select name="availability_day" class="sa-modal-input">
                         <option value="">Select day…</option>
@@ -533,9 +545,21 @@
                 </div>
                 <div class="sa-modal-field"><label>Mentoring Time</label>
                     <div class="sa-modal-time-row">
-                        <input type="time" name="availability_start" class="sa-modal-input" min="07:00" max="21:00">
+                        <select name="availability_start" class="sa-modal-input" style="flex:1;">
+                            <option value="">Start</option>
+                            {% for h in 7..21 %}{% set hour = '%02d'|format(h) %}
+                            <option value="{{ hour }}:00">{{ hour }}:00 AM</option>
+                            {% if h < 21 %}<option value="{{ hour }}:30">{{ hour }}:30 AM</option>{% endif %}
+                            {% endfor %}
+                        </select>
                         <span class="sa-modal-time-sep">–</span>
-                        <input type="time" name="availability_end" class="sa-modal-input" min="07:00" max="21:00">
+                        <select name="availability_end" class="sa-modal-input" style="flex:1;">
+                            <option value="">End</option>
+                            {% for h in 7..21 %}{% set hour = '%02d'|format(h) %}
+                            <option value="{{ hour }}:00">{{ hour }}:00 AM</option>
+                            {% if h < 21 %}<option value="{{ hour }}:30">{{ hour }}:30 AM</option>{% endif %}
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
             </div>
@@ -569,13 +593,48 @@ function closeCreateMentor(){document.getElementById('createMentorModal').classL
 })();
 function cmFillUser(sel){
     var o=sel.options[sel.selectedIndex];
+    if(!o.value) return;
     document.getElementById('cm_user_id').value=o.value;
     document.getElementById('cm_first').value=o.dataset.first||'';
     document.getElementById('cm_middle').value=o.dataset.middle||'';
     document.getElementById('cm_last').value=o.dataset.last||'';
     document.getElementById('cm_email').value=o.dataset.email||'';
     document.getElementById('cm_program').value=o.dataset.program||'';
-    document.getElementById('cm_role').value=o.dataset.role||'';
+    // Pre-select role if it's Student or Faculty
+    var roleSelect = document.getElementById('cm_role_select');
+    var userRole = o.dataset.role || '';
+    if(userRole.toLowerCase().includes('student')) {
+        roleSelect.value = 'Student';
+    } else if(userRole.toLowerCase().includes('faculty')) {
+        roleSelect.value = 'Faculty';
+    } else {
+        roleSelect.value = '';
+    }
+}
+function cmFilterUsers(query){
+    var select = document.getElementById('cm_user_select');
+    var options = select.querySelectorAll('option');
+    var lowerQuery = query.toLowerCase();
+    var hasMatch = false;
+    options.forEach(function(opt){
+        if(!opt.value) return; // Skip placeholder
+        var text = opt.textContent.toLowerCase();
+        var email = opt.dataset.email ? opt.dataset.email.toLowerCase() : '';
+        var first = opt.dataset.first ? opt.dataset.first.toLowerCase() : '';
+        var last = opt.dataset.last ? opt.dataset.last.toLowerCase() : '';
+        if(text.includes(lowerQuery) || email.includes(lowerQuery) || first.includes(lowerQuery) || last.includes(lowerQuery)){
+            opt.style.display = '';
+            hasMatch = true;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    // Auto-expand dropdown if searching
+    if(query.length > 0) {
+        select.size = Math.min(10, options.length);
+    } else {
+        select.size = 5;
+    }
 }
 /* ── type dropdown toggle ── */
 function saOnTypeChange(){
@@ -650,7 +709,85 @@ document.addEventListener('DOMContentLoaded',function(){
             });
         });
     });
-    document.addEventListener('keydown',function(e){if(e.key==='Escape') closeCreateMentor();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeFilePreviewModal(); }});
 });
+
+/* ── File Preview Modal ── */
+function openFilePreviewModal(fileUrl, fileName) {
+    var modal = document.getElementById('filePreviewModal');
+    var img = document.getElementById('filePreviewImage');
+    var title = document.getElementById('filePreviewTitle');
+    if (!modal || !img) return;
+    img.src = fileUrl;
+    img.alt = fileName || 'Preview';
+    if (title) title.textContent = fileName || 'File Preview';
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeFilePreviewModal() {
+    var modal = document.getElementById('filePreviewModal');
+    var img = document.getElementById('filePreviewImage');
+    if (modal) modal.classList.remove('open');
+    if (img) img.src = '';
+    document.body.style.overflow = '';
+}
+</script>
+
+{# ── File Preview Modal HTML ── #}
+<div id="filePreviewModal" class="sa-modal-overlay" style="z-index: 2000;">
+    <div class="sa-modal-backdrop" onclick="closeFilePreviewModal()"></div>
+    <div class="sa-modal" style="max-width: 90vw; max-height: 90vh; width: auto;">
+        <button class="sa-modal-close" onclick="closeFilePreviewModal()">×</button>
+        <h3 id="filePreviewTitle" style="margin-bottom: 16px; font-size: 16px; color: #111827;">File Preview</h3>
+        <div style="display: flex; justify-content: center; align-items: center; max-height: 70vh; overflow: auto;">
+            <img id="filePreviewImage" src="" alt="Preview" style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        </div>
+        <div class="sa-modal-footer" style="margin-top: 16px; display: flex; justify-content: center; gap: 12px;">
+            <a id="filePreviewDownload" href="#" target="_blank" class="sa-modal-save" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Open in New Tab
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ── Proof of Expertise Thumbnail Styles ── */
+.sa-proof-thumb-wrapper {
+    position: relative;
+    cursor: pointer;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.sa-proof-thumb-wrapper:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.sa-proof-thumb-wrapper .sa-proof-img {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    display: block;
+}
+.sa-proof-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 8px;
+}
+.sa-proof-thumb-wrapper:hover .sa-proof-overlay {
+    opacity: 1;
+}
+</style>
 </script>
 {% endblock %}

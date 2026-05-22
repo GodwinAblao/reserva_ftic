@@ -364,8 +364,7 @@ class AdminController extends AbstractController
              WHERE DATE(reservation_date) = :today GROUP BY status',
             ['today' => $today]
         );
-        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0,
-                          'AwaitingFacilitySelection' => 0, 'Suggested' => 0];
+        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Suggested' => 0];
         foreach ($statusRows as $sr) {
             $statusCounts[$sr['status']] = (int) $sr['cnt'];
         }
@@ -681,7 +680,7 @@ class AdminController extends AbstractController
 
         // Single batch query: counts across all four tables in one round-trip
         $batch = $conn->executeQuery(
-            "SELECT 'res_status'  AS grp, status AS lbl, COUNT(*) AS cnt FROM reservation WHERE status != 'AwaitingFacilitySelection' GROUP BY status
+            "SELECT 'res_status'  AS grp, status AS lbl, COUNT(*) AS cnt FROM reservation WHERE 1=1 GROUP BY status
              UNION ALL
              SELECT 'apt_status', status, COUNT(*) FROM mentoring_appointment GROUP BY status
              UNION ALL
@@ -729,7 +728,7 @@ class AdminController extends AbstractController
              FROM reservation r LEFT JOIN facility f ON r.facility_id = f.id
              WHERE r.status NOT IN (:statuses)
              ORDER BY r.created_at DESC LIMIT 8',
-            ['statuses' => ['AwaitingFacilitySelection']],
+            ['statuses' => []],
             ['statuses' => \Doctrine\DBAL\ArrayParameterType::STRING]
         )->fetchAllAssociative();
 

@@ -2,6 +2,320 @@
 
 {% block title %}Calendar View - Reserva FTIC{% endblock %}
 
+{% block stylesheets %}
+<style>
+    /* Professional Calendar Design System */
+    :root {
+        --primary: #0d9b00;
+        --primary-dark: #0a7a00;
+        --primary-light: #e8f5e9;
+        --secondary: #1e293b;
+        --accent: #f59e0b;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --border: #e2e8f0;
+        --bg: #ffffff;
+        --surface: #f8fafc;
+        --text: #1e293b;
+        --text-light: #64748b;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .sa-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow);
+        transition: box-shadow 0.3s ease;
+    }
+
+    .sa-card:hover {
+        box-shadow: var(--shadow-lg);
+    }
+
+    .sa-card h3 {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 20px 0;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--primary-light);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .sa-card h3::before {
+        content: '';
+        width: 4px;
+        height: 24px;
+        background: var(--primary);
+        border-radius: 2px;
+    }
+
+    .sa-card p {
+        font-size: 14px;
+        color: var(--text-light);
+        line-height: 1.6;
+        margin-bottom: 16px;
+    }
+
+    .sa-import-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .sa-import-field {
+        margin-bottom: 16px;
+    }
+
+    .sa-import-field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .sa-import-field input,
+    .sa-import-field select,
+    .sa-import-field textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        background: var(--bg);
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    /* Ensure all inline-styled inputs also have professional styling */
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+        border-radius: 8px !important;
+        border: 1px solid var(--border) !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: var(--text) !important;
+        background: var(--bg) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    select:focus,
+    textarea:focus {
+        outline: none !important;
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.1) !important;
+    }
+
+    .sa-import-field input:focus,
+    .sa-import-field select:focus,
+    .sa-import-field textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.1);
+    }
+
+    .sa-import-field input:hover,
+    .sa-import-field select:hover,
+    .sa-import-field textarea:hover {
+        border-color: #cbd5e1;
+    }
+
+    .sa-import-mini-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+    }
+
+    .sa-btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .sa-btn-primary {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+    }
+
+    .sa-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 155, 0, 0.3);
+    }
+
+    .sa-btn-secondary {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+    }
+
+    .sa-btn-secondary:hover {
+        background: #e2e8f0;
+        transform: translateY(-1px);
+    }
+
+    .sa-btn-danger-soft {
+        background: #fef2f2;
+        color: var(--danger);
+        border: 1px solid #fecaca;
+    }
+
+    .sa-btn-danger-soft:hover {
+        background: #fee2e2;
+        transform: translateY(-1px);
+    }
+
+    .sa-warning-text {
+        color: var(--danger);
+        font-size: 13px;
+        margin: 12px 0;
+        padding: 12px;
+        background: #fef2f2;
+        border-left: 3px solid var(--danger);
+        border-radius: 4px;
+    }
+
+    .schedule-import-message {
+        padding: 16px;
+        border-radius: 8px;
+        margin-top: 16px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .schedule-import-message.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .schedule-import-message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    .manual-class-summary {
+        background: var(--primary-light);
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        color: #166534;
+        font-weight: 500;
+    }
+
+    .facility-allocation-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .allocation-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-light);
+        margin: 0 0 12px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .facility-allocation-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .calendar-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 32px;
+        background: var(--surface);
+        border-radius: 12px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border);
+    }
+
+    .calendar-spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .calendar-retry-btn {
+        padding: 10px 20px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .calendar-retry-btn:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    /* Time picker styling */
+    #manualStartTime, #manualEndTime {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z'/%3e%3c/svg%3e");
+        background-position: right 12px center;
+        background-repeat: no-repeat;
+        background-size: 18px 18px;
+        padding-right: 40px;
+        cursor: pointer;
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .sa-import-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% set calendar_full_mode = calendar_full_mode|default(true) %}
 {% set calendar_can_import = calendar_can_import|default(calendar_full_mode) %}
 
@@ -32,6 +346,124 @@
     </div>
 </div>
 
+    {% if calendar_can_import or calendar_full_mode %}
+    <div class="sa-import-grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+        {% if calendar_can_import %}
+        <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" class="sa-import-card">
+            <h3>Import Class Schedule</h3>
+            <p>Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
+
+            <div class="sa-import-field">
+                <label>Upload CSV</label>
+                <input type="file" name="schedule_file" accept=".csv,text/csv">
+            </div>
+
+            <div class="sa-import-field">
+                <label>Or Paste Schedule Data</label>
+                <textarea name="schedule_paste" placeholder="facility,day,start,end,course_code,section,faculty_name,faculty_email" style="height:80px; font-family:monospace;"></textarea>
+            </div>
+
+            <p class="sa-warning-text">Importing replaces the previous imported class schedule automatically.</p>
+
+            <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
+            <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="width:100%; justify-content:center;">Import &amp; Sync Schedule</button>
+            <div id="scheduleImportMessage" class="schedule-import-message" style="display:none;"></div>
+            <div id="scheduleDeleteMessage" class="schedule-import-message" style="display:none;"></div>
+        </form>
+        {% endif %}
+
+        {% if calendar_full_mode %}
+        <form id="modifyScheduleForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
+            <h3>Modify Facility Schedule</h3>
+            <input type="hidden" name="_token" id="modifyFormToken" value="{{ csrf_token('manual_schedule_block') }}">
+            <input type="hidden" id="modifyBlockId" name="block_id" value="">
+            <input type="hidden" id="modifyClassScheduleId" name="class_schedule_id" value="">
+            <input type="hidden" id="modifyEditMode" name="edit_mode" value="block">
+            <input type="hidden" name="course_code" id="modifyCourseCode" value="">
+            <input type="hidden" name="section" id="modifySection" value="">
+            <input type="hidden" name="faculty_name" id="modifyFacultyName" value="">
+            <input type="hidden" name="faculty_email" id="modifyFacultyEmail" value="">
+            <input type="hidden" name="class_schedule_facility" id="modifyClassScheduleFacility" value="">
+            
+            <div id="modifyClassSummary" class="manual-class-summary" style="display:none;"></div>
+            
+            <div class="sa-import-field">
+                <label>Action Type</label>
+                <select name="action_type" id="modifyActionType" required>
+                    <option value="modify">Modify Schedule Details</option>
+                    <option value="block">Block This Time Slot</option>
+                </select>
+            </div>
+            
+            <div class="sa-import-mini-grid">
+                <select name="facility" id="modifyFacilitySelect" required class="sa-import-field">{% for facility in facilities %}<option value="{{ facility.id }}">{{ facility.name }}</option>{% endfor %}</select>
+                <input type="date" name="date" id="modifyScheduleDate" required class="sa-import-field">
+                <select name="start_time" id="modifyStartTime" required class="sa-import-field">
+                    <option value="">Select Start Time</option>
+                    {% for hour in 7..18 %}
+                        <option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>
+                        <option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>
+                    {% endfor %}
+                    <option value="19:00">7:00 PM</option>
+                </select>
+                <select name="end_time" id="modifyEndTime" required class="sa-import-field">
+                    <option value="">Select End Time</option>
+                    {% for hour in 7..18 %}
+                        <option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>
+                        <option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>
+                    {% endfor %}
+                    <option value="19:00">7:00 PM</option>
+                    <option value="20:00">8:00 PM</option>
+                </select>
+            </div>
+            
+            <div id="modifyFields" class="sa-import-mini-grid" style="display:none;">
+                <div class="sa-import-field">
+                    <label>Course Code</label>
+                    <input type="text" name="course_code_input" id="modifyCourseCodeInput" placeholder="Course Code">
+                </div>
+                <div class="sa-import-field">
+                    <label>Section</label>
+                    <input type="text" name="section_input" id="modifySectionInput" placeholder="Section">
+                </div>
+                <div class="sa-import-field">
+                    <label>Faculty Name</label>
+                    <input type="text" name="faculty_name_input" id="modifyFacultyNameInput" placeholder="Faculty Name">
+                </div>
+                <div class="sa-import-field">
+                    <label>Faculty Email</label>
+                    <input type="text" name="faculty_email_input" id="modifyFacultyEmailInput" placeholder="Faculty Email">
+                </div>
+            </div>
+            
+            <div id="blockFields" class="sa-import-mini-grid" style="display:none;">
+                <div class="sa-import-field">
+                    <label>Block Type</label>
+                    <select name="block_type" id="modifyBlockType">
+                        <option value="Blocked">Blocked</option>
+                        <option value="Maintenance">Maintenance</option>
+                    </select>
+                </div>
+                <div class="sa-import-field">
+                    <label>Block Reason</label>
+                    <input type="text" name="block_reason" id="modifyBlockReason" placeholder="Reason for blocking">
+                </div>
+            </div>
+            
+            <div class="sa-import-field" style="margin-top:16px;">
+                <textarea name="notes" id="modifyNotes" placeholder="Notes (optional)" style="height:60px;"></textarea>
+            </div>
+            
+            <div style="display:flex; gap:12px; align-items:center; margin-top:16px;">
+                <button type="submit" id="modifySubmit" class="sa-btn sa-btn-primary">Submit</button>
+                <button type="button" id="modifyCancelEdit" class="sa-btn sa-btn-secondary" style="display:none;">Cancel Edit</button>
+            </div>
+            
+            <div id="modifyMessage" class="schedule-import-message" style="display:none;"></div>
+        </form>
+        {% endif %}
+    </div>
+
     <!-- Filters -->
     <div class="sa-filter-panel">
         <div class="sa-filter-grid">
@@ -55,9 +487,7 @@
                     <option value="Cancelled">Cancelled</option>
                     <option value="Class Schedule">Class Schedule</option>
                     <option value="Blocked">Blocked</option>
-                    <option value="Manual">Manual</option>
                     <option value="Maintenance">Maintenance</option>
-                    <option value="Imported">Imported</option>
                 </select>
             </div>
 
@@ -84,72 +514,6 @@
         </div>
     </div>
 
-    {% if calendar_can_import or calendar_full_mode %}
-    <div class="sa-import-grid">
-        {% if calendar_can_import %}
-        <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" class="sa-import-card">
-            <h3>Import Class Schedule</h3>
-            <p>Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
-
-            <div class="sa-import-field">
-                <label>Upload CSV</label>
-                <input type="file" name="schedule_file" accept=".csv,text/csv">
-            </div>
-
-            <div class="sa-import-field">
-                <label>Or Paste Schedule Data</label>
-                <textarea name="schedule_paste" placeholder="facility,day,start,end,course_code,section,faculty_name,faculty_email" style="height:80px; font-family:monospace;"></textarea>
-            </div>
-
-            <p class="sa-warning-text">Importing replaces the previous imported class schedule automatically.</p>
-
-            <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
-            <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="width:100%; justify-content:center;">Import &amp; Sync Schedule</button>
-            <div id="scheduleImportMessage" class="schedule-import-message" style="display:none;"></div>
-            <div id="scheduleDeleteMessage" class="schedule-import-message" style="display:none;"></div>
-        </form>
-        {% endif %}
-
-        {% if calendar_full_mode %}
-        <form id="manualBlockForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
-            <h3 id="manualFormTitle">Manual Schedule Block</h3>
-            <input type="hidden" name="_token" id="manualFormToken" value="{{ csrf_token('manual_schedule_block') }}">
-            <input type="hidden" id="manualBlockId" name="block_id" value="">
-            <input type="hidden" id="manualClassScheduleId" name="class_schedule_id" value="">
-            <input type="hidden" id="manualEditMode" name="edit_mode" value="block">
-            <input type="hidden" name="course_code" id="manualCourseCode" value="">
-            <input type="hidden" name="section" id="manualSection" value="">
-            <input type="hidden" name="faculty_name" id="manualFacultyName" value="">
-            <input type="hidden" name="faculty_email" id="manualFacultyEmail" value="">
-            <div id="manualClassSummary" class="manual-class-summary" style="display:none;"></div>
-            <div id="facilityAllocationPanel" class="facility-allocation-panel" style="display:none;">
-                <p class="allocation-label">Available facilities for this time slot</p>
-                <div id="facilityAllocationList" class="facility-allocation-list"></div>
-            </div>
-            <div class="sa-import-mini-grid">
-                <select name="facility" id="manualFacilitySelect" required class="sa-import-field"><option value="">Select Facility</option>{% for facility in facilities %}<option value="{{ facility.id }}">{{ facility.name }}</option>{% endfor %}</select>
-                <input type="date" name="date" id="manualScheduleDate" required class="sa-import-field">
-                <input type="time" name="start_time" id="manualStartTime" required class="sa-import-field">
-                <input type="time" name="end_time" id="manualEndTime" required class="sa-import-field">
-                <input type="text" name="title" id="manualBlockTitle" placeholder="Title" class="sa-import-field manual-block-only">
-                <select name="type" id="manualBlockType" class="sa-import-field manual-block-only">
-                    <option value="Manual">Manual</option>
-                    <option value="Blocked">Blocked</option>
-                    <option value="Maintenance">Maintenance</option>
-                </select>
-            </div>
-            <div class="sa-import-field manual-block-only" style="margin-top:10px;">
-                <textarea name="notes" id="manualBlockNotes" placeholder="Notes" style="height:60px;"></textarea>
-            </div>
-            <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-                <button type="submit" id="manualBlockSubmit" class="sa-btn sa-btn-primary">Add Block</button>
-                <button type="button" id="manualBlockCancelEdit" class="sa-btn sa-btn-secondary" style="display:none;">Cancel Edit</button>
-            </div>
-            <div id="manualBlockMessage" class="schedule-import-message" style="display:none;"></div>
-        </form>
-        {% endif %}
-    </div>
-    {% endif %}
     <!-- Calendar Grid -->
     <div class="sa-card" style="padding:0; overflow:auto;">
         <div id="calendarStatus" class="calendar-status calendar-status-loading">
@@ -161,6 +525,7 @@
             <!-- Grid renders immediately via inline script below -->
         </div>
     </div>
+    {% endif %}
 
     <script>
         // Render calendar grid immediately without waiting for full script load
@@ -392,6 +757,235 @@
         store.push({ el, type, fn });
     }
 
+    function initializeFormRestrictions() {
+        // Set date restrictions - no past dates, no Sundays
+        const dateInput = document.getElementById('manualScheduleDate');
+        if (dateInput) {
+            const today = new Date();
+            const minDate = today.toISOString().split('T')[0];
+            
+            dateInput.min = minDate;
+            
+            // Prevent Sunday selection
+            dateInput.addEventListener('change', function() {
+                const selectedDate = new Date(this.value);
+                if (selectedDate.getDay() === 0) { // Sunday
+                    this.value = '';
+                    alert('Sundays are not allowed. Please select a different date.');
+                }
+            });
+        }
+
+        // Enhance time inputs with AM/PM display and validation
+        const startTimeInput = document.getElementById('modifyStartTime');
+        const endTimeInput = document.getElementById('modifyEndTime');
+        
+        function formatTimeToAMPM(time24) {
+            const [hours, minutes] = time24.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+        
+        function validateTimeRange() {
+            if (startTimeInput.value && endTimeInput.value) {
+                const start = startTimeInput.value;
+                const end = endTimeInput.value;
+                
+                // Check if end time is after start time
+                if (end <= start) {
+                    alert('End time must be after start time.');
+                    endTimeInput.value = '';
+                    return false;
+                }
+                
+                // Check if times are within 7AM-7PM
+                const startHour = parseInt(start.split(':')[0]);
+                const endHour = parseInt(end.split(':')[0]);
+                
+                if (startHour < 7 || startHour > 19 || endHour < 7 || endHour > 19) {
+                    alert('Time must be between 7:00 AM and 7:00 PM.');
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Implement dynamic smart blocking for dropdown time selection
+        function updateEndTimeOptions() {
+            const startTime = startTimeInput.value;
+            const endTimeSelect = endTimeInput;
+            
+            if (!startTime) {
+                // Reset end time options if no start time selected
+                resetEndTimeOptions();
+                return;
+            }
+            
+            const [startHour, startMinute] = startTime.split(':').map(Number);
+            const startTotalMinutes = startHour * 60 + startMinute;
+            
+            // Add smooth transition effect
+            endTimeSelect.style.transition = 'opacity 0.3s ease';
+            endTimeSelect.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                // Clear current end time options
+                endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+                
+                // Generate valid end time options (must be after start time and <= 7:00 PM)
+                for (let hour = 7; hour <= 19; hour++) {
+                    for (let minute of [0, 50]) {
+                        // Skip 7:50 PM as it's beyond 7:00 PM
+                        if (hour === 19 && minute > 0) continue;
+                        
+                        const endTotalMinutes = hour * 60 + minute;
+                        
+                        // End time must be after start time
+                        if (endTotalMinutes > startTotalMinutes) {
+                            const timeValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                            const displayTime = hour === 12 ? `12:${minute.toString().padStart(2, '0')} PM` : 
+                                              (hour > 12 ? `${hour-12}:${minute.toString().padStart(2, '0')} PM` : 
+                                               `${hour}:${minute.toString().padStart(2, '0')} AM`);
+                            
+                            const option = document.createElement('option');
+                            option.value = timeValue;
+                            option.textContent = displayTime;
+                            endTimeSelect.appendChild(option);
+                        }
+                    }
+                }
+                
+                // If current end time is no longer valid, clear it
+                if (endTimeSelect.value && startTime >= endTimeSelect.value) {
+                    endTimeSelect.value = '';
+                    // Add visual feedback
+                    endTimeSelect.style.borderColor = '#f59e0b';
+                    setTimeout(() => {
+                        endTimeSelect.style.borderColor = '';
+                    }, 1000);
+                }
+                
+                // Restore opacity with smooth transition
+                endTimeSelect.style.opacity = '1';
+                
+                // Add success indicator
+                endTimeSelect.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
+                setTimeout(() => {
+                    endTimeSelect.style.boxShadow = '';
+                }, 800);
+            }, 150);
+        }
+        
+        function resetEndTimeOptions() {
+            const endTimeSelect = endTimeInput;
+            endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+            
+            // Add all valid end time options (7:00, 7:50, 8:00, 8:50 pattern)
+            for (let hour = 7; hour <= 19; hour++) {
+                for (let minute of [0, 50]) {
+                    // Skip 7:50 PM as it's beyond 7:00 PM
+                    if (hour === 19 && minute > 0) continue;
+                    
+                    const timeValue = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                    const displayTime = hour === 12 ? `12:${minute.toString().padStart(2, '0')} PM` : 
+                                      (hour > 12 ? `${hour-12}:${minute.toString().padStart(2, '0')} PM` : 
+                                       `${hour}:${minute.toString().padStart(2, '0')} AM`);
+                    
+                    const option = document.createElement('option');
+                    option.value = timeValue;
+                    option.textContent = displayTime;
+                    endTimeSelect.appendChild(option);
+                }
+            }
+        }
+        
+        // Add event listeners for dynamic time blocking
+        startTimeInput.addEventListener('change', function() {
+            if (this.value) {
+                updateEndTimeOptions();
+                
+                // Refresh facility allocation if in class mode
+                if (document.getElementById('manualEditMode').value === 'class' && calendarConfig.classScheduleAvailableUrl) {
+                    refreshFacilityAllocation();
+                }
+            } else {
+                resetEndTimeOptions();
+            }
+        });
+        
+        // Initialize end time options
+        resetEndTimeOptions();
+
+        // Make facility allocation non-clickable when dropdown exists
+        const facilityAllocationList = document.getElementById('facilityAllocationList');
+        if (facilityAllocationList) {
+            facilityAllocationList.addEventListener('click', function(e) {
+                if (e.target.classList.contains('facility-chip')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Don't allow clicking - user must use dropdown
+                }
+            });
+        }
+    }
+
+    function initializeModalImprovements() {
+        // Create improved modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'improvedModalOverlay';
+        modalOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 9998;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        `;
+        document.body.appendChild(modalOverlay);
+
+        // Override modal opening functions
+        const originalOpenModal = window.openModal;
+        window.openModal = function(event) {
+            if (event) {
+                renderEventModal(event);
+            }
+            modalOverlay.style.display = 'flex';
+            
+            // Center the modal properly
+            const modal = document.getElementById('eventModal');
+            if (modal) {
+                modal.style.position = 'fixed';
+                modal.style.top = '50%';
+                modal.style.left = '50%';
+                modal.style.transform = 'translate(-50%, -50%)';
+                modal.style.zIndex = '9999';
+                modal.style.maxHeight = '90vh';
+                modal.style.overflowY = 'auto';
+            }
+        };
+
+        // Override modal closing functions
+        const originalCloseModal = window.closeModal;
+        window.closeModal = function() {
+            modalOverlay.style.display = 'none';
+            if (originalCloseModal) originalCloseModal();
+        };
+
+        // Close modal when clicking overlay
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) {
+                window.closeModal();
+            }
+        });
+    }
+
     function bootCalendar() {
         if (!document.getElementById('calendarView')) return;
 
@@ -445,14 +1039,17 @@
             on(document.getElementById('confirmDeleteSchedule'), 'click',  deleteImportedScheduleInBackground, L);
         }
         if (calendarConfig.fullMode) {
-            on(document.getElementById('manualBlockForm'),       'submit', saveManualBlockInBackground, L);
-            on(document.getElementById('manualBlockCancelEdit'), 'click',  resetManualBlockForm,        L);
-            ['manualScheduleDate', 'manualStartTime', 'manualEndTime'].forEach((id) => {
-                on(document.getElementById(id), 'change', () => {
-                    if (document.getElementById('manualEditMode').value === 'class') refreshFacilityAllocation();
-                }, L);
-            });
+            on(document.getElementById('modifyScheduleForm'),       'submit', saveModifyScheduleInBackground, L);
+            on(document.getElementById('modifyCancelEdit'), 'click',  resetModifyScheduleForm,        L);
+            on(document.getElementById('modifyActionType'), 'change', handleModifyActionTypeChange, L);
         }
+
+        // Remove references to deleted manualBlockForm to prevent errors
+        // The manual block form has been replaced by modifyScheduleForm
+
+        // Initialize date restrictions and modal improvements
+        initializeFormRestrictions();
+        initializeModalImprovements();
 
         inst.timer = setInterval(() => {
             if (!document.hidden) renderCalendar(true);
@@ -521,6 +1118,21 @@
             });
             const data = await response.json();
 
+            console.log('Import Response:', data);
+            console.log('Response status:', response.status);
+            console.log('Success:', data.success);
+            console.log('Errors:', data.errors);
+            console.log('Detailed Errors:', data.debug?.detailed_errors);
+            
+            // Show errors in console for debugging
+            if (data.errors && data.errors.length > 0) {
+                console.log('=== IMPORT ERRORS ===');
+                data.errors.forEach((error, index) => {
+                    console.log(`Error ${index + 1}: ${error}`);
+                });
+                console.log('===================');
+            }
+
             if (!response.ok || !data.success) {
                 throw new Error(data.message || 'Schedule import failed.');
             }
@@ -554,111 +1166,152 @@
         }
     }
 
-    async function saveManualBlockInBackground(event) {
-        event.preventDefault();
+    // Manual block form functions removed - replaced by modifyScheduleForm
 
-        const form = event.currentTarget;
-        const submitButton = document.getElementById('manualBlockSubmit');
-        const messageBox = document.getElementById('manualBlockMessage');
-        const originalText = submitButton.textContent;
-        let savedSuccessfully = false;
-        const editMode = document.getElementById('manualEditMode').value;
-        const classScheduleId = document.getElementById('manualClassScheduleId').value;
-        const blockId = document.getElementById('manualBlockId').value;
-        const isClassMode = editMode === 'class' && classScheduleId;
-        const actionUrl = isClassMode
-            ? calendarConfig.classScheduleUpdatePattern.replace('{id}', classScheduleId)
-            : (blockId ? calendarConfig.blockUpdatePattern.replace('{id}', blockId) : form.dataset.createUrl);
+    function handleModifyActionTypeChange(e) {
+        const actionType = e.target.value;
+        const modifyFields = document.getElementById('modifyFields');
+        const blockFields = document.getElementById('blockFields');
+        
+        if (actionType === 'modify') {
+            modifyFields.style.display = 'grid';
+            blockFields.style.display = 'none';
+        } else if (actionType === 'block') {
+            modifyFields.style.display = 'none';
+            blockFields.style.display = 'grid';
+        }
+    }
 
-        submitButton.disabled = true;
-        submitButton.textContent = isClassMode || blockId ? 'Updating...' : 'Adding...';
-        showManualBlockMessage(isClassMode ? 'Updating class schedule...' : (blockId ? 'Updating schedule block...' : 'Adding schedule block...'), 'success');
-        setCalendarStatus(isClassMode ? 'Updating class schedule...' : (blockId ? 'Updating blocked schedule...' : 'Adding blocked schedule...'), 'loading', false);
+    function resetModifyScheduleForm(clearMessage = true) {
+        const form = document.getElementById('modifyScheduleForm');
+        form.reset();
+        form.action = form.dataset.createUrl;
+        document.getElementById('modifyBlockId').value = '';
+        document.getElementById('modifyClassScheduleId').value = '';
+        document.getElementById('modifyEditMode').value = 'block';
+        document.getElementById('modifyFormToken').value = form.dataset.blockToken || '';
+        document.getElementById('modifyClassSummary').style.display = 'none';
+        document.getElementById('modifyFields').style.display = 'none';
+        document.getElementById('blockFields').style.display = 'none';
+        document.getElementById('modifySubmit').textContent = 'Submit';
+        document.getElementById('modifyCancelEdit').style.display = 'none';
 
+        if (clearMessage) {
+            document.getElementById('modifyMessage').style.display = 'none';
+        }
+    }
+
+    async function saveModifyScheduleInBackground(e) {
+        e.preventDefault();
+        const form = document.getElementById('modifyScheduleForm');
+        const submitBtn = document.getElementById('modifySubmit');
+        const messageBox = document.getElementById('modifyMessage');
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
+        
         try {
+            const formData = new FormData(form);
+            const actionType = formData.get('action_type');
+            const classScheduleId = formData.get('class_schedule_id');
+            const editMode = formData.get('edit_mode');
+            
+            console.log('=== Form Submission Debug ===');
+            console.log('Action type:', actionType);
+            console.log('Edit mode:', editMode);
+            console.log('Class schedule ID:', classScheduleId);
+            console.log('Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+            
+            // Determine the correct endpoint based on action type and edit mode
+            let actionUrl;
+            if (editMode === 'class' && classScheduleId) {
+                // For class schedule modification, use the class schedule update endpoint
+                if (actionType === 'block') {
+                    actionUrl = `/super-admin/class-schedule/${classScheduleId}/block`;
+                } else {
+                    actionUrl = `/super-admin/class-schedule/${classScheduleId}/update`;
+                }
+            } else {
+                // For manual blocks, use the block endpoint
+                actionUrl = form.action;
+            }
+            
+            console.log('Using action URL:', actionUrl);
+            
             const response = await fetch(actionUrl, {
                 method: 'POST',
-                body: new FormData(form),
+                body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json',
                 },
             });
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Schedule block save failed.');
+            
+            console.log('Response status:', response.status);
+            
+            let result;
+            try {
+                result = await response.json();
+                console.log('Response data:', result);
+            } catch (jsonError) {
+                console.error('Failed to parse JSON response:', jsonError);
+                const textResponse = await response.text();
+                console.error('Response text:', textResponse);
+                throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
             }
-
-            const savedDate = (data.schedule && data.schedule.reservationDate) || (data.block && data.block.reservationDate);
-            if (savedDate) {
-                currentDate = parseDateOnly(savedDate);
+            
+            if (result.success) {
+                messageBox.textContent = result.message || 'Schedule updated successfully';
+                messageBox.className = 'schedule-import-message success';
+                messageBox.style.display = 'block';
+                resetModifyScheduleForm(false);
+                calendarEventsCache.clear();
+                await renderCalendar(true);
+            } else {
+                const errorMsg = result.message || 'Failed to update schedule';
+                console.error('Server error:', errorMsg);
+                messageBox.textContent = `Error: ${errorMsg}`;
+                messageBox.className = 'schedule-import-message error';
+                messageBox.style.display = 'block';
             }
-
-            calendarEventsCache.clear();
-            broadcastScheduleRevision(data.scheduleRevision);
-            showManualBlockMessage(data.message, 'success');
-            savedSuccessfully = true;
-            resetManualBlockForm(false);
-            setCalendarStatus(isClassMode ? 'Class schedule saved. Refreshing calendar...' : 'Schedule block saved. Refreshing calendar and availability...', 'loading', false);
-            await renderCalendar(true);
         } catch (error) {
-            showManualBlockMessage(error.message || 'Schedule block save failed.', 'error');
-            setCalendarStatus('Could not save schedule block. Resolve conflicts and try again.', 'error', false);
-        } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = savedSuccessfully ? 'Add Block' : originalText;
-        }
-
-        function showManualBlockMessage(message, type) {
-            messageBox.textContent = message;
-            messageBox.className = 'schedule-import-message ' + type;
+            console.error('=== Form Submission Error ===');
+            console.error('Error type:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+            
+            const errorMsg = error.message || 'Unknown error occurred';
+            messageBox.textContent = `Error: ${errorMsg} (Check browser console for details)`;
+            messageBox.className = 'schedule-import-message error';
             messageBox.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit';
         }
     }
 
-    function resetManualBlockForm(clearMessage = true) {
-        const form = document.getElementById('manualBlockForm');
-        form.reset();
-        form.action = form.dataset.createUrl;
-        document.getElementById('manualBlockId').value = '';
-        document.getElementById('manualClassScheduleId').value = '';
-        document.getElementById('manualEditMode').value = 'block';
-        document.getElementById('manualFormToken').value = form.dataset.blockToken || '';
-        setManualFormMode('block');
-        document.getElementById('manualBlockSubmit').textContent = 'Add Block';
-        document.getElementById('manualBlockCancelEdit').style.display = 'none';
-
-        if (clearMessage) {
-            document.getElementById('manualBlockMessage').style.display = 'none';
-        }
-    }
-
-    function setManualFormMode(mode) {
-        const isClass = mode === 'class';
-        document.getElementById('manualFormTitle').textContent = isClass ? 'Modify Facility Schedule' : 'Manual Schedule Block';
-        document.getElementById('manualClassSummary').style.display = isClass ? 'block' : 'none';
-        document.getElementById('facilityAllocationPanel').style.display = isClass ? 'block' : 'none';
-        document.querySelectorAll('.manual-block-only').forEach((el) => {
-            el.style.display = isClass ? 'none' : '';
-            if (!isClass && el.tagName === 'INPUT') {
-                el.required = el.id === 'manualBlockTitle' ? false : el.required;
-            }
-        });
-        document.getElementById('manualBlockTitle').required = !isClass;
-    }
+    // setManualFormMode function removed - manual block form deleted
 
     async function refreshFacilityAllocation() {
+        console.log('refreshFacilityAllocation called');
+        console.log('calendarConfig:', calendarConfig);
+        
         if (!calendarConfig.classScheduleAvailableUrl) {
+            console.log('No classScheduleAvailableUrl in config');
             return;
         }
 
-        const date = document.getElementById('manualScheduleDate').value;
-        const start = document.getElementById('manualStartTime').value;
-        const end = document.getElementById('manualEndTime').value;
-        const excludeId = document.getElementById('manualClassScheduleId').value;
+        const date = document.getElementById('modifyScheduleDate').value;
+        const start = document.getElementById('modifyStartTime').value;
+        const end = document.getElementById('modifyEndTime').value;
+        const excludeId = document.getElementById('modifyClassScheduleId').value;
         const listEl = document.getElementById('facilityAllocationList');
-        const facilitySelect = document.getElementById('manualFacilitySelect');
+        const facilitySelect = document.getElementById('modifyFacilitySelect');
+
+        console.log('refreshFacilityAllocation params:', { date, start, end, excludeId });
 
         if (!date || !start || !end || end <= start) {
             listEl.innerHTML = '<span style="color:#9ca3af;font-size:0.85rem;">Set date and time to see available facilities.</span>';
@@ -669,10 +1322,17 @@
 
         try {
             const params = new URLSearchParams({ date, start, end, exclude_id: excludeId || '' });
-            const response = await fetch(`${calendarConfig.classScheduleAvailableUrl}?${params.toString()}`, {
+            const url = `${calendarConfig.classScheduleAvailableUrl}?${params.toString()}`;
+            console.log('Fetching facilities from:', url);
+            
+            const response = await fetch(url, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
+            
+            console.log('Facility response status:', response.status);
+            
             const data = await response.json();
+            console.log('Facility data:', data);
             const availableIds = new Set((data.facilities || []).map((f) => String(f.id)));
             const selectedId = facilitySelect.value;
 
@@ -1097,6 +1757,8 @@
             ' data-class-id="' + classId + '"' +
             ' data-block-id="' + blockId + '"' +
             ' data-is-block="' + isBlock + '"' +
+            ' data-original-item-type="' + (event.originalItemType || '') + '"' +
+            ' data-original-item-id="' + (event.originalItemId || '') + '"' +
             ' data-title="' + safeName + '"' +
             ' data-event-name="' + safeEventName + '"' +
             ' data-facility="' + safeFacility + '"' +
@@ -1161,8 +1823,12 @@
             }).join('');
             let actionsHtml = '';
             if (calendarConfig.fullMode) {
-                actionsHtml += '<button type="button" class="btn-edit" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button>';
-                actionsHtml += '<button type="button" class="btn-edit" onclick="openManualScheduleBlockFromModal()">Manual Schedule Block</button>';
+                // Show revert button if blocked/maintenance
+                if (data.status === 'Blocked' || data.status === 'Maintenance') {
+                    actionsHtml += '<button type="button" class="btn-approve" onclick="revertBlockFromModal()">Revert to Normal</button>';
+                } else {
+                    actionsHtml += '<button type="button" class="btn-edit" style="background:#0d9b00;" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button>';
+                }
                 actionsHtml += '<button type="button" class="btn-delete" onclick="deleteClassScheduleFromModal()">Delete</button>';
             }
             if (data.facultyEmail && calendarConfig.notifyUrlPattern) {
@@ -1180,14 +1846,29 @@
             document.getElementById('eventModal').dataset.activeSection = data.section || '';
             document.getElementById('eventModal').dataset.activeFacultyName = data.facultyName || '';
             document.getElementById('eventModal').dataset.activeFacultyEmail = data.facultyEmail || '';
-        } else if (data.isBlock === '1' && !calendarConfig.fullMode) {
-            document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Schedule block (view only)</p>';
         } else if (data.isBlock === '1') {
-            document.getElementById('modalActions').innerHTML = `<button type="button" class="btn-edit" onclick="editManualBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteManualBlockFromModal()">Delete Block</button>`;
+            document.getElementById('eventModal').dataset.activeOriginalItemType = data.originalItemType || '';
+            document.getElementById('eventModal').dataset.activeOriginalItemId = data.originalItemId || '';
+            if (calendarConfig.fullMode) {
+                let actionsHtml = `<button type="button" class="btn-edit" style="background:#0d9b00;" onclick="editBlockFromModal()">Edit Block</button><button type="button" class="btn-delete" onclick="deleteBlockFromModal()">Delete Block</button>`;
+                // Add revert button if block has original item information
+                if (data.originalItemType && data.originalItemId) {
+                    actionsHtml = `<button type="button" class="btn-approve" onclick="revertBlockFromModal()">Revert to ${data.originalItemType === 'class_schedule' ? 'Class Schedule' : 'Reservation'}</button>` + actionsHtml;
+                }
+                document.getElementById('modalActions').innerHTML = actionsHtml;
+            } else {
+                document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Schedule block (view only)</p>';
+            }
         } else {
+            // For regular reservations only - not blocks
             const editUrl = calendarConfig.editUrlPattern.replace('{id}', data.id);
             if (calendarConfig.fullMode) {
-                document.getElementById('modalActions').innerHTML = `<a href="${editUrl}" class="btn-edit">Edit</a>`;
+                // Don't show edit button for blocked/maintenance items
+                if (data.status !== 'Blocked' && data.status !== 'Maintenance') {
+                    document.getElementById('modalActions').innerHTML = `<a href="${editUrl}" class="btn-edit">Edit</a>`;
+                } else {
+                    document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Blocked schedule (view only)</p>';
+                }
             } else {
                 const statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
                 const options = statuses.map(s => `<option value="${s}" ${s === data.status ? 'selected' : ''}>${s}</option>`).join('');
@@ -1214,84 +1895,27 @@
         document.getElementById('eventModal').style.display = 'block';
     }
 
-    function editManualBlockFromModal() {
-        const modal = document.getElementById('eventModal');
-        const form = document.getElementById('manualBlockForm');
-        const blockId = modal.dataset.activeBlock;
+    // editManualBlockFromModal function removed - manual block form deleted
 
-        if (!blockId) {
-            return;
-        }
-
-        document.getElementById('manualEditMode').value = 'block';
-        document.getElementById('manualClassScheduleId').value = '';
-        document.getElementById('manualBlockId').value = blockId;
-        document.getElementById('manualFormToken').value = form.dataset.blockToken || '';
-        setManualFormMode('block');
-        form.elements.facility.value = modal.dataset.activeFacilityId;
-        form.elements.date.value = modal.dataset.activeDate;
-        form.elements.start_time.value = modal.dataset.activeStart;
-        form.elements.end_time.value = modal.dataset.activeEnd;
-        form.elements.title.value = modal.dataset.activeTitle;
-        form.elements.type.value = ['Manual', 'Blocked', 'Maintenance'].includes(modal.dataset.activeStatus) ? modal.dataset.activeStatus : 'Manual';
-        form.elements.notes.value = modal.dataset.activePurpose;
-        document.getElementById('manualBlockSubmit').textContent = 'Update Block';
-        document.getElementById('manualBlockCancelEdit').style.display = 'inline-block';
-        document.getElementById('manualBlockMessage').style.display = 'none';
-        closeModal();
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    function openManualScheduleBlockFromModal() {
-        const modal = document.getElementById('eventModal');
-        const form = document.getElementById('manualBlockForm');
-
-        document.getElementById('manualEditMode').value = 'block';
-        document.getElementById('manualClassScheduleId').value = '';
-        document.getElementById('manualBlockId').value = '';
-        document.getElementById('manualFormToken').value = form.dataset.blockToken || '';
-        setManualFormMode('block');
-
-        if (modal.dataset.activeFacilityId) {
-            document.getElementById('manualFacilitySelect').value = modal.dataset.activeFacilityId;
-        }
-        if (modal.dataset.activeDate) {
-            document.getElementById('manualScheduleDate').value = modal.dataset.activeDate;
-        }
-        if (modal.dataset.activeStart) {
-            document.getElementById('manualStartTime').value = modal.dataset.activeStart;
-        }
-        if (modal.dataset.activeEnd) {
-            document.getElementById('manualEndTime').value = modal.dataset.activeEnd;
-        }
-        document.getElementById('manualBlockTitle').value = '';
-        document.getElementById('manualBlockType').value = 'Manual';
-        document.getElementById('manualBlockNotes').value = '';
-        document.getElementById('manualBlockSubmit').textContent = 'Add Block';
-        document.getElementById('manualBlockCancelEdit').style.display = 'none';
-        document.getElementById('manualBlockMessage').style.display = 'none';
-
-        closeModal();
-        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    // Functions referencing deleted manual block form removed
 
     function modifyClassScheduleFromModal() {
         const modal = document.getElementById('eventModal');
-        const form = document.getElementById('manualBlockForm');
+        const form = document.getElementById('modifyScheduleForm');
         const classId = modal.dataset.activeClassId;
 
         if (!classId) {
             return;
         }
 
-        document.getElementById('manualEditMode').value = 'class';
-        document.getElementById('manualClassScheduleId').value = classId;
-        document.getElementById('manualBlockId').value = '';
-        document.getElementById('manualFormToken').value = modal.dataset.activeUpdateCsrf || '';
-        document.getElementById('manualCourseCode').value = modal.dataset.activeCourseCode || '';
-        document.getElementById('manualSection').value = modal.dataset.activeSection || '';
-        document.getElementById('manualFacultyName').value = modal.dataset.activeFacultyName || '';
-        document.getElementById('manualFacultyEmail').value = modal.dataset.activeFacultyEmail || '';
+        document.getElementById('modifyEditMode').value = 'class';
+        document.getElementById('modifyClassScheduleId').value = classId;
+        document.getElementById('modifyBlockId').value = '';
+        document.getElementById('modifyCourseCode').value = modal.dataset.activeCourseCode || '';
+        document.getElementById('modifySection').value = modal.dataset.activeSection || '';
+        document.getElementById('modifyFacultyName').value = modal.dataset.activeFacultyName || '';
+        document.getElementById('modifyFacultyEmail').value = modal.dataset.activeFacultyEmail || '';
+        document.getElementById('modifyClassScheduleFacility').value = modal.dataset.activeFacilityId || '';
 
         const summaryParts = [
             modal.dataset.activeCourseCode ? `Course: ${modal.dataset.activeCourseCode}` : '',
@@ -1299,19 +1923,27 @@
             modal.dataset.activeFacultyName ? `Faculty: ${modal.dataset.activeFacultyName}` : '',
             modal.dataset.activeFacultyEmail ? `Email: ${modal.dataset.activeFacultyEmail}` : '',
         ].filter(Boolean);
-        document.getElementById('manualClassSummary').innerHTML = summaryParts.map((p) => escapeHtml(p)).join('<br>');
+        document.getElementById('modifyClassSummary').innerHTML = summaryParts.map((p) => escapeHtml(p)).join('<br>');
+        document.getElementById('modifyClassSummary').style.display = 'block';
 
-        setManualFormMode('class');
-        document.getElementById('manualFacilitySelect').value = modal.dataset.activeFacilityId || '';
-        document.getElementById('manualScheduleDate').value = modal.dataset.activeDate || '';
-        document.getElementById('manualStartTime').value = modal.dataset.activeStart || '';
-        document.getElementById('manualEndTime').value = modal.dataset.activeEnd || '';
-        document.getElementById('manualBlockSubmit').textContent = 'Update Class Schedule';
-        document.getElementById('manualBlockCancelEdit').style.display = 'inline-block';
-        document.getElementById('manualBlockMessage').style.display = 'none';
+        document.getElementById('modifyActionType').value = 'modify';
+        document.getElementById('modifyFields').style.display = 'grid';
+        document.getElementById('blockFields').style.display = 'none';
+        
+        document.getElementById('modifyCourseCodeInput').value = modal.dataset.activeCourseCode || '';
+        document.getElementById('modifySectionInput').value = modal.dataset.activeSection || '';
+        document.getElementById('modifyFacultyNameInput').value = modal.dataset.activeFacultyName || '';
+        document.getElementById('modifyFacultyEmailInput').value = modal.dataset.activeFacultyEmail || '';
+
+        document.getElementById('modifyFacilitySelect').value = modal.dataset.activeFacilityId || '';
+        document.getElementById('modifyScheduleDate').value = modal.dataset.activeDate || '';
+        document.getElementById('modifyStartTime').value = modal.dataset.activeStart || '';
+        document.getElementById('modifyEndTime').value = modal.dataset.activeEnd || '';
+        document.getElementById('modifySubmit').textContent = 'Update Class Schedule';
+        document.getElementById('modifyCancelEdit').style.display = 'inline-block';
+        document.getElementById('modifyMessage').style.display = 'none';
         closeModal();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        refreshFacilityAllocation();
     }
 
     async function deleteClassScheduleFromModal() {
@@ -1326,14 +1958,11 @@
             return;
         }
 
-        const formData = new FormData();
-        formData.append('_token', modal.dataset.activeDeleteCsrf || '');
         setCalendarStatus('Deleting class schedule...', 'loading', false);
 
         try {
-            const response = await fetch(calendarConfig.classScheduleDeletePattern.replace('{id}', classId), {
+            const response = await fetch(`/super-admin/class-schedule/${classId}/delete`, {
                 method: 'POST',
-                body: formData,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json',
@@ -1346,62 +1975,117 @@
             }
 
             closeModal();
-            resetManualBlockForm(false);
             calendarEventsCache.clear();
             broadcastScheduleRevision(data.scheduleRevision);
-            showManualBlockToast(data.message, 'success');
             setCalendarStatus('Class schedule deleted. Refreshing calendar...', 'loading', false);
             await renderCalendar(true);
         } catch (error) {
-            showManualBlockToast(error.message || 'Delete failed.', 'error');
             setCalendarStatus('Could not delete class schedule.', 'error', false);
         }
     }
 
-    async function deleteManualBlockFromModal() {
+    // deleteManualBlockFromModal function removed - manual block form deleted
+    // showManualBlockToast function removed - manual block form deleted
+
+    function editBlockFromModal() {
         const modal = document.getElementById('eventModal');
+        const form = document.getElementById('modifyScheduleForm');
         const blockId = modal.dataset.activeBlock;
 
-        if (!blockId || !window.confirm('Delete this manual schedule block? This time slot will become available if no other conflict exists.')) {
+        if (!blockId) {
             return;
         }
 
-        const formData = new FormData();
-        formData.append('_token', document.getElementById('manualBlockForm').dataset.deleteToken);
-        setCalendarStatus('Deleting manual schedule block...', 'loading', false);
-
-        try {
-            const response = await fetch(calendarConfig.blockDeletePattern.replace('{id}', blockId), {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                },
-            });
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Delete failed.');
-            }
-
-            closeModal();
-            calendarEventsCache.clear();
-            broadcastScheduleRevision(data.scheduleRevision);
-            showManualBlockToast(data.message, 'success');
-            setCalendarStatus('Manual block deleted. Refreshing calendar and availability...', 'loading', false);
-            await renderCalendar(true);
-        } catch (error) {
-            showManualBlockToast(error.message || 'Delete failed.', 'error');
-            setCalendarStatus('Could not delete manual block. Try again.', 'error', false);
-        }
+        document.getElementById('modifyEditMode').value = 'block';
+        document.getElementById('modifyClassScheduleId').value = '';
+        document.getElementById('modifyBlockId').value = blockId;
+        
+        // Populate form with block data
+        document.getElementById('modifyFacilitySelect').value = modal.dataset.activeFacilityId || '';
+        document.getElementById('modifyScheduleDate').value = modal.dataset.activeDate || '';
+        document.getElementById('modifyStartTime').value = modal.dataset.activeStart || '';
+        document.getElementById('modifyEndTime').value = modal.dataset.activeEnd || '';
+        document.getElementById('modifyBlockType').value = modal.dataset.activeStatus || 'Blocked';
+        document.getElementById('modifyBlockReason').value = modal.dataset.activeTitle || '';
+        document.getElementById('modifyNotes').value = modal.dataset.activePurpose || '';
+        
+        // Show block fields
+        document.getElementById('modifyActionType').value = 'block';
+        document.getElementById('modifyFields').style.display = 'none';
+        document.getElementById('blockFields').style.display = 'grid';
+        
+        document.getElementById('modifySubmit').textContent = 'Update Block';
+        document.getElementById('modifyCancelEdit').style.display = 'inline-block';
+        document.getElementById('modifyMessage').style.display = 'none';
+        
+        closeModal();
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function showManualBlockToast(message, type) {
-        const messageBox = document.getElementById('manualBlockMessage');
-        messageBox.textContent = message;
-        messageBox.className = 'schedule-import-message ' + type;
-        messageBox.style.display = 'block';
+    function revertBlockFromModal() {
+        const modal = document.getElementById('eventModal');
+        const classId = modal.dataset.activeClassId;
+
+        if (!classId || !window.confirm('Revert this class schedule to normal? This will remove the blocked/maintenance status.')) {
+            return;
+        }
+
+        setCalendarStatus('Reverting class schedule to normal...', 'loading', false);
+
+        fetch(`/super-admin/class-schedule/${classId}/revert`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal();
+                calendarEventsCache.clear();
+                setCalendarStatus('Class schedule reverted successfully. Refreshing calendar...', 'loading', false);
+                renderCalendar(true);
+            } else {
+                setCalendarStatus('Could not revert class schedule. Try again.', 'error', false);
+            }
+        })
+        .catch(error => {
+            setCalendarStatus('Could not revert class schedule. Try again.', 'error', false);
+        });
+    }
+
+    function deleteBlockFromModal() {
+        const modal = document.getElementById('eventModal');
+        const blockId = modal.dataset.activeBlock;
+
+        if (!blockId || !window.confirm('Delete this schedule block? This time slot will become available.')) {
+            return;
+        }
+
+        setCalendarStatus('Deleting schedule block...', 'loading', false);
+
+        fetch(`/super-admin/calendar/block/${blockId}/delete`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal();
+                calendarEventsCache.clear();
+                setCalendarStatus('Schedule block deleted. Refreshing calendar...', 'loading', false);
+                renderCalendar(true);
+            } else {
+                setCalendarStatus('Could not delete schedule block. Try again.', 'error', false);
+            }
+        })
+        .catch(error => {
+            setCalendarStatus('Could not delete schedule block. Try again.', 'error', false);
+        });
     }
 
     async function notifyClassScheduleFaculty(data) {
@@ -1477,7 +2161,10 @@
     }
 
     function closeModal() {
-        document.getElementById('eventModal').style.display = 'none';
+        const modal = document.getElementById('eventModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     function formatHour(hour) {

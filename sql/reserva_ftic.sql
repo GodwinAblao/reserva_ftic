@@ -276,6 +276,8 @@ CREATE TABLE IF NOT EXISTS `facility_schedule_block` (
     `source` VARCHAR(255) DEFAULT NULL,
     `schedule_identifier` VARCHAR(255) DEFAULT NULL,
     `notes` LONGTEXT DEFAULT NULL,
+    `original_item_type` VARCHAR(50) DEFAULT NULL,
+    `original_item_id` INT DEFAULT NULL,
     `created_at` DATETIME NOT NULL,
     INDEX `IDX_77E5F95D9F7E4405` (`facility_id`),
     INDEX `facility_schedule_block_lookup_idx`
@@ -304,6 +306,7 @@ CREATE TABLE IF NOT EXISTS `class_schedule` (
     `import_batch_id` VARCHAR(64) DEFAULT NULL,
     `schedule_identifier` VARCHAR(64) DEFAULT NULL,
     `is_relocated` TINYINT(1) NOT NULL DEFAULT 0,
+    `status` VARCHAR(50) DEFAULT NULL,
     `created_at` DATETIME NOT NULL,
     `updated_at` DATETIME NOT NULL,
     INDEX `IDX_CLASS_SCHEDULE_FACILITY` (`facility_id`),

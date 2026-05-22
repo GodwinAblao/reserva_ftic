@@ -62,6 +62,12 @@ class MentoringController extends AbstractController
         }
 
         $mentors = $qb->getQuery()->getResult();
+
+        // Hide current user's own mentor profile from the listing
+        if ($mentorProfile) {
+            $mentors = array_filter($mentors, fn(MentorProfile $m) => $m->getId() !== $mentorProfile->getId());
+        }
+
         $mentorApplicationMeta = [];
 
         $mentorUserIds = array_values(array_filter(array_map(

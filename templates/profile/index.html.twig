@@ -95,7 +95,7 @@
                     </select>
                 </div>
                 <div class="pf-field">
-                    <label class="pf-label">Degree Name <span class="pf-optional">(optional)</span></label>
+                    <label class="pf-label">Degree Program <span class="pf-optional">(optional)</span></label>
                     <input class="pf-input" type="text" name="degree_name" value="{{ app.user.degreeName }}" placeholder="e.g. Bachelor of Science in Information Technology" disabled>
                 </div>
             </div>
@@ -183,6 +183,7 @@
                         <option value="Research" {{ mentorProfile.specialization == 'Research' ? 'selected' : '' }}>Research</option>
                         <option value="Other" {{ mentorProfile.specialization == 'Other' ? 'selected' : '' }}>Other</option>
                     </select>
+                    <input type="text" name="specialization_other" class="pf-input" placeholder="Please specify your specialization..." value="{{ mentorProfile.specialization == 'Other' ? mentorProfile.specialization : '' }}" style="margin-top: 8px; {{ mentorProfile.specialization == 'Other' ? '' : 'display:none;' }}">
                 </div>
             </div>
             <div class="pf-field">
@@ -347,6 +348,16 @@
                 checkMatch();
                 confirmInput.focus();
             }
+        });
+    }
+
+    // ── Specialization "Other" option toggle ──
+    const specSelect = document.querySelector('select[name="specialization"]');
+    const specOtherInput = document.querySelector('input[name="specialization_other"]');
+    if (specSelect && specOtherInput) {
+        specSelect.addEventListener('change', function() {
+            specOtherInput.style.display = this.value === 'Other' ? 'block' : 'none';
+            if (this.value !== 'Other') specOtherInput.value = '';
         });
     }
 })();

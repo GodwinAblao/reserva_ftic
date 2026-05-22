@@ -139,7 +139,7 @@
                     <div class="research-card-actions">
                         <a href="{{ path('research_show', {'id': item.id}) }}" class="research-view-btn">View</a>
                         {% if item.filePath %}
-                            <a href="{{ item.filePath }}" class="research-edit-link" title="Download PDF">PDF</a>
+                            <a href="{{ item.filePath }}" class="research-edit-link" title="Download PDF" target="_blank">PDF</a>
                         {% endif %}
                         {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
                             <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>

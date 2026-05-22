@@ -14,22 +14,21 @@
     {% else %}
         <div class="facility-top-row">
             <div class="search-bar">
-                <select id="facilityFilter" name="facilityFilter" aria-label="Filter facilities">
-                    <option value="">All rooms</option>
-                    <option value="3D Printing">3D Printing</option>
-                    <option value="COE room">COE room</option>
-                    <option value="CS room">CS room</option>
-                    <option value="Discussion room">Discussion room</option>
-                    <option value="Presentation room">Presentation room</option>
-                    <option value="Lounge">Lounge</option>
-                </select>
+                <input type="text" id="facilitySearch" placeholder="Search rooms..." aria-label="Search facilities" style="
+                    padding: 10px 16px;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    width: 250px;
+                    background: white;
+                ">
             </div>
             <div class="facility-count" id="facilityCount" style="display:none;">{{ facilities|length }} facilities</div>
         </div>
         <div class="facilities-grid">
             {% for facility in facilities %}
                 {% if facility.availableForReservation %}
-                    <div class="facility-card-wrapper" data-name="{{ facility.name|lower }}">
+                    <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="facility-card-wrapper" data-name="{{ facility.name|lower }}" style="text-decoration: none; color: inherit;">
                         <div class="facility-card facility-feature-card">
                             <div class="facility-image-holder">
                                 {% if facility.image %}
@@ -41,9 +40,8 @@
                                 {% endif %}
                             </div>
                             <div class="facility-details">
-                                <h3>{{ facility.name }}</h3>
+                                <h3 class="facility-name">{{ facility.name }}</h3>
                                 <div class="facility-meta-row">
-        
                                     <span class="facility-pill">{{ facility.capacity }} pax</span>
                                 </div>
                                 <p class="capacity">
@@ -52,52 +50,10 @@
                                 {% if facility.description %}
                                     <p class="description">{{ facility.description }}</p>
                                 {% endif %}
-                                <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
-                                    View Details
-                                </a>
+                                <span class="btn-view">View Details →</span>
                             </div>
                         </div>
-                        
-                        <!-- Hover Card -->
-                        <div class="hover-card">
-                            <div class="hover-card-content">
-                                <div class="hover-card-image">
-                                    {% if facility.image %}
-                                        <img src="{{ facility.image }}" alt="{{ facility.name }}">
-                                    {% else %}
-                                        <div class="placeholder-image">
-                                            <span>{{ facility.name | first }}</span>
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                <div class="hover-card-details">
-                                    <h4>{{ facility.name }}</h4>
-                                    <p class="hover-capacity">
-                                        <span>👥</span> {{ facility.capacity }} persons
-                                    </p>
-                                    {% if facility.description %}
-                                        <p class="hover-description">{{ facility.description }}</p>
-                                    {% endif %}
-                                    <div class="hover-gallery">
-                                        {% if facility.images|length > 0 %}
-                                            <p><strong>Gallery:</strong></p>
-                                            <div class="hover-gallery-images">
-                                                {% for image in facility.images|slice(0, 4) %}
-                                                    <img src="{{ image.path }}" alt="{{ facility.name }}">
-                                                {% endfor %}
-                                                {% if facility.images|length > 4 %}
-                                                    <span class="more-images">+{{ facility.images|length - 4 }}</span>
-                                                {% endif %}
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                    <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-hover-view">
-                                        View Facility
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    </a>
                 {% endif %}
             {% endfor %}
         </div>
@@ -105,43 +61,42 @@
 
 <script>
 (() => {
-    function initializeFacilityFilter() {
-        const filter = document.getElementById('facilityFilter');
+    function initializeFacilitySearch() {
+        const searchInput = document.getElementById('facilitySearch');
         const countEl = document.getElementById('facilityCount');
-        if (!filter) return;
-        const newFilter = filter.cloneNode(true);
-        filter.parentNode.replaceChild(newFilter, filter);
+        if (!searchInput) return;
+
         function updateCount() {
             const visible = document.querySelectorAll('.facility-card-wrapper:not([style*="display: none"])').length;
-            if (countEl) countEl.textContent = visible + ' facilities';
+            if (countEl) {
+                countEl.textContent = visible + ' facilities';
+                countEl.style.display = visible > 0 ? 'block' : 'none';
+            }
         }
-        const mapping = {
-            '3D Printing': ['3d', '3d printing', 'printing', '3d print'],
-            'COE room': ['coe', 'college of engineering', 'coeroom', 'coe '],
-            'CS room': ['cs', 'computer science', 'csroom', 'cs '],
-            'Discussion room': ['discussion', 'meeting', 'discussion room', 'discuss'],
-            'Presentation room': ['presentation', 'presentation room', 'auditorium', 'present'],
-            'Lounge': ['lounge', 'common room', 'commons']
-        };
-        const applyFilter = () => {
-            const sel = (newFilter.value || '').trim();
-            const keywords = sel ? (mapping[sel] || [sel.toLowerCase()]) : [];
+
+        const applySearch = () => {
+            const query = (searchInput.value || '').trim().toLowerCase();
             document.querySelectorAll('.facility-card-wrapper').forEach(w => {
                 const name = (w.dataset.name || '').toLowerCase();
-                w.style.display = (!sel || keywords.some(k => name.includes(k))) ? '' : 'none';
+                const facilityName = w.querySelector('.facility-name');
+                const cardText = facilityName ? facilityName.textContent.toLowerCase() : '';
+                const match = !query || name.includes(query) || cardText.includes(query);
+                w.style.display = match ? '' : 'none';
             });
             updateCount();
         };
-        newFilter.addEventListener('change', applyFilter);
-        applyFilter();
+
+        searchInput.addEventListener('input', applySearch);
+        updateCount();
     }
-    if (!window.__facilityFilterDomBound) {
-        document.addEventListener('DOMContentLoaded', initializeFacilityFilter);
-        window.__facilityFilterDomBound = true;
+
+    if (!window.__facilitySearchDomBound) {
+        document.addEventListener('DOMContentLoaded', initializeFacilitySearch);
+        window.__facilitySearchDomBound = true;
     }
-    if (!window.__facilityFilterTurboBound) {
-        document.addEventListener('turbo:load', initializeFacilityFilter);
-        window.__facilityFilterTurboBound = true;
+    if (!window.__facilitySearchTurboBound) {
+        document.addEventListener('turbo:load', initializeFacilitySearch);
+        window.__facilitySearchTurboBound = true;
     }
 })();
 </script>

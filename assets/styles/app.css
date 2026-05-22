@@ -5,15 +5,15 @@
 @import './admin.css';
 @import './superadmin.css';
 :root {
-    --feu-green: #006633;
-    --feu-green-dark: #004d26;
-    --feu-green-light: #008844;
-    --feu-green-rgb: 0, 102, 51;
+    --feu-green: #0D9B00;
+    --feu-green-dark: #0a7d00;
+    --feu-green-light: #10bf00;
+    --feu-green-rgb: 13, 155, 0;
     --feu-gold: #fdb813;
     --feu-gold-soft: #ffe199;
     --feu-cream: #ffffff;
     --feu-ink: #222222;
-    --feu-shadow: rgba(0, 102, 51, 0.18);
+    --feu-shadow: rgba(13, 155, 0, 0.18);
 }
 
 body.regular-user-theme {

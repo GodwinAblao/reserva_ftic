@@ -279,7 +279,7 @@ const NavProgress = (() => {
     }
 
     const EMPTY = (msg) =>
-        `<div style="text-align:center;color:#9ca3af;font-size:12px;padding:18px 0">${msg}</div>`;
+        `<div style="text-align:center;color:#9ca3af;font-size:13px;padding:24px 16px;display:flex;align-items:center;justify-content:center;min-height:100px;">${msg}</div>`;
 
     /* ── "NEW" badge ── */
     function pulseBadge(panel) {
@@ -501,8 +501,7 @@ const NavProgress = (() => {
 
             /* Stat cards — always write values so Twig-rendered whitespace doesn't stick */
             const total = (sc.Approved ?? 0) + (sc.Pending ?? 0)
-                        + (sc.Cancelled ?? 0) + (sc.Rejected ?? 0)
-                        + (sc.AwaitingFacilitySelection ?? 0) + (sc.Suggested ?? 0);
+                        + (sc.Cancelled ?? 0) + (sc.Rejected ?? 0) + (sc.Suggested ?? 0);
             setStatVal('rmStatCancelled', sc.Cancelled ?? 0);
             setStatVal('rmStatPending',   sc.Pending   ?? 0);
             setStatVal('rmStatTotal',     total);

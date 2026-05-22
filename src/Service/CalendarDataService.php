@@ -37,7 +37,7 @@ class CalendarDataService
         $data = [];
         $startDate = new \DateTime($start);
         $endDate = new \DateTime($end);
-        $reservationStatuses = ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Suggested', 'AwaitingFacilitySelection'];
+        $reservationStatuses = ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Suggested'];
         $blockStatuses = ['Blocked', 'Manual', 'Maintenance', 'Imported'];
 
         if (!$status || in_array($status, $reservationStatuses, true)) {
@@ -82,11 +82,21 @@ class CalendarDataService
             }
         }
 
-        if (!$status || $status === 'Class Schedule') {
+        if (!$status || $status === 'Class Schedule' || $status === 'Blocked' || $status === 'Maintenance') {
             $classFacility = $facilityId ? $this->facilityRepo->find((int) $facilityId) : null;
             $schedules = $this->classScheduleRepo->findBetween($startDate, $endDate, $classFacility);
 
             foreach ($schedules as $schedule) {
+                $scheduleStatus = $schedule->getStatus();
+                // Filter by status if specified
+                if ($status && $status !== 'Class Schedule') {
+                    if ($scheduleStatus !== $status) {
+                        continue;
+                    }
+                } else if ($status === 'Class Schedule' && $scheduleStatus) {
+                    // When filtering by Class Schedule, only show normal schedules (no status)
+                    continue;
+                }
                 $data[] = $this->formatClassScheduleForCalendar($schedule, $includeNotifyTokens);
             }
         }
@@ -119,6 +129,8 @@ class CalendarDataService
                     'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
                     'reservationStartTime' => $block->getStartTime()->format('H:i'),
                     'reservationEndTime' => $block->getEndTime()->format('H:i'),
+                    'originalItemType' => $block->getOriginalItemType(),
+                    'originalItemId' => $block->getOriginalItemId(),
                     'facility' => [
                         'id' => $facility->getId(),
                         'name' => $facility->getName(),
@@ -149,7 +161,7 @@ class CalendarDataService
             'email' => $schedule->getFacultyEmail() ?? '',
             'contact' => '',
             'purpose' => '',
-            'status' => 'Class Schedule',
+            'status' => $schedule->getStatus() ?: 'Class Schedule',
             'capacity' => 0,
             'courseCode' => $schedule->getCourseCode(),
             'section' => $schedule->getSection(),

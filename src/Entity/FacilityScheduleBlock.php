@@ -45,6 +45,12 @@ class FacilityScheduleBlock
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $originalItemType = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $originalItemId = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $createdAt;
 
@@ -162,6 +168,30 @@ class FacilityScheduleBlock
     public function setNotes(?string $notes): self
     {
         $this->notes = $notes;
+
+        return $this;
+    }
+
+    public function getOriginalItemType(): ?string
+    {
+        return $this->originalItemType;
+    }
+
+    public function setOriginalItemType(?string $originalItemType): self
+    {
+        $this->originalItemType = $originalItemType;
+
+        return $this;
+    }
+
+    public function getOriginalItemId(): ?int
+    {
+        return $this->originalItemId;
+    }
+
+    public function setOriginalItemId(?int $originalItemId): self
+    {
+        $this->originalItemId = $originalItemId;
 
         return $this;
     }
