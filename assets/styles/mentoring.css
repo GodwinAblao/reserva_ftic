@@ -3341,11 +3341,11 @@
 .mentoring-side-column .mentoring-info-card {
   min-height: 0;
   position: relative;
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 18px 14px;
   border: none;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -3396,17 +3396,19 @@
 }
 
 .mentoring-side-column .mentor-list {
-  gap: 0;
-  margin-top: 28px;
-  border-top: 1px solid #b7e0c3;
+  gap: 10px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(13,155,0,0.08);
 }
 
 .mentoring-side-column .mentor-item {
-  gap: 10px;
-  padding: 12px 0;
-  border-radius: 0;
-  border-bottom: 1px solid #b7e0c3;
-  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 8px;
+  border-radius: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  background: #ffffff;
 }
 
 .mentoring-side-column .mentor-rank-icon {
@@ -3421,16 +3423,23 @@
 }
 
 .mentoring-side-column .mentor-avatar {
-  width: 42px;
-  height: 42px;
+  width: 56px;
+  height: 56px;
   background: #2f80ed;
   color: #fff;
-  font-size: 13px;
+  font-size: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(47,128,237,0.12);
+  flex-shrink: 0;
 }
 
 .mentoring-side-column .mentor-name {
   color: #0d9b00;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -3447,7 +3456,7 @@
 
 .mentoring-side-column .mentor-points strong {
   color: #0d9b00;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 900;
 }
 
