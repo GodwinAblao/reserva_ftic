@@ -51,7 +51,7 @@
                                 {% if facility.description %}
                                     <p class="description">{{ facility.description }}</p>
                                 {% endif %}
-                                <a href="#" data-preview-url="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
+                                <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view">
                                     View Details
                                 </a>
                             </div>
@@ -90,7 +90,7 @@
                                             </div>
                                         {% endif %}
                                     </div>
-                                    <a href="#" data-preview-url="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-hover-view">
+                                    <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-hover-view">
                                         View Facility
                                     </a>
                                 </div>
@@ -102,63 +102,18 @@
         </div>
     {% endif %}
 
-<!-- Facility preview modal -->
-<div id="facilityPreviewOverlay" class="facility-preview-overlay" aria-hidden="true">
-    <div class="facility-preview-body" id="facilityPreviewBody" role="document" aria-labelledby="facilityPreviewTitle"></div>
-</div>
-
 <script>
-// Facility preview: prefetch previews to avoid click loading, inject close button inside card
 (() => {
-    window.__facilityPreviewCache = window.__facilityPreviewCache || new Map();
-    const previewCache = window.__facilityPreviewCache;
-
-    function getOverlay() {
-        const overlays = document.querySelectorAll('#facilityPreviewOverlay');
-        if (overlays.length > 1) {
-            overlays.forEach((node, index) => {
-                if (index > 0) node.remove();
-            });
-        }
-        return document.getElementById('facilityPreviewOverlay');
-    }
-
-    function getBody() {
-        return document.getElementById('facilityPreviewBody');
-    }
-
-    async function fetchPreview(url) {
-        if (!url) return null;
-        if (previewCache.has(url)) return previewCache.get(url);
-        try {
-            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!res.ok) return null;
-            const html = await res.text();
-            previewCache.set(url, html);
-            return html;
-        } catch (err) {
-            return null;
-        }
-    }
-
-    // Prefetch all previews on DOM ready (background, non-blocking)
-    // Initialize filter on both DOMContentLoaded and turbo:load (for Turbo navigation)
     function initializeFacilityFilter() {
         const filter = document.getElementById('facilityFilter');
         const countEl = document.getElementById('facilityCount');
-        
         if (!filter) return;
-        
-        // Remove existing listeners to prevent duplication
         const newFilter = filter.cloneNode(true);
         filter.parentNode.replaceChild(newFilter, filter);
-        
         function updateCount() {
             const visible = document.querySelectorAll('.facility-card-wrapper:not([style*="display: none"])').length;
             if (countEl) countEl.textContent = visible + ' facilities';
         }
-        
-        // keyword mapping to handle variations in facility naming
         const mapping = {
             'COE room': ['coe', 'college of engineering', 'coeroom', 'coe '],
             'CS room': ['cs', 'computer science', 'csroom', 'cs '],
@@ -166,190 +121,26 @@
             'Presentation room': ['presentation', 'presentation room', 'auditorium', 'present'],
             'Lounge': ['lounge', 'common room', 'commons']
         };
-
         const applyFilter = () => {
             const sel = (newFilter.value || '').trim();
-            const q = sel.toLowerCase();
-            const keywords = sel ? (mapping[sel] || [q]) : [];
-
+            const keywords = sel ? (mapping[sel] || [sel.toLowerCase()]) : [];
             document.querySelectorAll('.facility-card-wrapper').forEach(w => {
                 const name = (w.dataset.name || '').toLowerCase();
-                let visible = true;
-                if (sel) {
-                    visible = keywords.some(k => name.includes(k));
-                }
-                w.style.display = visible ? '' : 'none';
+                w.style.display = (!sel || keywords.some(k => name.includes(k))) ? '' : 'none';
             });
             updateCount();
         };
-
         newFilter.addEventListener('change', applyFilter);
-        // initialize
         applyFilter();
     }
-
-    // Prefetch previews
-    function prefetchPreviews() {
-        document.querySelectorAll('[data-preview-url]').forEach(el => {
-            const url = el.dataset.previewUrl;
-            if (url) fetchPreview(url);
-        });
+    if (!window.__facilityFilterDomBound) {
+        document.addEventListener('DOMContentLoaded', initializeFacilityFilter);
+        window.__facilityFilterDomBound = true;
     }
-
-    // Listen to both DOMContentLoaded and turbo:load
-    if (!window.__facilityPreviewDomReadyBound) {
-        document.addEventListener('DOMContentLoaded', () => {
-            prefetchPreviews();
-            initializeFacilityFilter();
-        });
-        window.__facilityPreviewDomReadyBound = true;
+    if (!window.__facilityFilterTurboBound) {
+        document.addEventListener('turbo:load', initializeFacilityFilter);
+        window.__facilityFilterTurboBound = true;
     }
-
-    if (!window.__facilityPreviewTurboLoadBound) {
-        document.addEventListener('turbo:load', () => {
-            prefetchPreviews();
-            initializeFacilityFilter();
-        });
-        window.__facilityPreviewTurboLoadBound = true;
-    }
-
-    // Close overlay helper
-    function closeOverlay() {
-        const overlay = getOverlay();
-        const body = getBody();
-        if (!overlay || !body) return;
-        overlay.classList.remove('open');
-        overlay.setAttribute('aria-hidden', 'true');
-        body.innerHTML = '';
-        document.body.style.overflow = '';
-    }
-
-    // Close on Escape
-    if (!window.__facilityPreviewEscapeBound) {
-        document.addEventListener('keydown', (e) => {
-            const overlay = getOverlay();
-            if (!overlay) return;
-            if (e.key === 'Escape' && overlay.classList.contains('open')) {
-                closeOverlay();
-            }
-        });
-        window.__facilityPreviewEscapeBound = true;
-    }
-
-    // Delegate click to open preview (uses prefetched content when available)
-    if (!window.__facilityPreviewOpenBound) {
-        document.addEventListener('click', async (e) => {
-            const btn = e.target.closest('[data-preview-url]');
-            if (!btn) return;
-            e.preventDefault();
-            const url = btn.dataset.previewUrl;
-            if (!url) return;
-
-            const overlay = getOverlay();
-            const body = getBody();
-            if (!overlay || !body) return;
-
-            let html = previewCache.get(url) || null;
-            if (!html) html = await fetchPreview(url);
-            if (!html) return;
-
-            if (overlay.parentElement !== document.body) {
-                document.body.appendChild(overlay);
-            }
-            body.innerHTML = html;
-
-            const cards = body.querySelectorAll('.facility-popup-card');
-            if (cards.length > 1) {
-                cards.forEach((node, index) => {
-                    if (index > 0) node.remove();
-                });
-            }
-
-            overlay.onclick = (event) => {
-                if (event.target === overlay) closeOverlay();
-            };
-
-            // Ensure exactly one close button inside the card
-            const card = body.querySelector('.facility-popup-card');
-            const closeButtons = body.querySelectorAll('.facility-preview-close');
-            if (closeButtons.length > 1) {
-                closeButtons.forEach((node, index) => {
-                    if (index > 0) node.remove();
-                });
-            }
-            let closeBtn = body.querySelector('.facility-preview-close');
-            if (!closeBtn) {
-                closeBtn = document.createElement('button');
-                closeBtn.type = 'button';
-                closeBtn.className = 'facility-preview-close';
-                closeBtn.setAttribute('aria-label', 'Close preview');
-                closeBtn.innerHTML = '×';
-                if (card) card.appendChild(closeBtn);
-                else body.appendChild(closeBtn);
-            }
-
-            // Thumbnail click handling
-            body.querySelectorAll('.thumbnail').forEach(t => {
-                t.addEventListener('click', function () {
-                    const src = this.dataset.imgSrc;
-                    const main = body.querySelector('#mainImage');
-                    if (main && src) main.src = src;
-                    body.querySelectorAll('.thumbnail').forEach(x => x.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-
-            // One click always closes popup
-            closeBtn.onclick = (ev) => {
-                ev.preventDefault();
-                ev.stopPropagation();
-                closeOverlay();
-            };
-
-            overlay.classList.add('open');
-            overlay.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
-            closeBtn.focus();
-        });
-        window.__facilityPreviewOpenBound = true;
-    }
-
-    // existing schedule revision polling (kept intact)
-    const revisionUrl = '{{ path('facility_schedule_revision') }}';
-    let knownRevision = null;
-
-    async function pollScheduleRevision() {
-        if (document.hidden) return;
-        try {
-            const response = await fetch(revisionUrl, {
-                cache: 'no-store',
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            });
-            if (!response.ok) return;
-            const data = await response.json();
-            if (knownRevision && data.revision && data.revision !== knownRevision) {
-                try {
-                    localStorage.setItem('classScheduleRevision', data.revision);
-                    window.dispatchEvent(new CustomEvent('classScheduleUpdated', { detail: { revision: data.revision } }));
-                } catch (error) {}
-            }
-            knownRevision = data.revision;
-        } catch (error) {}
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        pollScheduleRevision();
-        window.setInterval(pollScheduleRevision, 5000);
-    });
-    document.addEventListener('turbo:load', () => {
-        pollScheduleRevision();
-    });
-    window.addEventListener('classScheduleUpdated', (event) => {
-        if (event.detail && event.detail.revision) {
-            knownRevision = event.detail.revision;
-        }
-    });
-
 })();
 </script>
 {% endblock %}
