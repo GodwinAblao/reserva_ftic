@@ -3,6 +3,18 @@
 {% block title %}Research Repository | Reserva FTIC{% endblock %}
 
 {% block content %}
+<style>
+    /* Research page: make admin Add Content buttons use feu green */
+    .research-page-admin-actions .button-group .btn-primary {
+        background: #0d9b00 !important;
+        border-color: #0d9b00 !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(13,155,0,0.22) !important;
+    }
+    .research-page-admin-actions .button-group .btn-primary:hover {
+        background: #0a7d00 !important;
+    }
+</style>
 <div class="content-header research-page-admin-actions">
     {% if is_granted('ROLE_SUPER_ADMIN') %}
         <div class="button-group">

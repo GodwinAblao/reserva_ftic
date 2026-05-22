@@ -1,13 +1,34 @@
 {% extends 'layouts/app.html.twig' %}
 
 {% block content %}
-<div class="content-header">
+<div class="content-header facility-management-page">
     <h2>Facility Management</h2>
     <div style="display: flex; gap: 12px;">
         <a href="{{ path('admin_calendar') }}" class="btn-secondary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--feu-green); background: white; color: var(--feu-green); font-weight: 700; cursor: pointer;">📅 Calendar View</a>
         <a href="{{ path('app_facility_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, var(--feu-green) 0%, var(--feu-green-light) 100%); color: white; font-weight: 700;">+ Add New Facility</a>
     </div>
 </div>
+<style>
+    .facility-management-page,
+    .facility-management-page .management-grid,
+    .facility-management-page .management-card,
+    .facility-management-page .placeholder,
+    .facility-management-page .no-facilities a,
+    .facility-management-page .btn-primary,
+    .facility-management-page .btn-secondary {
+        --feu-green: #0d9b00;
+        --feu-green-dark: #0d9b00;
+        --feu-green-light: #0d9b00;
+    }
+    .facility-management-page .btn-primary {
+        background: linear-gradient(130deg, #0d9b00 0%, #0d9b00 100%) !important;
+        border-color: #0d9b00 !important;
+    }
+    .facility-management-page .btn-secondary {
+        border-color: #0d9b00 !important;
+        color: #0d9b00 !important;
+    }
+</style>
 
 {% if app.flashes('success') %}
     <div class="alert alert-success">

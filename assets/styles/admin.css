@@ -290,6 +290,19 @@
     color: #006633;
 }
 
+.superadmin-shell .rp-title-green {
+    color: #0d9b00;
+}
+
+.superadmin-shell .notification-bell-btn {
+    background: #0d9b00 !important;
+    box-shadow: 0 4px 12px rgba(13, 155, 0, 0.22) !important;
+}
+
+.superadmin-shell .notification-bell-btn:hover {
+    background: #0b8200 !important;
+}
+
 #adminNotifList,
 #adminMentoringReqList,
 #adminLeaderboardList {

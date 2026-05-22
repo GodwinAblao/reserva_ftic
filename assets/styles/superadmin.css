@@ -45,7 +45,7 @@
     margin: 0 0 4px;
     font-size: 24px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
     letter-spacing: -0.02em;
 }
 
@@ -79,15 +79,15 @@
 }
 
 .sa-btn-primary {
-    background: linear-gradient(130deg, #006633 0%, #008844 100%);
+    background: linear-gradient(130deg, #0d9b00 0%, #0d9b00 100%);
     color: #fff;
-    box-shadow: 0 4px 14px rgba(0, 102, 51, 0.22);
+    box-shadow: 0 4px 14px rgba(13, 155, 0, 0.22);
 }
 
 .sa-btn-primary:hover {
-    background: linear-gradient(130deg, #004d26 0%, #006633 100%);
+    background: linear-gradient(130deg, #0b8200 0%, #0d9b00 100%);
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0, 102, 51, 0.30);
+    box-shadow: 0 6px 18px rgba(13, 155, 0, 0.30);
     color: #fff;
 }
 
@@ -163,7 +163,7 @@
     margin: 0;
     font-size: 15px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -243,7 +243,7 @@
     margin: 0;
     font-size: 15px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
 }
 
 .sa-detail-grid {
@@ -334,7 +334,7 @@
     margin: 0;
     font-size: 17px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
 }
 
 .sa-modal-close {
@@ -402,7 +402,7 @@
 .sa-form-section h3 {
     font-size: 15px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
     margin: 0 0 18px;
     padding-bottom: 12px;
     border-bottom: 2px solid #f0f4ee;
@@ -526,7 +526,7 @@
 
 .sa-analytics-btn.active {
     background: #ffffff;
-    color: #0d4702;
+    color: #0d9b00;
     box-shadow: 0 2px 8px rgba(0, 102, 51, 0.12);
 }
 
@@ -553,7 +553,7 @@
     margin: 0 0 4px;
     font-size: 17px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
 }
 
 .sa-analytics-title-row p {
@@ -679,7 +679,7 @@
 .sa-metric-card .sa-metric {
     font-size: 28px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
     letter-spacing: -0.03em;
 }
 
@@ -783,7 +783,7 @@
     margin: 0;
     font-size: 20px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
 }
 
 /* ── Calendar import forms ───────────────────────────────────── */
@@ -806,7 +806,7 @@
     margin: 0 0 6px;
     font-size: 15px;
     font-weight: 700;
-    color: #0d4702;
+    color: #0d9b00;
 }
 
 .sa-import-card p {
