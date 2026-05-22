@@ -6,8 +6,8 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/landing.css') }}">
-    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}">
+    <link rel="stylesheet" href="{{ asset('styles/landing.css') }}?v=20260522-1">
+    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260522-1">
 {% endblock %}
 
 {% block body %}
@@ -66,14 +66,22 @@
                         <div class="modal-thumbnail-strip" id="modalThumbnailStrip" aria-label="Facility images thumbnails"></div>
                     </div>
                     <div class="facility-info-section">
-                        <h1 id="modalFacilityName"></h1>
-                        <div class="info-box">
-                            <h3>Capacity</h3>
-                            <p class="capacity-value" id="modalCapacity"></p>
+                        <div class="facility-preview-side-media" id="modalSideImageWrap">
+                            <img id="modalSideImage" src="" alt="">
                         </div>
+                        <h1 id="modalFacilityName"></h1>
                         <div class="info-box" id="modalDescriptionBox" style="display:none;">
-                            <h3>Description</h3>
                             <p id="modalDescription"></p>
+                        </div>
+                        <div class="facility-facts">
+                            <div class="facility-fact-row">
+                                <span>Capacity</span>
+                                <strong id="modalCapacity"></strong>
+                            </div>
+                            <div class="facility-fact-row">
+                                <span>Status</span>
+                                <strong>Available</strong>
+                            </div>
                         </div>
                         <div class="user-actions">
                             <a href="{{ path('app_register') }}" class="btn btn-reserve">Reserve Now</a>
@@ -201,7 +209,7 @@
                     </div>
                 {% else %}
                     {% for facility in facilities %}
-                        <article class="facility-card-new">
+                        <article class="facility-card-new facility-feature-card">
                             <div class="facility-image-new">
                                 {% if facility.image %}
                                     <img src="{{ facility.image }}" alt="{{ facility.name }}">
@@ -213,8 +221,12 @@
                             </div>
                             <div class="facility-info-new">
                                 <h3 class="facility-name-new">{{ facility.name }}</h3>
+                                <div class="facility-meta-row">
+                                    <span class="facility-pill">Guest Favorite</span>
+                                    <span class="facility-pill">{{ facility.capacity }} pax</span>
+                                </div>
                                 <p class="facility-capacity-new">Capacity: <strong>{{ facility.capacity }} pax</strong></p>
-                                <p class="facility-desc-new">Perfect for classes, meetings, and collaborative work sessions.</p>
+                                <p class="facility-desc-new">{{ facility.description ?: 'Perfect for classes, meetings, and collaborative work sessions.' }}</p>
                                 {% set facilityImages = [] %}
                                 {% if facility.image %}
                                     {% set facilityImages = facilityImages|merge([facility.image]) %}
@@ -230,7 +242,7 @@
                                    data-capacity="{{ facility.capacity }}"
                                    data-description="{{ facility.description|e('html_attr') }}"
                                    data-images="{{ facilityImages|json_encode|e('html_attr') }}">
-                                    Book Now
+                                    Reserve now
                                 </a>
                             </div>
                         </article>
@@ -332,6 +344,8 @@
             const imgSection = document.getElementById('modalImageSection');
             const mainImageWrap = modal.querySelector('.modal-main-image-wrap');
             const mainImage = document.getElementById('modalMainImage');
+            const sideImageWrap = document.getElementById('modalSideImageWrap');
+            const sideImage = document.getElementById('modalSideImage');
             const thumbnailStrip = document.getElementById('modalThumbnailStrip');
             const nameEl = document.getElementById('modalFacilityName');
             const capEl = document.getElementById('modalCapacity');
@@ -361,6 +375,9 @@
                 if (images.length > 0) {
                     mainImageWrap.style.display = 'block';
                     mainImage.style.display = 'block';
+                    sideImageWrap.style.display = 'block';
+                    sideImage.src = images[0];
+                    sideImage.alt = data.name || '';
                     thumbnailStrip.innerHTML = '';
                     showImage(images[0], data.name, null);
 
@@ -384,6 +401,8 @@
                 } else {
                     mainImageWrap.style.display = 'none';
                     thumbnailStrip.innerHTML = '';
+                    sideImageWrap.style.display = 'none';
+                    sideImage.removeAttribute('src');
                     mainImage.removeAttribute('src');
                     mainImage.alt = data.name || '';
 

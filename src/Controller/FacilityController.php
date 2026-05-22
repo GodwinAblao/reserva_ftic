@@ -186,17 +186,32 @@ class FacilityController extends AbstractController
 
     private function handleMultipleImageUploads(Request $request, Facility $facility): void
     {
-        $uploadedFiles = $request->files->all('images');
-        if (!is_array($uploadedFiles)) {
+        // Accept multiple files from inputs named images[]
+        $uploadedFiles = $request->files->get('images');
+
+        if ($uploadedFiles instanceof UploadedFile) {
+            $uploadedFiles = [$uploadedFiles];
+        }
+
+        if (!is_array($uploadedFiles) || count($uploadedFiles) === 0) {
+            return;
+        }
+
+        // Flatten possible nested arrays (e.g. when files are grouped)
+        $files = [];
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($uploadedFiles));
+        foreach ($iterator as $f) {
+            if ($f instanceof UploadedFile) {
+                $files[] = $f;
+            }
+        }
+
+        if (count($files) === 0) {
             return;
         }
 
         $position = $facility->getImages()->count();
-        foreach ($uploadedFiles as $uploadedFile) {
-            if (!$uploadedFile instanceof UploadedFile) {
-                continue;
-            }
-
+        foreach ($files as $uploadedFile) {
             $imagePath = $this->handleImageUpload($uploadedFile);
             if (!$imagePath) {
                 continue;

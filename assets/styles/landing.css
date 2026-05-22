@@ -1096,6 +1096,147 @@ body.page-landing {
     background: #0D9B00;
 }
 
+.page-landing .facilities-grid-new {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 280px));
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.page-landing .facility-card-new.facility-feature-card {
+    position: relative;
+    display: block;
+    min-height: 390px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 24px;
+    background: #273019;
+    box-shadow: 0 18px 34px rgba(20, 28, 16, 0.2);
+    isolation: isolate;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.page-landing .facility-card-new.facility-feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 44px rgba(20, 28, 16, 0.28);
+}
+
+.page-landing .facility-card-new.facility-feature-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+        180deg,
+        rgba(16, 25, 13, 0) 26%,
+        rgba(42, 47, 22, 0.72) 62%,
+        rgba(31, 38, 21, 0.98) 100%
+    );
+    pointer-events: none;
+}
+
+.page-landing .facility-feature-card .facility-image-new {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: inherit;
+    background: #d5d8cd;
+}
+
+.page-landing .facility-feature-card .facility-image-new img,
+.page-landing .facility-feature-card .facility-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.page-landing .facility-feature-card .facility-placeholder {
+    display: flex;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #31542b, #1f2816);
+    color: #ffffff;
+}
+
+.page-landing .facility-feature-card .facility-info-new {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 0 20px 24px;
+}
+
+.page-landing .facility-feature-card .facility-name-new {
+    margin: 0;
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.14;
+    letter-spacing: 0;
+    text-shadow: 0 1px 18px rgba(0, 0, 0, 0.32);
+}
+
+.page-landing .facility-feature-card .facility-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.page-landing .facility-feature-card .facility-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    backdrop-filter: blur(8px);
+}
+
+.page-landing .facility-feature-card .facility-capacity-new {
+    display: none;
+}
+
+.page-landing .facility-feature-card .facility-desc-new {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 12px;
+    line-height: 1.28;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.page-landing .facility-feature-card .btn-book-now {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 36px;
+    margin-top: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #22251b;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.22);
+}
+
+.page-landing .facility-feature-card .btn-book-now:hover {
+    background: #f5f5f0;
+    color: #0f1a0e;
+}
+
 .facilities-empty {
     grid-column: 1 / -1;
     text-align: center;
