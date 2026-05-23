@@ -38,7 +38,7 @@ class AnalyticsController extends AbstractController
             ->select('r.reservationDate')
             ->from(Reservation::class, 'r')
             ->where('r.status IN (:statuses)')
-            ->setParameter('statuses', ['Approved', 'Pending', 'Suggested'])
+            ->setParameter('statuses', ['Approved', 'Pending'])
             ->orderBy('r.reservationDate', 'ASC')
             ->getQuery()
             ->getArrayResult();

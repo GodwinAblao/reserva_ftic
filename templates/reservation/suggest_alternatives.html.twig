@@ -6,7 +6,7 @@
     <div class="suggest-alternatives-page">
         <div class="suggest-alt-grid">
             <section class="reservation-column">
-                <h3 class="mini-section-title">Reservation request details</h3>
+                <h3 class="mini-section-title">Reservation Request Details</h3>
                 <div class="request-card">
                     <div class="request-card-grid">
                         <div class="request-field">
@@ -41,7 +41,7 @@
                 <div class="keep-card">
                     <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.id}) }}">
                         <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.id) }}">
-                        <button type="submit" class="keep-button">Keep this Facility</button>
+                        <button type="submit" class="keep-button">Keep This Facility</button>
                     </form>
                 </div>
             </section>
@@ -54,33 +54,58 @@
                     <div class="alternatives-grid">
                         {% for facility in alternatives %}
                             <article class="alt-card">
-                                <h4 class="alt-name">{{ facility.name }}</h4>
-                                <p class="alt-description">{% if facility.description %}{{ facility.description }}{% else %}Professional classroom or meeting space with advanced audiovisual equipment for seminars and presentations.{% endif %}</p>
-
-                                <div class="alt-stats">
-                                    <div class="alt-stat-row">
-                                        <span>Facility Capacity:</span>
-                                        <strong>{{ facility.capacity }} people</strong>
-                                    </div>
-                                    <div class="alt-stat-row">
-                                        <span>Fit Score:</span>
-                                        <strong class="stat-positive">Perfect fit</strong>
-                                    </div>
-                                    <div class="alt-stat-row">
-                                        <span>Status:</span>
-                                        <strong class="stat-positive">Available</strong>
-                                    </div>
+                                <div class="alt-image">
+                                    {% if facility.image %}
+                                        <img src="{{ asset('uploads/facilities/' ~ facility.image) }}" alt="{{ facility.name }}">
+                                    {% elseif facility.images|length > 0 %}
+                                        {% set mainImage = facility.images.first %}
+                                        <img src="{{ asset('uploads/facility_images/' ~ mainImage.filename) }}" alt="{{ facility.name }}">
+                                    {% else %}
+                                        <div class="alt-image-placeholder">
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                                <path d="M3 9h18"/>
+                                                <path d="M9 21V9"/>
+                                            </svg>
+                                        </div>
+                                    {% endif %}
                                 </div>
+                                <div class="alt-content">
+                                    <h4 class="alt-name">{{ facility.name }}</h4>
+                                    <p class="alt-description">{% if facility.description %}{{ facility.description }}{% else %}Professional classroom or meeting space with advanced audiovisual equipment for seminars and presentations.{% endif %}</p>
 
-                                <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.id) }}">
-                                    <button type="submit" class="accept-button">Accept this Facility</button>
-                                </form>
+                                    <div class="alt-stats">
+                                        <div class="alt-stat-row">
+                                            <span class="stat-label">Capacity</span>
+                                            <span class="stat-value">{{ facility.capacity }} people</span>
+                                        </div>
+                                        <div class="alt-stat-row">
+                                            <span class="stat-label">Fit Score</span>
+                                            <span class="stat-value stat-positive">Perfect fit</span>
+                                        </div>
+                                        <div class="alt-stat-row">
+                                            <span class="stat-label">Status</span>
+                                            <span class="stat-value stat-available">Available</span>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.id) }}">
+                                        <button type="submit" class="accept-button">Accept This Facility</button>
+                                    </form>
+                                </div>
                             </article>
                         {% endfor %}
                     </div>
                 {% else %}
                     <div class="empty-alternative">
+                        <div class="empty-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
                         <p>No better-fit facilities are available for your requested date and time.</p>
                     </div>
                 {% endif %}
@@ -105,43 +130,42 @@
         margin: 0 0 8px;
         font-size: 20px;
         line-height: 1.2;
-        color: var(--feu-green);
+        color: #1e293b;
         font-weight: 700;
         letter-spacing: 0.1px;
     }
 
     .alternatives-subtitle {
-        margin: 0 0 12px;
-        color: #8a8f98;
+        margin: 0 0 16px;
+        color: #64748b;
         font-size: 14px;
-        line-height: 1.35;
+        line-height: 1.5;
         max-width: 430px;
-        font-style: italic;
     }
 
     .request-card,
     .keep-card,
     .alt-card {
         background: #fff;
-        border: 1px solid #dfe5d7;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .request-card {
-        padding: 8px 10px 10px;
+        padding: 16px 20px;
         min-height: 188px;
     }
 
     .request-card-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px 12px;
+        gap: 16px;
     }
 
     .request-field {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
         min-width: 0;
     }
 
@@ -150,55 +174,58 @@
     }
 
     .field-label {
-        font-size: 15px;
-        font-weight: 700;
-        color: #1d1d1d;
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .field-value {
         font-size: 15px;
-        line-height: 1.35;
-        color: #5f9f13;
-        font-weight: 700;
+        line-height: 1.4;
+        color: #1e293b;
+        font-weight: 600;
         word-break: break-word;
     }
 
     .field-emphasis { text-transform: uppercase; }
 
     .purpose-text {
-        color: #2d2d2d;
-        font-weight: 500;
+        color: #475569;
+        font-weight: 400;
         text-transform: none;
     }
 
     .keep-card {
         margin-top: 14px;
-        padding: 12px 16px;
+        padding: 16px 20px;
         display: flex;
         justify-content: center;
     }
 
-    .keep-card form { width: 100%; max-width: 160px; }
+    .keep-card form { width: 100%; max-width: 200px; }
 
     .keep-button,
     .accept-button {
         width: 100%;
         border: 0;
         border-radius: 8px;
-        background: #72ad14;
+        background: #0d9b00;
         color: #fff;
         font-size: 14px;
-        font-weight: 700;
-        padding: 7px 12px;
+        font-weight: 600;
+        padding: 10px 16px;
         cursor: pointer;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-        transition: transform .15s ease, background .15s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        transition: all .2s ease;
     }
 
     .keep-button:hover,
     .accept-button:hover {
-        background: #689f12;
+        background: #0b8200;
         transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
     }
 
     .alternatives-column {
@@ -208,68 +235,127 @@
     .alternatives-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+        gap: 16px;
     }
 
     .alt-card {
-        padding: 9px 9px 10px;
-        min-height: 154px;
+        overflow: hidden;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        transition: all .2s ease;
+    }
+
+    .alt-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .alt-image {
+        width: 100%;
+        height: 140px;
+        background: #f1f5f9;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .alt-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .alt-image-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+
+    .alt-content {
+        padding: 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 
     .alt-name {
-        margin: 0 0 3px;
-        text-align: center;
-        color: var(--feu-green);
-        font-size: 20px;
-        line-height: 1.2;
+        margin: 0 0 8px;
+        color: #1e293b;
+        font-size: 16px;
+        line-height: 1.3;
         font-weight: 700;
     }
 
     .alt-description {
-        margin: 0 0 8px;
+        margin: 0 0 12px;
         font-size: 13px;
-        line-height: 1.3;
-        color: #8c8c8c;
-        text-align: left;
-        min-height: 20px;
+        line-height: 1.5;
+        color: #64748b;
+        min-height: 40px;
+        flex: 1;
     }
 
     .alt-stats {
         display: flex;
         flex-direction: column;
-        gap: 5px;
-        margin-bottom: 8px;
+        gap: 8px;
+        margin-bottom: 12px;
     }
 
     .alt-stat-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #ebebeb;
-        padding-bottom: 3px;
         font-size: 13px;
-        color: #4c4c4c;
     }
 
-    .alt-stat-row strong {
-        color: #5f9f13;
-        font-size: 13px;
-        font-weight: 700;
+    .stat-label {
+        color: #64748b;
+        font-weight: 500;
     }
 
-    .stat-positive { color: #2f7f0f !important; }
+    .stat-value {
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    .stat-positive {
+        color: #0d9b00 !important;
+    }
+
+    .stat-available {
+        color: #0d9b00 !important;
+        background: #dcfce7;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
 
     .accept-button {
-        margin-top: 2px;
-        border-radius: 7px;
+        margin-top: auto;
+        border-radius: 6px;
         font-size: 13px;
-        padding: 6px 10px;
+        padding: 8px 12px;
     }
 
     .empty-alternative {
-        padding: 18px 12px;
-        color: #6b7280;
-        font-size: 16px;
+        padding: 40px 20px;
+        text-align: center;
+        color: #64748b;
+        font-size: 15px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px dashed #cbd5e1;
+    }
+
+    .empty-icon {
+        margin-bottom: 12px;
+        color: #94a3b8;
     }
 
     @media (max-width: 1100px) {

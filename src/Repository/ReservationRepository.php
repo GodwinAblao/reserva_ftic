@@ -58,6 +58,20 @@ class ReservationRepository extends ServiceEntityRepository
     }
 
     /**
+     * Find reservations for admin views (excludes Suggested status)
+     */
+    public function findForAdminViews(): array
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.status != :suggestedStatus')
+            ->setParameter('suggestedStatus', 'Suggested')
+            ->orderBy('r.reservationDate', 'DESC')
+            ->addOrderBy('r.reservationStartTime', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Find all pending reservations for super admin review
      */
     public function findPendingReservations(): array
@@ -305,7 +319,7 @@ class ReservationRepository extends ServiceEntityRepository
             ->leftJoin('r.facility', 'f')
             ->addSelect('f')
             ->andWhere('r.status IN (:statuses)')
-            ->setParameter('statuses', ['Approved', 'Pending', 'Suggested'])
+            ->setParameter('statuses', ['Approved', 'Pending'])
             ->orderBy('r.id', 'ASC')
             ->getQuery()
             ->getResult();

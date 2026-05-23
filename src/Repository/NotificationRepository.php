@@ -23,8 +23,8 @@ class NotificationRepository extends ServiceEntityRepository
     public function getUnreadCount(User $user): int
     {
         return (int) $this->getEntityManager()->getConnection()->fetchOne(
-            'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = 0',
-            [$user->getId()]
+            'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = 0 AND status != ?',
+            [$user->getId(), 'Suggested']
         );
     }
 
@@ -38,8 +38,8 @@ class NotificationRepository extends ServiceEntityRepository
             'SELECT COUNT(CASE WHEN is_read = 0 THEN 1 END) AS unread_count,
                     MAX(id) AS newest_id
              FROM notifications
-             WHERE user_id = ?',
-            [$user->getId()]
+             WHERE user_id = ? AND status != ?',
+            [$user->getId(), 'Suggested']
         );
 
         return [
@@ -54,8 +54,12 @@ class NotificationRepository extends ServiceEntityRepository
     public function findLatest(User $user, int $limit = 20): array
     {
         return $this->createQueryBuilder('n')
+            ->leftJoin('App\Entity\Reservation', 'r', 'WITH', 'n.referenceId = r.id AND n.type = :reservationType')
             ->where('n.user = :user')
+            ->andWhere('n.type != :reservationType OR r.status IS NULL OR r.status != :suggestedStatus')
             ->setParameter('user', $user)
+            ->setParameter('reservationType', 'reservation')
+            ->setParameter('suggestedStatus', 'Suggested')
             ->orderBy('n.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
@@ -68,10 +72,14 @@ class NotificationRepository extends ServiceEntityRepository
     public function findUnread(User $user): array
     {
         return $this->createQueryBuilder('n')
+            ->leftJoin('App\Entity\Reservation', 'r', 'WITH', 'n.referenceId = r.id AND n.type = :reservationType')
             ->where('n.user = :user')
             ->andWhere('n.isRead = :isRead')
+            ->andWhere('n.type != :reservationType OR r.status IS NULL OR r.status != :suggestedStatus')
             ->setParameter('user', $user)
             ->setParameter('isRead', false)
+            ->setParameter('reservationType', 'reservation')
+            ->setParameter('suggestedStatus', 'Suggested')
             ->orderBy('n.createdAt', 'DESC')
             ->getQuery()
             ->getResult();

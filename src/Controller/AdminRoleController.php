@@ -83,7 +83,7 @@ class AdminRoleController extends AbstractController
         $resByDate = $conn->executeQuery(
             'SELECT DATE(reservation_date) AS dt, COUNT(*) AS cnt
              FROM reservation
-             WHERE status IN (\'Approved\', \'Pending\', \'Suggested\')
+             WHERE status IN (\'Approved\', \'Pending\')
                AND DATE(reservation_date) >= ? AND DATE(reservation_date) <= ?
              GROUP BY DATE(reservation_date)',
             [$dates[0], $dates[\count($dates) - 1]]
@@ -126,7 +126,7 @@ class AdminRoleController extends AbstractController
              LEFT JOIN facility f ON r.facility_id = f.id
              WHERE r.status NOT IN (:statuses)
              ORDER BY r.created_at DESC LIMIT 8',
-            ['statuses' => []],
+            ['statuses' => ['Suggested']],
             ['statuses' => \Doctrine\DBAL\ArrayParameterType::STRING]
         )->fetchAllAssociative();
 
@@ -211,8 +211,10 @@ class AdminRoleController extends AbstractController
         $tomorrow = new \DateTime('tomorrow');
         $todayReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
             ->where('r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+            ->andWhere('r.status != :suggestedStatus')
             ->setParameter('today', $today)
             ->setParameter('tomorrow', $tomorrow)
+            ->setParameter('suggestedStatus', 'Suggested')
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()->getResult();
 
@@ -541,7 +543,7 @@ class AdminRoleController extends AbstractController
              WHERE DATE(reservation_date) = :today GROUP BY status',
             ['today' => $today]
         );
-        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Suggested' => 0];
+        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0];
         foreach ($statusRows as $sr) {
             $statusCounts[$sr['status']] = (int) $sr['cnt'];
         }
@@ -703,6 +705,8 @@ class AdminRoleController extends AbstractController
         $recentRaw = $reservationRepo->createQueryBuilder('r')
             ->leftJoin('r.facility', 'f')
             ->addSelect('f')
+            ->where('r.status != :suggestedStatus')
+            ->setParameter('suggestedStatus', 'Suggested')
             ->orderBy('r.createdAt', 'DESC')
             ->setMaxResults(8)
             ->getQuery()

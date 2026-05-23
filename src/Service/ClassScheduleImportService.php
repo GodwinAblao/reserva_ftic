@@ -168,13 +168,15 @@ class ClassScheduleImportService
         $this->em->flush();
 
         $message = $created > 0
-            ? "Imported $created class schedule entries from $processed row(s)." . ($relocated > 0 ? " $relocated relocated to a different facility." : '')
+            ? "Imported $created class schedule entries from $processed row(s) across 18 weeks." . ($relocated > 0 ? " $relocated relocated to a different facility." : '')
             : 'No class schedules were created.';
 
         $warnings = [];
-        $today = new \DateTimeImmutable('today');
-        $weekStart = $today->modify('monday this week');
-        $weekEnd = $weekStart->modify('+6 days');
+        $today = new \DateTime('today');
+        $weekStart = clone $today;
+        $weekStart->modify('monday this week');
+        $weekEnd = clone $weekStart;
+        $weekEnd->modify('+6 days');
 
         if ($created > 0 && $firstCreatedDate && ($firstCreatedDate->format('Y-m-d') < $weekStart->format('Y-m-d') || $firstCreatedDate->format('Y-m-d') > $weekEnd->format('Y-m-d'))) {
             $warnings[] = 'Imported schedules are not in the current week; the calendar will open that week.';
@@ -302,15 +304,16 @@ class ClassScheduleImportService
         ];
 
         if (isset($dayMap[$normalized])) {
-            $today = new \DateTimeImmutable('today');
-            $weekStart = $today->modify('monday this week');
+            $today = new \DateTime('today');
+            $weekStart = clone $today;
+            $weekStart->modify('monday this week');
             $dates = [];
 
             for ($week = 0; $week < 18; $week++) {
-                $target = $weekStart
-                    ->modify('+' . $week . ' weeks')
-                    ->modify('+' . $dayMap[$normalized] . ' days');
-                $dates[] = \DateTime::createFromImmutable($target);
+                $target = clone $weekStart;
+                $target->modify('+' . $week . ' weeks');
+                $target->modify('+' . $dayMap[$normalized] . ' days');
+                $dates[] = clone $target;
             }
 
             return $dates;

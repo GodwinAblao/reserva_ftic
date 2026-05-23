@@ -176,7 +176,7 @@ class ClassScheduleRepository extends ServiceEntityRepository
                 $startTime,
                 $endTime,
                 null,
-                ['Approved', 'Pending', 'Suggested'],
+                ['Approved', 'Pending'],
                 $excludeScheduleId,
             )) {
                 continue;

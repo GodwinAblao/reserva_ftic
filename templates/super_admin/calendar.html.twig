@@ -579,32 +579,6 @@
         })();
     </script>
 
-    <!-- Event Details Modal -->
-    <div id="eventModal" class="modal">
-        <div class="modal-content" style="border-radius:16px;">
-            <span class="modal-close">&times;</span>
-            <h3 id="modalTitle" style="color:#0d9b00; margin-bottom:1.25rem;">Reservation Details</h3>
-            <div id="modalBody" class="modal-body">
-                <!-- Populated by JavaScript -->
-            </div>
-            <div id="modalActions" class="modal-actions">
-                <!-- Buttons populated by JavaScript -->
-            </div>
-        </div>
-    </div>
-
-    <div id="deleteScheduleModal" class="delete-schedule-modal">
-        <div class="delete-schedule-dialog">
-            <div class="delete-schedule-icon">!</div>
-            <h3>Delete Imported Schedule?</h3>
-            <p>This will permanently delete the whole imported class schedule from the calendar. Reservations and manual blocks will not be deleted.</p>
-            <div class="delete-schedule-actions">
-                <button type="button" id="cancelDeleteSchedule" class="delete-schedule-cancel">Cancel</button>
-                <button type="button" id="confirmDeleteSchedule" class="delete-schedule-confirm">Yes, Delete Schedule</button>
-            </div>
-        </div>
-    </div>
-
 <style>
     /* ── Calendar-specific styles (grid, events, modal, status) ── */
     .calendar-status { display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:0.9rem; font-weight:700; border-bottom:1px solid #e8ede6; }
@@ -626,6 +600,10 @@
     .time-slot { height:60px; box-sizing:border-box; border-bottom:1px solid #e8ede6; padding:.5rem; font-size:.75rem; color:#6b7280; text-align:right; }
     .day-column { border-right:1px solid #e8ede6; position:relative; }
     .day-column:last-child { border-right:none; }
+    .day-column.sunday { background:#f3f4f6; pointer-events:none; opacity:0.5; }
+    .day-column.sunday .day-header { background:#9ca3af; }
+    .day-column.sunday .event-block { pointer-events:none; cursor:not-allowed; }
+    .event-block.sunday { pointer-events:none !important; cursor:not-allowed !important; opacity:0.6; }
     .day-body { position:relative; }
     .day-header { padding:.875rem 1rem; background:linear-gradient(135deg,#006633 0%,#004d26 100%); color:white; text-align:center; font-weight:700; border-bottom:2px solid #004d26; }
     .day-header .day-name { font-size:.8rem; text-transform:uppercase; letter-spacing:.6px; }
@@ -672,9 +650,10 @@
     .day-view .day-column .time-slot { height:60px; border-bottom:1px solid #e8ede6; background:white; }
 
     /* Modal */
-    .modal { display:none; position:fixed; z-index:1200; inset:0; background:rgba(12,30,20,.45); animation:calFadeIn .2s; }
+    .modal { display:none; position:fixed; z-index:9999; top:0; left:0; width:100vw; height:100vh; background:rgba(12,30,20,.6); backdrop-filter:blur(8px); animation:calFadeIn .2s; }
+    .modal.is-open { display:flex; align-items:center; justify-content:center; }
     @keyframes calFadeIn { from{opacity:0} to{opacity:1} }
-    .modal-content { background:white; margin:5% auto; padding:2rem; border-radius:16px; max-width:600px; position:relative; animation:calSlideDown .28s; box-shadow:0 24px 60px rgba(12,30,20,.22); }
+    .modal-content { background:white; padding:2rem; border-radius:16px; max-width:600px; width:90%; max-height:90vh; overflow-y:auto; position:relative; animation:calSlideDown .28s; box-shadow:0 24px 60px rgba(12,30,20,.22); }
     @keyframes calSlideDown { from{transform:translateY(-40px);opacity:0} to{transform:translateY(0);opacity:1} }
     .modal-close { position:absolute; right:1.25rem; top:1.25rem; font-size:1.75rem; font-weight:300; color:#9ca3af; cursor:pointer; transition:color .2s; background:none; border:none; line-height:1; }
     .modal-close:hover { color:#374151; }
@@ -695,7 +674,7 @@
     .no-events { padding:3rem; text-align:center; color:#9ca3af; }
 
     /* Delete-schedule confirm modal */
-    .delete-schedule-modal { display:none; position:fixed; inset:0; z-index:2000; align-items:center; justify-content:center; padding:1.5rem; background:rgba(15,23,42,.55); backdrop-filter:blur(4px); }
+    .delete-schedule-modal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999; align-items:center; justify-content:center; padding:1.5rem; background:rgba(15,23,42,.6); backdrop-filter:blur(8px); }
     .delete-schedule-modal.is-open { display:flex; }
     .delete-schedule-dialog { width:min(440px,100%); background:white; border-radius:20px; padding:2rem; text-align:center; box-shadow:0 24px 70px rgba(15,23,42,.28); animation:deleteModalIn .18s ease-out; }
     .delete-schedule-icon { width:56px; height:56px; margin:0 auto 1rem; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#991b1b; background:#fee2e2; border:1px solid #fecaca; font-size:1.6rem; font-weight:800; }
@@ -707,6 +686,69 @@
     .delete-schedule-confirm { background:#dc2626; color:white; }
     @keyframes deleteModalIn { from{opacity:0;transform:translateY(12px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
 </style>
+
+<!-- Event Details Modal -->
+<div id="eventModal" class="modal">
+    <div class="modal-content" style="border-radius:16px;">
+        <span class="modal-close">&times;</span>
+        <h3 id="modalTitle" style="color:#0d9b00; margin-bottom:1.25rem;">Reservation Details</h3>
+        <div id="modalBody" class="modal-body">
+            <!-- Populated by JavaScript -->
+        </div>
+        <div id="modalActions" class="modal-actions">
+            <!-- Buttons populated by JavaScript -->
+        </div>
+    </div>
+</div>
+
+<div id="deleteScheduleModal" class="delete-schedule-modal">
+    <div class="delete-schedule-dialog">
+        <div class="delete-schedule-icon">!</div>
+        <h3>Delete Imported Schedule?</h3>
+        <p>This will permanently delete the whole imported class schedule from the calendar. Reservations and manual blocks will not be deleted.</p>
+        <div class="delete-schedule-actions">
+            <button type="button" id="cancelDeleteSchedule" class="delete-schedule-cancel">Cancel</button>
+            <button type="button" id="confirmDeleteSchedule" class="delete-schedule-confirm">Yes, Delete Schedule</button>
+        </div>
+    </div>
+</div>
+
+<div id="revertScheduleModal" class="delete-schedule-modal">
+    <div class="delete-schedule-dialog">
+        <div class="delete-schedule-icon" style="color:#0d9b00; background:#dcfce7; border-color:#bbf7d0;">↺</div>
+        <h3>Revert to Normal?</h3>
+        <p>This will remove the blocked/maintenance status from this class schedule and restore it to a normal class schedule.</p>
+        <div class="delete-schedule-actions">
+            <button type="button" id="cancelRevertSchedule" class="delete-schedule-cancel">Cancel</button>
+            <button type="button" id="confirmRevertSchedule" class="delete-schedule-confirm" style="background:#0d9b00;">Yes, Revert to Normal</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteClassScheduleModal" class="delete-schedule-modal">
+    <div class="delete-schedule-dialog">
+        <div class="delete-schedule-icon">!</div>
+        <h3>Delete Class Schedule?</h3>
+        <p>This will delete this class schedule entry. The time slot may become available for reservations.</p>
+        <div class="delete-schedule-actions">
+            <button type="button" id="cancelDeleteClassSchedule" class="delete-schedule-cancel">Cancel</button>
+            <button type="button" id="confirmDeleteClassSchedule" class="delete-schedule-confirm">Yes, Delete Schedule</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Move modals to body to ensure they're not constrained by parent containers
+    document.addEventListener('DOMContentLoaded', function() {
+        const modals = ['eventModal', 'deleteScheduleModal', 'revertScheduleModal', 'deleteClassScheduleModal'];
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal && modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+        });
+    });
+</script>
 
 <script>
     const calendarAppEl = document.getElementById('calendarApp');
@@ -766,12 +808,28 @@
             
             dateInput.min = minDate;
             
-            // Prevent Sunday selection
+            // Prevent Sunday selection - silently clear value
             dateInput.addEventListener('change', function() {
                 const selectedDate = new Date(this.value);
                 if (selectedDate.getDay() === 0) { // Sunday
                     this.value = '';
-                    alert('Sundays are not allowed. Please select a different date.');
+                }
+            });
+        }
+
+        // Add same restrictions to modify schedule date input
+        const modifyDateInput = document.getElementById('modifyScheduleDate');
+        if (modifyDateInput) {
+            const today = new Date();
+            const minDate = today.toISOString().split('T')[0];
+            
+            modifyDateInput.min = minDate;
+            
+            // Prevent Sunday selection - silently clear value
+            modifyDateInput.addEventListener('change', function() {
+                const selectedDate = new Date(this.value);
+                if (selectedDate.getDay() === 0) { // Sunday
+                    this.value = '';
                 }
             });
         }
@@ -957,18 +1015,6 @@
                 renderEventModal(event);
             }
             modalOverlay.style.display = 'flex';
-            
-            // Center the modal properly
-            const modal = document.getElementById('eventModal');
-            if (modal) {
-                modal.style.position = 'fixed';
-                modal.style.top = '50%';
-                modal.style.left = '50%';
-                modal.style.transform = 'translate(-50%, -50%)';
-                modal.style.zIndex = '9999';
-                modal.style.maxHeight = '90vh';
-                modal.style.overflowY = 'auto';
-            }
         };
 
         // Override modal closing functions
@@ -1014,6 +1060,8 @@
         const winClickFn = (e) => {
             if (e.target.id === 'eventModal') closeModal();
             if (e.target.id === 'deleteScheduleModal') closeDeleteScheduleModal();
+            if (e.target.id === 'revertScheduleModal') closeRevertScheduleModal();
+            if (e.target.id === 'deleteClassScheduleModal') closeDeleteClassScheduleModal();
         };
         on(window, 'click', winClickFn, L);
 
@@ -1037,6 +1085,10 @@
             on(document.getElementById('scheduleDeleteSubmit'),  'click',  openDeleteScheduleModal,         L);
             on(document.getElementById('cancelDeleteSchedule'),  'click',  closeDeleteScheduleModal,        L);
             on(document.getElementById('confirmDeleteSchedule'), 'click',  deleteImportedScheduleInBackground, L);
+            on(document.getElementById('cancelRevertSchedule'),  'click',  closeRevertScheduleModal,        L);
+            on(document.getElementById('confirmRevertSchedule'), 'click',  confirmRevertSchedule,            L);
+            on(document.getElementById('cancelDeleteClassSchedule'),  'click',  closeDeleteClassScheduleModal,        L);
+            on(document.getElementById('confirmDeleteClassSchedule'), 'click',  confirmDeleteClassSchedule,            L);
         }
         if (calendarConfig.fullMode) {
             on(document.getElementById('modifyScheduleForm'),       'submit', saveModifyScheduleInBackground, L);
@@ -1145,14 +1197,50 @@
             calendarEventsCache.clear();
             broadcastScheduleRevision(data.scheduleRevision);
             showImportMessage(data.message, 'success');
-            setCalendarStatus('Schedule imported. User facility calendars will update automatically.', 'loading', false);
+            setCalendarStatus('Schedule imported. Refreshing calendar...', 'loading', false);
+            
+            // Force refresh with a small delay to ensure database is updated
+            await new Promise(resolve => setTimeout(resolve, 500));
             await renderCalendar(true);
 
             if (Array.isArray(data.warnings) && data.warnings.length > 0) {
                 showImportMessage(`${data.message} ${data.warnings.slice(0, 3).join(' ')}`, 'success');
             }
         } catch (error) {
-            showImportMessage(error.message || 'Schedule import failed.', 'error');
+            console.error('Import error:', error);
+            console.error('Error status:', error.status);
+            
+            let errorMessage = error.message || 'Schedule import failed.';
+            
+            // Try to get detailed error information from the response
+            if (error.response) {
+                try {
+                    const errorText = await error.response.text();
+                    console.error('Error response text:', errorText);
+                    
+                    const errorData = JSON.parse(errorText);
+                    console.error('Parsed error data:', errorData);
+                    
+                    if (errorData.errors && errorData.errors.length > 0) {
+                        errorMessage = 'Import failed:\n' + errorData.errors.join('\n');
+                    } else if (errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse error response:', e);
+                    // If parsing fails, try to show the raw response
+                    try {
+                        const errorText = await error.response.text();
+                        if (errorText) {
+                            errorMessage = 'Import failed: ' + errorText.substring(0, 500);
+                        }
+                    } catch (e2) {
+                        // If all else fails, use the original error message
+                    }
+                }
+            }
+            
+            showImportMessage(errorMessage, 'error');
             setCalendarStatus('Schedule import failed. Fix the CSV and try again.', 'error', false);
         } finally {
             submitButton.disabled = false;
@@ -1160,7 +1248,12 @@
         }
 
         function showImportMessage(message, type) {
-            messageBox.textContent = message;
+            // Format multi-line messages with better styling
+            if (message.includes('\n')) {
+                messageBox.innerHTML = message.replace(/\n/g, '<br>');
+            } else {
+                messageBox.textContent = message;
+            }
             messageBox.className = 'schedule-import-message ' + type;
             messageBox.style.display = 'block';
         }
@@ -1383,6 +1476,45 @@
         document.getElementById('deleteScheduleModal').classList.remove('is-open');
     }
 
+    function closeRevertScheduleModal() {
+        document.getElementById('revertScheduleModal').classList.remove('is-open');
+    }
+
+    function confirmRevertSchedule() {
+        const revertModal = document.getElementById('revertScheduleModal');
+        const classId = revertModal.dataset.classId;
+
+        if (!classId) {
+            closeRevertScheduleModal();
+            return;
+        }
+
+        closeRevertScheduleModal();
+        setCalendarStatus('Reverting class schedule to normal...', 'loading', false);
+
+        fetch(`/super-admin/class-schedule/${classId}/revert`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal();
+                calendarEventsCache.clear();
+                setCalendarStatus('Class schedule reverted successfully. Refreshing calendar...', 'loading', false);
+                renderCalendar(true);
+            } else {
+                setCalendarStatus('Could not revert class schedule. Try again.', 'error', false);
+            }
+        })
+        .catch(error => {
+            setCalendarStatus('Could not revert class schedule. Try again.', 'error', false);
+        });
+    }
+
     function playDeleteWarningSound() {
         playDeleteWarningAudioElement();
 
@@ -1586,7 +1718,17 @@
 
     function bindEventBlocks() {
         document.querySelectorAll('.event-block').forEach(el => {
-            el.addEventListener('click', () => openEventModal(el));
+            el.addEventListener('click', () => {
+                // Check if the event is on a Sunday
+                const eventDate = el.dataset.date;
+                if (eventDate) {
+                    const date = new Date(eventDate);
+                    if (date.getDay() === 0) { // Sunday
+                        return; // Prevent opening modal on Sundays
+                    }
+                }
+                openEventModal(el);
+            });
         });
     }
 
@@ -1701,7 +1843,9 @@
         days.forEach(day => {
             const dateKey = formatDateForAPI(day);
             const dayEvents = events.filter(event => event.reservationDate === dateKey);
-            html += `<div class="day-column"><div class="day-header"><div class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div><div class="day-date">${day.toLocaleDateString('en-US', { day: 'numeric' })}</div></div><div class="day-body">`;
+            const isSunday = day.getDay() === 0;
+            const sundayClass = isSunday ? ' sunday' : '';
+            html += `<div class="day-column${sundayClass}"><div class="day-header"><div class="day-name">${day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</div><div class="day-date">${day.toLocaleDateString('en-US', { day: 'numeric' })}</div></div><div class="day-body">`;
             timeSlots.forEach(() => html += `<div class="time-slot" style="height:${calendarHourHeight}px;"></div>`);
             dayEvents.forEach((event, index) => html += renderEventBlock(event, index, dayEvents.length));
             html += '</div></div>';
@@ -1712,10 +1856,12 @@
     function renderDayView(events, date) {
         const dateKey = formatDateForAPI(date);
         const dayEvents = events.filter(event => event.reservationDate === dateKey);
+        const isSunday = date.getDay() === 0;
+        const sundayClass = isSunday ? ' sunday' : '';
         let html = '<div class="day-view"><div class="time-column">';
         const timeSlots = generateTimeSlots();
         timeSlots.forEach(slot => html += `<div class="time-slot" style="height:${calendarHourHeight}px;">${slot.label}</div>`);
-        html += '</div><div class="day-column"><div class="day-body">';
+        html += `</div><div class="day-column${sundayClass}"><div class="day-body">`;
         timeSlots.forEach(() => html += `<div class="time-slot" style="height:${calendarHourHeight}px;"></div>`);
         dayEvents.forEach((event, index) => html += renderEventBlock(event, index, dayEvents.length));
         html += '</div></div></div>';
@@ -1750,8 +1896,13 @@
         const blockId = isBlock === '1' ? String(event.id).replace('block_', '') : '';
         const classId = itemType === 'class_schedule' ? String(event.id).replace('class_', '') : '';
         const timeDisplay = formatEventTime(event.reservationStartTime) + ' - ' + formatEventTime(event.reservationEndTime);
+        
+        // Check if event is on Sunday
+        const eventDate = new Date(event.reservationDate);
+        const isSunday = eventDate.getDay() === 0;
+        const sundayClass = isSunday ? ' sunday' : '';
 
-        return '<div class="event-block ' + status + '" style="top:' + top + 'px; height:' + height + 'px; left:' + offset + 'px; width:' + width + '; right:auto;"' +
+        return '<div class="event-block ' + status + sundayClass + '" style="top:' + top + 'px; height:' + height + 'px; left:' + offset + 'px; width:' + width + '; right:auto;"' +
             ' data-id="' + event.id + '"' +
             ' data-item-type="' + itemType + '"' +
             ' data-class-id="' + classId + '"' +
@@ -1791,6 +1942,15 @@
     }
 
     function openEventModal(element) {
+        // Check if the event is on a Sunday - prevent opening modal
+        const eventDate = element.dataset.date;
+        if (eventDate) {
+            const date = new Date(eventDate);
+            if (date.getDay() === 0) { // Sunday
+                return; // Prevent opening modal on Sundays
+            }
+        }
+        
         const data = element.dataset;
         document.getElementById('modalTitle').textContent = `${data.facility} - ${data.status}`;
         const eventName = data.eventName || data.title || data.facility || 'Unnamed Event';
@@ -1892,7 +2052,7 @@
         document.getElementById('eventModal').dataset.activeTitle = data.title || '';
         document.getElementById('eventModal').dataset.activeStatus = data.status || 'Manual';
         document.getElementById('eventModal').dataset.activePurpose = data.purpose || '';
-        document.getElementById('eventModal').style.display = 'block';
+        document.getElementById('eventModal').classList.add('is-open');
     }
 
     // editManualBlockFromModal function removed - manual block form deleted
@@ -1950,7 +2110,7 @@
         const modal = document.getElementById('eventModal');
         const classId = modal.dataset.activeClassId;
 
-        if (!classId || !window.confirm('Delete this class schedule entry? The time slot may become available for reservations.')) {
+        if (!classId) {
             return;
         }
 
@@ -1958,6 +2118,24 @@
             return;
         }
 
+        // Show the delete confirmation modal
+        const deleteModal = document.getElementById('deleteClassScheduleModal');
+        deleteModal.classList.add('is-open');
+        
+        // Store the class ID for the confirm action
+        deleteModal.dataset.classId = classId;
+    }
+
+    async function confirmDeleteClassSchedule() {
+        const deleteModal = document.getElementById('deleteClassScheduleModal');
+        const classId = deleteModal.dataset.classId;
+
+        if (!classId) {
+            closeDeleteClassScheduleModal();
+            return;
+        }
+
+        closeDeleteClassScheduleModal();
         setCalendarStatus('Deleting class schedule...', 'loading', false);
 
         try {
@@ -1982,6 +2160,10 @@
         } catch (error) {
             setCalendarStatus('Could not delete class schedule.', 'error', false);
         }
+    }
+
+    function closeDeleteClassScheduleModal() {
+        document.getElementById('deleteClassScheduleModal').classList.remove('is-open');
     }
 
     // deleteManualBlockFromModal function removed - manual block form deleted
@@ -2026,33 +2208,16 @@
         const modal = document.getElementById('eventModal');
         const classId = modal.dataset.activeClassId;
 
-        if (!classId || !window.confirm('Revert this class schedule to normal? This will remove the blocked/maintenance status.')) {
+        if (!classId) {
             return;
         }
 
-        setCalendarStatus('Reverting class schedule to normal...', 'loading', false);
-
-        fetch(`/super-admin/class-schedule/${classId}/revert`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal();
-                calendarEventsCache.clear();
-                setCalendarStatus('Class schedule reverted successfully. Refreshing calendar...', 'loading', false);
-                renderCalendar(true);
-            } else {
-                setCalendarStatus('Could not revert class schedule. Try again.', 'error', false);
-            }
-        })
-        .catch(error => {
-            setCalendarStatus('Could not revert class schedule. Try again.', 'error', false);
-        });
+        // Show the revert confirmation modal
+        const revertModal = document.getElementById('revertScheduleModal');
+        revertModal.classList.add('is-open');
+        
+        // Store the class ID for the confirm action
+        revertModal.dataset.classId = classId;
     }
 
     function deleteBlockFromModal() {
@@ -2163,7 +2328,7 @@
     function closeModal() {
         const modal = document.getElementById('eventModal');
         if (modal) {
-            modal.style.display = 'none';
+            modal.classList.remove('is-open');
         }
     }
 

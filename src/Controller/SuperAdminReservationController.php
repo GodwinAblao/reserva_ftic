@@ -16,6 +16,8 @@ use App\Service\CalendarDataService;
 use App\Service\ClassScheduleFacultyMatcher;
 use App\Service\ScheduleRevisionService;
 use App\Service\ClassScheduleNotificationService;
+use App\Service\ClassScheduleImportService;
+use App\Service\ReservationMailer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -37,7 +39,6 @@ class SuperAdminReservationController extends AbstractController
         $pending = $reservationRepo->findBy(['status' => 'Pending'], ['createdAt' => 'DESC']);
         $approved = $reservationRepo->findBy(['status' => 'Approved'], ['reservationDate' => 'DESC']);
         $rejected = $reservationRepo->findBy(['status' => 'Rejected'], ['reservationDate' => 'DESC']);
-        $suggested = $reservationRepo->findBy(['status' => 'Suggested'], ['updatedAt' => 'DESC']);
 
         // Combine all audit logs into one variable for the template
         $statusAuditLogs = array_merge(
@@ -50,10 +51,66 @@ class SuperAdminReservationController extends AbstractController
             'pending' => $pending,
             'approved' => $approved,
             'rejected' => $rejected,
-            'suggested' => $suggested,
             'statusAuditLogs' => $statusAuditLogs,
             'classNotifyAudit' => $classNotifyAuditRepo->findAll(),
         ]);
+    }
+
+    #[Route('/reservations/{id}/approve', name: 'admin_approve_reservation', methods: ['POST'])]
+    public function approveReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationRepository $reservationRepo,
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
+    ): Response {
+        if (!$this->isCsrfTokenValid('approve_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $date = $reservation->getReservationDate();
+        $startTime = $reservation->getReservationStartTime();
+        $endTime = $reservation->getReservationEndTime();
+
+        if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $date, $startTime, $endTime)) {
+            $this->addFlash('error', 'Cannot approve: this time range is already approved for this facility.');
+
+            return $this->redirectToRoute('admin_reservations');
+        }
+
+        $reservation->setStatus('Approved');
+        $em->flush();
+
+        // Send email notification to user
+        $reservationMailer->notifyApproved($reservation);
+
+        $this->addFlash('success', 'Reservation approved successfully.');
+
+        return $this->redirectToRoute('admin_reservations');
+    }
+
+    #[Route('/reservations/{id}/reject', name: 'admin_reject_reservation', methods: ['POST'])]
+    public function rejectReservation(
+        Reservation $reservation,
+        Request $request,
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer
+    ): Response {
+        if (!$this->isCsrfTokenValid('reject_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $reason = $request->request->get('reason') ?? 'Not specified';
+        $reservation->setStatus('Rejected');
+        $reservation->setRejectionReason($reason);
+        $em->flush();
+
+        // Send email notification to user
+        $reservationMailer->notifyRejected($reservation);
+
+        $this->addFlash('success', 'Reservation rejected successfully.');
+
+        return $this->redirectToRoute('admin_reservations');
     }
 
     #[Route('/calendar', name: 'admin_calendar')]
@@ -150,7 +207,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         // Check for time conflicts - Super Admin can override
-        $hasConflicts = $reservationRepo->isTimeRangeBooked($facility, $date, $start, $end, null, ['Approved', 'Pending', 'Suggested']);
+        $hasConflicts = $reservationRepo->isTimeRangeBooked($facility, $date, $start, $end, null, ['Approved', 'Pending']);
         $overrideConflict = $request->request->get('override_conflict') === 'true';
         
         if ($hasConflicts && !$overrideConflict) {
@@ -248,7 +305,7 @@ class SuperAdminReservationController extends AbstractController
                 $start,
                 $end,
                 null,
-                ['Approved', 'Pending', 'Suggested'],
+                ['Approved', 'Pending'],
                 $excludeScheduleId
             );
 
@@ -588,220 +645,32 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/calendar/import', name: 'admin_calendar_import', methods: ['POST'])]
     public function importSchedule(
         Request $request,
-        FacilityRepository $facilityRepo,
-        ClassScheduleRepository $classScheduleRepo,
-        EntityManagerInterface $em,
+        ClassScheduleImportService $importService,
         ScheduleRevisionService $scheduleRevision,
     ): JsonResponse {
-        // Skip CSRF validation for Super Admin operations
-        // Super Admin has full privileges and doesn't need CSRF protection
-
         try {
             $file = $request->files->get('schedule_file');
             $pasteData = $request->request->get('schedule_paste');
-            
-            if (!$file && !$pasteData) {
-                return $this->json(['success' => false, 'message' => 'No file uploaded or data pasted.']);
-            }
-            
-            $csvContent = '';
-            if ($file) {
-                // Validate file type
-                $allowedExtensions = ['csv', 'txt'];
-                $fileExtension = strtolower($file->getClientOriginalExtension());
-                if (!in_array($fileExtension, $allowedExtensions)) {
-                    return $this->json(['success' => false, 'message' => 'Invalid file type. Please upload a CSV file.']);
-                }
-                $csvContent = file_get_contents($file->getPathname());
-            } elseif ($pasteData) {
-                $csvContent = $pasteData;
-            }
-            $lines = explode("\n", $csvContent);
-            
-            // Remove empty lines and skip header row
-            $lines = array_filter($lines, function($line) {
-                return trim($line) !== '';
-            });
-            
-            // Skip header row if it exists (first line that contains 'facility')
-            if (!empty($lines) && strpos(strtolower($lines[0]), 'facility') !== false) {
-                array_shift($lines);
-            }
-            
-            $importedCount = 0;
-            $errors = [];
-            $importBatchId = uniqid('import_', true);
-            
-            foreach ($lines as $lineNumber => $line) {
-                $data = str_getcsv($line);
-                $actualLineNumber = $lineNumber + 2; // +2 because we skipped header and array is 0-indexed
-                
-                // Expected CSV format: facility_name,day,start_time,end_time,course_code,section,faculty_name[,faculty_email]
-                if (count($data) < 7) {
-                    $errors[] = "Line " . $actualLineNumber . ": Invalid format. Expected at least 7 columns.";
-                    continue;
-                }
-                
-                [$facilityName, $day, $startTime, $endTime, $courseCode, $section, $facultyName] = $data;
-                $facultyEmail = $data[7] ?? null; // Faculty email is optional
-                
-                // Validate required fields
-                if (empty($facilityName) || empty($day) || empty($startTime) || empty($endTime) || empty($courseCode)) {
-                    $errors[] = "Line " . $actualLineNumber . ": Missing required fields.";
-                    continue;
-                }
-                
-                // Find facility - try exact match first, then case-insensitive, then partial match
-                $facility = $facilityRepo->findOneBy(['name' => trim($facilityName)]);
-                if (!$facility) {
-                    // Try case-insensitive search
-                    $facility = $facilityRepo->createQueryBuilder('f')
-                        ->where('LOWER(f.name) = LOWER(:name)')
-                        ->setParameter('name', trim($facilityName))
-                        ->getQuery()
-                        ->getOneOrNullResult();
-                }
-                if (!$facility) {
-                    // Try partial match (contains)
-                    $facility = $facilityRepo->createQueryBuilder('f')
-                        ->where('LOWER(f.name) LIKE LOWER(:name)')
-                        ->setParameter('name', '%' . trim($facilityName) . '%')
-                        ->getQuery()
-                        ->getOneOrNullResult();
-                }
-                if (!$facility) {
-                    $errors[] = "Line " . $actualLineNumber . ": Facility '{$facilityName}' not found.";
-                    continue;
-                }
-                
-                // Parse day of week and convert to date (use current week)
-                $dayMapping = [
-                    'Monday' => 0, 'Mon' => 0,
-                    'Tuesday' => 1, 'Tue' => 1,
-                    'Wednesday' => 2, 'Wed' => 2,
-                    'Thursday' => 3, 'Thu' => 3,
-                    'Friday' => 4, 'Fri' => 4,
-                    'Saturday' => 5, 'Sat' => 5,
-                    'Sunday' => 6, 'Sun' => 6,
-                ];
-                
-                $dayNumber = $dayMapping[trim($day)] ?? null;
-                if ($dayNumber === null) {
-                    $errors[] = "Line " . $actualLineNumber . ": Invalid day '{$day}'. Use Monday-Sunday.";
-                    continue;
-                }
-                
-                // Use a fixed reference week for imports (start of current week)
-                $scheduleDate = new \DateTime();
-                // Go to Monday of this week
-                $scheduleDate->modify('Monday this week');
-                // Add the day offset (0 for Monday, 1 for Tuesday, etc.)
-                $scheduleDate->modify("+{$dayNumber} days");
-                $scheduleDate->setTime(0, 0, 0);
-                
-                // Parse time - try multiple formats
-                $startDateTime = null;
-                $timeFormats = ['g:i a', 'g:i A', 'h:i a', 'h:i A', 'H:i', 'G:i'];
-                $cleanStartTime = trim(preg_replace('/\s+/', ' ', $startTime));
-                
-                foreach ($timeFormats as $format) {
-                    $startDateTime = \DateTime::createFromFormat($format, $cleanStartTime);
-                    if ($startDateTime) break;
-                }
-                
-                if (!$startDateTime) {
-                    $errors[] = "Line " . $actualLineNumber . ": Invalid start time format: '{$startTime}'.";
-                    continue;
-                }
-                
-                $endDateTime = null;
-                $cleanEndTime = trim(preg_replace('/\s+/', ' ', $endTime));
-                
-                foreach ($timeFormats as $format) {
-                    $endDateTime = \DateTime::createFromFormat($format, $cleanEndTime);
-                    if ($endDateTime) break;
-                }
-                
-                if (!$endDateTime) {
-                    $errors[] = "Line " . $actualLineNumber . ": Invalid end time format: '{$endTime}'.";
-                    continue;
-                }
-                
-                // Smart AM/PM correction: if end time is earlier than start time, try converting end time to PM
-                if ($endDateTime <= $startDateTime) {
-                    // Try converting end time to PM if it's currently AM
-                    if (strpos(strtolower($endTime), 'am') !== false) {
-                        $pmEndTime = str_replace('am', 'pm', strtolower($endTime));
-                        $pmEndTime = str_replace('AM', 'PM', $pmEndTime);
-                        
-                        foreach ($timeFormats as $format) {
-                            $endDateTime = \DateTime::createFromFormat($format, trim(preg_replace('/\s+/', ' ', $pmEndTime)));
-                            if ($endDateTime && $endDateTime > $startDateTime) break;
-                        }
-                    }
-                    
-                    // If still invalid, show error
-                    if ($endDateTime <= $startDateTime) {
-                        $errors[] = "Line " . $actualLineNumber . ": End time must be after start time. Check AM/PM format.";
-                        continue;
-                    }
-                }
-                
-                // Create class schedule
-                $classSchedule = new ClassSchedule();
-                $classSchedule->setFacility($facility);
-                $classSchedule->setScheduleDate($scheduleDate);
-                $classSchedule->setStartTime($startDateTime);
-                $classSchedule->setEndTime($endDateTime);
-                $classSchedule->setCourseCode(trim($courseCode));
-                $classSchedule->setSection(trim($section) ?: null);
-                $classSchedule->setFacultyName(trim($facultyName) ?: null);
-                $classSchedule->setFacultyEmail(trim($facultyEmail) ?: null);
-                $classSchedule->setSource('Import');
-                $classSchedule->setImportBatchId($importBatchId);
-                
-                $em->persist($classSchedule);
-                $importedCount++;
-            }
-            
-            if ($importedCount > 0) {
-                $em->flush();
-            }
-            
-            $message = "Successfully imported {$importedCount} class schedules.";
-            if (!empty($errors)) {
-                $message .= " " . count($errors) . " errors occurred: " . implode('; ', array_slice($errors, 0, 2));
-                // Log each error specifically
-                foreach ($errors as $error) {
-                    error_log("CSV Import Error: " . $error);
-                }
-            }
-            
-            // Debug: Log what we're returning
-            error_log("CSV Import Debug: importedCount={$importedCount}, errors=" . count($errors) . ", batchId={$importBatchId}");
-            
+            $sourceName = $file ? $file->getClientOriginalName() : 'Pasted Data';
+
+            $result = $importService->import($file, $pasteData, $sourceName);
+
             return $this->json([
-                'success' => true,
-                'message' => $message,
-                'importedCount' => $importedCount,
-                'errors' => $errors,
-                'importBatchId' => $importBatchId,
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'created' => $result['created'],
+                'processed' => $result['processed'],
+                'relocated' => $result['relocated'],
+                'warnings' => $result['warnings'],
+                'date' => $result['date'],
                 'scheduleRevision' => $scheduleRevision->getRevision(),
-                'date' => (new \DateTime())->format('Y-m-d'),
-                'debug' => [
-                    'total_lines' => count($lines),
-                    'imported_count' => $importedCount,
-                    'error_count' => count($errors),
-                    'batch_id' => $importBatchId,
-                    'detailed_errors' => $errors
-                ]
             ]);
-            
         } catch (\Exception $e) {
             return $this->json([
                 'success' => false,
-                'message' => 'Error importing schedules: ' . $e->getMessage()
-            ]);
+                'message' => 'Import failed: ' . $e->getMessage(),
+                'errors' => [$e->getMessage()],
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 

@@ -12,7 +12,7 @@ use App\Entity\Facility;
  */
 class FacilityAvailabilityService
 {
-    private const BLOCKING_RESERVATION_STATUSES = ['Approved', 'Suggested'];
+    private const BLOCKING_RESERVATION_STATUSES = ['Approved'];
     private const PENDING_RESERVATION_STATUSES = ['Pending'];
 
     public function __construct(
@@ -24,7 +24,9 @@ class FacilityAvailabilityService
      * @return array{
      *   bookedTimes: array<string, list<array{start: string, end: string}>>,
      *   pendingTimes: array<string, list<array{start: string, end: string}>>,
-     *   classTimes: array<string, list<array{start: string, end: string}>>
+     *   classTimes: array<string, list<array{start: string, end: string}>>,
+     *   blockedTimes: array<string, list<array{start: string, end: string}>>,
+     *   maintenanceTimes: array<string, list<array{start: string, end: string}>>
      * }
      */
     public function buildAvailabilityMap(
@@ -47,6 +49,8 @@ class FacilityAvailabilityService
         $bookedTimes = [];
         $pendingTimes = [];
         $classTimes = [];
+        $blockedTimes = [];
+        $maintenanceTimes = [];
 
         foreach ($payload['reservations'] as $event) {
             $dateStr = $event['reservationDate'] ?? '';
@@ -58,6 +62,8 @@ class FacilityAvailabilityService
                 $bookedTimes[$dateStr] = [];
                 $pendingTimes[$dateStr] = [];
                 $classTimes[$dateStr] = [];
+                $blockedTimes[$dateStr] = [];
+                $maintenanceTimes[$dateStr] = [];
             }
 
             $range = [
@@ -69,12 +75,24 @@ class FacilityAvailabilityService
             $status = (string) ($event['status'] ?? '');
 
             if ($itemType === 'class_schedule') {
-                $classTimes[$dateStr][] = $range;
+                // Check if class schedule has blocked/maintenance status
+                if ($status === 'Blocked') {
+                    $blockedTimes[$dateStr][] = $range;
+                } elseif ($status === 'Maintenance') {
+                    $maintenanceTimes[$dateStr][] = $range;
+                } else {
+                    $classTimes[$dateStr][] = $range;
+                }
                 continue;
             }
 
             if ($itemType === 'block') {
-                $bookedTimes[$dateStr][] = $range;
+                // Separate blocks by type
+                if ($status === 'Maintenance') {
+                    $maintenanceTimes[$dateStr][] = $range;
+                } else {
+                    $blockedTimes[$dateStr][] = $range;
+                }
                 continue;
             }
 
@@ -89,6 +107,8 @@ class FacilityAvailabilityService
             'bookedTimes' => $bookedTimes,
             'pendingTimes' => $pendingTimes,
             'classTimes' => $classTimes,
+            'blockedTimes' => $blockedTimes,
+            'maintenanceTimes' => $maintenanceTimes,
         ];
     }
 }

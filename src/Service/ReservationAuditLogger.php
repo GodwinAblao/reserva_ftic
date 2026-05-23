@@ -32,6 +32,11 @@ class ReservationAuditLogger
             return;
         }
 
+        // Don't log Suggested status changes - these are private to the end user
+        if ($newStatus === 'Suggested' || $previousStatus === 'Suggested') {
+            return;
+        }
+
         $actor ??= $this->security->getUser();
         if (!$actor instanceof User) {
             return;

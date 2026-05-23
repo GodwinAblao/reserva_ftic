@@ -311,14 +311,19 @@
 
 /* ── Modal ───────────────────────────────────────────────────── */
 .sa-modal-overlay {
-    position: fixed;
-    inset: 0;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
     background: rgba(12, 30, 20, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1200;
-    padding: 1rem;
+    z-index: 2147483000 !important;
+    padding: 24px;
 }
 
 .sa-modal {

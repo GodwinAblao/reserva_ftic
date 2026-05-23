@@ -44,7 +44,8 @@ public function reserve(
         ScheduleRevisionService $scheduleRevision,
         EntityManagerInterface $em,
         MailerInterface $mailer,
-        UserRepository $userRepository
+        UserRepository $userRepository,
+        ReservationMailer $reservationMailer
     ): Response {
         if (!$this->getUser()) {
             return $this->redirectToRoute('app_login');
@@ -112,7 +113,7 @@ public function reserve(
                     );
                 }
 
-                if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested'])) {
+                if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending'])) {
                     // Find alternative facilities
                     $alternatives = $reservationRepo->findAvailableAlternatives(
                         $capacity,
@@ -149,8 +150,8 @@ public function reserve(
                 $reservation->setReservationEndTime($endTime);
                 $reservation->setCapacity($capacity);
                 $reservation->setPurpose($purpose);
-                // Set initial status to Pending
-                $reservation->setStatus('Pending');
+                // Set initial status to Suggested - will become Pending after user confirms facility choice
+                $reservation->setStatus('Suggested');
 
                 $em->persist($reservation);
                 $em->flush();
@@ -193,6 +194,8 @@ public function reserve(
             'bookedTimes' => json_encode($availability['bookedTimes']),
             'pendingTimes' => json_encode($availability['pendingTimes']),
             'classTimes' => json_encode($availability['classTimes']),
+            'blockedTimes' => json_encode($availability['blockedTimes']),
+            'maintenanceTimes' => json_encode($availability['maintenanceTimes']),
             'scheduleRevision' => $scheduleRevision->getRevision(),
             'userEmail' => $userEmail,
             'userName' => $userName,
@@ -245,7 +248,7 @@ public function reserve(
             return $this->json(['available' => false, 'error' => 'Invalid date or time format']);
         }
 
-        $available = !$reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending', 'Suggested']);
+        $available = !$reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending']);
 
         return $this->json(['available' => $available]);
     }

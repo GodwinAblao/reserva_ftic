@@ -292,8 +292,10 @@ class AdminController extends AbstractController
         $tomorrow = new \DateTime('tomorrow');
         $todayReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
             ->where('r.reservationDate >= :today AND r.reservationDate < :tomorrow')
+            ->andWhere('r.status != :suggestedStatus')
             ->setParameter('today', $today)
             ->setParameter('tomorrow', $tomorrow)
+            ->setParameter('suggestedStatus', 'Suggested')
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()->getResult();
         $statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
@@ -364,7 +366,7 @@ class AdminController extends AbstractController
              WHERE DATE(reservation_date) = :today GROUP BY status',
             ['today' => $today]
         );
-        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Suggested' => 0];
+        $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0];
         foreach ($statusRows as $sr) {
             $statusCounts[$sr['status']] = (int) $sr['cnt'];
         }
@@ -656,7 +658,9 @@ class AdminController extends AbstractController
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r
              LEFT JOIN facility f ON r.facility_id = f.id
-             ORDER BY r.created_at DESC LIMIT 8'
+             WHERE r.status != :suggestedStatus
+             ORDER BY r.created_at DESC LIMIT 8',
+            ['suggestedStatus' => 'Suggested']
         )->fetchAllAssociative();
 
         return [
@@ -680,7 +684,7 @@ class AdminController extends AbstractController
 
         // Single batch query: counts across all four tables in one round-trip
         $batch = $conn->executeQuery(
-            "SELECT 'res_status'  AS grp, status AS lbl, COUNT(*) AS cnt FROM reservation WHERE 1=1 GROUP BY status
+            "SELECT 'res_status'  AS grp, status AS lbl, COUNT(*) AS cnt FROM reservation WHERE status != 'Suggested' GROUP BY status
              UNION ALL
              SELECT 'apt_status', status, COUNT(*) FROM mentoring_appointment GROUP BY status
              UNION ALL
@@ -692,7 +696,7 @@ class AdminController extends AbstractController
              UNION ALL
              SELECT 'meta', 'users',      COUNT(*) FROM `user`
              UNION ALL
-             SELECT 'meta', 'today_res',  COUNT(*) FROM reservation WHERE reservation_date = ?
+             SELECT 'meta', 'today_res',  COUNT(*) FROM reservation WHERE reservation_date = ? AND status != 'Suggested'
              UNION ALL
              SELECT 'meta', 'active_res', COUNT(*) FROM reservation WHERE reservation_date >= ? AND status = 'Approved'",
             [$today, $today]

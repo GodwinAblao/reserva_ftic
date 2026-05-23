@@ -101,7 +101,7 @@ class AnalyticsExportController extends AbstractController
             $byFacility[$name] ??= ['approved' => 0, 'pending' => 0];
             if ($r->getStatus() === 'Approved') {
                 $byFacility[$name]['approved']++;
-            } elseif (in_array($r->getStatus(), ['Pending', 'Suggested'], true)) {
+            } elseif ($r->getStatus() === 'Pending') {
                 $byFacility[$name]['pending']++;
             }
         }
