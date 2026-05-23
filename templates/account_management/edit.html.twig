@@ -3,6 +3,162 @@
 {% block title %}Edit Account | Reserva FTIC{% endblock %}
 
 {% block content %}
+    <style>
+        .edit-account-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .form-section {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        .form-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .form-row.two-col {
+            grid-template-columns: 1fr 1fr;
+        }
+        .form-row.three-col {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #374151;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            background: #fff;
+            height: 44px;
+            box-sizing: border-box;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #0D9B00;
+            box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.1);
+        }
+        .form-group input::placeholder {
+            color: #9ca3af;
+        }
+        .form-group .required {
+            color: #dc2626;
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            padding-top: 8px;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .btn-submit {
+            padding: 12px 24px;
+            background: linear-gradient(130deg, #0D9B00 0%, #0a7d00 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            min-width: 120px;
+            height: 44px;
+        }
+        .btn-submit:hover {
+            background: linear-gradient(130deg, #0a7d00 0%, #086600 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(13, 155, 0, 0.25);
+        }
+        .btn-cancel {
+            padding: 12px 24px;
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            min-width: 120px;
+            height: 44px;
+        }
+        .btn-cancel:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        .hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        .profile-picture-upload {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .profile-picture-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.15s ease;
+        }
+        .profile-picture-preview:hover {
+            border-color: #0D9B00;
+            background: #f0fdf4;
+        }
+        .profile-picture-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-picture-preview .placeholder {
+            font-size: 24px;
+            color: #9ca3af;
+        }
+        .profile-picture-label {
+            flex: 1;
+        }
+        .profile-picture-label .upload-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+    </style>
+
     <div class="content-header">
         <h2>Edit Account</h2>
     </div>
@@ -11,75 +167,123 @@
         <div class="alert alert-success">{{ message }}</div>
     {% endfor %}
 
-    <div class="card-panel">
-        <form method="post" enctype="multipart/form-data" style="max-width: 600px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                <div class="form-group">
-                    <label for="first_name">First Name</label>
-                    <input type="text" name="first_name" id="first_name" value="{{ user.firstName }}" placeholder="First name">
-                </div>
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-error">{{ message }}</div>
+    {% endfor %}
+
+    <div class="edit-account-container">
+        <form method="post" enctype="multipart/form-data" action="{{ path('app_account_management_edit', {'id': user.id}) }}" data-turbo="false">
+            <div class="form-section">
+                <div class="form-section-title">Profile Picture</div>
 
                 <div class="form-group">
-                    <label for="middle_name">Middle Name</label>
-                    <input type="text" name="middle_name" id="middle_name" value="{{ user.middleName }}" placeholder="Middle name">
-                </div>
-
-                <div class="form-group">
-                    <label for="last_name">Last Name</label>
-                    <input type="text" name="last_name" id="last_name" value="{{ user.lastName }}" placeholder="Last name">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="degree">Degree</label>
-                <input type="text" name="degree" id="degree" value="{{ user.degree }}" placeholder="e.g., BSIT, BSBA">
-            </div>
-
-            <div class="form-group">
-                <label for="degree_name">Degree Program</label>
-                <input type="text" name="degree_name" id="degree_name" value="{{ user.degreeName }}" placeholder="Full degree name">
-            </div>
-
-            <div class="form-group">
-                <label for="profile_picture">Profile Picture</label>
-                {% if user.profilePicture %}
-                    <div style="margin-bottom: 8px;">
-                        <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Current profile picture" style="max-width: 150px; border-radius: 8px; border: 2px solid #006633;">
-                        <div style="margin-top: 4px; font-size: 14px; color: #666;">Current picture: {{ user.profilePicture }}</div>
+                    <div class="profile-picture-upload">
+                        <div class="profile-picture-preview" id="profilePicturePreview" onclick="document.getElementById('profile_picture').click()">
+                            {% if user.profilePicture %}
+                                <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Current profile picture">
+                            {% else %}
+                                <span class="placeholder">+</span>
+                            {% endif %}
+                        </div>
+                        <div class="profile-picture-label">
+                            <input type="file" name="profile_picture" id="profile_picture" accept="image/*" style="display: none;" onchange="previewProfilePicture(this)">
+                            <div class="upload-hint">Click the circle to change profile picture (optional)</div>
+                        </div>
                     </div>
-                {% endif %}
-                <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
-                {% if user.profilePicture %}
-                    <small style="color: #666;">Upload a new file to replace the current picture</small>
-                {% endif %}
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="email">Email (Login)</label>
-                <input type="email" name="email" id="email" value="{{ user.email }}" required>
+            <div class="form-section">
+                <div class="form-section-title">Personal Information</div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="first_name">First Name <span class="required">*</span></label>
+                        <input type="text" name="first_name" id="first_name" value="{{ user.firstName }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="middle_name">Middle Name</label>
+                        <input type="text" name="middle_name" id="middle_name" value="{{ user.middleName }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="last_name">Last Name <span class="required">*</span></label>
+                        <input type="text" name="last_name" id="last_name" value="{{ user.lastName }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="specialization">Specialization</label>
+                        <select name="specialization" id="specialization">
+                            <option value="">Select specialization...</option>
+                            <option value="Business Analytics" {% if user.specialization == 'Business Analytics' %}selected{% endif %}>Business Analytics</option>
+                            <option value="BSITBA" {% if user.specialization == 'BSITBA' %}selected{% endif %}>BSITBA</option>
+                            <option value="BSCS" {% if user.specialization == 'BSCS' %}selected{% endif %}>BSCS</option>
+                            <option value="Software Engineering" {% if user.specialization == 'Software Engineering' %}selected{% endif %}>Software Engineering</option>
+                            <option value="Data Science" {% if user.specialization == 'Data Science' %}selected{% endif %}>Data Science</option>
+                            <option value="Cybersecurity" {% if user.specialization == 'Cybersecurity' %}selected{% endif %}>Cybersecurity</option>
+                            <option value="Cloud Computing" {% if user.specialization == 'Cloud Computing' %}selected{% endif %}>Cloud Computing</option>
+                            <option value="Web Development" {% if user.specialization == 'Web Development' %}selected{% endif %}>Web Development</option>
+                            <option value="Mobile Development" {% if user.specialization == 'Mobile Development' %}selected{% endif %}>Mobile Development</option>
+                            <option value="UI/UX Design" {% if user.specialization == 'UI/UX Design' %}selected{% endif %}>UI/UX Design</option>
+                            <option value="Research" {% if user.specialization == 'Research' %}selected{% endif %}>Research</option>
+                            <option value="Other" {% if user.specialization == 'Other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Institutional Email <span class="required">*</span></label>
+                    <input type="email" name="email" id="email" value="{{ user.email }}" required>
+                    <div class="hint">Must end with @fit.edu.ph or @feutech.edu.ph</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="degree_name">Degree Program (optional)</label>
+                    <input type="text" name="degree_name" id="degree_name" value="{{ user.degreeName }}" placeholder="e.g. Bachelor of Science in Information Technology">
+                    <div class="hint">Full degree program name</div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="password">Password (leave blank to keep current)</label>
-                <input type="password" name="password" id="password">
-            </div>
+            <div class="form-section">
+                <div class="form-section-title">Account Settings</div>
 
-            <div class="form-group">
-                <label for="roles">Role</label>
-                <select name="roles[]" id="roles" multiple required>
-                    <option value="ROLE_STUDENT" {% if 'ROLE_STUDENT' in user.roles %}selected{% endif %}>Student</option>
-                    <option value="ROLE_FACULTY" {% if 'ROLE_FACULTY' in user.roles %}selected{% endif %}>Faculty</option>
-                    <option value="ROLE_ADMIN" {% if 'ROLE_ADMIN' in user.roles %}selected{% endif %}>Admin</option>
-                    <option value="ROLE_SUPER_ADMIN" {% if 'ROLE_SUPER_ADMIN' in user.roles %}selected{% endif %}>Super Admin</option>
-                </select>
+                <div class="form-row two-col">
+                    <div class="form-group">
+                        <label for="password">Password (leave blank to keep current)</label>
+                        <input type="password" name="password" id="password">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roles">Role <span class="required">*</span></label>
+                        <div style="display: flex; gap: 12px; align-items: flex-end;">
+                            <select name="roles[]" id="roles" required style="flex: 1;">
+                                <option value="ROLE_STUDENT" {% if 'ROLE_STUDENT' in user.roles %}selected{% endif %}>Student</option>
+                                <option value="ROLE_FACULTY" {% if 'ROLE_FACULTY' in user.roles %}selected{% endif %}>Faculty</option>
+                                <option value="ROLE_ADMIN" {% if 'ROLE_ADMIN' in user.roles %}selected{% endif %}>Admin</option>
+                                <option value="ROLE_SUPER_ADMIN" {% if 'ROLE_SUPER_ADMIN' in user.roles %}selected{% endif %}>Super Admin</option>
+                            </select>
+                            <button type="submit" class="btn-submit">Save Changes</button>
+                            <a href="{{ path('app_account_management') }}" class="btn-cancel">Cancel</a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('account_edit') }}">
-
-            <div style="display: flex; gap: 12px;">
-                <button type="submit" class="btn-primary">Save Changes</button>
-                <a href="{{ path('app_account_management') }}" class="btn-secondary">Cancel</a>
-            </div>
         </form>
     </div>
+
+    <script>
+        function previewProfilePicture(input) {
+            const preview = document.getElementById('profilePicturePreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = '<img src="' + e.target.result + '" alt="Profile picture preview">';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
 {% endblock %}

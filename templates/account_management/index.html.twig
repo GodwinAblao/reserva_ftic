@@ -130,6 +130,215 @@
             background: rgba(34, 197, 94, 0.15);
             color: #166534;
         }
+
+        /* Account View Modal */
+        .account-view-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s ease;
+        }
+        .account-view-modal.is-open {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .account-view-modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .account-view-modal-close {
+            position: absolute;
+            right: 1.25rem;
+            top: 1.25rem;
+            font-size: 1.75rem;
+            font-weight: 300;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: color 0.2s;
+            background: none;
+            border: none;
+            line-height: 1;
+        }
+        .account-view-modal-close:hover {
+            color: #374151;
+        }
+        .account-view-modal-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .account-view-modal-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .account-view-profile-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+        .account-view-profile-picture {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid #0D9B00;
+            flex-shrink: 0;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .account-view-profile-picture img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .account-view-profile-picture .placeholder {
+            color: #9ca3af;
+            font-size: 32px;
+        }
+        .account-view-profile-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .account-view-profile-info .email {
+            color: #6b7280;
+            font-size: 13px;
+        }
+        .account-view-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .account-view-info-item {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 10px;
+        }
+        .account-view-info-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .account-view-info-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .account-view-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+        }
+        .account-view-info-value.empty {
+            color: #9ca3af;
+            font-style: italic;
+        }
+        .account-view-roles-section {
+            margin-bottom: 24px;
+        }
+        .account-view-roles-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .account-view-role-badge {
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .account-view-role-badge.superadmin {
+            background: rgba(220, 38, 38, 0.15);
+            color: #991b1b;
+        }
+        .account-view-role-badge.admin {
+            background: rgba(37, 99, 235, 0.15);
+            color: #1e40af;
+        }
+        .account-view-role-badge.faculty {
+            background: rgba(126, 34, 206, 0.15);
+            color: #6b21a8;
+        }
+        .account-view-role-badge.mentor {
+            background: rgba(219, 39, 119, 0.15);
+            color: #9d174d;
+        }
+        .account-view-role-badge.student {
+            background: rgba(34, 197, 94, 0.15);
+            color: #166534;
+        }
+        .account-view-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        .account-view-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            border: none;
+        }
+        .account-view-btn-primary {
+            background: linear-gradient(130deg, #0D9B00 0%, #0a7d00 100%);
+            color: #fff;
+        }
+        .account-view-btn-primary:hover {
+            background: linear-gradient(130deg, #0a7d00 0%, #086600 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(13, 155, 0, 0.25);
+        }
+        .account-view-btn-secondary {
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .account-view-btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
     </style>
 
     <div class="content-header">
@@ -214,7 +423,7 @@
                             <span class="pill-role {{ roleClass }}">{{ roleLabel }}</span>
                         </td>
                         <td>
-                            <a href="{{ path('app_account_management_view', {'id': user.id}) }}" class="btn-link">View</a>
+                            <button class="btn-link" onclick="viewAccount({{ user.id }})">View</button>
                             <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="btn-link">Edit</a>
                             {% if user != app.user %}
                                 <form method="post" action="{{ path('app_account_management_delete', {'id': user.id}) }}" style="display: inline;" onsubmit="return confirm('Are you sure?');">
@@ -235,6 +444,23 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <div>No accounts found matching your search.</div>
+        </div>
+    </div>
+
+    <!-- Account View Modal -->
+    <div id="accountViewModal" class="account-view-modal">
+        <div class="account-view-modal-content">
+            <button class="account-view-modal-close" onclick="closeAccountViewModal()">&times;</button>
+            <div class="account-view-modal-header">
+                <h3>Account Details</h3>
+            </div>
+            <div id="accountViewModalBody">
+                <!-- Content loaded via AJAX -->
+            </div>
+            <div class="account-view-modal-actions">
+                <button class="account-view-btn account-view-btn-secondary" onclick="closeAccountViewModal()">Close</button>
+                <a id="accountViewEditBtn" href="#" class="account-view-btn account-view-btn-primary">Edit Account</a>
+            </div>
         </div>
     </div>
 
@@ -308,6 +534,57 @@
         });
 
         filterRows();
+
+        // Account View Modal Functions
+        window.viewAccount = function(userId) {
+            const modal = document.getElementById('accountViewModal');
+            const modalBody = document.getElementById('accountViewModalBody');
+            const editBtn = document.getElementById('accountViewEditBtn');
+
+            modalBody.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;">Loading...</div>';
+            modal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+
+            fetch(`/account-management/${userId}/view-ajax`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        modalBody.innerHTML = data.html;
+                        editBtn.href = `/account-management/${userId}/edit`;
+                    } else {
+                        modalBody.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;">Failed to load account details.</div>';
+                    }
+                })
+                .catch(error => {
+                    modalBody.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;">Error loading account details.</div>';
+                });
+        };
+
+        window.closeAccountViewModal = function() {
+            const modal = document.getElementById('accountViewModal');
+            modal.classList.remove('is-open');
+            document.body.style.overflow = '';
+        };
+
+        // Close modal when clicking outside
+        document.getElementById('accountViewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAccountViewModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAccountViewModal();
+            }
+        });
+
+        // Move modal to body to ensure it's not constrained by parent containers
+        const accountViewModal = document.getElementById('accountViewModal');
+        if (accountViewModal && accountViewModal.parentElement !== document.body) {
+            document.body.appendChild(accountViewModal);
+        }
     })();
     </script>
 {% endblock %}

@@ -390,8 +390,7 @@ CREATE TABLE IF NOT EXISTS `messenger_messages` (
 
 INSERT INTO `user`
 (`id`, `email`, `roles`, `password`, `is_verified`, `verification_code`,
- `first_name`, `middle_name`, `last_name`,
- `degree`, `degree_name`, `profile_picture`)
+ `first_name`, `middle_name`, `last_name`, `degree`, `degree_name`, `profile_picture`)
 VALUES
 (
     1,

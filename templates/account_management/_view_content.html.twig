@@ -1,0 +1,70 @@
+<div class="account-view-profile-section">
+    <div class="account-view-profile-picture">
+        {% if user.profilePicture %}
+            <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Profile Picture">
+        {% else %}
+            <span class="placeholder">+</span>
+        {% endif %}
+    </div>
+    <div class="account-view-profile-info">
+        <h4>{{ user.firstName ?? '' }} {{ user.middleName ?? '' }} {{ user.lastName ?? '' }}</h4>
+        <div class="email">{{ user.email }}</div>
+    </div>
+</div>
+
+<div class="account-view-info-grid">
+    <div class="account-view-info-item">
+        <div class="account-view-info-label">First Name</div>
+        <div class="account-view-info-value {% if not user.firstName %}empty{% endif %}">{{ user.firstName ?? 'Not set' }}</div>
+    </div>
+    <div class="account-view-info-item">
+        <div class="account-view-info-label">Middle Name</div>
+        <div class="account-view-info-value {% if not user.middleName %}empty{% endif %}">{{ user.middleName ?? 'Not set' }}</div>
+    </div>
+    <div class="account-view-info-item">
+        <div class="account-view-info-label">Last Name</div>
+        <div class="account-view-info-value {% if not user.lastName %}empty{% endif %}">{{ user.lastName ?? 'Not set' }}</div>
+    </div>
+    <div class="account-view-info-item">
+        <div class="account-view-info-label">Specialization</div>
+        <div class="account-view-info-value {% if not user.specialization %}empty{% endif %}">{{ user.specialization ?? 'Not set' }}</div>
+    </div>
+    <div class="account-view-info-item full-width">
+        <div class="account-view-info-label">Degree Program</div>
+        <div class="account-view-info-value {% if not user.degreeName %}empty{% endif %}">{{ user.degreeName ?? 'Not set' }}</div>
+    </div>
+</div>
+
+<div class="account-view-roles-section">
+    <div class="account-view-info-label">Roles</div>
+    <div class="account-view-roles-list">
+        {% for role in user.roles %}
+            {% if role != 'ROLE_USER' %}
+                {% if role == 'ROLE_SUPER_ADMIN' %}
+                    <span class="account-view-role-badge superadmin">SUPER ADMIN</span>
+                {% elseif role == 'ROLE_ADMIN' %}
+                    <span class="account-view-role-badge admin">ADMIN</span>
+                {% elseif role == 'ROLE_FACULTY' %}
+                    <span class="account-view-role-badge faculty">FACULTY</span>
+                {% elseif role == 'ROLE_MENTOR' %}
+                    <span class="account-view-role-badge mentor">MENTOR</span>
+                {% elseif role == 'ROLE_STUDENT' %}
+                    <span class="account-view-role-badge student">STUDENT</span>
+                {% else %}
+                    <span class="account-view-role-badge">{{ role|replace({'ROLE_': ''}) }}</span>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="account-view-info-item full-width">
+    <div class="account-view-info-label">Account Status</div>
+    <div class="account-view-info-value">
+        {% if user.isVerified %}
+            <span style="color: #166534;">✓ Verified</span>
+        {% else %}
+            <span style="color: #991b1b;">✗ Not Verified</span>
+        {% endif %}
+    </div>
+</div>

@@ -9,6 +9,7 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -24,6 +25,7 @@ use App\Repository\MentoringAppointmentRepository;
 use App\Repository\ReservationRepository;
 use App\Entity\MentorAvailability;
 use App\Entity\MentorCustomRequest;
+use Psr\Log\LoggerInterface;
 
 
 #[Route('/account-management')]
@@ -42,11 +44,14 @@ class AccountManagementController extends AbstractController
     }
 
     #[Route('/new', name: 'app_account_management_new')]
-    public function new(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger): Response
+    public function new(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger, LoggerInterface $logger): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
+        $logger->info('Account management new page accessed', ['method' => $request->getMethod()]);
+
         if ($request->getMethod() === 'POST') {
+            $logger->info('POST request received for account creation');
             $token = $request->request->get('_csrf_token');
             if (!$csrfTokenManager->isTokenValid(new CsrfToken('account_create', $token))) {
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -64,6 +69,14 @@ class AccountManagementController extends AbstractController
 
             if (!$email || !$password) {
                 $this->addFlash('error', 'Email and password are required.');
+
+                return $this->redirectToRoute('app_account_management_new');
+            }
+
+            // Validate institutional email domain
+            $emailLower = strtolower($email);
+            if (!str_ends_with($emailLower, '@fit.edu.ph') && !str_ends_with($emailLower, '@feutech.edu.ph')) {
+                $this->addFlash('error', 'Email must end with @fit.edu.ph or @feutech.edu.ph');
 
                 return $this->redirectToRoute('app_account_management_new');
             }
@@ -130,12 +143,29 @@ class AccountManagementController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/view-ajax', name: 'app_account_management_view_ajax')]
+    public function viewAjax(User $user): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $html = $this->renderView('account_management/_view_content.html.twig', [
+            'user' => $user,
+        ]);
+
+        return new JsonResponse([
+            'success' => true,
+            'html' => $html,
+        ]);
+    }
+
     #[Route('/{id}/edit', name: 'app_account_management_edit')]
-    public function edit(User $user, Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger): Response
+    public function edit(User $user, Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger, LoggerInterface $logger): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         if ($request->getMethod() === 'POST') {
+            $logger->info('POST request received for account edit', ['user_id' => $user->getId()]);
+
             $token = $request->request->get('_csrf_token');
             if (!$csrfTokenManager->isTokenValid(new CsrfToken('account_edit', $token))) {
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -150,6 +180,15 @@ class AccountManagementController extends AbstractController
             $degree = $request->request->get('degree');
             $degreeName = $request->request->get('degree_name');
             $specialization = $request->request->get('specialization');
+
+            // Validate institutional email domain if email is being changed
+            if ($email && $email !== $user->getEmail()) {
+                $emailLower = strtolower($email);
+                if (!str_ends_with($emailLower, '@fit.edu.ph') && !str_ends_with($emailLower, '@feutech.edu.ph')) {
+                    $this->addFlash('error', 'Email must end with @fit.edu.ph or @feutech.edu.ph');
+                    return $this->redirectToRoute('app_account_management_edit', ['id' => $user->getId()]);
+                }
+            }
 
             if ($email) {
                 $user->setEmail($email);
@@ -179,7 +218,7 @@ class AccountManagementController extends AbstractController
                         $this->getParameter('kernel.project_dir') . '/public/uploads/profiles',
                         $newFilename
                     );
-                    
+
                     // Delete old profile picture if exists
                     if ($user->getProfilePicture()) {
                         $oldFile = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles/' . $user->getProfilePicture();
@@ -187,9 +226,10 @@ class AccountManagementController extends AbstractController
                             unlink($oldFile);
                         }
                     }
-                    
+
                     $user->setProfilePicture($newFilename);
                 } catch (FileException $e) {
+                    $logger->error('Failed to upload profile picture', ['error' => $e->getMessage()]);
                     $this->addFlash('error', 'Failed to upload profile picture.');
                 }
             }
@@ -198,12 +238,19 @@ class AccountManagementController extends AbstractController
                 $user->setRoles($roles);
             }
 
-            $em->persist($user);
-            $em->flush();
+            try {
+                $em->persist($user);
+                $em->flush();
 
-            $this->addFlash('success', 'Account updated successfully.');
+                $this->addFlash('success', 'Account updated successfully.');
 
-            return $this->redirectToRoute('app_account_management');
+                return $this->redirectToRoute('app_account_management');
+            } catch (\Exception $e) {
+                $logger->error('Failed to update account', ['error' => $e->getMessage()]);
+                $this->addFlash('error', 'Email already exists or an error occurred.');
+
+                return $this->redirectToRoute('app_account_management_edit', ['id' => $user->getId()]);
+            }
         }
 
         return $this->render('account_management/edit.html.twig', [

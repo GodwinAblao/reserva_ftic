@@ -3,71 +3,315 @@
 {% block title %}Account Details | Reserva FTIC{% endblock %}
 
 {% block content %}
-    <div class="content-header">
-        <h2>Account Details</h2>
-    </div>
+    <style>
+        .view-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .view-modal-content {
+            background: #fff;
+            border-radius: 20px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .view-modal-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 10;
+        }
+        .view-modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .view-modal-close {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            font-size: 20px;
+        }
+        .view-modal-close:hover {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .view-modal-body {
+            padding: 32px;
+        }
+        .view-profile-section {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 32px;
+            align-items: center;
+        }
+        .view-profile-picture {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid #0D9B00;
+            flex-shrink: 0;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .view-profile-picture img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .view-profile-picture .placeholder {
+            color: #9ca3af;
+            font-size: 40px;
+        }
+        .view-profile-info h3 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .view-profile-info .email {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .view-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .view-info-item {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        .view-info-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .view-info-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .view-info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+        .view-info-value.empty {
+            color: #9ca3af;
+            font-style: italic;
+        }
+        .view-roles-section {
+            margin-bottom: 32px;
+        }
+        .view-roles-section .view-info-label {
+            margin-bottom: 12px;
+        }
+        .view-roles-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .view-role-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .view-role-badge.superadmin {
+            background: rgba(220, 38, 38, 0.15);
+            color: #991b1b;
+        }
+        .view-role-badge.admin {
+            background: rgba(37, 99, 235, 0.15);
+            color: #1e40af;
+        }
+        .view-role-badge.faculty {
+            background: rgba(126, 34, 206, 0.15);
+            color: #6b21a8;
+        }
+        .view-role-badge.mentor {
+            background: rgba(219, 39, 119, 0.15);
+            color: #9d174d;
+        }
+        .view-role-badge.student {
+            background: rgba(34, 197, 94, 0.15);
+            color: #166534;
+        }
+        .view-modal-footer {
+            padding: 20px 32px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+        }
+        .view-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            border: none;
+        }
+        .view-btn-primary {
+            background: linear-gradient(130deg, #0D9B00 0%, #0a7d00 100%);
+            color: #fff;
+        }
+        .view-btn-primary:hover {
+            background: linear-gradient(130deg, #0a7d00 0%, #086600 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(13, 155, 0, 0.25);
+        }
+        .view-btn-secondary {
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .view-btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+    </style>
 
-    <div class="card-panel" style="max-width: 700px;">
-        <div style="display: flex; gap: 32px; margin-bottom: 24px;">
-            <div style="flex-shrink: 0;">
-                <div class="profile-picture-holder">
-                    {% if user.profilePicture %}
-                        <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Profile Picture">
-                    {% else %}
-                        <div class="profile-placeholder">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <circle cx="12" cy="8" r="4"/>
-                                <path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
-                            </svg>
-                        </div>
-                    {% endif %}
-                </div>
+    <div class="view-modal-overlay" onclick="if(event.target === this) window.location.href='{{ path('app_account_management') }}'">
+        <div class="view-modal-content">
+            <div class="view-modal-header">
+                <h2>Account Details</h2>
+                <button class="view-modal-close" onclick="window.location.href='{{ path('app_account_management') }}'">&times;</button>
             </div>
-            <div style="flex: 1;">
-                <div style="margin-bottom: 24px;">
-                    <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Full Name</p>
-                    <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.firstName ?? '' }} {{ user.middleName ?? '' }} {{ user.lastName ?? '' }}</p>
-                </div>
-            </div>
-        </div>
 
-        <div style="margin-bottom: 24px;">
-            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Degree</p>
-            <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.degree ?? 'Not set' }}</p>
-        </div>
-
-        <div style="margin-bottom: 24px;">
-            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Degree Program</p>
-            <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.degreeName ?? 'Not set' }}</p>
-        </div>
-
-        <div style="margin-bottom: 24px;">
-            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Email (Login)</p>
-            <p style="font-size: 16px; font-weight: 600; margin: 0;">{{ user.email }}</p>
-        </div>
-
-        <div style="margin-bottom: 24px;">
-            <p style="color: #666; font-size: 14px; margin: 0 0 4px;">Role</p>
-            <div>
-                {% for role in user.roles %}
-                    <span class="pill-role" style="margin-right: 8px;">
-                        {% if role == 'ROLE_SUPER_ADMIN' %}
-                            SUPER ADMIN
-                        {% elseif role == 'ROLE_STUDENT' %}
-                            STUDENT
-                        {% elseif role == 'ROLE_FACULTY' %}
-                            FACULTY
+            <div class="view-modal-body">
+                <div class="view-profile-section">
+                    <div class="view-profile-picture">
+                        {% if user.profilePicture %}
+                            <img src="{{ asset('uploads/profiles/' ~ user.profilePicture) }}" alt="Profile Picture">
                         {% else %}
-                            {{ role|replace({'ROLE_': ''}) }}
+                            <span class="placeholder">+</span>
                         {% endif %}
-                    </span>
-                {% endfor %}
-            </div>
-        </div>
+                    </div>
+                    <div class="view-profile-info">
+                        <h3>{{ user.firstName ?? '' }} {{ user.middleName ?? '' }} {{ user.lastName ?? '' }}</h3>
+                        <div class="email">{{ user.email }}</div>
+                    </div>
+                </div>
 
-        <div style="display: flex; gap: 12px;">
-            <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="btn-primary">Edit</a>
-            <a href="{{ path('app_account_management') }}" class="btn-secondary">Back</a>
+                <div class="view-info-grid">
+                    <div class="view-info-item">
+                        <div class="view-info-label">First Name</div>
+                        <div class="view-info-value {% if not user.firstName %}empty{% endif %}">{{ user.firstName ?? 'Not set' }}</div>
+                    </div>
+                    <div class="view-info-item">
+                        <div class="view-info-label">Middle Name</div>
+                        <div class="view-info-value {% if not user.middleName %}empty{% endif %}">{{ user.middleName ?? 'Not set' }}</div>
+                    </div>
+                    <div class="view-info-item">
+                        <div class="view-info-label">Last Name</div>
+                        <div class="view-info-value {% if not user.lastName %}empty{% endif %}">{{ user.lastName ?? 'Not set' }}</div>
+                    </div>
+                    <div class="view-info-item">
+                        <div class="view-info-label">Specialization</div>
+                        <div class="view-info-value {% if not user.specialization %}empty{% endif %}">{{ user.specialization ?? 'Not set' }}</div>
+                    </div>
+                    <div class="view-info-item">
+                        <div class="view-info-label">Degree</div>
+                        <div class="view-info-value {% if not user.degree %}empty{% endif %}">{{ user.degree ?? 'Not set' }}</div>
+                    </div>
+                    <div class="view-info-item full-width">
+                        <div class="view-info-label">Degree Program</div>
+                        <div class="view-info-value {% if not user.degreeName %}empty{% endif %}">{{ user.degreeName ?? 'Not set' }}</div>
+                    </div>
+                </div>
+
+                <div class="view-roles-section">
+                    <div class="view-info-label">Roles</div>
+                    <div class="view-roles-list">
+                        {% for role in user.roles %}
+                            {% if role == 'ROLE_SUPER_ADMIN' %}
+                                <span class="view-role-badge superadmin">SUPER ADMIN</span>
+                            {% elseif role == 'ROLE_ADMIN' %}
+                                <span class="view-role-badge admin">ADMIN</span>
+                            {% elseif role == 'ROLE_FACULTY' %}
+                                <span class="view-role-badge faculty">FACULTY</span>
+                            {% elseif role == 'ROLE_MENTOR' %}
+                                <span class="view-role-badge mentor">MENTOR</span>
+                            {% elseif role == 'ROLE_STUDENT' %}
+                                <span class="view-role-badge student">STUDENT</span>
+                            {% else %}
+                                <span class="view-role-badge">{{ role|replace({'ROLE_': ''}) }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="view-info-item full-width">
+                    <div class="view-info-label">Account Status</div>
+                    <div class="view-info-value">
+                        {% if user.isVerified %}
+                            <span style="color: #166534;">✓ Verified</span>
+                        {% else %}
+                            <span style="color: #991b1b;">✗ Not Verified</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="view-modal-footer">
+                <a href="{{ path('app_account_management') }}" class="view-btn view-btn-secondary">Close</a>
+                <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="view-btn view-btn-primary">Edit Account</a>
+            </div>
         </div>
     </div>
 {% endblock %}

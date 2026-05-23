@@ -5,7 +5,7 @@
 {% block content %}
     <style>
         .create-account-container {
-            max-width: 680px;
+            max-width: 900px;
             margin: 0 auto;
         }
         .form-section {
@@ -25,7 +25,7 @@
         }
         .form-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
             gap: 16px;
             margin-bottom: 20px;
         }
@@ -69,6 +69,7 @@
             display: flex;
             gap: 12px;
             padding-top: 8px;
+            align-items: center;
         }
         .btn-submit {
             padding: 12px 24px;
@@ -80,6 +81,7 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.15s ease;
+            pointer-events: auto !important;
         }
         .btn-submit:hover {
             background: linear-gradient(130deg, #0a7d00 0%, #086600 100%);
@@ -87,12 +89,12 @@
             box-shadow: 0 4px 12px rgba(13, 155, 0, 0.25);
         }
         .btn-cancel {
-            padding: 12px 24px;
+            padding: 10px 18px;
             background: #fff;
             color: #374151;
             border: 1px solid #d1d5db;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
@@ -103,6 +105,61 @@
             border-color: #9ca3af;
         }
         .hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        .profile-picture-upload {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .profile-picture-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            border: 2px dashed #d1d5db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.15s ease;
+        }
+        .profile-picture-preview:hover {
+            border-color: #0D9B00;
+            background: #f0fdf4;
+        }
+        .profile-picture-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-picture-preview .placeholder {
+            font-size: 24px;
+            color: #9ca3af;
+        }
+        .profile-picture-label {
+            flex: 1;
+        }
+        .profile-picture-label .upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .profile-picture-label .upload-btn:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+        .profile-picture-label .upload-hint {
             font-size: 12px;
             color: #6b7280;
             margin-top: 4px;
@@ -118,32 +175,40 @@
     {% endfor %}
 
     <div class="create-account-container">
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" action="{{ path('app_account_management_new') }}" data-turbo="false">
+            <div class="form-section">
+                <div class="form-section-title">Profile Picture</div>
+
+                <div class="form-group">
+                    <div class="profile-picture-upload">
+                        <div class="profile-picture-preview" id="profilePicturePreview" onclick="document.getElementById('profile_picture').click()">
+                            <span class="placeholder">+</span>
+                        </div>
+                        <div class="profile-picture-label">
+                            <input type="file" name="profile_picture" id="profile_picture" accept="image/*" style="display: none;" onchange="previewProfilePicture(this)">
+                            <div class="upload-hint">Click the circle to upload a profile picture (optional)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-section">
                 <div class="form-section-title">Personal Information</div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">First Name <span class="required">*</span></label>
-                        <input type="text" name="first_name" id="first_name" placeholder="e.g. Dale" required>
+                        <input type="text" name="first_name" id="first_name" placeholder="e.g. Juan" required>
                     </div>
 
                     <div class="form-group">
                         <label for="middle_name">Middle Name</label>
-                        <input type="text" name="middle_name" id="middle_name" placeholder="e.g. Warren">
+                        <input type="text" name="middle_name" id="middle_name" placeholder="e.g. dela Cruz">
                     </div>
 
                     <div class="form-group">
                         <label for="last_name">Last Name <span class="required">*</span></label>
-                        <input type="text" name="last_name" id="last_name" placeholder="e.g. Hurst" required>
-                    </div>
-                </div>
-
-                <div class="form-row two-col">
-                    <div class="form-group">
-                        <label for="email">Institutional Email <span class="required">*</span></label>
-                        <input type="email" name="email" id="email" placeholder="e.g. dghurst@fit.edu.ph" required>
-                        <div class="hint">This will be used for login</div>
+                        <input type="text" name="last_name" id="last_name" placeholder="e.g. Santos" required>
                     </div>
 
                     <div class="form-group">
@@ -164,6 +229,12 @@
                             <option value="Other">Other</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Institutional Email <span class="required">*</span></label>
+                    <input type="email" name="email" id="email" placeholder="example@fit.edu.ph" required>
+                    <div class="hint">Must end with @fit.edu.ph or @feutech.edu.ph</div>
                 </div>
 
                 <div class="form-group">
@@ -192,20 +263,27 @@
                         </select>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="profile_picture">Profile Picture</label>
-                    <input type="file" name="profile_picture" id="profile_picture" accept="image/*">
-                    <div class="hint">Upload a profile picture (optional)</div>
-                </div>
             </div>
 
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('account_create') }}">
 
             <div class="form-actions">
-                <button type="submit" class="btn-submit">Create Account</button>
+                <button type="submit" class="btn-submit" style="z-index: 9999; position: relative;">Create Account</button>
                 <a href="{{ path('app_account_management') }}" class="btn-cancel">Cancel</a>
             </div>
         </form>
     </div>
+
+    <script>
+        function previewProfilePicture(input) {
+            const preview = document.getElementById('profilePicturePreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = '<img src="' + e.target.result + '" alt="Profile picture preview">';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
 {% endblock %}
