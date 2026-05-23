@@ -9,6 +9,7 @@ use App\Entity\MentorCustomRequest;
 use App\Entity\MentorApplication;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
+use App\Entity\MentoringAuditLog;
 use App\Entity\User;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -201,7 +202,31 @@ class MentoringController extends AbstractController
             'applications'       => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'is_super_admin'     => $this->isGranted('ROLE_SUPER_ADMIN'),
+            'auditLogs'          => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
         ]);
+    }
+
+    #[Route('/super-admin/mentor-requests/data', name: 'mentoring_superadmin_requests_data', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function adminMentorRequestsData(EntityManagerInterface $em): JsonResponse
+    {
+        $applications = $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']);
+        
+        $data = array_map(function ($app) {
+            return [
+                'id' => $app->getId(),
+                'student' => [
+                    'name' => $app->getStudent()->getFullName(),
+                    'email' => $app->getStudent()->getEmail(),
+                ],
+                'specialization' => $app->getSpecialization(),
+                'status' => $app->getStatus(),
+                'createdAt' => $app->getCreatedAt()->format('Y-m-d H:i:s'),
+                'currentProfession' => $app->getCurrentProfession(),
+            ];
+        }, $applications);
+        
+        return $this->json(['applications' => $data]);
     }
 
 #[Route('/mentor-application', name: 'mentoring_apply', methods: ['POST'])]
@@ -230,7 +255,7 @@ class MentoringController extends AbstractController
         $availabilityTime = trim((string) $request->request->get('availabilityTime'));
         $availabilityStart = trim((string) $request->request->get('availabilityStart'));
         $availabilityEnd = trim((string) $request->request->get('availabilityEnd'));
-        $availabilityDays = $request->request->get('availabilityDays', []);
+        $availabilityDays = $request->request->all('availabilityDays') ?? [];
 
         // Validation
         if (!$user instanceof User || $email === '' || $specialization === '' || $firstName === '' || $lastName === '') {
@@ -398,9 +423,12 @@ class MentoringController extends AbstractController
         }
 
         if ($decision === 'decline') {
+            $prevStatus = $application->getStatus();
             $application
                 ->setStatus('Rejected')
                 ->setAdminNote($request->request->get('admin_note'));
+            $subjectLabel = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $application->getEmail();
+            $this->auditLog($em, 'application', $application->getId(), $subjectLabel, 'reject', $prevStatus, 'Rejected', $request->request->get('admin_note'));
             $em->flush();
 
             // Notify the user
@@ -444,7 +472,10 @@ $validUntil = $request->request->get('valid_until');
             $em->persist($profile);
         }
 
+        $prevStatus = $application->getStatus();
         $application->setStatus('Approved');
+        $subjectLabel = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $application->getEmail();
+        $this->auditLog($em, 'application', $application->getId(), $subjectLabel, 'approve', $prevStatus, 'Approved', $validUntil ? 'Valid until: ' . $validUntil : null);
         $em->flush();
 
         // Notify the user
@@ -473,6 +504,33 @@ $validUntil = $request->request->get('valid_until');
         $this->addFlash('success', 'Mentor application deleted and the user has been notified.');
 
         return $this->redirectToRoute('mentoring_superadmin_requests');
+    }
+
+    #[Route('/application/{id}/cancel', name: 'mentoring_cancel_application', methods: ['POST'])]
+    #[IsGranted('ROLE_STUDENT')]
+    public function cancelApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
+    {
+        // Security check: only the owner can cancel their own application
+        if ($application->getStudent() !== $this->getUser()) {
+            $this->addFlash('error', 'You can only cancel your own applications.');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        // Only pending applications can be cancelled
+        if (!in_array($application->getStatus(), ['Pending', 'Pending Review'], true)) {
+            $this->addFlash('error', 'Only pending applications can be cancelled.');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        if (!$this->isCsrfTokenValid('cancel_application_' . $application->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $application->setStatus('Cancelled');
+        $em->flush();
+
+        $this->addFlash('success', 'Your mentor application has been cancelled.');
+        return $this->redirectToRoute('mentoring_index');
     }
 
     #[Route('/admin/mentor', name: 'mentoring_create_mentor', methods: ['POST'])]
@@ -515,6 +573,8 @@ $validUntil = $request->request->get('valid_until');
         $user->setRoles(array_values(array_unique($roles)));
 
         $em->persist($profile);
+        $mentorLabel = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
+        $this->auditLog($em, 'application', null, $mentorLabel, 'create_mentor', null, 'Active', 'Mentor profile created manually');
         $em->flush();
 
         // Notify the user that a mentor profile was created for them
@@ -951,6 +1011,8 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_SEE_OTHER);
         }
 
+        $prevStatus = $mentorRequest->getStatus();
+        $requesterLabel = $mentorRequest->getFullName() ?: ($mentorRequest->getStudent() ? trim(($mentorRequest->getStudent()->getFirstName() ?? '') . ' ' . ($mentorRequest->getStudent()->getLastName() ?? '')) : 'Unknown');
         $mentorRequest
             ->setStatus($status)
             ->setAssignedMentorName($mentorName ?: null)
@@ -977,6 +1039,8 @@ $validUntil = $request->request->get('valid_until');
             }
         }
 
+        $noteText = $instructions !== '' ? $instructions : ($mentorName !== '' ? 'Assigned to: ' . $mentorName : null);
+        $this->auditLog($em, 'custom_request', $mentorRequest->getId(), $requesterLabel, 'update_status', $prevStatus, $status, $noteText);
         $em->flush();
 
         $actor = $this->getUser();
@@ -1186,6 +1250,40 @@ $validUntil = $request->request->get('valid_until');
         }
 
         return $results;
+    }
+
+    private function auditLog(
+        EntityManagerInterface $em,
+        string $subjectType,
+        ?int $subjectId,
+        string $subjectLabel,
+        string $action,
+        ?string $previousStatus,
+        ?string $newStatus,
+        ?string $note = null
+    ): void {
+        $actor = $this->getUser();
+        $actorName = null;
+        $actorRole = null;
+        if ($actor instanceof User) {
+            $actorName = trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? ''));
+            if ($actorName === '') {
+                $actorName = $actor->getEmail();
+            }
+            $actorRole = $this->isGranted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin';
+        }
+        $log = (new MentoringAuditLog())
+            ->setSubjectType($subjectType)
+            ->setSubjectId($subjectId)
+            ->setSubjectLabel($subjectLabel)
+            ->setAction($action)
+            ->setPreviousStatus($previousStatus)
+            ->setNewStatus($newStatus)
+            ->setPerformedBy($actor instanceof User ? $actor : null)
+            ->setPerformedByName($actorName)
+            ->setPerformedByRole($actorRole)
+            ->setNote($note);
+        $em->persist($log);
     }
 
     private function ensureFacultyMentorProfiles(EntityManagerInterface $em): void

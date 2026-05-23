@@ -503,6 +503,143 @@
 
 </div>{# end sa-dashboard #}
 
+{# ── Audit Log ── #}
+<div class="sa-audit-wrap" style="margin-top:24px;">
+    <div class="sa-audit-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9B00" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <div>
+                <div style="font-size:14px;font-weight:800;color:#111827;">Activity Audit Log</div>
+                <div style="font-size:11px;color:#9ca3af;">All admin &amp; super admin actions on mentor applications &amp; custom requests</div>
+            </div>
+        </div>
+        <div class="sa-audit-search-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="auditSearchInput" placeholder="Search by name, action, admin…" oninput="auditFilter()" autocomplete="off">
+        </div>
+    </div>
+
+    {% if auditLogs is not defined or auditLogs is empty %}
+    <div class="sa-audit-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>No activity recorded yet. Actions on applications and requests will appear here.</span>
+    </div>
+    {% else %}
+    <div class="sa-audit-table-wrap">
+        <table class="sa-audit-table" id="auditTable">
+            <thead>
+                <tr>
+                    <th>Date &amp; Time</th>
+                    <th>Subject</th>
+                    <th>Type</th>
+                    <th>Action</th>
+                    <th>Status Change</th>
+                    <th>Performed By</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in auditLogs %}
+            {% set actionMeta = {
+                'approve':       {'label': 'Approved',        'cls': 'audit-action-approve'},
+                'reject':        {'label': 'Rejected',        'cls': 'audit-action-reject'},
+                'update_status': {'label': 'Status Updated',  'cls': 'audit-action-update'},
+                'create_mentor': {'label': 'Mentor Created',  'cls': 'audit-action-create'},
+                'assign':        {'label': 'Assigned',        'cls': 'audit-action-assign'}
+            } %}
+            {% set meta = actionMeta[log.action] ?? {'label': log.action|capitalize, 'cls': 'audit-action-default'} %}
+            {% set typeLabel = log.subjectType == 'application' ? 'Application' : 'Custom Request' %}
+            <tr class="sa-audit-row" data-search="{{ (log.subjectLabel ~ ' ' ~ meta.label ~ ' ' ~ (log.performedByName ?? '') ~ ' ' ~ typeLabel)|lower }}">
+                <td class="sa-audit-time">
+                    <span class="sa-audit-date">{{ log.loggedAt|date('M d, Y') }}</span>
+                    <span class="sa-audit-clock">{{ log.loggedAt|date('h:i A') }}</span>
+                </td>
+                <td>
+                    <span class="sa-audit-subject">{{ log.subjectLabel }}</span>
+                    {% if log.subjectId %}<span class="sa-audit-id">#{{ log.subjectId }}</span>{% endif %}
+                </td>
+                <td>
+                    <span class="sa-audit-type-badge {{ log.subjectType == 'application' ? 'type-app' : 'type-req' }}">{{ typeLabel }}</span>
+                </td>
+                <td><span class="sa-audit-action-badge {{ meta.cls }}">{{ meta.label }}</span></td>
+                <td>
+                    {% if log.previousStatus or log.newStatus %}
+                    <span class="sa-audit-status-flow">
+                        {% if log.previousStatus %}<span class="sa-audit-prev-status">{{ log.previousStatus }}</span>{% endif %}
+                        {% if log.previousStatus and log.newStatus %}
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        {% endif %}
+                        {% if log.newStatus %}<span class="badge {{ log.newStatus|lower|replace({' ': '-'}) }} sa-audit-new-status">{{ log.newStatus }}</span>{% endif %}
+                    </span>
+                    {% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+                </td>
+                <td>
+                    <div class="sa-audit-actor">
+                        <div class="sa-audit-actor-av">{{ (log.performedByName ?? 'S')|slice(0,1)|upper }}</div>
+                        <div>
+                            <div class="sa-audit-actor-name">{{ log.performedByName ?? 'System' }}</div>
+                            {% if log.performedByRole %}<div class="sa-audit-actor-role">{{ log.performedByRole }}</div>{% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td class="sa-audit-note">{{ log.note ? (log.note|length > 60 ? log.note|slice(0,60) ~ '…' : log.note) : '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.sa-audit-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;}
+.sa-audit-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap;gap:10px;}
+.sa-audit-search-wrap{display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:8px;padding:0 12px;background:#fafafa;height:36px;}
+.sa-audit-search-wrap input{border:none;outline:none;font-size:12.5px;color:#374151;background:transparent;width:220px;}
+.sa-audit-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;color:#9ca3af;font-size:13px;}
+.sa-audit-table-wrap{overflow-x:auto;}
+.sa-audit-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.sa-audit-table thead tr{background:#f9fafb;border-bottom:1px solid #e5e7eb;}
+.sa-audit-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+.sa-audit-table td{padding:11px 14px;border-bottom:1px solid #f9fafb;vertical-align:middle;}
+.sa-audit-row:last-child td{border-bottom:none;}
+.sa-audit-row:hover td{background:#fafafa;}
+.sa-audit-date{display:block;font-weight:600;color:#111827;font-size:12px;}
+.sa-audit-clock{display:block;font-size:11px;color:#9ca3af;}
+.sa-audit-subject{font-weight:700;color:#111827;}
+.sa-audit-id{font-size:10.5px;color:#9ca3af;margin-left:4px;}
+.sa-audit-type-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;}
+.type-app{background:#ede9fe;color:#5b21b6;}
+.type-req{background:#dbeafe;color:#1e40af;}
+.sa-audit-action-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;}
+.audit-action-approve{background:#d1fae5;color:#065f46;}
+.audit-action-reject{background:#fee2e2;color:#991b1b;}
+.audit-action-update{background:#fef9c3;color:#854d0e;}
+.audit-action-create{background:#dbeafe;color:#1e40af;}
+.audit-action-assign{background:#e0f2fe;color:#075985;}
+.audit-action-default{background:#f3f4f6;color:#374151;}
+.sa-audit-status-flow{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.sa-audit-prev-status{font-size:10.5px;color:#6b7280;background:#f3f4f6;padding:2px 7px;border-radius:5px;}
+.sa-audit-new-status{font-size:10.5px !important;padding:2px 7px !important;}
+.sa-audit-actor{display:flex;align-items:center;gap:8px;}
+.sa-audit-actor-av{width:28px;height:28px;border-radius:50%;background:#0D9B00;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sa-audit-actor-name{font-size:12px;font-weight:600;color:#111827;}
+.sa-audit-actor-role{font-size:10.5px;color:#9ca3af;}
+.sa-audit-note{color:#6b7280;max-width:180px;font-size:12px;}
+.sa-audit-hidden{display:none;}
+</style>
+
+<script>
+function auditFilter(){
+    var q=document.getElementById('auditSearchInput').value.toLowerCase();
+    document.querySelectorAll('.sa-audit-row').forEach(function(row){
+        row.classList.toggle('sa-audit-hidden', q!=='' && !row.dataset.search.includes(q));
+    });
+}
+</script>
+
 {# ── Create Mentor Modal - Only for Super Admin ── #}
 {% if is_super_admin %}
 <div class="sa-modal-overlay" id="createMentorModal">

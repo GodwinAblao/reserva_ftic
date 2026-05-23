@@ -1,91 +1,96 @@
-<div class="maf-card" id="mentorAppFormCard">
+<div class="mentor-app-card" id="mentorAppFormCard">
     {# ── Section 1: Personal Information ── #}
-    <div class="maf-section">
-        <div class="maf-section-header">
-            <span class="maf-section-icon">👤</span>
-            <div>
-                <h4 class="maf-section-title">Personal Information</h4>
-                <p class="maf-section-desc">Provide your basic details so we can identify your application.</p>
+    <div class="mentor-app-section">
+        <div class="mentor-section-header">
+            <div class="mentor-section-icon-wrap">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="mentor-section-title-wrap">
+                <h4 class="mentor-section-title">Personal Information</h4>
+                <p class="mentor-section-desc">Basic details to identify your application</p>
             </div>
         </div>
-        <div class="maf-row maf-cols-3">
-            <div class="maf-field">
-                <label class="maf-label">First Name <span class="maf-req">*</span></label>
-                <input type="text" name="firstName" id="mentor_firstName" class="maf-input" value="{{ defaultUser.firstName|default('') }}" required placeholder="Juan">
-                <span class="maf-error" id="err_firstName"></span>
+        <div class="mentor-form-row mentor-cols-3">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">First Name <span class="mentor-req">*</span></label>
+                <input type="text" name="firstName" id="mentor_firstName" class="mentor-input" value="{{ defaultUser.firstName|default('') }}" required placeholder="Juan">
+                <span class="mentor-error" id="err_firstName"></span>
             </div>
-            <div class="maf-field">
-                <label class="maf-label">Middle Name</label>
-                <input type="text" name="middleName" id="mentor_middleName" class="maf-input" value="{{ defaultUser.middleName|default('') }}" placeholder="Optional">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Middle Name</label>
+                <input type="text" name="middleName" id="mentor_middleName" class="mentor-input" value="{{ defaultUser.middleName|default('') }}" placeholder="Optional">
             </div>
-            <div class="maf-field">
-                <label class="maf-label">Last Name <span class="maf-req">*</span></label>
-                <input type="text" name="lastName" id="mentor_lastName" class="maf-input" value="{{ defaultUser.lastName|default('') }}" required placeholder="Dela Cruz">
-                <span class="maf-error" id="err_lastName"></span>
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Last Name <span class="mentor-req">*</span></label>
+                <input type="text" name="lastName" id="mentor_lastName" class="mentor-input" value="{{ defaultUser.lastName|default('') }}" required placeholder="Dela Cruz">
+                <span class="mentor-error" id="err_lastName"></span>
             </div>
         </div>
-        <div class="maf-row maf-cols-2">
-            <div class="maf-field">
-                <label class="maf-label">Institutional Email <span class="maf-req">*</span></label>
-                <input type="email" name="email" id="mentor_email" class="maf-input" value="{{ defaultUser.email|default('') }}" required readonly>
-                <span class="maf-hint">Auto-filled from your account.</span>
+        <div class="mentor-form-row mentor-cols-2">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Institutional Email <span class="mentor-req">*</span></label>
+                <input type="email" name="email" id="mentor_email" class="mentor-input mentor-input-readonly" value="{{ defaultUser.email|default('') }}" required readonly>
+                <span class="mentor-hint">Auto-filled from your account</span>
             </div>
-            <div class="maf-field">
-                <label class="maf-label">Contact Number <span class="maf-req">*</span></label>
-                <input type="tel" name="contactNumber" id="mentor_contactNumber" class="maf-input" required
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Contact Number <span class="mentor-req">*</span></label>
+                <input type="tel" name="contactNumber" id="mentor_contactNumber" class="mentor-input" required
                        placeholder="09XX XXX XXXX" maxlength="13"
                        pattern="^(\+?63|0)9\d{9}$"
                        title="Enter a valid PH mobile number (e.g. 09123456789 or +639123456789)">
-                <span class="maf-hint">Philippine mobile only — 09XX or +639XX format.</span>
-                <span class="maf-error" id="err_contactNumber"></span>
+                <span class="mentor-hint">09XX or +639XX format</span>
+                <span class="mentor-error" id="err_contactNumber"></span>
             </div>
         </div>
-        <div class="maf-row maf-cols-1">
-            <div class="maf-field">
-                <label class="maf-label">Program / Course</label>
-                <input type="text" name="programCourse" id="mentor_programCourse" class="maf-input" value="{{ defaultUser.degreeName|default(defaultUser.degree|default('')) }}" placeholder="e.g. BS Information Technology">
-                <span class="maf-hint">Your current degree program.</span>
+        <div class="mentor-form-row mentor-cols-1">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Program / Course</label>
+                <input type="text" name="programCourse" id="mentor_programCourse" class="mentor-input" value="{{ defaultUser.degreeName|default(defaultUser.degree|default('')) }}" placeholder="e.g. BS Information Technology">
+                <span class="mentor-hint">Your current degree program</span>
             </div>
         </div>
     </div>
 
     {# ── Section 2: Academic & Professional Background ── #}
-    <div class="maf-section">
-        <div class="maf-section-header">
-            <span class="maf-section-icon">🎓</span>
-            <div>
-                <h4 class="maf-section-title">Academic &amp; Professional Background</h4>
-                <p class="maf-section-desc">Help us understand your qualifications and area of expertise.</p>
+    <div class="mentor-app-section">
+        <div class="mentor-section-header">
+            <div class="mentor-section-icon-wrap mentor-icon-accent">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            </div>
+            <div class="mentor-section-title-wrap">
+                <h4 class="mentor-section-title">Academic &amp; Professional Background</h4>
+                <p class="mentor-section-desc">Your qualifications and area of expertise</p>
             </div>
         </div>
-        <div class="maf-row maf-cols-2">
-            <div class="maf-field">
-                <label class="maf-label">Mentoring Specialization <span class="maf-req">*</span></label>
-                <select name="specialization" id="mentor_specialization" class="maf-input maf-select" required>
-                    <option value="">Select specialization…</option>
+        <div class="mentor-form-row mentor-cols-2">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Mentoring Specialization <span class="mentor-req">*</span></label>
+                <select name="specialization" id="mentor_specialization" class="mentor-input mentor-select" required onchange="handleOtherOption(this, 'specializationOther')">
+                    <option value="">Select specialization</option>
                     {% for spec in ['Business Analytics','BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
                     <option value="{{ spec }}">{{ spec }}</option>
                     {% endfor %}
                 </select>
-                <span class="maf-error" id="err_specialization"></span>
+                <input type="text" id="specializationOther" name="specializationOther" class="mentor-input mentor-other-input" style="display: none; margin-top: 8px;" placeholder="Please specify your specialization">
+                <span class="mentor-error" id="err_specialization"></span>
             </div>
-            <div class="maf-field">
-                <label class="maf-label">Years of Experience</label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="maf-input" min="0" max="50" step="1" placeholder="e.g. 2" style="flex: 1;">
-                    <select name="experienceUnit" id="mentor_experienceUnit" class="maf-input maf-select" style="width: 100px;">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Years of Experience</label>
+                <div class="mentor-exp-input-wrap">
+                    <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="mentor-input mentor-exp-number" min="0" max="50" step="1" placeholder="2">
+                    <select name="experienceUnit" id="mentor_experienceUnit" class="mentor-input mentor-select mentor-exp-unit">
                         <option value="Months">Months</option>
                         <option value="Years" selected>Years</option>
                     </select>
                 </div>
-                <span class="maf-hint">Enter number and select unit (Months or Years).</span>
+                <span class="mentor-hint">Number and time unit</span>
             </div>
         </div>
-        <div class="maf-row maf-cols-2">
-            <div class="maf-field">
-                <label class="maf-label">Current Profession</label>
-                <select name="currentProfession" id="mentor_currentProfession" class="maf-input maf-select">
-                    <option value="">Select profession…</option>
+        <div class="mentor-form-row mentor-cols-2">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Current Profession</label>
+                <select name="currentProfession" id="mentor_currentProfession" class="mentor-input mentor-select" onchange="handleOtherOption(this, 'professionOther')">
+                    <option value="">Select profession</option>
                     <option value="Student">Student</option>
                     <option value="Intern">Intern</option>
                     <option value="Freelancer">Freelancer</option>
@@ -97,13 +102,14 @@
                     <option value="Consultant">Consultant</option>
                     <option value="Other">Other</option>
                 </select>
+                <input type="text" id="professionOther" name="professionOther" class="mentor-input mentor-other-input" style="display: none; margin-top: 8px;" placeholder="Please specify your profession">
             </div>
-            <div class="maf-field">
-                <label class="maf-label">Highest Educational Attainment</label>
-                <select name="highestEducation" id="mentor_highestEducation" class="maf-input maf-select" required>
-                    <option value="" disabled selected>Select…</option>
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Highest Educational Attainment</label>
+                <select name="highestEducation" id="mentor_highestEducation" class="mentor-input mentor-select" required>
+                    <option value="" disabled selected>Select degree</option>
                     <option value="High School Diploma">High School Diploma</option>
-                    <option value="Some College (Undergraduate)">Some College (Undergraduate)</option>
+                    <option value="Some College (Undergraduate)">Some College</option>
                     <option value="Associate Degree">Associate Degree</option>
                     <option value="Bachelor's Degree">Bachelor's Degree</option>
                     <option value="Master's Degree">Master's Degree</option>
@@ -115,102 +121,127 @@
     </div>
 
     {# ── Section 3: Mentoring Availability ── #}
-    <div class="maf-section">
-        <div class="maf-section-header">
-            <span class="maf-section-icon">📅</span>
-            <div>
-                <h4 class="maf-section-title">Mentoring Availability</h4>
-                <p class="maf-section-desc">When are you available for mentoring sessions?</p>
+    <div class="mentor-app-section">
+        <div class="mentor-section-header">
+            <div class="mentor-section-icon-wrap mentor-icon-accent">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="mentor-section-title-wrap">
+                <h4 class="mentor-section-title">Mentoring Availability</h4>
+                <p class="mentor-section-desc">When are you available for sessions?</p>
             </div>
         </div>
-        <div class="maf-row maf-cols-3">
-            <div class="maf-field">
-                <label class="maf-label">Mentoring Day(s)</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+        <div class="mentor-form-row mentor-cols-3">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Available Days</label>
+                <div class="mentor-checkbox-group">
                     {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
-                    <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer;">
-                        <input type="checkbox" name="availabilityDays[]" value="{{ day }}" class="maf-checkbox"> {{ day }}
+                    <label class="mentor-checkbox-label">
+                        <input type="checkbox" name="availabilityDays[]" value="{{ day }}" class="mentor-checkbox"> 
+                        <span>{{ day[:3] }}</span>
                     </label>
                     {% endfor %}
                 </div>
                 <input type="hidden" name="availabilityDay" id="mentor_availabilityDay">
             </div>
-            <div class="maf-field">
-                <label class="maf-label">Start Time</label>
-                <input type="time" name="availabilityStart" id="mentor_availabilityStart" class="maf-input" min="07:00" max="19:00" required>
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Start Time</label>
+                <input type="time" name="availabilityStart" id="mentor_availabilityStart" class="mentor-input" min="07:00" max="19:00" required>
             </div>
-            <div class="maf-field">
-                <label class="maf-label">End Time</label>
-                <input type="time" name="availabilityEnd" id="mentor_availabilityEnd" class="maf-input" min="07:00" max="19:00" required>
-                <span class="maf-error" id="err_availabilityEnd"></span>
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">End Time</label>
+                <input type="time" name="availabilityEnd" id="mentor_availabilityEnd" class="mentor-input" min="07:00" max="19:00" required>
+                <span class="mentor-error" id="err_availabilityEnd"></span>
             </div>
         </div>
-        <span class="maf-hint" style="margin-top:-4px;">Combined value is saved as your availability summary.</span>
-        {# Hidden field carries the merged value for backward compatibility #}
+        <span class="mentor-hint">Select your preferred mentoring schedule</span>
         <input type="hidden" name="availabilityTime" id="mentor_availabilityTime">
     </div>
 
     {# ── Section 4: Supporting Details ── #}
-    <div class="maf-section">
-        <div class="maf-section-header">
-            <span class="maf-section-icon">📝</span>
-            <div>
-                <h4 class="maf-section-title">Supporting Details</h4>
-                <p class="maf-section-desc">Tell us why you'd be a great mentor.</p>
+    <div class="mentor-app-section">
+        <div class="mentor-section-header">
+            <div class="mentor-section-icon-wrap mentor-icon-accent">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+            </div>
+            <div class="mentor-section-title-wrap">
+                <h4 class="mentor-section-title">Supporting Details</h4>
+                <p class="mentor-section-desc">Tell us why you'd be a great mentor</p>
             </div>
         </div>
-        <div class="maf-row maf-cols-1">
-            <div class="maf-field">
-                <label class="maf-label">Mentoring Bio / Description <span class="maf-req">*</span></label>
-                <textarea name="supportingDescription" id="mentor_supportingDescription" class="maf-input maf-textarea" rows="4" required
+        <div class="mentor-form-row mentor-cols-1">
+            <div class="mentor-field-group">
+                <label class="mentor-field-label">Mentoring Bio / Description <span class="mentor-req">*</span></label>
+                <textarea name="supportingDescription" id="mentor_supportingDescription" class="mentor-input mentor-textarea" rows="4" required
                           placeholder="Share your strengths, relevant experience, certifications, and what motivates you to mentor other students." maxlength="2000"></textarea>
-                <div class="maf-textarea-footer">
-                    <span class="maf-hint">Be specific — this is reviewed by the Super Admin.</span>
-                    <span class="maf-charcount" id="mentor_descCharCount">0 / 2000</span>
+                <div class="mentor-textarea-footer">
+                    <span class="mentor-hint">Be specific — reviewed by Super Admin</span>
+                    <span class="mentor-charcount" id="mentor_descCharCount">0 / 2000</span>
                 </div>
-                <span class="maf-error" id="err_supportingDescription"></span>
+                <span class="mentor-error" id="err_supportingDescription"></span>
             </div>
         </div>
     </div>
 
     {# ── Section 5: Supporting Documents ── #}
-    <div class="maf-section">
-        <div class="maf-section-header">
-            <span class="maf-section-icon">📎</span>
-            <div>
-                <h4 class="maf-section-title">Proof of Expertise <span class="maf-req">*</span></h4>
-                <p class="maf-section-desc">Upload certificates, IDs, transcripts, or portfolio samples.</p>
-                <p class="maf-section-examples" style="font-size: 12px; color: #666; margin-top: 4px;">Examples: Diploma, Transcript of Records, Certificate of Employment, Professional Certifications</p>
+    <div class="mentor-app-section">
+        <div class="mentor-section-header">
+            <div class="mentor-section-icon-wrap mentor-icon-accent">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </div>
+            <div class="mentor-section-title-wrap">
+                <h4 class="mentor-section-title">Proof of Expertise <span class="mentor-req">*</span></h4>
+                <p class="mentor-section-desc">Upload certificates, IDs, transcripts, or portfolio samples</p>
             </div>
         </div>
-        <div class="maf-upload-zone" id="mafDropZone">
-            <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" multiple accept=".jpg,.jpeg,.png,.pdf" required class="maf-upload-input">
-            <div class="maf-upload-placeholder" id="mafUploadPlaceholder">
-                <span class="maf-upload-icon">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0D9B00" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                </span>
-                <span class="maf-upload-text"><strong>Click to Upload</strong></span>
-                <span class="maf-upload-meta">JPG, PNG, PDF — max 5 MB per file</span>
+        <div class="mentor-upload-zone" id="mafDropZone">
+            <input type="file" name="proofOfExpertise[]" id="mentor_proofOfExpertise" multiple accept=".jpg,.jpeg,.png,.pdf" required class="mentor-upload-input">
+            <div class="mentor-upload-placeholder" id="mafUploadPlaceholder">
+                <div class="mentor-upload-icon-wrap">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <span class="mentor-upload-text">Drop files here or click to browse</span>
+                <span class="mentor-upload-meta">JPG, PNG, PDF — max 5 MB each</span>
             </div>
-            <div class="maf-file-list" id="mafFileList"></div>
+            <div class="mentor-file-list" id="mafFileList"></div>
         </div>
-        <span class="maf-error" id="err_proofOfExpertise"></span>
+        <span class="mentor-error" id="err_proofOfExpertise"></span>
     </div>
 
     {# ── Submit ── #}
-    <div class="maf-submit-row">
-        <button type="submit" class="maf-submit-btn" id="mafSubmitBtn">
-            <span class="maf-submit-label">Submit Application</span>
-            <span class="maf-submit-spinner" style="display:none;">
+    <div class="mentor-submit-row">
+        <button type="submit" class="mentor-submit-btn" id="mafSubmitBtn">
+            <span class="mentor-submit-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <span class="mentor-submit-label">Submit Application</span>
+            <span class="mentor-submit-spinner" style="display:none;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".8s" repeatCount="indefinite"/></circle></svg>
                 Submitting…
             </span>
         </button>
+        <p class="mentor-submit-note">Your application will be reviewed by the Super Admin. You'll be notified once approved.</p>
     </div>
 </div>
 
 <script>
 (function(){
+    /* ── Handle 'Other' option in dropdowns ── */
+    window.handleOtherOption = function(select, otherInputId) {
+        const otherInput = document.getElementById(otherInputId);
+        if (!otherInput) return;
+        
+        if (select.value === 'Other') {
+            otherInput.style.display = 'block';
+            otherInput.required = true;
+            otherInput.focus();
+        } else {
+            otherInput.style.display = 'none';
+            otherInput.required = false;
+            otherInput.value = '';
+        }
+    };
+
     /* ── PH Contact Number live validation ── */
     const phoneInput = document.getElementById('mentor_contactNumber');
     if (phoneInput) {
@@ -293,10 +324,10 @@
 
     if (dropZone && fileInput) {
         ['dragenter','dragover'].forEach(function(ev) {
-            dropZone.addEventListener(ev, function(e) { e.preventDefault(); dropZone.classList.add('maf-drop-active'); });
+            dropZone.addEventListener(ev, function(e) { e.preventDefault(); dropZone.classList.add('mentor-drop-active'); });
         });
         ['dragleave','drop'].forEach(function(ev) {
-            dropZone.addEventListener(ev, function(e) { e.preventDefault(); dropZone.classList.remove('maf-drop-active'); });
+            dropZone.addEventListener(ev, function(e) { e.preventDefault(); dropZone.classList.remove('mentor-drop-active'); });
         });
         dropZone.addEventListener('drop', function(e) {
             if (e.dataTransfer.files.length) {
@@ -324,13 +355,13 @@
                 var valid = ['image/jpeg','image/png','application/pdf'].indexOf(f.type) !== -1;
                 var sizeOk = f.size <= 5 * 1024 * 1024;
                 var row = document.createElement('div');
-                row.className = 'maf-file-row' + (!valid || !sizeOk ? ' maf-file-invalid' : '');
+                row.className = 'mentor-file-row' + (!valid || !sizeOk ? ' mentor-file-invalid' : '');
                 var icon = f.type === 'application/pdf' ? '📄' : '🖼️';
                 var sizeStr = (f.size / 1024 / 1024).toFixed(2) + ' MB';
                 var errorMsg = !valid ? ' — invalid type' : (!sizeOk ? ' — exceeds 5 MB' : '');
-                row.innerHTML = '<span class="maf-file-icon">' + icon + '</span>'
-                    + '<span class="maf-file-name">' + f.name + '</span>'
-                    + '<span class="maf-file-size">' + sizeStr + errorMsg + '</span>';
+                row.innerHTML = '<span class="mentor-file-icon">' + icon + '</span>'
+                    + '<span class="mentor-file-name">' + f.name + '</span>'
+                    + '<span class="mentor-file-size">' + sizeStr + errorMsg + '</span>';
                 fileList.appendChild(row);
 
                 if (!valid || !sizeOk) {
@@ -353,7 +384,7 @@
             var phone = document.getElementById('mentor_contactNumber');
             if (phone && phone.value && !/^(\+?63|0)9\d{9}$/.test(phone.value.replace(/\s/g,''))) {
                 hasError = true;
-                phone.classList.add('maf-input-error');
+                phone.classList.add('mentor-input-error');
                 var pe = document.getElementById('err_contactNumber');
                 if (pe) pe.textContent = 'Enter a valid PH mobile number';
             }
@@ -361,7 +392,7 @@
             var st = document.getElementById('mentor_availabilityStart');
             if (st && et && st.value && et.value && et.value <= st.value) {
                 hasError = true;
-                et.classList.add('maf-input-error');
+                et.classList.add('mentor-input-error');
                 var ee = document.getElementById('err_availabilityEnd');
                 if (ee) ee.textContent = 'End time must be after start time';
             }
@@ -370,9 +401,457 @@
             mergeAvailability();
             btn.dataset.submitting = '1';
             btn.disabled = true;
-            btn.querySelector('.maf-submit-label').style.display = 'none';
-            btn.querySelector('.maf-submit-spinner').style.display = '';
+            btn.querySelector('.mentor-submit-label').style.display = 'none';
+            btn.querySelector('.mentor-submit-spinner').style.display = '';
         });
     }
 })();
 </script>
+
+<style>
+/* ── Modern Mentor Application Form Styles ── */
+.mentor-app-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Section Styling */
+.mentor-app-section {
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.mentor-app-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Section Header */
+.mentor-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.mentor-section-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.mentor-section-icon-wrap.mentor-icon-accent {
+    background: #0d9b00;
+    color: #ffffff;
+}
+
+.mentor-section-title-wrap {
+    flex: 1;
+}
+
+.mentor-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px 0;
+    line-height: 1.4;
+}
+
+.mentor-section-desc {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Form Row Layout */
+.mentor-form-row {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.mentor-form-row:last-child {
+    margin-bottom: 0;
+}
+
+.mentor-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.mentor-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.mentor-cols-1 {
+    grid-template-columns: 1fr;
+}
+
+@media (max-width: 768px) {
+    .mentor-cols-3,
+    .mentor-cols-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Field Group */
+.mentor-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Labels */
+.mentor-field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+}
+
+.mentor-req {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* Input Fields */
+.mentor-input {
+    padding: 12px 16px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #111827;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: text;
+}
+
+.mentor-input:hover {
+    border-color: #0d9b00;
+}
+
+.mentor-input:focus {
+    outline: none;
+    border-color: #0d9b00;
+    box-shadow: 0 0 0 4px rgba(13, 155, 0, 0.15);
+}
+
+.mentor-input::placeholder {
+    color: #9ca3af;
+}
+
+/* Only readonly fields get the not-allowed cursor */
+.mentor-input:read-only,
+.mentor-input.mentor-input-readonly {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #6b7280;
+    cursor: not-allowed;
+}
+
+/* Ensure normal inputs are fully interactive */
+.mentor-input:not(:read-only):not(.mentor-input-readonly) {
+    pointer-events: auto !important;
+}
+
+/* Select dropdowns should have pointer cursor */
+select.mentor-input,
+.mentor-select {
+    cursor: pointer !important;
+}
+
+/* Select Dropdowns */
+.mentor-select {
+    appearance: none;
+    background-color: #ffffff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+/* Force white background on all selects within the form */
+.mentor-app-card select {
+    background-color: #ffffff !important;
+}
+
+.mentor-app-card select option {
+    background-color: #ffffff;
+    color: #111827;
+}
+
+/* Textarea */
+.mentor-textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.6;
+}
+
+/* Experience Input Layout */
+.mentor-exp-input-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mentor-exp-number {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.mentor-exp-unit {
+    flex: 1;
+}
+
+/* Checkbox Group */
+.mentor-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.mentor-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mentor-checkbox-label:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.mentor-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #0d9b00;
+}
+
+/* Hints and Errors */
+.mentor-hint {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.mentor-error {
+    font-size: 12px;
+    color: #dc2626;
+    line-height: 1.4;
+    display: none;
+}
+
+.mentor-error:not(:empty) {
+    display: block;
+}
+
+/* Textarea Footer */
+.mentor-textarea-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.mentor-charcount {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Upload Zone */
+.mentor-upload-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 10px;
+    padding: 32px 24px;
+    text-align: center;
+    background: #f9fafb;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.mentor-upload-zone:hover,
+.mentor-upload-zone.mentor-drop-active {
+    border-color: #0d9b00;
+    background: rgba(13, 155, 0, 0.05);
+}
+
+.mentor-upload-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.mentor-upload-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin: 0 auto 16px;
+    color: #0d9b00;
+}
+
+.mentor-upload-text {
+    display: block;
+    font-size: 15px;
+    font-weight: 500;
+    color: #111827;
+    margin-bottom: 6px;
+}
+
+.mentor-upload-meta {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* File List */
+.mentor-file-list {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mentor-file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #ffffff;
+    border-radius: 8px;
+    font-size: 13px;
+    border: 1px solid #e5e7eb;
+}
+
+.mentor-file-row.mentor-file-invalid {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+.mentor-file-icon {
+    font-size: 18px;
+}
+
+.mentor-file-name {
+    flex: 1;
+    font-weight: 500;
+    color: #374151;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mentor-file-size {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* Submit Section */
+.mentor-submit-row {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+}
+
+.mentor-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #0d9b00 0%, #0b8200 100%);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(13, 155, 0, 0.3);
+}
+
+.mentor-submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 155, 0, 0.4);
+}
+
+.mentor-submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.mentor-submit-icon {
+    display: flex;
+    align-items: center;
+}
+
+.mentor-submit-spinner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mentor-submit-note {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+/* Other option text input */
+.mentor-other-input {
+    margin-top: 8px;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Input Error State */
+.mentor-input-error {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+</style>

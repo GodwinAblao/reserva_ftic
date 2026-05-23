@@ -141,6 +141,14 @@
                                         </div>
                                         {% endif %}
                                     </div>
+                                    <div class="card-actions" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                                        <form method="post" action="{{ path('mentoring_cancel_application', {'id': application.id}) }}" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('cancel_application_' ~ application.id) }}">
+                                            <button type="submit" class="btn btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                            Cancel Application
+                                        </button>
+                                        </form>
+                                    </div>
                                 </div>
                             {% endfor %}
                         {% endif %}

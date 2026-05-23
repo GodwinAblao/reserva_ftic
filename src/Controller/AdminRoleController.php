@@ -21,6 +21,7 @@ use App\Service\NotificationService;
 use App\Entity\User;
 use App\Entity\MentorCustomRequest;
 use App\Entity\MentorApplication;
+use App\Entity\MentoringAuditLog;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -598,17 +599,34 @@ class AdminRoleController extends AbstractController
             $req->setAvailableTime($availableTime ?: null);
             $req->setAdminInstructions($request->request->get('admin_instructions') ?: null);
             $submittedStatus = trim((string) $request->request->get('status', 'approved'));
+            $prevStatus = $req->getStatus();
             $req->setStatus(in_array($submittedStatus, ['pending','reviewing','assigned','completed','cancelled','approved'], true) ? $submittedStatus : 'approved');
-            $em->flush();
-            $actor = $this->getUser();
-            $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Admin';
             $student = $req->getStudent();
-            $requesterName = $req->getFullName() ?: ($student ? trim($student->getFirstName() . ' ' . $student->getLastName()) : 'Student');
+            $requesterName = $req->getFullName() ?: ($student ? trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? '')) : 'Unknown');
+            $actor = $this->getUser();
+            $actorName = $actor instanceof User ? trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? '')) : 'Admin';
+            if ($actorName === '') { $actorName = $actor instanceof User ? $actor->getEmail() : 'Admin'; }
+            $instructions = trim((string) $request->request->get('admin_instructions', ''));
+            $noteText = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
+            $auditLog = (new MentoringAuditLog())
+                ->setSubjectType('custom_request')
+                ->setSubjectId($id)
+                ->setSubjectLabel($requesterName)
+                ->setAction('update_status')
+                ->setPreviousStatus($prevStatus)
+                ->setNewStatus($submittedStatus)
+                ->setPerformedBy($actor instanceof User ? $actor : null)
+                ->setPerformedByName($actorName)
+                ->setPerformedByRole('Admin')
+                ->setNote($noteText);
+            $em->persist($auditLog);
+            $em->flush();
+            $actorName2 = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Admin';
             foreach ($em->getRepository(User::class)->findAll() as $u) {
                 if ($u === $actor) continue;
                 $roles = $u->getRoles();
                 if (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true)) {
-                    $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName, ucfirst($submittedStatus), $requesterName);
+                    $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName2, ucfirst($submittedStatus), $requesterName);
                 }
             }
             if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
@@ -637,6 +655,7 @@ class AdminRoleController extends AbstractController
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
             'is_super_admin' => false,
+            'auditLogs' => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
         ]);
     }
 

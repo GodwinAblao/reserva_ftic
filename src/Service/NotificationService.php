@@ -2,16 +2,23 @@
 
 namespace App\Service;
 
+use App\Entity\MentorApplication;
 use App\Entity\Notification;
 use App\Entity\User;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
+use Twig\Environment;
 
 class NotificationService
 {
     public function __construct(
         private EntityManagerInterface $em,
-        private NotificationRepository $notificationRepo
+        private NotificationRepository $notificationRepo,
+        private MailerInterface $mailer,
+        private Environment $twig,
     ) {}
 
     /**
@@ -46,6 +53,7 @@ class NotificationService
      */
     public function notifyMentorApplicationSubmitted(User $user, int $applicationId): void
     {
+        // Create in-app notification
         $this->create(
             $user,
             'mentor',
@@ -54,26 +62,28 @@ class NotificationService
             'Pending',
             $applicationId
         );
+
+        // Send email notification
+        $this->sendMentorApplicationEmail($user, $applicationId, 'submitted');
     }
 
     /**
      * Notify user about mentor application approval
      */
-    public function notifyMentorApplicationApproved(User $user, int $applicationId, ?\DateTimeInterface $validUntil = null): void
+    public function notifyMentorApplicationApproved(User $user, int $applicationId): void
     {
-        $message = 'Congratulations! Your mentor application has been approved.';
-        if ($validUntil) {
-            $message .= ' Your mentorship is valid until ' . $validUntil->format('F j, Y') . '.';
-        }
-
+        // Create in-app notification
         $this->create(
             $user,
             'mentor',
             'Mentor Application Approved',
-            $message,
+            'Congratulations! Your mentor application has been approved. You can now start mentoring students.',
             'Approved',
             $applicationId
         );
+
+        // Send email notification
+        $this->sendMentorApplicationEmail($user, $applicationId, 'approved');
     }
 
     /**
@@ -81,19 +91,56 @@ class NotificationService
      */
     public function notifyMentorApplicationRejected(User $user, int $applicationId, ?string $reason = null): void
     {
-        $message = 'Your mentor application has been rejected.';
-        if ($reason) {
-            $message .= ' Reason: ' . $reason;
-        }
-
+        // Create in-app notification
         $this->create(
             $user,
             'mentor',
             'Mentor Application Rejected',
-            $message,
+            $reason ? 'Your mentor application was not approved. Reason: ' . $reason : 'Your mentor application was not approved.',
             'Rejected',
             $applicationId
         );
+
+        // Send email notification
+        $this->sendMentorApplicationEmail($user, $applicationId, 'rejected', $reason);
+    }
+
+    /**
+     * Send mentor application status email to user
+     */
+    private function sendMentorApplicationEmail(User $user, int $applicationId, string $status, ?string $reason = null): void
+    {
+        $email = $user->getEmail();
+        if (!$email) {
+            return;
+        }
+
+        $subject = match ($status) {
+            'submitted' => 'Mentor Application Submitted - Reserva FTIC',
+            'approved' => 'Mentor Application Approved - Reserva FTIC',
+            'rejected' => 'Mentor Application Update - Reserva FTIC',
+            default => 'Mentor Application Update - Reserva FTIC',
+        };
+
+        $emailBody = $this->twig->render('emails/mentor_application_status.html.twig', [
+            'user' => $user,
+            'applicationId' => $applicationId,
+            'status' => $status,
+            'reason' => $reason,
+        ]);
+
+        $email = (new Email())
+            ->from(new Address('noreply@reserva-ftic.com', 'Reserva FTIC'))
+            ->to(new Address($email, $user->getFirstName() . ' ' . $user->getLastName()))
+            ->subject($subject)
+            ->html($emailBody);
+
+        try {
+            $this->mailer->send($email);
+        } catch (\Exception $e) {
+            // Log error but don't throw to prevent breaking the flow
+            error_log('Failed to send mentor application email: ' . $e->getMessage());
+        }
     }
 
     /**
