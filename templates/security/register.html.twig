@@ -51,6 +51,9 @@
                     </div>
                 {% endif %}
 
+                {# AJAX Error Display #}
+                <div id="registrationError" class="alert alert-error" style="display:none;"></div>
+
                 <form class="form" method="post" action="{{ path('app_register') }}">
                     <div class="form-row">
                         <div class="form-group">
@@ -72,6 +75,7 @@
                     <div class="form-group-full">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" id="email" name="email" class="form-input" value="{{ data.email ?? '' }}" required />
+                        <small style="color: #6b7280; font-size: 0.85rem; margin-top: 4px; display: block;">Must end with @fit.edu.ph or @feutech.edu.ph</small>
                     </div>
 
                     <div class="form-row">
@@ -425,6 +429,13 @@
             const registerSubmitButton = document.getElementById('registerSubmitButton');
             const loadingStartAt = Date.now();
 
+            // Clear previous errors
+            const errorDiv = document.getElementById('registrationError');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+            }
+
             setButtonLoading(registerSubmitButton, true, 'Creating account...');
 
             fetch('{{ path("app_register") }}', {
@@ -451,7 +462,11 @@
                 }
             })
             .catch(error => {
-                showNotice(error.message, 'error');
+                const errorDiv = document.getElementById('registrationError');
+                if (errorDiv) {
+                    errorDiv.textContent = error.message;
+                    errorDiv.style.display = 'block';
+                }
             })
             .finally(() => {
                 finishButtonLoading(registerSubmitButton, 'Creating account...', loadingStartAt);

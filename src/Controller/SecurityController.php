@@ -189,6 +189,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
         }
 
         if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            $logger->error('Registration validation failed', ['errors' => $errors, 'email' => $data['email']]);
             return new JsonResponse([
                 'success' => false,
                 'errors' => $errors,
