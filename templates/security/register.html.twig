@@ -6,6 +6,35 @@
     <link rel="stylesheet" href="{{ asset('styles/register.css') }}">
 {% endblock %}
 
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        // Check if user is logged in and redirect to dashboard
+        (function() {
+            console.log('Checking authentication status on register page...');
+            fetch('{{ path('app_dashboard') }}', {
+                method: 'HEAD',
+                credentials: 'same-origin',
+                redirect: 'manual'
+            })
+            .then(response => {
+                console.log('Dashboard check response status:', response.status);
+                // Only redirect if we get a 200 OK (authenticated)
+                if (response.status === 200) {
+                    console.log('User is authenticated, redirecting to dashboard');
+                    window.location.href = '{{ path('app_dashboard') }}';
+                } else {
+                    console.log('User is not authenticated, staying on register page');
+                }
+            })
+            .catch((error) => {
+                console.error('Authentication check failed:', error);
+                // If check fails, stay on register page
+            });
+        })();
+    </script>
+{% endblock %}
+
 {% block body %}
     <header class="header">
         <div class="header-inner">

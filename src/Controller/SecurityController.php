@@ -46,6 +46,11 @@ class SecurityController extends AbstractController
     #[Route('/register', name: 'app_register')]
 public function register(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, MailerInterface $mailer, LoggerInterface $logger): Response
     {
+        $response = new Response();
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
@@ -203,12 +208,14 @@ public function register(Request $request, EntityManagerInterface $entityManager
             ], 400);
         }
 
-        return $this->render('security/register.html.twig', [
+        $response->setContent($this->renderView('security/register.html.twig', [
             'errors' => $errors,
             'data' => $data,
             'show_verify_modal' => $showVerifyModal,
             'prefilled_code' => $preFilledCode,
-        ]);
+        ]));
+
+        return $response;
     }
 
     #[Route('/verify-registration', name: 'app_verify_registration')]
