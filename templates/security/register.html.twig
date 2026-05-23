@@ -110,7 +110,7 @@
     </div>
 
     {# Modal for Registration Verification #}
-    <div id="verifyRegistrationModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div id="verifyRegistrationModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 2147483647;">
         <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 420px; position: relative;">
             <button type="button" onclick="hideVerifyRegistrationModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
             <h3 style="margin-bottom: 0.6rem; color: #0D9B00;">Confirm your Institutional Email</h3>
@@ -395,11 +395,14 @@
         }
 
         function showVerifyRegistrationModal(email) {
+            console.log('showVerifyRegistrationModal called with email:', email);
             clearNotice();
             document.getElementById('verifyRegistrationEmail').value = email || document.querySelector('input[name="email"]').value || '';
             document.getElementById('resendVerificationEmail').value = document.getElementById('verifyRegistrationEmail').value;
             document.getElementById('verifyRegistrationCode').value = '';
-            document.getElementById('verifyRegistrationModal').style.display = 'flex';
+            const modal = document.getElementById('verifyRegistrationModal');
+            modal.style.display = 'flex';
+            console.log('Modal display set to flex. Current style:', modal.style.display);
             document.getElementById('verifyRegistrationCode').focus();
             updateResendButtonState();
         }

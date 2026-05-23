@@ -424,7 +424,7 @@
             <div class="sa-sec">Academic Background &amp; Mentoring</div>
             <div class="sa-grid4">
                 <div class="sa-field"><label>Specialization</label><p>{{ app.specialization }}</p></div>
-                <div class="sa-field"><label>Experience</label><p>{{ app.yearsOfExperience ? app.yearsOfExperience~' months' : '—' }}</p></div>
+                <div class="sa-field"><label>Experience</label><p>{% if app.yearsOfExperience %}{{ app.yearsOfExperience }} {{ app.experienceUnit|default('Years') }}{% else %}—{% endif %}</p></div>
                 <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: '—' }}</p></div>
             </div>
             <div class="sa-grid2">

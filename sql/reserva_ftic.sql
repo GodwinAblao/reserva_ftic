@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     `last_name` VARCHAR(100) DEFAULT NULL,
     `degree` VARCHAR(100) DEFAULT NULL,
     `degree_name` VARCHAR(255) DEFAULT NULL,
+    `specialization` VARCHAR(255) DEFAULT NULL,
     `profile_picture` VARCHAR(255) DEFAULT NULL,
     UNIQUE INDEX `UNIQ_8D93D649E7927C74` (`email`),
     PRIMARY KEY (`id`)
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS `mentor_application` (
     `specialization` VARCHAR(255) NOT NULL,
     `reason` LONGTEXT DEFAULT NULL,
     `years_of_experience` INT DEFAULT NULL,
+    `experience_unit` VARCHAR(20) DEFAULT NULL,
     `current_profession` VARCHAR(150) DEFAULT NULL,
     `highest_education` VARCHAR(150) DEFAULT NULL,
     `supporting_description` LONGTEXT DEFAULT NULL,
@@ -534,8 +536,18 @@ VALUES
 ('DoctrineMigrations\\Version20260512073552', NOW(), 100),
 ('DoctrineMigrations\\Version20260512082900', NOW(), 100),
 ('DoctrineMigrations\\Version20260512130000', NOW(), 100),
+('DoctrineMigrations\\Version20260514140000', NOW(), 100),
+('DoctrineMigrations\\Version20260515100000', NOW(), 100),
+('DoctrineMigrations\\Version20260520000000', NOW(), 100),
+('DoctrineMigrations\\Version20260520105052', NOW(), 100),
+('DoctrineMigrations\\Version20260520120000', NOW(), 100),
+('DoctrineMigrations\\Version20260522224736', NOW(), 100),
 ('DoctrineMigrations\\Version20260515000000', NOW(), 100),
 ('DoctrineMigrations\\Version20261202000000', NOW(), 100),
-('DoctrineMigrations\\Version20260522000000', NOW(), 100);
+('DoctrineMigrations\\Version20260522000000', NOW(), 100),
+('DoctrineMigrations\\Version20261203000000', NOW(), 100),
+('DoctrineMigrations\\Version20261204000000', NOW(), 100),
+('DoctrineMigrations\\Version20260523120000', NOW(), 100),
+('DoctrineMigrations\\Version20260523130000', NOW(), 100);
 
 COMMIT;

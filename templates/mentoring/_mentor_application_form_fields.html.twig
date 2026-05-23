@@ -71,19 +71,37 @@
             </div>
             <div class="maf-field">
                 <label class="maf-label">Years of Experience</label>
-                <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="maf-input" min="0" max="50" step="1" placeholder="e.g. 2">
-                <span class="maf-hint">In years — approximate is fine.</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="number" name="yearsOfExperience" id="mentor_yearsOfExperience" class="maf-input" min="0" max="50" step="1" placeholder="e.g. 2" style="flex: 1;">
+                    <select name="experienceUnit" id="mentor_experienceUnit" class="maf-input maf-select" style="width: 100px;">
+                        <option value="Months">Months</option>
+                        <option value="Years" selected>Years</option>
+                    </select>
+                </div>
+                <span class="maf-hint">Enter number and select unit (Months or Years).</span>
             </div>
         </div>
         <div class="maf-row maf-cols-2">
             <div class="maf-field">
                 <label class="maf-label">Current Profession</label>
-                <input type="text" name="currentProfession" id="mentor_currentProfession" class="maf-input" placeholder="e.g. Student, Intern, Freelancer">
+                <select name="currentProfession" id="mentor_currentProfession" class="maf-input maf-select">
+                    <option value="">Select profession…</option>
+                    <option value="Student">Student</option>
+                    <option value="Intern">Intern</option>
+                    <option value="Freelancer">Freelancer</option>
+                    <option value="Employee">Employee</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Business Owner">Business Owner</option>
+                    <option value="Academic / Faculty">Academic / Faculty</option>
+                    <option value="Researcher">Researcher</option>
+                    <option value="Consultant">Consultant</option>
+                    <option value="Other">Other</option>
+                </select>
             </div>
             <div class="maf-field">
                 <label class="maf-label">Highest Educational Attainment</label>
-                <select name="highestEducation" id="mentor_highestEducation" class="maf-input maf-select">
-                    <option value="">Select…</option>
+                <select name="highestEducation" id="mentor_highestEducation" class="maf-input maf-select" required>
+                    <option value="" disabled selected>Select…</option>
                     <option value="High School Diploma">High School Diploma</option>
                     <option value="Some College (Undergraduate)">Some College (Undergraduate)</option>
                     <option value="Associate Degree">Associate Degree</option>
@@ -108,20 +126,22 @@
         <div class="maf-row maf-cols-3">
             <div class="maf-field">
                 <label class="maf-label">Mentoring Day(s)</label>
-                <select name="availabilityDay" id="mentor_availabilityDay" class="maf-input maf-select">
-                    <option value="">Select day…</option>
-                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F'] %}
-                    <option value="{{ day }}">{{ day }}</option>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                    <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" name="availabilityDays[]" value="{{ day }}" class="maf-checkbox"> {{ day }}
+                    </label>
                     {% endfor %}
-                </select>
+                </div>
+                <input type="hidden" name="availabilityDay" id="mentor_availabilityDay">
             </div>
             <div class="maf-field">
                 <label class="maf-label">Start Time</label>
-                <input type="time" name="availabilityStart" id="mentor_availabilityStart" class="maf-input" min="07:00" max="21:00">
+                <input type="time" name="availabilityStart" id="mentor_availabilityStart" class="maf-input" min="07:00" max="19:00" required>
             </div>
             <div class="maf-field">
                 <label class="maf-label">End Time</label>
-                <input type="time" name="availabilityEnd" id="mentor_availabilityEnd" class="maf-input" min="07:00" max="21:00">
+                <input type="time" name="availabilityEnd" id="mentor_availabilityEnd" class="maf-input" min="07:00" max="19:00" required>
                 <span class="maf-error" id="err_availabilityEnd"></span>
             </div>
         </div>
@@ -169,7 +189,7 @@
                 <span class="maf-upload-icon">
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0D9B00" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </span>
-                <span class="maf-upload-text"><strong>Click to upload</strong> or drag files here</span>
+                <span class="maf-upload-text"><strong>Click to Upload</strong></span>
                 <span class="maf-upload-meta">JPG, PNG, PDF — max 5 MB per file</span>
             </div>
             <div class="maf-file-list" id="mafFileList"></div>
@@ -217,20 +237,27 @@
 
     /* ── Availability time merger ── */
     function mergeAvailability() {
-        const day   = document.getElementById('mentor_availabilityDay')?.value || '';
+        const checkboxes = document.querySelectorAll('input[name="availabilityDays[]"]:checked');
+        const selectedDays = Array.from(checkboxes).map(cb => cb.value);
+        const day = selectedDays.length > 0 ? selectedDays.join(', ') : '';
         const start = document.getElementById('mentor_availabilityStart')?.value || '';
         const end   = document.getElementById('mentor_availabilityEnd')?.value || '';
         const hidden = document.getElementById('mentor_availabilityTime');
+        const dayHidden = document.getElementById('mentor_availabilityDay');
         if (!hidden) return;
         let parts = [];
         if (day) parts.push(day);
         if (start && end) parts.push(start + ' – ' + end);
         else if (start) parts.push('from ' + start);
         hidden.value = parts.join(', ');
+        if (dayHidden) dayHidden.value = day;
     }
-    ['mentor_availabilityDay','mentor_availabilityStart','mentor_availabilityEnd'].forEach(function(id) {
+    ['mentor_availabilityStart','mentor_availabilityEnd'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', mergeAvailability);
+    });
+    document.querySelectorAll('input[name="availabilityDays[]"]').forEach(function(cb) {
+        cb.addEventListener('change', mergeAvailability);
     });
 
     /* ── End time > Start time validation ── */

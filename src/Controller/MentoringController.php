@@ -223,16 +223,45 @@ class MentoringController extends AbstractController
         $programCourse = trim((string) $request->request->get('programCourse'));
         $specialization = trim((string) $request->request->get('specialization'));
         $yearsOfExperience = $request->request->get('yearsOfExperience') ? (int)$request->request->get('yearsOfExperience') : null;
+        $experienceUnit = trim((string) $request->request->get('experienceUnit'));
         $currentProfession = trim((string) $request->request->get('currentProfession'));
         $highestEducation = trim((string) $request->request->get('highestEducation'));
         $supportingDescription = trim((string) $request->request->get('supportingDescription'));
         $availabilityTime = trim((string) $request->request->get('availabilityTime'));
-        
+        $availabilityStart = trim((string) $request->request->get('availabilityStart'));
+        $availabilityEnd = trim((string) $request->request->get('availabilityEnd'));
+        $availabilityDays = $request->request->get('availabilityDays', []);
+
         // Validation
         if (!$user instanceof User || $email === '' || $specialization === '' || $firstName === '' || $lastName === '') {
             $this->addFlash('error', 'Name, email, and specialization are required.');
-
             return $this->redirectToRoute('mentoring_index');
+        }
+
+        // Validate highest education is required
+        if ($highestEducation === '') {
+            $this->addFlash('error', 'Highest Educational Attainment is required.');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        // Validate at least one mentoring day is selected
+        if (empty($availabilityDays) || !is_array($availabilityDays)) {
+            $this->addFlash('error', 'Please select at least one mentoring day.');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        // Validate time range is within 7AM-7PM
+        if ($availabilityStart && $availabilityEnd) {
+            $startHour = (int)substr($availabilityStart, 0, 2);
+            $endHour = (int)substr($availabilityEnd, 0, 2);
+            if ($startHour < 7 || $startHour > 19 || $endHour < 7 || $endHour > 19) {
+                $this->addFlash('error', 'Mentoring time must be between 7:00 AM and 7:00 PM.');
+                return $this->redirectToRoute('mentoring_index');
+            }
+            if ($availabilityEnd <= $availabilityStart) {
+                $this->addFlash('error', 'End time must be after start time.');
+                return $this->redirectToRoute('mentoring_index');
+            }
         }
 
         // PH mobile number validation (required, must match 09XXXXXXXXX or +639XXXXXXXXX)
@@ -318,6 +347,7 @@ class MentoringController extends AbstractController
             ->setProgramCourse($programCourse ?: null)
             ->setSpecialization($specialization)
             ->setYearsOfExperience($yearsOfExperience)
+            ->setExperienceUnit($experienceUnit ?: null)
             ->setCurrentProfession($currentProfession ?: null)
             ->setHighestEducation($highestEducation ?: null)
             ->setSupportingDescription($supportingDescription ?: null)

@@ -50,7 +50,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $degreeName = null;
 
-#[ORM\Column(length: 255, nullable: true)]
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $specialization = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $profilePicture = null;
 
     public function getId(): ?int
@@ -193,6 +196,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setDegreeName(?string $degreeName): self
     {
         $this->degreeName = $degreeName;
+
+        return $this;
+    }
+
+    public function getSpecialization(): ?string
+    {
+        return $this->specialization;
+    }
+
+    public function setSpecialization(?string $specialization): self
+    {
+        $this->specialization = $specialization;
 
         return $this;
     }

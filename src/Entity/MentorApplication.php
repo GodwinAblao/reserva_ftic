@@ -46,6 +46,9 @@ class MentorApplication
     #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $yearsOfExperience = null;
 
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $experienceUnit = null;
+
     #[ORM\Column(length: 150, nullable: true)]
     private ?string $currentProfession = null;
 
@@ -110,6 +113,9 @@ class MentorApplication
 
     public function getYearsOfExperience(): ?int { return $this->yearsOfExperience; }
     public function setYearsOfExperience(?int $yearsOfExperience): self { $this->yearsOfExperience = $yearsOfExperience; $this->touch(); return $this; }
+
+    public function getExperienceUnit(): ?string { return $this->experienceUnit; }
+    public function setExperienceUnit(?string $experienceUnit): self { $this->experienceUnit = $experienceUnit; $this->touch(); return $this; }
 
     public function getCurrentProfession(): ?string { return $this->currentProfession; }
     public function setCurrentProfession(?string $currentProfession): self { $this->currentProfession = $currentProfession; $this->touch(); return $this; }

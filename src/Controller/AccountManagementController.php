@@ -60,6 +60,7 @@ class AccountManagementController extends AbstractController
             $lastName = $request->request->get('last_name');
             $degree = $request->request->get('degree');
             $degreeName = $request->request->get('degree_name');
+            $specialization = $request->request->get('specialization');
 
             if (!$email || !$password) {
                 $this->addFlash('error', 'Email and password are required.');
@@ -76,6 +77,7 @@ class AccountManagementController extends AbstractController
             $user->setLastName($lastName);
             $user->setDegree($degree);
             $user->setDegreeName($degreeName);
+            $user->setSpecialization($specialization);
 
             // Handle profile picture upload
             $profilePictureFile = $request->files->get('profile_picture');
@@ -147,6 +149,7 @@ class AccountManagementController extends AbstractController
             $lastName = $request->request->get('last_name');
             $degree = $request->request->get('degree');
             $degreeName = $request->request->get('degree_name');
+            $specialization = $request->request->get('specialization');
 
             if ($email) {
                 $user->setEmail($email);
@@ -162,6 +165,7 @@ class AccountManagementController extends AbstractController
             $user->setLastName($lastName);
             $user->setDegree($degree);
             $user->setDegreeName($degreeName);
+            $user->setSpecialization($specialization);
 
             // Handle profile picture upload
             $profilePictureFile = $request->files->get('profile_picture');

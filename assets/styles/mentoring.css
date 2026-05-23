@@ -7,6 +7,42 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* Modern rounded corners for mentor application form */
+.maf-input,
+.maf-select,
+.maf-textarea {
+  border-radius: 8px !important;
+}
+
+.maf-checkbox {
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.maf-upload-zone {
+  border-radius: 12px !important;
+}
+
+.maf-upload-placeholder {
+  border-radius: 8px !important;
+}
+
+.maf-file-row {
+  border-radius: 6px;
+}
+
+.maf-submit-btn {
+  border-radius: 8px !important;
+}
+
+.maf-section {
+  border-radius: 12px !important;
+}
+
+.maf-field {
+  border-radius: 4px;
+}
+
 /* Final override: compact paper layout for mentoring request/application modal forms */
 #mentorApplicationModal.app-modal,
 #mentorAssistanceModal.app-modal {
