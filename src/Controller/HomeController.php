@@ -16,6 +16,11 @@ class HomeController extends AbstractController
     #[Route('/', name: 'app_home')]
     public function index(FacilityRepository $facilityRepository, EntityManagerInterface $em): Response
     {
+        $response = new Response();
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
@@ -36,9 +41,11 @@ class HomeController extends AbstractController
             ->getQuery()
             ->getResult();
 
-        return $this->render('home/landing.html.twig', [
+        $response->setContent($this->renderView('home/landing.html.twig', [
             'facilities' => $facilities,
             'researchItems' => $researchItems,
-        ]);
+        ]));
+
+        return $response;
     }
 }

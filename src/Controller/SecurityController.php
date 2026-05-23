@@ -26,14 +26,21 @@ class SecurityController extends AbstractController
     #[Route('/login', name: 'app_login')]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
+        $response = new Response();
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
 
-        return $this->render('security/login.html.twig', [
+        $response->setContent($this->renderView('security/login.html.twig', [
             'last_username' => $authenticationUtils->getLastUsername(),
             'error' => $authenticationUtils->getLastAuthenticationError(),
-        ]);
+        ]));
+
+        return $response;
     }
 
     #[Route('/register', name: 'app_register')]
