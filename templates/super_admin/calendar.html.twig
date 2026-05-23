@@ -221,6 +221,15 @@
         border: 1px solid #fca5a5;
     }
 
+    input.readonly-field,
+    select.disabled-field {
+        background-color: #f3f4f6 !important;
+        color: #6b7280 !important;
+        cursor: not-allowed !important;
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
     .manual-class-summary {
         background: var(--primary-light);
         border: 1px solid #bbf7d0;
@@ -317,7 +326,6 @@
 {% endblock %}
 
 {% set calendar_full_mode = calendar_full_mode|default(true) %}
-{% set calendar_can_import = calendar_can_import|default(calendar_full_mode) %}
 
 {% block content %}
 <div id="calendarApp"
@@ -334,7 +342,7 @@
      data-class-schedule-delete-pattern="{{ calendar_class_schedule_delete_pattern|default('/super-admin/class-schedule/{id}/delete') }}"
      data-class-schedule-available-url="{{ calendar_class_schedule_available_url|default('') }}"
      data-full-mode="{{ calendar_full_mode ? '1' : '0' }}"
-     data-can-import="{{ calendar_can_import ? '1' : '0' }}"
+     data-can-import="{{ calendar_can_import|default(false) ? '1' : '0' }}"
      style="display:none;"></div>
 <div class="sa-page-header">
     <div class="sa-page-header-left">
@@ -346,9 +354,9 @@
     </div>
 </div>
 
-    {% if calendar_can_import or calendar_full_mode %}
+    {% if calendar_can_import|default(false) or calendar_full_mode %}
     <div class="sa-import-grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
-        {% if calendar_can_import %}
+        {% if calendar_can_import|default(false) %}
         <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" class="sa-import-card">
             <h3>Import Class Schedule</h3>
             <p>Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
@@ -374,7 +382,7 @@
 
         {% if calendar_full_mode %}
         <form id="modifyScheduleForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
-            <h3>Modify Facility Schedule</h3>
+            <h3>Schedule Managementt</h3>
             <input type="hidden" name="_token" id="modifyFormToken" value="{{ csrf_token('manual_schedule_block') }}">
             <input type="hidden" id="modifyBlockId" name="block_id" value="">
             <input type="hidden" id="modifyClassScheduleId" name="class_schedule_id" value="">
@@ -384,17 +392,17 @@
             <input type="hidden" name="faculty_name" id="modifyFacultyName" value="">
             <input type="hidden" name="faculty_email" id="modifyFacultyEmail" value="">
             <input type="hidden" name="class_schedule_facility" id="modifyClassScheduleFacility" value="">
-            
+
             <div id="modifyClassSummary" class="manual-class-summary" style="display:none;"></div>
-            
-            <div class="sa-import-field">
+
+            <div class="sa-import-field" id="actionTypeContainer" style="display:none;">
                 <label>Action Type</label>
                 <select name="action_type" id="modifyActionType" required>
                     <option value="modify">Modify Schedule Details</option>
                     <option value="block">Block This Time Slot</option>
                 </select>
             </div>
-            
+
             <div class="sa-import-mini-grid">
                 <select name="facility" id="modifyFacilitySelect" required class="sa-import-field">{% for facility in facilities %}<option value="{{ facility.id }}">{{ facility.name }}</option>{% endfor %}</select>
                 <input type="date" name="date" id="modifyScheduleDate" required class="sa-import-field">
@@ -420,15 +428,15 @@
             <div id="modifyFields" class="sa-import-mini-grid" style="display:none;">
                 <div class="sa-import-field">
                     <label>Course Code</label>
-                    <input type="text" name="course_code_input" id="modifyCourseCodeInput" placeholder="Course Code">
+                    <input type="text" name="course_code_input" id="modifyCourseCodeInput" placeholder="Course Code" readonly class="readonly-field">
                 </div>
                 <div class="sa-import-field">
                     <label>Section</label>
-                    <input type="text" name="section_input" id="modifySectionInput" placeholder="Section">
+                    <input type="text" name="section_input" id="modifySectionInput" placeholder="Section" readonly class="readonly-field">
                 </div>
                 <div class="sa-import-field">
                     <label>Faculty Name</label>
-                    <input type="text" name="faculty_name_input" id="modifyFacultyNameInput" placeholder="Faculty Name">
+                    <input type="text" name="faculty_name_input" id="modifyFacultyNameInput" placeholder="Faculty Name" readonly class="readonly-field">
                 </div>
                 <div class="sa-import-field">
                     <label>Faculty Email</label>
@@ -737,10 +745,22 @@
     </div>
 </div>
 
+<div id="deleteBlockModal" class="delete-schedule-modal">
+    <div class="delete-schedule-dialog">
+        <div class="delete-schedule-icon">!</div>
+        <h3>Delete Schedule Block?</h3>
+        <p>This will delete this schedule block. The time slot will become available for reservations.</p>
+        <div class="delete-schedule-actions">
+            <button type="button" id="cancelDeleteBlock" class="delete-schedule-cancel">Cancel</button>
+            <button type="button" id="confirmDeleteBlock" class="delete-schedule-confirm">Yes, Delete Block</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // Move modals to body to ensure they're not constrained by parent containers
     document.addEventListener('DOMContentLoaded', function() {
-        const modals = ['eventModal', 'deleteScheduleModal', 'revertScheduleModal', 'deleteClassScheduleModal'];
+        const modals = ['eventModal', 'deleteScheduleModal', 'revertScheduleModal', 'deleteClassScheduleModal', 'deleteBlockModal'];
         modals.forEach(modalId => {
             const modal = document.getElementById(modalId);
             if (modal && modal.parentElement !== document.body) {
@@ -1062,6 +1082,7 @@
             if (e.target.id === 'deleteScheduleModal') closeDeleteScheduleModal();
             if (e.target.id === 'revertScheduleModal') closeRevertScheduleModal();
             if (e.target.id === 'deleteClassScheduleModal') closeDeleteClassScheduleModal();
+            if (e.target.id === 'deleteBlockModal') closeDeleteBlockModal();
         };
         on(window, 'click', winClickFn, L);
 
@@ -1083,17 +1104,22 @@
         if (calendarConfig.canImport) {
             on(document.getElementById('scheduleImportForm'),    'submit', importScheduleInBackground,      L);
             on(document.getElementById('scheduleDeleteSubmit'),  'click',  openDeleteScheduleModal,         L);
-            on(document.getElementById('cancelDeleteSchedule'),  'click',  closeDeleteScheduleModal,        L);
-            on(document.getElementById('confirmDeleteSchedule'), 'click',  deleteImportedScheduleInBackground, L);
-            on(document.getElementById('cancelRevertSchedule'),  'click',  closeRevertScheduleModal,        L);
-            on(document.getElementById('confirmRevertSchedule'), 'click',  confirmRevertSchedule,            L);
-            on(document.getElementById('cancelDeleteClassSchedule'),  'click',  closeDeleteClassScheduleModal,        L);
-            on(document.getElementById('confirmDeleteClassSchedule'), 'click',  confirmDeleteClassSchedule,            L);
         }
+        // Delete class schedule, delete imported schedule, delete block, and revert buttons should work in both canImport and fullMode
+        on(document.getElementById('cancelDeleteClassSchedule'),  'click',  closeDeleteClassScheduleModal,        L);
+        on(document.getElementById('confirmDeleteClassSchedule'), 'click',  confirmDeleteClassSchedule,            L);
+        on(document.getElementById('cancelDeleteBlock'),  'click',  closeDeleteBlockModal,        L);
+        on(document.getElementById('confirmDeleteBlock'), 'click',  confirmDeleteBlock,            L);
+        on(document.getElementById('cancelDeleteSchedule'),  'click',  closeDeleteScheduleModal,        L);
+        on(document.getElementById('confirmDeleteSchedule'), 'click',  deleteImportedScheduleInBackground, L);
+        on(document.getElementById('cancelRevertSchedule'),  'click',  closeRevertScheduleModal,        L);
+        on(document.getElementById('confirmRevertSchedule'), 'click',  confirmRevertSchedule,            L);
         if (calendarConfig.fullMode) {
             on(document.getElementById('modifyScheduleForm'),       'submit', saveModifyScheduleInBackground, L);
             on(document.getElementById('modifyCancelEdit'), 'click',  resetModifyScheduleForm,        L);
             on(document.getElementById('modifyActionType'), 'change', handleModifyActionTypeChange, L);
+            // Initialize form in block-only mode on page load
+            resetModifyScheduleForm();
         }
 
         // Remove references to deleted manualBlockForm to prevent errors
@@ -1105,7 +1131,7 @@
 
         inst.timer = setInterval(() => {
             if (!document.hidden) renderCalendar(true);
-        }, 60000);  // 60 s — calendar data rarely changes; user actions trigger immediate refresh
+        }, 300000);  // 5 min — calendar data rarely changes; user actions trigger immediate refresh
 
         renderCalendar();
     }
@@ -1265,13 +1291,49 @@
         const actionType = e.target.value;
         const modifyFields = document.getElementById('modifyFields');
         const blockFields = document.getElementById('blockFields');
-        
+        const facilitySelect = document.getElementById('modifyFacilitySelect');
+        const startTimeSelect = document.getElementById('modifyStartTime');
+        const endTimeSelect = document.getElementById('modifyEndTime');
+        const readonlyInputs = [
+            document.getElementById('modifyCourseCodeInput'),
+            document.getElementById('modifySectionInput'),
+            document.getElementById('modifyFacultyNameInput')
+        ];
+        const classScheduleId = document.getElementById('modifyClassScheduleId').value;
+        const isClassSchedule = classScheduleId && classScheduleId !== '';
+
         if (actionType === 'modify') {
             modifyFields.style.display = 'grid';
             blockFields.style.display = 'none';
+            // Disable facility select in modify mode (class schedule facility cannot be changed)
+            facilitySelect.disabled = true;
+            facilitySelect.classList.add('disabled-field');
+            // Add readonly styling to inputs
+            readonlyInputs.forEach(input => {
+                if (input) input.classList.add('readonly-field');
+            });
         } else if (actionType === 'block') {
             modifyFields.style.display = 'none';
             blockFields.style.display = 'grid';
+            // For class schedules being blocked, time is also not changeable
+            if (isClassSchedule) {
+                startTimeSelect.disabled = true;
+                startTimeSelect.classList.add('disabled-field');
+                endTimeSelect.disabled = true;
+                endTimeSelect.classList.add('disabled-field');
+            } else {
+                // Enable facility and time selects in block mode for regular blocks
+                facilitySelect.disabled = false;
+                facilitySelect.classList.remove('disabled-field');
+                startTimeSelect.disabled = false;
+                startTimeSelect.classList.remove('disabled-field');
+                endTimeSelect.disabled = false;
+                endTimeSelect.classList.remove('disabled-field');
+            }
+            // Remove readonly styling from inputs
+            readonlyInputs.forEach(input => {
+                if (input) input.classList.remove('readonly-field');
+            });
         }
     }
 
@@ -1285,9 +1347,20 @@
         document.getElementById('modifyFormToken').value = form.dataset.blockToken || '';
         document.getElementById('modifyClassSummary').style.display = 'none';
         document.getElementById('modifyFields').style.display = 'none';
-        document.getElementById('blockFields').style.display = 'none';
+        document.getElementById('blockFields').style.display = 'grid';
         document.getElementById('modifySubmit').textContent = 'Submit';
         document.getElementById('modifyCancelEdit').style.display = 'none';
+        // Hide action type dropdown when no class is selected
+        document.getElementById('actionTypeContainer').style.display = 'none';
+        document.getElementById('modifyActionType').value = 'block';
+        // Enable facility select (default block mode)
+        const facilitySelect = document.getElementById('modifyFacilitySelect');
+        facilitySelect.disabled = false;
+        facilitySelect.classList.remove('disabled-field');
+        // Remove readonly styling from inputs
+        document.getElementById('modifyCourseCodeInput').classList.remove('readonly-field');
+        document.getElementById('modifySectionInput').classList.remove('readonly-field');
+        document.getElementById('modifyFacultyNameInput').classList.remove('readonly-field');
 
         if (clearMessage) {
             document.getElementById('modifyMessage').style.display = 'none';
@@ -1320,6 +1393,7 @@
             
             // Determine the correct endpoint based on action type and edit mode
             let actionUrl;
+            const blockId = document.getElementById('modifyBlockId').value;
             if (editMode === 'class' && classScheduleId) {
                 // For class schedule modification, use the class schedule update endpoint
                 if (actionType === 'block') {
@@ -1327,6 +1401,10 @@
                 } else {
                     actionUrl = `/super-admin/class-schedule/${classScheduleId}/update`;
                 }
+            } else if (editMode === 'block' && blockId) {
+                // For block editing, use the update endpoint with numeric block ID
+                const numericBlockId = blockId.toString().replace('block_', '');
+                actionUrl = `/super-admin/calendar/block/${numericBlockId}/update`;
             } else {
                 // For manual blocks, use the block endpoint
                 actionUrl = form.action;
@@ -1685,6 +1763,11 @@
             }
 
             calendarEventsCache.set(cacheKey, events);
+            // Limit cache size to prevent memory leaks (keep last 5 cache entries)
+            if (calendarEventsCache.size > 5) {
+                const firstKey = calendarEventsCache.keys().next().value;
+                calendarEventsCache.delete(firstKey);
+            }
             renderCalendarEvents(events, startDate, renderDate, renderMode);
             setCalendarStatus(`Loaded ${events.length} calendar item${events.length === 1 ? '' : 's'} successfully.`, 'success', false);
         } catch (error) {
@@ -1716,20 +1799,27 @@
         bindEventBlocks();
     }
 
+    // Use event delegation for better performance - single listener on container
     function bindEventBlocks() {
-        document.querySelectorAll('.event-block').forEach(el => {
-            el.addEventListener('click', () => {
-                // Check if the event is on a Sunday
-                const eventDate = el.dataset.date;
-                if (eventDate) {
-                    const date = new Date(eventDate);
-                    if (date.getDay() === 0) { // Sunday
-                        return; // Prevent opening modal on Sundays
-                    }
+        const container = document.getElementById('calendarView');
+        if (!container || container._eventDelegateBound) return;
+        
+        container.addEventListener('click', (e) => {
+            const el = e.target.closest('.event-block');
+            if (!el) return;
+            
+            // Check if the event is on a Sunday
+            const eventDate = el.dataset.date;
+            if (eventDate) {
+                const date = new Date(eventDate);
+                if (date.getDay() === 0) { // Sunday
+                    return; // Prevent opening modal on Sundays
                 }
-                openEventModal(el);
-            });
+            }
+            openEventModal(el);
         });
+        
+        container._eventDelegateBound = true;
     }
 
     function getCalendarCacheKey(startDate, endDate, renderDate, renderMode) {
@@ -1987,7 +2077,7 @@
                 if (data.status === 'Blocked' || data.status === 'Maintenance') {
                     actionsHtml += '<button type="button" class="btn-approve" onclick="revertBlockFromModal()">Revert to Normal</button>';
                 } else {
-                    actionsHtml += '<button type="button" class="btn-edit" style="background:#0d9b00;" onclick="modifyClassScheduleFromModal()">Modify Facility Schedule</button>';
+                    actionsHtml += '<button type="button" class="btn-edit" style="background:#0d9b00;" onclick="modifyClassScheduleFromModal()">Edit Class Schedule</button>';
                 }
                 actionsHtml += '<button type="button" class="btn-delete" onclick="deleteClassScheduleFromModal()">Delete</button>';
             }
@@ -2086,10 +2176,30 @@
         document.getElementById('modifyClassSummary').innerHTML = summaryParts.map((p) => escapeHtml(p)).join('<br>');
         document.getElementById('modifyClassSummary').style.display = 'block';
 
+        // Show action type dropdown and set to modify when class is selected
+        document.getElementById('actionTypeContainer').style.display = 'block';
         document.getElementById('modifyActionType').value = 'modify';
+
+        // Show modify fields for class schedule editing
         document.getElementById('modifyFields').style.display = 'grid';
         document.getElementById('blockFields').style.display = 'none';
-        
+
+        // Disable facility select in modify mode (class schedule facility cannot be changed)
+        const facilitySelect = document.getElementById('modifyFacilitySelect');
+        facilitySelect.disabled = true;
+        facilitySelect.classList.add('disabled-field');
+
+        // Add readonly styling to course code, section, and faculty name
+        document.getElementById('modifyCourseCodeInput').classList.add('readonly-field');
+        document.getElementById('modifySectionInput').classList.add('readonly-field');
+        document.getElementById('modifyFacultyNameInput').classList.add('readonly-field');
+
+        // Store original class times for blocking (time cannot be changed when blocking a class)
+        const startTimeSelect = document.getElementById('modifyStartTime');
+        const endTimeSelect = document.getElementById('modifyEndTime');
+        startTimeSelect.dataset.classStartTime = modal.dataset.activeStart || '';
+        endTimeSelect.dataset.classEndTime = modal.dataset.activeEnd || '';
+
         document.getElementById('modifyCourseCodeInput').value = modal.dataset.activeCourseCode || '';
         document.getElementById('modifySectionInput').value = modal.dataset.activeSection || '';
         document.getElementById('modifyFacultyNameInput').value = modal.dataset.activeFacultyName || '';
@@ -2154,9 +2264,12 @@
 
             closeModal();
             calendarEventsCache.clear();
-            broadcastScheduleRevision(data.scheduleRevision);
-            setCalendarStatus('Class schedule deleted. Refreshing calendar...', 'loading', false);
-            await renderCalendar(true);
+            if (data.scheduleRevision) {
+                broadcastScheduleRevision(data.scheduleRevision);
+            }
+            setCalendarStatus('Class schedule deleted.', 'success', false);
+            // Non-blocking refresh
+            renderCalendar(true);
         } catch (error) {
             setCalendarStatus('Could not delete class schedule.', 'error', false);
         }
@@ -2190,12 +2303,24 @@
         document.getElementById('modifyBlockType').value = modal.dataset.activeStatus || 'Blocked';
         document.getElementById('modifyBlockReason').value = modal.dataset.activeTitle || '';
         document.getElementById('modifyNotes').value = modal.dataset.activePurpose || '';
-        
-        // Show block fields
+
+        // Hide action type dropdown for blocks and set to block
+        document.getElementById('actionTypeContainer').style.display = 'none';
         document.getElementById('modifyActionType').value = 'block';
+
+        // Enable facility select for block editing (blocks can change facilities)
+        const facilitySelect = document.getElementById('modifyFacilitySelect');
+        facilitySelect.disabled = false;
+        facilitySelect.classList.remove('disabled-field');
+        // Remove readonly styling from inputs
+        document.getElementById('modifyCourseCodeInput').classList.remove('readonly-field');
+        document.getElementById('modifySectionInput').classList.remove('readonly-field');
+        document.getElementById('modifyFacultyNameInput').classList.remove('readonly-field');
+
+        // Show block fields for block editing
         document.getElementById('modifyFields').style.display = 'none';
         document.getElementById('blockFields').style.display = 'grid';
-        
+
         document.getElementById('modifySubmit').textContent = 'Update Block';
         document.getElementById('modifyCancelEdit').style.display = 'inline-block';
         document.getElementById('modifyMessage').style.display = 'none';
@@ -2224,33 +2349,56 @@
         const modal = document.getElementById('eventModal');
         const blockId = modal.dataset.activeBlock;
 
-        if (!blockId || !window.confirm('Delete this schedule block? This time slot will become available.')) {
+        if (!blockId) {
             return;
         }
 
+        // Show the delete confirmation modal
+        const deleteModal = document.getElementById('deleteBlockModal');
+        deleteModal.classList.add('is-open');
+        
+        // Store the block ID for the confirm action
+        deleteModal.dataset.blockId = blockId;
+    }
+
+    function closeDeleteBlockModal() {
+        document.getElementById('deleteBlockModal').classList.remove('is-open');
+    }
+
+    async function confirmDeleteBlock() {
+        const deleteModal = document.getElementById('deleteBlockModal');
+        const blockId = deleteModal.dataset.blockId;
+
+        if (!blockId) {
+            closeDeleteBlockModal();
+            return;
+        }
+
+        closeDeleteBlockModal();
         setCalendarStatus('Deleting schedule block...', 'loading', false);
 
-        fetch(`/super-admin/calendar/block/${blockId}/delete`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal();
-                calendarEventsCache.clear();
-                setCalendarStatus('Schedule block deleted. Refreshing calendar...', 'loading', false);
-                renderCalendar(true);
-            } else {
-                setCalendarStatus('Could not delete schedule block. Try again.', 'error', false);
+        try {
+            const response = await fetch(`/super-admin/calendar/block/${blockId}/delete`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Delete failed.');
             }
-        })
-        .catch(error => {
-            setCalendarStatus('Could not delete schedule block. Try again.', 'error', false);
-        });
+
+            closeModal();
+            calendarEventsCache.clear();
+            setCalendarStatus('Schedule block deleted.', 'success', false);
+            // Non-blocking refresh
+            renderCalendar(true);
+        } catch (error) {
+            setCalendarStatus('Could not delete schedule block.', 'error', false);
+        }
     }
 
     async function notifyClassScheduleFaculty(data) {

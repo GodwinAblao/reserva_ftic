@@ -311,10 +311,6 @@ class AdminRoleController extends AbstractController
     #[Route('/reservations/{id}/edit', name: 'admin_role_edit_reservation', methods: ['GET'])]
     public function editReservation(Reservation $reservation, FacilityRepository $facilityRepo): Response
     {
-        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
-            return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
-        }
-
         return $this->render('super_admin/edit_reservation.html.twig', [
             'reservation' => $reservation,
             'facilities' => $facilityRepo->findAll(),
@@ -331,10 +327,6 @@ class AdminRoleController extends AbstractController
         EntityManagerInterface $em,
         ReservationAuditLogger $auditLogger,
     ): Response {
-        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
-            return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
-        }
-
         if (!$this->isCsrfTokenValid('update_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }

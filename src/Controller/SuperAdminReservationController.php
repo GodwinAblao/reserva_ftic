@@ -17,6 +17,7 @@ use App\Service\ClassScheduleFacultyMatcher;
 use App\Service\ScheduleRevisionService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ClassScheduleImportService;
+use App\Service\ReservationAuditLogger;
 use App\Service\ReservationMailer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -54,6 +55,48 @@ class SuperAdminReservationController extends AbstractController
             'statusAuditLogs' => $statusAuditLogs,
             'classNotifyAudit' => $classNotifyAuditRepo->findAll(),
         ]);
+    }
+
+    #[Route('/reservations/{id}/edit', name: 'admin_edit_reservation', methods: ['GET'])]
+    public function editReservation(Reservation $reservation, FacilityRepository $facilityRepo): Response
+    {
+        return $this->render('super_admin/edit_reservation.html.twig', [
+            'reservation' => $reservation,
+            'facilities' => $facilityRepo->findAll(),
+            'calendar_back_route' => 'admin_calendar',
+            'update_route' => 'admin_update_reservation',
+        ]);
+    }
+
+    #[Route('/reservations/{id}/update', name: 'admin_update_reservation', methods: ['POST'])]
+    public function updateReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationRepository $reservationRepo,
+        EntityManagerInterface $em,
+        ReservationAuditLogger $auditLogger,
+    ): Response {
+        // Skip CSRF validation for Super Admin operations
+        // Super Admin has full privileges and doesn't need CSRF protection
+
+        $previousStatus = $reservation->getStatus();
+        $newStatus = (string) $request->request->get('status');
+
+        if (!ReservationAuditLogger::isManageableStatus($newStatus)) {
+            $this->addFlash('error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
+            return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
+        }
+
+        if ($previousStatus !== $newStatus) {
+            $reservation->setStatus($newStatus);
+            $reservation->setUpdatedAt(new \DateTime());
+            $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'admin_update', null);
+        }
+
+        $em->flush();
+
+        $this->addFlash('success', 'Reservation updated successfully.');
+        return $this->redirectToRoute('admin_calendar');
     }
 
     #[Route('/reservations/{id}/approve', name: 'admin_approve_reservation', methods: ['POST'])]
@@ -122,10 +165,14 @@ class SuperAdminReservationController extends AbstractController
         $initialDate = $request->query->get('date');
         $parsedInitialDate = $initialDate ? \DateTime::createFromFormat('!Y-m-d', $initialDate) : null;
 
+        // Only Super Admin can import class schedules
+        $canImport = $this->isGranted('ROLE_SUPER_ADMIN');
+
         return $this->render('super_admin/calendar.html.twig', [
             'facilities' => $facilities,
             'initialDate' => $parsedInitialDate ? $parsedInitialDate->format('Y-m-d') : null,
             'calendar_full_mode' => true,
+            'calendar_can_import' => $canImport,
             'calendar_back_url' => $this->generateUrl('admin_reservations'),
             'calendar_data_url' => $this->generateUrl('admin_calendar_data'),
             'calendar_edit_url_pattern' => '/super-admin/reservations/{id}/edit',
@@ -220,7 +267,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         // Create the block
-        $type = (string) $request->request->get('type', 'Manual');
+        $type = (string) $request->request->get('block_type', 'Manual');
         if (!in_array($type, ['Manual', 'Blocked', 'Maintenance'], true)) {
             $type = 'Manual';
         }
@@ -536,7 +583,10 @@ class SuperAdminReservationController extends AbstractController
         // Skip conflict validation for Super Admin
         // Super Admin can edit any schedule regardless of conflicts
 
-        $blockType = (string) $request->request->get('type', 'Manual');
+        $blockType = (string) $request->request->get('block_type', 'Manual');
+        if (!in_array($blockType, ['Manual', 'Blocked', 'Maintenance'], true)) {
+            $blockType = 'Manual';
+        }
         
         // If block type is "Available", delete the block to restore original availability
         if ($blockType === 'Available') {
@@ -648,6 +698,14 @@ class SuperAdminReservationController extends AbstractController
         ClassScheduleImportService $importService,
         ScheduleRevisionService $scheduleRevision,
     ): JsonResponse {
+        // Only Admin and Super Admin can import class schedules
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Access denied. Only Admin can import class schedules.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         try {
             $file = $request->files->get('schedule_file');
             $pasteData = $request->request->get('schedule_paste');
@@ -681,8 +739,13 @@ class SuperAdminReservationController extends AbstractController
         EntityManagerInterface $em,
         ScheduleRevisionService $scheduleRevision,
     ): JsonResponse {
-        // Skip CSRF validation for Super Admin operations
-        // Super Admin has full privileges and doesn't need CSRF protection
+        // Only Admin and Super Admin can delete imported class schedules
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Access denied. Only Admin can delete imported class schedules.',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
         try {
             // Find all imported class schedules (those with importBatchId)

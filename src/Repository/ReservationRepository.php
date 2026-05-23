@@ -95,6 +95,7 @@ class ReservationRepository extends ServiceEntityRepository
         ?int $excludeReservationId = null,
         array $statuses = ['Approved'],
         ?int $excludeClassScheduleId = null,
+        ?int $excludeBlockId = null,
     ): bool
     {
         $startOfDay = (clone $date)->setTime(0, 0, 0);
@@ -131,7 +132,7 @@ class ReservationRepository extends ServiceEntityRepository
         $blockRepo = $this->getEntityManager()->getRepository(FacilityScheduleBlock::class);
         $classRepo = $this->getEntityManager()->getRepository(ClassSchedule::class);
 
-        if ($blockRepo->isBlocked($facility, $date, $startTime, $endTime)) {
+        if ($blockRepo->isBlocked($facility, $date, $startTime, $endTime, $excludeBlockId)) {
             return true;
         }
 
