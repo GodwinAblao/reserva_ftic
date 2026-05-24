@@ -71,8 +71,16 @@
                     <div class="reservations-grid">
                         {% if sentCustomRequests|length > 0 %}
                             {% for request in sentCustomRequests %}
-                                <div class="reservation-card-new">
-                                    <div class="card-title">{{ request.mentorProfile ? request.mentorProfile.displayName : 'Mentor Assistance Request' }}</div>
+                                <div class="reservation-card-new" data-req-id="{{ request.id }}">
+                                    <div class="card-title">
+                                        {% if request.mentorProfile %}
+                                            {{ request.mentorProfile.displayName }}
+                                        {% elseif request.assignedMentorName %}
+                                            {{ request.assignedMentorName }}
+                                        {% else %}
+                                            Mentor Assistance Request
+                                        {% endif %}
+                                    </div>
                                     <div class="card-divider"></div>
                                     <div class="card-info-grid">
                                         <div class="info-item">
@@ -83,29 +91,74 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
                                         </div>
-                                        {% if request.isAssistanceRequest %}
-                                        <div class="info-item wide">
-                                            <span class="info-label">Details</span>
-                                            <span class="info-value">{{ request.departmentCourse }} - {{ request.preferredExpertise }}</span>
+                                        {% if request.preferredExpertise %}
+                                        <div class="info-item">
+                                            <span class="info-label">Specialization Needed</span>
+                                            <span class="info-value">{{ request.preferredExpertise }}</span>
                                         </div>
-                                        <div class="info-item wide">
-                                            <span class="info-label">Preferred Schedule</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates : 'Not specified' }} {{ request.preferredSchedule ? '(' ~ request.preferredSchedule ~ ')' : '' }}</span>
+                                        {% endif %}
+                                        {% if request.departmentCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Degree / Course</span>
+                                            <span class="info-value">{{ request.departmentCourse }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableDates %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Day</span>
+                                            <span class="info-value">{{ request.availableDates }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredSchedule %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Time</span>
+                                            <span class="info-value">{{ request.preferredSchedule }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
                                     <div class="card-info-footer">
+                                        {% if request.message and request.message != 'No additional notes provided.' %}
                                         <div class="info-item wide">
                                             <span class="info-label">Message</span>
                                             <span class="info-value">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</span>
                                         </div>
+                                        {% endif %}
                                         {% if request.assignedMentorName %}
-                                        <div class="info-item wide">
+                                        <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
                                             <span class="info-label">Assigned Mentor</span>
-                                            <span class="info-value status-approved">{{ request.assignedMentorName }}</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} — {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableTime %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Confirmed Time</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' · ' : '' }}{{ request.availableTime }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod %}
+                                        <div class="info-item">
+                                            <span class="info-label">Meeting Method</span>
+                                            <span class="info-value">{{ request.meetingMethod }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.adminInstructions %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Admin Instructions</span>
+                                            <span class="info-value">{{ request.adminInstructions }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
+                                    {% if request.status not in ['Cancelled', 'Completed'] %}
+                                    <div class="card-actions" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
+                                        <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" onsubmit="return confirm('Cancel this mentor request? This cannot be undone.');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
+                                            <input type="hidden" name="action" value="cancel">
+                                            <button type="submit" style="background:#dc2626;color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;">
+                                                Cancel Request
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         {% else %}
@@ -325,10 +378,18 @@
             {% set recentRequest = sentCustomRequests|first %}
             {% if recentRequest %}
                 <p>
-                    <strong>{{ recentRequest.mentorProfile ? recentRequest.mentorProfile.displayName : 'Mentor Request' }}</strong> —
-                    {{ recentRequest.status|capitalize }}
+                    <strong>
+                        {% if recentRequest.preferredExpertise %}{{ recentRequest.preferredExpertise }}{% elseif recentRequest.mentorProfile %}{{ recentRequest.mentorProfile.displayName }}{% else %}Mentor Request{% endif %}
+                    </strong> —
+                    <span class="info-value status-{{ recentRequest.status|lower }}">{{ recentRequest.status|capitalize }}</span>
                     on {{ recentRequest.createdAt|date('M d, Y') }}.
                 </p>
+                {% if recentRequest.availableDates %}
+                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} · {{ recentRequest.preferredSchedule }}{% endif %}</p>
+                {% endif %}
+                {% if recentRequest.assignedMentorName %}
+                <p style="font-size:12px;color:#0D9B00;margin:4px 0 0;font-weight:600;">Assigned: {{ recentRequest.assignedMentorName }}</p>
+                {% endif %}
             {% else %}
                 <p>You have no mentoring requests yet. Submit a request to get started!</p>
             {% endif %}
@@ -466,22 +527,19 @@
                                 <option value="Thursday">Thursday</option>
                                 <option value="Friday">Friday</option>
                                 <option value="Saturday">Saturday</option>
-                                <option value="Monday | M-W-TH">Monday | M-W-TH</option>
-                                <option value="Tuesday | T-TH">Tuesday | T-TH</option>
-                                <option value="Wednesday | M-W">Wednesday | M-W</option>
-                                <option value="Thursday | T-TH-S">Thursday | T-TH-S</option>
-                                <option value="Friday | M-F">Friday | M-F</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="assistance_schedule_start">Preferred Time — Start <span style="color:#c00">*</span></label>
-                            <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="21:00" required>
+                            <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="19:00" required>
+                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">⚠ Only 7:00 AM – 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-grid form-grid-2">
                         <div class="form-group">
                             <label for="assistance_schedule_end">End Time <span style="color:#c00">*</span></label>
-                            <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="21:00" required>
+                            <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="19:00" required>
+                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">⚠ Only 7:00 AM – 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-group">
@@ -505,15 +563,31 @@
     <script>
         // ===== ASSISTANCE SCHEDULE END-TIME GUARD =====
         (function () {
+            function clampTime(el, warnId) {
+                const warn = document.getElementById(warnId);
+                if (!el.value) { if (warn) warn.style.display = 'none'; return; }
+                if (el.value < '07:00' || el.value > '19:00') {
+                    if (warn) warn.style.display = 'block';
+                    if (el.value < '07:00') el.value = '07:00';
+                    if (el.value > '19:00') el.value = '19:00';
+                    setTimeout(function(){ if (warn) warn.style.display = 'none'; }, 3500);
+                } else {
+                    if (warn) warn.style.display = 'none';
+                }
+            }
             function init() {
                 const startEl = document.getElementById('assistance_schedule_start');
                 const endEl   = document.getElementById('assistance_schedule_end');
                 if (!startEl || !endEl) return;
                 startEl.addEventListener('change', function () {
+                    clampTime(startEl, 'assistance_schedule_start_warn');
                     if (endEl.value && endEl.value <= startEl.value) {
                         endEl.value = '';
                     }
-                    endEl.min = startEl.value;
+                    endEl.min = startEl.value || '07:00';
+                });
+                endEl.addEventListener('change', function () {
+                    clampTime(endEl, 'assistance_schedule_end_warn');
                 });
             }
             if (document.readyState === 'loading') {
@@ -736,6 +810,108 @@
                 }
             });
         }
+
+        // ===== USER REQUEST REAL-TIME POLLING =====
+        (function(){
+            var POLL_URL = '{{ path("mentoring_my_requests_data") }}';
+            var INTERVAL = 20000;
+            var _lastStatuses = {};
+
+            function statusClass(s){ return s ? s.toLowerCase() : 'pending'; }
+
+            function renderCard(r){
+                var title = r.mentorProfileName || r.assignedMentorName || r.preferredExpertise || 'Mentor Assistance Request';
+                var rows = '';
+                rows += '<div class="info-item"><span class="info-label">Status</span><span class="info-value status-'+statusClass(r.status)+'">'+r.status+'</span></div>';
+                rows += '<div class="info-item"><span class="info-label">Submitted</span><span class="info-value">'+r.createdAt+'</span></div>';
+                if(r.preferredExpertise) rows += '<div class="info-item"><span class="info-label">Specialization Needed</span><span class="info-value">'+r.preferredExpertise+'</span></div>';
+                if(r.departmentCourse)   rows += '<div class="info-item"><span class="info-label">Degree / Course</span><span class="info-value">'+r.departmentCourse+'</span></div>';
+                if(r.availableDates)     rows += '<div class="info-item"><span class="info-label">Preferred Day</span><span class="info-value">'+r.availableDates+'</span></div>';
+                if(r.preferredSchedule)  rows += '<div class="info-item"><span class="info-label">Preferred Time</span><span class="info-value">'+r.preferredSchedule+'</span></div>';
+
+                var footer = '';
+                if(r.message && r.message !== 'No additional notes provided.'){
+                    footer += '<div class="info-item wide"><span class="info-label">Message</span><span class="info-value">'+r.message.slice(0,160)+(r.message.length>160?'…':'')+'</span></div>';
+                }
+                if(r.assignedMentorName){
+                    footer += '<div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;"><span class="info-label">Assigned Mentor</span><span class="info-value status-approved"><strong>'+r.assignedMentorName+'</strong>'+(r.assignedMentorExpertise?' — '+r.assignedMentorExpertise:'')+'</span></div>';
+                }
+                if(r.availableTime){
+                    footer += '<div class="info-item wide"><span class="info-label">Confirmed Time</span><span class="info-value">'+(r.availableDates?r.availableDates+' · ':'')+r.availableTime+'</span></div>';
+                }
+                if(r.meetingMethod){
+                    footer += '<div class="info-item"><span class="info-label">Meeting Method</span><span class="info-value">'+r.meetingMethod+'</span></div>';
+                }
+                if(r.adminInstructions){
+                    footer += '<div class="info-item wide"><span class="info-label">Admin Instructions</span><span class="info-value">'+r.adminInstructions+'</span></div>';
+                }
+
+                return '<div class="reservation-card-new" data-req-id="'+r.id+'">'
+                    + '<div class="card-title">'+title+'</div>'
+                    + '<div class="card-divider"></div>'
+                    + '<div class="card-info-grid">'+rows+'</div>'
+                    + (footer ? '<div class="card-info-footer">'+footer+'</div>' : '')
+                    + '</div>';
+            }
+
+            function doPoll(){
+                fetch(POLL_URL, {headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
+                .then(function(r){ return r.ok ? r.json() : null; })
+                .then(function(data){
+                    if(!data || !data.requests) return;
+                    var grid = document.querySelector('#custom-requests-content .reservations-grid');
+                    if(!grid) return;
+
+                    var changed = false;
+                    data.requests.forEach(function(r){
+                        var prev = _lastStatuses[r.id];
+                        if(prev !== undefined && prev !== r.status) changed = true;
+                        _lastStatuses[r.id] = r.status;
+                    });
+
+                    /* Rebuild the grid cards */
+                    if(data.requests.length === 0){
+                        grid.innerHTML = '<div class="empty-mini-state"><p>You have not sent a custom request yet.</p></div>';
+                    } else {
+                        grid.innerHTML = data.requests.map(renderCard).join('');
+                    }
+
+                    /* Also update the sidebar Recent Request snippet */
+                    var sideP = document.querySelector('.reservations-side-card p');
+                    if(sideP && data.requests.length > 0){
+                        var latest = data.requests[0];
+                        var spec = latest.preferredExpertise || latest.mentorProfileName || 'Mentor Request';
+                        sideP.innerHTML = '<strong>'+spec+'</strong> — <span class="info-value status-'+statusClass(latest.status)+'">'+latest.status+'</span> on '+latest.createdAt+'.';
+                    }
+
+                    if(changed){
+                        var n=document.createElement('div');
+                        n.style.cssText='position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;background:#d1fae5;color:#065f46;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
+                        n.textContent='Your mentor request was updated!';
+                        document.body.appendChild(n);
+                        setTimeout(function(){n.style.opacity='0';setTimeout(function(){n.remove();},300);},4000);
+                    }
+                })
+                .catch(function(){});
+            }
+
+            function init(){
+                /* Seed initial statuses from rendered cards */
+                document.querySelectorAll('#custom-requests-content .reservation-card-new[data-req-id]').forEach(function(card){
+                    var s = card.querySelector('.info-value[class*="status-"]');
+                    if(s) _lastStatuses[card.dataset.reqId] = s.textContent.trim();
+                });
+                setTimeout(doPoll, 5000);
+                setInterval(doPoll, INTERVAL);
+            }
+
+            if(document.readyState === 'loading'){
+                document.addEventListener('DOMContentLoaded', init, {once:true});
+            } else {
+                init();
+            }
+            document.addEventListener('turbo:load', init);
+        })();
 
         document.querySelectorAll('form[data-loading-label]').forEach(form => {
             if (form.dataset.noLoading === 'true') {

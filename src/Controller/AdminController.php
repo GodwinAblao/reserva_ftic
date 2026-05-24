@@ -10,6 +10,7 @@ use App\Entity\MentorCustomRequest;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\MentoringAuditLog;
+use App\Repository\MentoringAuditLogRepository;
 use App\Entity\Reservation;
 use App\Entity\User;
 use App\Repository\ReservationStatusLogRepository;
@@ -440,18 +441,22 @@ class AdminController extends AbstractController
             $requesterName = $req->getFullName() ?: ($student ? trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? '')) : 'Unknown');
             $instructions = trim((string) $request->request->get('admin_instructions', ''));
             $noteText = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
-            $auditLog = (new MentoringAuditLog())
-                ->setSubjectType('custom_request')
-                ->setSubjectId($id)
-                ->setSubjectLabel($requesterName)
-                ->setAction('update_status')
-                ->setPreviousStatus($prevStatus)
-                ->setNewStatus($submittedStatus)
-                ->setPerformedBy($actor instanceof User ? $actor : null)
-                ->setPerformedByName($actorName)
-                ->setPerformedByRole($this->isGranted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin')
-                ->setNote($noteText);
-            $em->persist($auditLog);
+            /** @var MentoringAuditLogRepository $auditRepo */
+            $auditRepo = $em->getRepository(MentoringAuditLog::class);
+            if (!$auditRepo->existsRecent('custom_request', $id, 'update_status', $submittedStatus, $actor instanceof User ? $actor->getId() : null)) {
+                $auditLog = (new MentoringAuditLog())
+                    ->setSubjectType('custom_request')
+                    ->setSubjectId($id)
+                    ->setSubjectLabel($requesterName)
+                    ->setAction('update_status')
+                    ->setPreviousStatus($prevStatus)
+                    ->setNewStatus($submittedStatus)
+                    ->setPerformedBy($actor instanceof User ? $actor : null)
+                    ->setPerformedByName($actorName)
+                    ->setPerformedByRole($this->isGranted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin')
+                    ->setNote($noteText);
+                $em->persist($auditLog);
+            }
             $em->flush();
             foreach ($em->getRepository(User::class)->findAll() as $u) {
                 if ($u === $actor) continue;

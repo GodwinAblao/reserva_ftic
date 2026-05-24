@@ -6,6 +6,7 @@ USE `reserva_ftic`;
 
 START TRANSACTION;
 
+DROP TABLE IF EXISTS `mentoring_audit_log`;
 DROP TABLE IF EXISTS `reservation_status_log`;
 DROP TABLE IF EXISTS `facility_image`;
 DROP TABLE IF EXISTS `facility_schedule_block`;
@@ -19,6 +20,8 @@ DROP TABLE IF EXISTS `research_content`;
 DROP TABLE IF EXISTS `notifications`;
 DROP TABLE IF EXISTS `facility`;
 DROP TABLE IF EXISTS `messenger_messages`;
+DROP TABLE IF EXISTS `class_schedule_notification_log`;
+DROP TABLE IF EXISTS `class_schedule`;
 DROP TABLE IF EXISTS `user`;
 DROP TABLE IF EXISTS `doctrine_migration_versions`;
 
@@ -373,6 +376,28 @@ CREATE TABLE IF NOT EXISTS `reservation_status_log` (
         FOREIGN KEY (`changed_by_id`)
         REFERENCES `user` (`id`)
         ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mentoring_audit_log` (
+    `id` INT AUTO_INCREMENT NOT NULL,
+    `performed_by_id` INT DEFAULT NULL,
+    `subject_type` VARCHAR(30) NOT NULL,
+    `subject_id` INT DEFAULT NULL,
+    `subject_label` VARCHAR(120) NOT NULL,
+    `action` VARCHAR(40) NOT NULL,
+    `previous_status` VARCHAR(50) DEFAULT NULL,
+    `new_status` VARCHAR(50) DEFAULT NULL,
+    `performed_by_name` VARCHAR(60) DEFAULT NULL,
+    `performed_by_role` VARCHAR(30) DEFAULT NULL,
+    `note` LONGTEXT DEFAULT NULL,
+    `logged_at` DATETIME NOT NULL,
+    INDEX `idx_mentoring_audit_log_logged_at` (`logged_at`),
+    INDEX `IDX_mentoring_audit_performed_by` (`performed_by_id`),
+    PRIMARY KEY (`id`),
+    CONSTRAINT `FK_mentoring_audit_performed_by`
+        FOREIGN KEY (`performed_by_id`)
+        REFERENCES `user` (`id`)
+        ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `messenger_messages` (

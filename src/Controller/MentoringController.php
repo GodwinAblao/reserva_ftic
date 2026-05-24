@@ -148,7 +148,7 @@ class MentoringController extends AbstractController
 
         // Check if user can apply as mentor (no active applications and not already a mentor)
         $canApplyAsMentor = $currentUser instanceof User 
-            && $this->isGranted('ROLE_STUDENT') 
+            && ($this->isGranted('ROLE_STUDENT') || $this->isGranted('ROLE_FACULTY'))
             && !$this->isGranted('ROLE_MENTOR')
             && empty(array_filter($applications, fn($app) => in_array($app->getStatus(), ['Pending', 'Approved'])));
 
@@ -210,31 +210,120 @@ class MentoringController extends AbstractController
     #[IsGranted('ROLE_ADMIN')]
     public function adminMentorRequestsData(EntityManagerInterface $em): JsonResponse
     {
+        $allRequests  = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
+        $assistanceReqs = array_values(array_filter($allRequests, fn($r) => $r->isAssistanceRequest()));
         $applications = $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']);
-        
-        $data = array_map(function ($app) {
+
+        $mapReq = static function (MentorCustomRequest $r): array {
+            $s = $r->getStudent();
             return [
-                'id' => $app->getId(),
-                'student' => [
-                    'name' => $app->getStudent()->getFullName(),
-                    'email' => $app->getStudent()->getEmail(),
-                ],
-                'specialization' => $app->getSpecialization(),
-                'status' => $app->getStatus(),
-                'createdAt' => $app->getCreatedAt()->format('Y-m-d H:i:s'),
-                'currentProfession' => $app->getCurrentProfession(),
+                'id'                  => $r->getId(),
+                'fullName'            => $r->getFullName() ?: trim(($s?->getFirstName() ?? '') . ' ' . ($s?->getLastName() ?? '')),
+                'email'               => $s?->getEmail() ?? '',
+                'departmentCourse'    => $r->getDepartmentCourse() ?? '',
+                'preferredExpertise'  => $r->getPreferredExpertise() ?? '',
+                'availableDates'      => $r->getAvailableDates() ?? '',
+                'preferredSchedule'   => $r->getPreferredSchedule() ?? '',
+                'availableTime'       => $r->getAvailableTime() ?? '',
+                'assignedMentorName'  => $r->getAssignedMentorName() ?? '',
+                'assignedMentorExpertise' => $r->getAssignedMentorExpertise() ?? '',
+                'meetingMethod'       => $r->getMeetingMethod() ?? '',
+                'adminInstructions'   => $r->getAdminInstructions() ?? '',
+                'message'             => $r->getMessage() ?? '',
+                'status'              => $r->getStatus(),
+                'createdAt'           => $r->getCreatedAt()->format('Y-m-d H:i:s'),
             ];
-        }, $applications);
-        
-        return $this->json(['applications' => $data]);
+        };
+
+        $mapApp = static function (MentorApplication $a): array {
+            return [
+                'id'            => $a->getId(),
+                'firstName'     => $a->getFirstName() ?? '',
+                'lastName'      => $a->getLastName() ?? '',
+                'email'         => $a->getEmail(),
+                'specialization'=> $a->getSpecialization(),
+                'status'        => $a->getStatus(),
+                'createdAt'     => $a->getCreatedAt()->format('Y-m-d H:i:s'),
+            ];
+        };
+
+        $response = $this->json([
+            'requests'     => array_map($mapReq, $assistanceReqs),
+            'applications' => array_map($mapApp, $applications),
+            'ts'           => time(),
+        ]);
+        $response->setMaxAge(0)->headers->addCacheControlDirective('no-store');
+        return $response;
     }
 
-#[Route('/mentor-application', name: 'mentoring_apply', methods: ['POST'])]
-    #[IsGranted('ROLE_STUDENT')]
+    #[Route('/super-admin/audit-log/data', name: 'mentoring_audit_log_data', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function auditLogData(EntityManagerInterface $em): JsonResponse
+    {
+        $logs = $em->getRepository(MentoringAuditLog::class)->findRecent(60);
+        $data = array_map(static function (MentoringAuditLog $log): array {
+            return [
+                'id'              => $log->getId(),
+                'loggedAt'        => $log->getLoggedAt()->format('M d, Y'),
+                'loggedAtTime'    => $log->getLoggedAt()->format('h:i A'),
+                'subjectLabel'    => $log->getSubjectLabel(),
+                'subjectId'       => $log->getSubjectId(),
+                'subjectType'     => $log->getSubjectType(),
+                'action'          => $log->getAction(),
+                'previousStatus'  => $log->getPreviousStatus(),
+                'newStatus'       => $log->getNewStatus(),
+                'performedByName' => $log->getPerformedByName() ?? 'System',
+                'performedByRole' => $log->getPerformedByRole() ?? '',
+                'note'            => $log->getNote() ?? '',
+            ];
+        }, $logs);
+        $response = $this->json(['logs' => $data, 'ts' => time()]);
+        $response->setMaxAge(0)->headers->addCacheControlDirective('no-store');
+        return $response;
+    }
+
+    #[Route('/my-requests/data', name: 'mentoring_my_requests_data', methods: ['GET'])]
+    public function myRequestsData(EntityManagerInterface $em): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['requests' => [], 'ts' => time()]);
+        }
+        $reqs = $em->getRepository(MentorCustomRequest::class)->findBy(['student' => $user], ['createdAt' => 'DESC']);
+        $data = array_map(static function (MentorCustomRequest $r): array {
+            $mp = $r->getMentorProfile();
+            return [
+                'id'                      => $r->getId(),
+                'mentorProfileName'       => $mp?->getDisplayName() ?? '',
+                'preferredExpertise'      => $r->getPreferredExpertise() ?? '',
+                'departmentCourse'        => $r->getDepartmentCourse() ?? '',
+                'availableDates'          => $r->getAvailableDates() ?? '',
+                'preferredSchedule'       => $r->getPreferredSchedule() ?? '',
+                'assignedMentorName'      => $r->getAssignedMentorName() ?? '',
+                'assignedMentorExpertise' => $r->getAssignedMentorExpertise() ?? '',
+                'availableTime'           => $r->getAvailableTime() ?? '',
+                'meetingMethod'           => $r->getMeetingMethod() ?? '',
+                'adminInstructions'       => $r->getAdminInstructions() ?? '',
+                'message'                 => $r->getMessage() ?? '',
+                'status'                  => $r->getStatus(),
+                'createdAt'               => $r->getCreatedAt()->format('M d, Y'),
+            ];
+        }, $reqs);
+        $response = $this->json(['requests' => $data, 'ts' => time()]);
+        $response->setMaxAge(0)->headers->addCacheControlDirective('no-store');
+        return $response;
+    }
+
+    #[Route('/mentor-application', name: 'mentoring_apply', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function applyForMentor(Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isCsrfTokenValid('mentor_application', (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        if (!$this->isGranted('ROLE_STUDENT') && !$this->isGranted('ROLE_FACULTY')) {
+            throw $this->createAccessDeniedException('Only students and faculty may apply as mentor.');
         }
 
         $user = $this->getUser();
@@ -507,7 +596,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/application/{id}/cancel', name: 'mentoring_cancel_application', methods: ['POST'])]
-    #[IsGranted('ROLE_STUDENT')]
+    #[IsGranted('ROLE_USER')]
     public function cancelApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
     {
         // Security check: only the owner can cancel their own application
@@ -938,20 +1027,24 @@ $validUntil = $request->request->get('valid_until');
         }
 
         $currentUser = $this->getUser();
-        if (!$currentUser instanceof User || $mentorRequest->getStudent()?->getId() !== $currentUser->getId() || !$mentorRequest->isAssistanceRequest()) {
-            throw $this->createAccessDeniedException('You can only update your own mentor assistance requests.');
-        }
-
-        if ($mentorRequest->getStatus() !== 'Pending') {
-            $this->addFlash('error', 'Only pending mentor requests can be updated.');
-            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        if (!$currentUser instanceof User || $mentorRequest->getStudent()?->getId() !== $currentUser->getId()) {
+            throw $this->createAccessDeniedException('You can only update your own mentor requests.');
         }
 
         $action = (string) $request->request->get('action', 'update');
         if ($action === 'cancel') {
+            if (in_array($mentorRequest->getStatus(), ['Cancelled', 'Completed'], true)) {
+                $this->addFlash('error', 'This request has already been ' . strtolower($mentorRequest->getStatus()) . '.');
+                return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+            }
             $mentorRequest->setStatus('Cancelled');
             $em->flush();
             $this->addFlash('success', 'Your mentor request has been cancelled.');
+            return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+        }
+
+        if (!$mentorRequest->isAssistanceRequest() || $mentorRequest->getStatus() !== 'Pending') {
+            $this->addFlash('error', 'Only pending assistance requests can be edited. You can still cancel it.');
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
         }
 
@@ -978,7 +1071,7 @@ $validUntil = $request->request->get('valid_until');
         }
 
         $status = (string) $request->request->get('status', 'Pending');
-        if (!in_array($status, ['Pending', 'Assigned', 'Completed', 'Cancelled'], true)) {
+        if (!in_array($status, ['Pending', 'Reviewing', 'Assigned', 'Completed', 'Cancelled'], true)) {
             throw $this->createNotFoundException();
         }
 
@@ -1272,6 +1365,13 @@ $validUntil = $request->request->get('valid_until');
             }
             $actorRole = $this->isGranted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin';
         }
+
+        /** @var \App\Repository\MentoringAuditLogRepository $repo */
+        $repo = $em->getRepository(MentoringAuditLog::class);
+        if ($repo->existsRecent($subjectType, $subjectId, $action, $newStatus, $actor instanceof User ? $actor->getId() : null)) {
+            return;
+        }
+
         $log = (new MentoringAuditLog())
             ->setSubjectType($subjectType)
             ->setSubjectId($subjectId)

@@ -22,6 +22,7 @@ use App\Entity\User;
 use App\Entity\MentorCustomRequest;
 use App\Entity\MentorApplication;
 use App\Entity\MentoringAuditLog;
+use App\Repository\MentoringAuditLogRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -608,18 +609,22 @@ class AdminRoleController extends AbstractController
             if ($actorName === '') { $actorName = $actor instanceof User ? $actor->getEmail() : 'Admin'; }
             $instructions = trim((string) $request->request->get('admin_instructions', ''));
             $noteText = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
-            $auditLog = (new MentoringAuditLog())
-                ->setSubjectType('custom_request')
-                ->setSubjectId($id)
-                ->setSubjectLabel($requesterName)
-                ->setAction('update_status')
-                ->setPreviousStatus($prevStatus)
-                ->setNewStatus($submittedStatus)
-                ->setPerformedBy($actor instanceof User ? $actor : null)
-                ->setPerformedByName($actorName)
-                ->setPerformedByRole('Admin')
-                ->setNote($noteText);
-            $em->persist($auditLog);
+            /** @var MentoringAuditLogRepository $auditRepo */
+            $auditRepo = $em->getRepository(MentoringAuditLog::class);
+            if (!$auditRepo->existsRecent('custom_request', $id, 'update_status', $submittedStatus, $actor instanceof User ? $actor->getId() : null)) {
+                $auditLog = (new MentoringAuditLog())
+                    ->setSubjectType('custom_request')
+                    ->setSubjectId($id)
+                    ->setSubjectLabel($requesterName)
+                    ->setAction('update_status')
+                    ->setPreviousStatus($prevStatus)
+                    ->setNewStatus($submittedStatus)
+                    ->setPerformedBy($actor instanceof User ? $actor : null)
+                    ->setPerformedByName($actorName)
+                    ->setPerformedByRole('Admin')
+                    ->setNote($noteText);
+                $em->persist($auditLog);
+            }
             $em->flush();
             $actorName2 = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Admin';
             foreach ($em->getRepository(User::class)->findAll() as $u) {
@@ -927,5 +932,54 @@ class AdminRoleController extends AbstractController
         ], $leaderboard);
 
         return $this->json(['requests' => $reqData, 'leaderboard' => $lbData]);
+    }
+
+    #[Route('/api/mentoring-requests-poll', name: 'admin_role_api_mentoring_poll', methods: ['GET'])]
+    public function mentoringRequestsPoll(EntityManagerInterface $em): JsonResponse
+    {
+        $allReqs = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
+        $applications = $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC']);
+
+        $mapReq = static function (MentorCustomRequest $r): array {
+            $s = $r->getStudent();
+            return [
+                'id'                      => $r->getId(),
+                'fullName'                => $r->getFullName() ?: trim(($s?->getFirstName() ?? '') . ' ' . ($s?->getLastName() ?? '')),
+                'email'                   => $s?->getEmail() ?? '',
+                'departmentCourse'        => $r->getDepartmentCourse() ?? '',
+                'preferredExpertise'      => $r->getPreferredExpertise() ?? '',
+                'availableDates'          => $r->getAvailableDates() ?? '',
+                'preferredSchedule'       => $r->getPreferredSchedule() ?? '',
+                'availableTime'           => $r->getAvailableTime() ?? '',
+                'assignedMentorName'      => $r->getAssignedMentorName() ?? '',
+                'assignedMentorExpertise' => $r->getAssignedMentorExpertise() ?? '',
+                'meetingMethod'           => $r->getMeetingMethod() ?? '',
+                'adminInstructions'       => $r->getAdminInstructions() ?? '',
+                'message'                 => $r->getMessage() ?? '',
+                'status'                  => $r->getStatus(),
+                'createdAt'               => $r->getCreatedAt()->format('Y-m-d H:i:s'),
+                'isAssistance'            => $r->isAssistanceRequest(),
+            ];
+        };
+
+        $mapApp = static function (\App\Entity\MentorApplication $a): array {
+            return [
+                'id'             => $a->getId(),
+                'firstName'      => $a->getFirstName() ?? '',
+                'lastName'       => $a->getLastName() ?? '',
+                'email'          => $a->getEmail(),
+                'specialization' => $a->getSpecialization(),
+                'status'         => $a->getStatus(),
+                'createdAt'      => $a->getCreatedAt()->format('Y-m-d H:i:s'),
+            ];
+        };
+
+        $response = $this->json([
+            'requests'     => array_map($mapReq, $allReqs),
+            'applications' => array_map($mapApp, $applications),
+            'ts'           => time(),
+        ]);
+        $response->setMaxAge(0)->headers->addCacheControlDirective('no-store');
+        return $response;
     }
 }

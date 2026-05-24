@@ -120,6 +120,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         Mentors
     </a>
+    <span class="sa-refresh-indicator" style="font-size:12px;color:#9ca3af;margin-left:auto;"></span>
 </div>
 
 {# ── Admin Read-Only Notice ── #}
@@ -286,7 +287,7 @@
         {% set displayDept = req.departmentCourse ?: (hasChosen and req.mentorProfile.user ? (req.mentorProfile.user.degreeName ?: req.mentorProfile.user.degree) : '') %}
         {% set displayExpertise = req.preferredExpertise ?: (hasChosen ? req.mentorProfile.specialization : '') %}
         <div class="sa-det" id="sa-det-custom-{{ req.id }}" style="display:none">
-            <div class="sa-det-ts">{{ req.createdAt|date('h:i a') }}</div>
+            <div class="sa-det-ts">Submitted {{ req.createdAt|date('M d, Y') }} at {{ req.createdAt|date('h:i a') }}</div>
             <div class="sa-det-hero">
                 <div class="sa-det-av">{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|slice(0,1)|upper }}</div>
                 <div>
@@ -294,24 +295,45 @@
                     <div class="sa-det-sub">{{ req.student.email }}</div>
                 </div>
             </div>
-            <div class="sa-sec">Mentoring Custom Request</div>
+            <div class="sa-sec">Mentor Request Details</div>
             <div class="sa-hr"></div>
-            <div class="sa-sec">Personal Information</div>
+            <div class="sa-sec">Requester Information</div>
             <div class="sa-grid4">
-                <div class="sa-field"><label>First Name</label><p>{{ req.student.firstName }}</p></div>
-                <div class="sa-field"><label>Last Name</label><p>{{ req.student.lastName }}</p></div>
-                <div class="sa-field"><label>Department / Course</label><p>{{ displayDept ?: '—' }}</p></div>
+                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: ((req.student.firstName~' '~req.student.lastName)|trim) }}</p></div>
                 <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student.email }}</p></div>
-            </div>
-            <div class="sa-grid3">
-                <div class="sa-field"><label>Preferred Expertise</label><p>{{ displayExpertise ?: '—' }}</p></div>
+                <div class="sa-field"><label>Degree / Course</label><p>{{ req.departmentCourse ?: '—' }}</p></div>
                 <div class="sa-field"><label>Status</label><p><span class="badge {{ req.status|lower }}">{{ req.status }}</span></p></div>
-                <div class="sa-field"><label>Submitted</label><p>{{ req.createdAt|date('M d, Y') }}</p></div>
+            </div>
+            <div class="sa-sec">Request Preferences</div>
+            <div class="sa-grid3">
+                <div class="sa-field"><label>Specialization Needed</label><p>{{ req.preferredExpertise ?: (req.mentorProfile ? req.mentorProfile.specialization : '—') }}</p></div>
+                <div class="sa-field"><label>Preferred Day</label><p>{{ req.availableDates ?: '—' }}</p></div>
+                <div class="sa-field"><label>Preferred Time</label><p>{{ req.preferredSchedule ?: (req.availableTime ?: '—') }}</p></div>
             </div>
             {% if req.message %}
-            <div class="sa-sec">Message</div>
+            <div class="sa-sec">Message / Notes</div>
             <div class="sa-notes">{{ req.message }}</div>
             {% endif %}
+            {% if req.assignedMentorName %}
+            <div class="sa-sec">Current Assignment</div>
+            <div class="sa-chosen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                Assigned to: <strong>{{ req.assignedMentorName }}</strong>{% if req.assignedMentorExpertise %} · {{ req.assignedMentorExpertise }}{% endif %}
+                {% if req.availableTime %} · {{ req.availableTime }}{% endif %}
+                {% if req.meetingMethod %} · {{ req.meetingMethod }}{% endif %}
+            </div>
+            {% endif %}
+            {% if req.adminInstructions %}
+            <div class="sa-sec">Admin Instructions</div>
+            <div class="sa-notes">{{ req.adminInstructions }}</div>
+            {% endif %}
+            {% if req.status == 'Cancelled' %}
+            <div class="sa-sec">Assignment</div>
+            <div style="padding:12px 0;font-size:13px;display:flex;align-items:center;gap:8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <span style="color:#dc2626;font-weight:600;">This request has been cancelled by the student and can no longer be edited.</span>
+            </div>
+            {% else %}
             <div class="sa-sec">{{ hasChosen ? 'Update Assignment' : 'Assign Mentor' }}</div>
             {% if hasChosen %}
             <div class="sa-chosen">
@@ -328,7 +350,7 @@
                 <div class="sa-grid2">
                     <div class="sa-assign-field"><label>Status</label>
                         <select name="status" class="sa-inp" required>
-                            {% for s in ['Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
+                            {% for s in ['Pending','Reviewing','Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="sa-assign-field"><label>Meeting Method</label>
@@ -393,7 +415,7 @@
                 <div class="sa-grid2">
                     <div class="sa-assign-field"><label>Status</label>
                         <select name="status" class="sa-inp" required>
-                            {% for s in ['Pending','Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
+                            {% for s in ['Pending','Reviewing','Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
                         </select>
                     </div>
                 </div>
@@ -404,6 +426,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send
                 </button></div>
             </form>
+            {% endif %}
             {% endif %}
         </div>
         {% endfor %}
@@ -551,7 +574,7 @@
             } %}
             {% set meta = actionMeta[log.action] ?? {'label': log.action|capitalize, 'cls': 'audit-action-default'} %}
             {% set typeLabel = log.subjectType == 'application' ? 'Application' : 'Custom Request' %}
-            <tr class="sa-audit-row" data-search="{{ (log.subjectLabel ~ ' ' ~ meta.label ~ ' ' ~ (log.performedByName ?? '') ~ ' ' ~ typeLabel)|lower }}">
+            <tr class="sa-audit-row" data-log-id="{{ log.id }}" data-search="{{ (log.subjectLabel ~ ' ' ~ meta.label ~ ' ' ~ (log.performedByName ?? '') ~ ' ' ~ typeLabel)|lower }}">
                 <td class="sa-audit-time">
                     <span class="sa-audit-date">{{ log.loggedAt|date('M d, Y') }}</span>
                     <span class="sa-audit-clock">{{ log.loggedAt|date('h:i A') }}</span>
@@ -785,9 +808,79 @@ function saFilterList(){
         el.style.display=(!q||el.dataset.name.includes(q))?'':'none';
     });
 }
-/* ── AJAX for assign forms ── */
-document.addEventListener('DOMContentLoaded',function(){
+
+/* ── Real-time polling ── */
+(function(){
+    var POLL_URL = '{{ path("admin_role_api_mentoring_poll") }}';
+    var INTERVAL = 15000;
+    var _lastTs = 0;
+
+    function statusBadge(status){
+        var cls = {pending:'pending',assigned:'assigned',approved:'approved',completed:'completed',cancelled:'cancelled',rejected:'rejected'}[status.toLowerCase()] || 'pending';
+        return '<span class="badge '+cls+'">'+status+'</span>';
+    }
+
+    function patchRequestPane(r){
+        var pane = document.getElementById('sa-det-custom-'+r.id);
+        if(!pane) return;
+        pane.querySelectorAll('.sa-field').forEach(function(f){
+            var lbl = f.querySelector('label');
+            if(!lbl) return;
+            var txt = lbl.textContent.trim();
+            var p = f.querySelector('p');
+            if(!p) return;
+            if(txt === 'Status')               p.innerHTML = statusBadge(r.status);
+            if(txt === 'Degree / Course')      p.textContent = r.departmentCourse || '—';
+            if(txt === 'Specialization Needed') p.textContent = r.preferredExpertise || '—';
+            if(txt === 'Preferred Day')        p.textContent = r.availableDates || '—';
+            if(txt === 'Preferred Time')       p.textContent = r.preferredSchedule || r.availableTime || '—';
+        });
+        /* update assigned mentor block if present */
+        var chosen = pane.querySelector('.sa-chosen strong');
+        if(chosen && r.assignedMentorName) chosen.textContent = r.assignedMentorName;
+    }
+
+    function patchAppPane(a){
+        var pane = document.getElementById('sa-det-apply-'+a.id);
+        if(!pane) return;
+        pane.querySelectorAll('.sa-field').forEach(function(f){
+            var lbl = f.querySelector('label');
+            if(!lbl) return;
+            var p = f.querySelector('p');
+            if(!p) return;
+            if(lbl.textContent.trim() === 'Status') p.innerHTML = statusBadge(a.status);
+        });
+    }
+
+    function doPoll(){
+        fetch(POLL_URL, {headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(data){
+            if(!data) return;
+            var isNew = data.ts > _lastTs && _lastTs > 0;
+            _lastTs = data.ts;
+            (data.requests||[]).forEach(function(r){ if(r.isAssistance) patchRequestPane(r); });
+            (data.applications||[]).forEach(patchAppPane);
+            if(isNew){
+                var ind = document.querySelector('.sa-refresh-indicator');
+                if(ind){ ind.textContent = 'Updated just now'; setTimeout(function(){ ind.textContent=''; }, 4000); }
+            }
+        })
+        .catch(function(){});
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        _lastTs = Date.now()/1000|0;
+        setTimeout(doPoll, 3000);
+        setInterval(doPoll, INTERVAL);
+    });
+})();
+
+/* ── AJAX for assign forms (with post-success lock to prevent double audit logs) ── */
+function bindAjaxForms(){
     document.querySelectorAll('form[data-ajax="true"]').forEach(function(form){
+        if(form.dataset.ajaxBound === '1') return;
+        form.dataset.ajaxBound = '1';
         form.addEventListener('submit',function(e){
             e.preventDefault();
             var btn=form.querySelector('button[type="submit"]');
@@ -796,8 +889,15 @@ document.addEventListener('DOMContentLoaded',function(){
             fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:new FormData(form)})
             .then(function(r){if(!r.ok)throw new Error();return r.json();})
             .then(function(j){
-                if(btn){btn.disabled=false;btn.innerHTML=orig;}
-                _saToast(j.message||(j.success?'Updated.':'Error.'),!!j.success);
+                if(j.success){
+                    if(btn){btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Saved';btn.style.background='#0D9B00';}
+                    form.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=true;});
+                    _saToast(j.message||'Updated.',true);
+                    doPollAudit();
+                } else {
+                    if(btn){btn.disabled=false;btn.innerHTML=orig;}
+                    _saToast(j.message||'Error.',false);
+                }
             })
             .catch(function(){
                 if(btn){btn.disabled=false;btn.innerHTML=orig;}
@@ -805,7 +905,73 @@ document.addEventListener('DOMContentLoaded',function(){
             });
         });
     });
+}
+document.addEventListener('DOMContentLoaded',function(){
+    bindAjaxForms();
     document.addEventListener('keydown',function(e){if(e.key==='Escape') closeCreateMentor();});
+});
+document.addEventListener('turbo:load', bindAjaxForms);
+
+/* ── Real-time Audit Log Polling ── */
+var _auditLastId = 0;
+function doPollAudit(){
+    fetch('{{ path("mentoring_audit_log_data") }}',{headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+        if(!data||!data.logs) return;
+        var tbody = document.querySelector('#auditTable tbody');
+        if(!tbody) return;
+        var actionMeta = {
+            'approve':       {label:'Approved',       cls:'audit-action-approve'},
+            'reject':        {label:'Rejected',        cls:'audit-action-reject'},
+            'update_status': {label:'Status Updated',  cls:'audit-action-update'},
+            'create_mentor': {label:'Mentor Created',  cls:'audit-action-create'},
+            'assign':        {label:'Assigned',        cls:'audit-action-assign'}
+        };
+        function statusBadge(s){
+            if(!s) return '';
+            return '<span class="badge '+s.toLowerCase().replace(/ /g,'-')+' sa-audit-new-status">'+s+'</span>';
+        }
+        function buildRow(log){
+            var meta = actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
+            var typeLabel = log.subjectType==='application'?'Application':'Custom Request';
+            var typeCls = log.subjectType==='application'?'type-app':'type-req';
+            var search = (log.subjectLabel+' '+meta.label+' '+(log.performedByName||'')+' '+typeLabel).toLowerCase();
+            var statusFlow = '';
+            if(log.previousStatus||log.newStatus){
+                statusFlow = '<span class="sa-audit-status-flow">';
+                if(log.previousStatus) statusFlow += '<span class="sa-audit-prev-status">'+log.previousStatus+'</span>';
+                if(log.previousStatus&&log.newStatus) statusFlow += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+                if(log.newStatus) statusFlow += statusBadge(log.newStatus);
+                statusFlow += '</span>';
+            } else { statusFlow = '<span style="color:#d1d5db;">—</span>'; }
+            var noteText = log.note ? (log.note.length>60?log.note.slice(0,60)+'…':log.note) : '—';
+            return '<tr class="sa-audit-row" data-search="'+search+'" data-log-id="'+log.id+'">'
+                +'<td class="sa-audit-time"><span class="sa-audit-date">'+log.loggedAt+'</span><span class="sa-audit-clock">'+log.loggedAtTime+'</span></td>'
+                +'<td><span class="sa-audit-subject">'+log.subjectLabel+'</span>'+(log.subjectId?'<span class="sa-audit-id">#'+log.subjectId+'</span>':'')+'</td>'
+                +'<td><span class="sa-audit-type-badge '+typeCls+'">'+typeLabel+'</span></td>'
+                +'<td><span class="sa-audit-action-badge '+meta.cls+'">'+meta.label+'</span></td>'
+                +'<td>'+statusFlow+'</td>'
+                +'<td><div class="sa-audit-actor"><div class="sa-audit-actor-av">'+log.performedByName.slice(0,1).toUpperCase()+'</div><div><div class="sa-audit-actor-name">'+log.performedByName+'</div>'+(log.performedByRole?'<div class="sa-audit-actor-role">'+log.performedByRole+'</div>':'')+'</div></div></td>'
+                +'<td class="sa-audit-note">'+noteText+'</td>'
+                +'</tr>';
+        }
+        var topId = data.logs.length > 0 ? data.logs[0].id : 0;
+        var isNew = _auditLastId > 0 && topId > _auditLastId;
+        _auditLastId = topId;
+        tbody.innerHTML = data.logs.map(buildRow).join('');
+        auditFilter();
+        if(isNew){ _saToast('Audit log updated.',true); }
+    })
+    .catch(function(){});
+}
+document.addEventListener('DOMContentLoaded',function(){
+    _auditLastId = (function(){
+        var first = document.querySelector('#auditTable tbody tr[data-log-id]');
+        return first ? parseInt(first.dataset.logId)||0 : 0;
+    })();
+    setTimeout(doPollAudit,5000);
+    setInterval(doPollAudit,10000);
 });
 </script>
 {% endblock %}
