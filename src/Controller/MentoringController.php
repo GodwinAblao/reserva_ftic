@@ -1002,9 +1002,14 @@ $validUntil = $request->request->get('valid_until');
 
         $adminUrl = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
         $admins = $em->getRepository(User::class)->findAdmins();
+        $firstAdmin = true;
         foreach ($admins as $admin) {
             $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
-            $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
+            // Only email the first admin to prevent SMTP lag; others get in-app notification
+            if ($firstAdmin) {
+                $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
+                $firstAdmin = false;
+            }
         }
 
         $this->notificationService->notifyMentorAssistanceStatus(
@@ -1139,12 +1144,9 @@ $validUntil = $request->request->get('valid_until');
         $actor = $this->getUser();
         $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Super Admin';
         $requesterName = $mentorRequest->getFullName() ?: ($student ? trim($student->getFirstName() . ' ' . $student->getLastName()) : 'Student');
-        foreach ($em->getRepository(User::class)->findAll() as $u) {
+        foreach ($em->getRepository(User::class)->findAdmins() as $u) {
             if ($u === $actor) continue;
-            $roles = $u->getRoles();
-            if (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true)) {
-                $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, $status, $requesterName);
-            }
+            $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, $status, $requesterName);
         }
 
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';

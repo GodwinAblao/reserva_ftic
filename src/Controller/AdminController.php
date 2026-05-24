@@ -458,12 +458,9 @@ class AdminController extends AbstractController
                 $em->persist($auditLog);
             }
             $em->flush();
-            foreach ($em->getRepository(User::class)->findAll() as $u) {
+            foreach ($em->getRepository(User::class)->findAdmins() as $u) {
                 if ($u === $actor) continue;
-                $roles = $u->getRoles();
-                if (in_array('ROLE_ADMIN', $roles, true) || in_array('ROLE_SUPER_ADMIN', $roles, true)) {
-                    $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName, ucfirst($submittedStatus), $requesterName);
-                }
+                $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName, ucfirst($submittedStatus), $requesterName);
             }
             if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
             $this->addFlash('success', 'Mentor assigned successfully.');
