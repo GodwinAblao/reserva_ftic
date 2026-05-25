@@ -137,6 +137,13 @@ class ProfileController extends AbstractController
                         $mentorProfile->setEducation($education ?: null);
                     }
                     $mentorProfile->setAvailabilityDay($availDay !== '' ? $availDay : null);
+                    // Also set availabilityDays array for the modal template
+                    if ($availDay !== '') {
+                        $daysArray = array_map('trim', explode(',', $availDay));
+                        $mentorProfile->setAvailabilityDays($daysArray);
+                    } else {
+                        $mentorProfile->setAvailabilityDays(null);
+                    }
                     $mentorProfile->setAvailabilityStart($availStart !== '' ? $availStart : null);
                     $mentorProfile->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 

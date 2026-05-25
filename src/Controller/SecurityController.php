@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
 class SecurityController extends AbstractController
 {
     #[Route('/login', name: 'app_login')]
-    public function login(AuthenticationUtils $authenticationUtils): Response
+    public function login(AuthenticationUtils $authenticationUtils, Request $request): Response
     {
         $response = new Response();
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -35,9 +35,23 @@ class SecurityController extends AbstractController
             return $this->redirectToRoute('app_dashboard');
         }
 
+        $error = $authenticationUtils->getLastAuthenticationError();
+        $lastUsername = $authenticationUtils->getLastUsername();
+
+        // Store error in flash bag for display
+        if ($error) {
+            // Check if email is from allowed domains
+            if ($lastUsername && !str_ends_with(strtolower($lastUsername), '@fit.edu.ph') && !str_ends_with(strtolower($lastUsername), '@feutech.edu.ph')) {
+                $errorMessage = 'Please use your institutional email (@fit.edu.ph or @feutech.edu.ph).';
+            } else {
+                $errorMessage = 'Invalid email or password. Please try again.';
+            }
+            $request->getSession()->getFlashBag()->add('login_error', $errorMessage);
+        }
+
         $response->setContent($this->renderView('security/login.html.twig', [
-            'last_username' => $authenticationUtils->getLastUsername(),
-            'error' => $authenticationUtils->getLastAuthenticationError(),
+            'last_username' => $lastUsername,
+            'error' => $error,
         ]));
 
         return $response;

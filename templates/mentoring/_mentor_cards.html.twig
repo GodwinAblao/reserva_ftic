@@ -2,7 +2,6 @@
     {% set mentorUser = mentor.user %}
     {% set mentorMeta = mentorUser and mentorApplicationMeta is defined ? (mentorApplicationMeta[mentorUser.id] ?? null) : null %}
     {% set cardSpecialization = mentorMeta and mentorMeta.specialization ? mentorMeta.specialization : mentor.specialization %}
-    {% set years = mentorMeta and mentorMeta.yearsOfExperience is not null ? mentorMeta.yearsOfExperience : null %}
     <a href="{{ path('mentoring_show', {'id': mentor.id}) }}" class="mentor-card-link">
         <article class="mentor-card">
             <div class="mentor-card-top">
@@ -21,9 +20,6 @@
                     <div class="mentor-card-tags">
                         {% if cardSpecialization %}
                             <span class="mentor-specialization-tag">{{ cardSpecialization }}</span>
-                        {% endif %}
-                        {% if years is not null %}
-                            <span class="mentor-specialization-tag">{{ years }} year{{ years != 1 ? 's' : '' }}</span>
                         {% endif %}
                     </div>
                 </div>

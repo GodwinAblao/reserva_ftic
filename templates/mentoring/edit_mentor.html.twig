@@ -108,22 +108,26 @@
                 </div>
             </div>
             <div class="em-row em-cols-3">
-                <div class="em-field">
-                    <label class="em-label" for="availability_day">Mentoring Day</label>
-                    <select id="availability_day" name="availability_day" class="em-input em-select">
-                        <option value="">Select day…</option>
-                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F'] %}
-                        <option value="{{ day }}" {% if mentor.availabilityDay == day %}selected{% endif %}>{{ day }}</option>
+                <div class="em-field" style="grid-column: span 1;">
+                    <label class="em-label">Mentoring Days <span class="form-required">*</span></label>
+                    {% set availabilityDays = mentor.availabilityDays|default([]) %}
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                        <label style="display:flex; align-items:center; gap:0.35rem; padding:0.35rem 0.6rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; cursor:pointer; font-size:0.9rem;">
+                            <input type="checkbox" name="availabilityDays[]" value="{{ day }}" {% if day in availabilityDays %}checked{% endif %} style="cursor:pointer;">
+                            <span>{{ day[:3] }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
+                    </div>
+                    <small style="color:#64748b; font-size:0.8rem; margin-top:0.35rem; display:block;">Select all days this mentor is available</small>
                 </div>
                 <div class="em-field">
-                    <label class="em-label" for="availability_start">Start Time</label>
-                    <input type="time" id="availability_start" name="availability_start" class="em-input" min="07:00" max="21:00" value="{{ mentor.availabilityStart }}">
+                    <label class="em-label" for="availability_start">Start Time <span class="form-required">*</span></label>
+                    <input type="time" id="availability_start" name="availability_start" class="em-input" min="07:00" max="21:00" value="{{ mentor.availabilityStart }}" required>
                 </div>
                 <div class="em-field">
-                    <label class="em-label" for="availability_end">End Time</label>
-                    <input type="time" id="availability_end" name="availability_end" class="em-input" min="07:00" max="21:00" value="{{ mentor.availabilityEnd }}">
+                    <label class="em-label" for="availability_end">End Time <span class="form-required">*</span></label>
+                    <input type="time" id="availability_end" name="availability_end" class="em-input" min="07:00" max="21:00" value="{{ mentor.availabilityEnd }}" required>
                     <span class="em-error" id="em_err_time"></span>
                 </div>
             </div>

@@ -99,7 +99,6 @@ class MentoringController extends AbstractController
 
                 $mentorApplicationMeta[$studentId] = [
                     'specialization' => $application->getSpecialization(),
-                    'yearsOfExperience' => $application->getYearsOfExperience(),
                 ];
             }
         }
@@ -333,14 +332,11 @@ class MentoringController extends AbstractController
         $firstName = trim((string) $request->request->get('firstName'));
         $middleName = trim((string) $request->request->get('middleName'));
         $lastName = trim((string) $request->request->get('lastName'));
-        $contactNumber = trim((string) $request->request->get('contactNumber'));
         $programCourse = trim((string) $request->request->get('programCourse'));
         $specialization = trim((string) $request->request->get('specialization'));
-        $yearsOfExperience = $request->request->get('yearsOfExperience') ? (int)$request->request->get('yearsOfExperience') : null;
-        $experienceUnit = trim((string) $request->request->get('experienceUnit'));
         $currentProfession = trim((string) $request->request->get('currentProfession'));
         $highestEducation = trim((string) $request->request->get('highestEducation'));
-        $supportingDescription = trim((string) $request->request->get('supportingDescription'));
+        $mentoringPublicBio = trim((string) $request->request->get('mentoringPublicBio'));
         $availabilityTime = trim((string) $request->request->get('availabilityTime'));
         $availabilityStart = trim((string) $request->request->get('availabilityStart'));
         $availabilityEnd = trim((string) $request->request->get('availabilityEnd'));
@@ -378,17 +374,8 @@ class MentoringController extends AbstractController
             }
         }
 
-        // PH mobile number validation (required, must match 09XXXXXXXXX or +639XXXXXXXXX)
-        $cleanPhone = preg_replace('/\s+/', '', $contactNumber);
-        if ($cleanPhone === '' || !preg_match('/^(\+?63|0)9\d{9}$/', $cleanPhone)) {
-            $this->addFlash('error', 'A valid Philippine mobile number is required (e.g. 09123456789 or +639123456789).');
-
-            return $this->redirectToRoute('mentoring_index');
-        }
-        $contactNumber = $cleanPhone;
-
-        // Validate proof of expertise is required
-        $files = $request->files->get('proofOfExpertise');
+        // Validate supporting documents is required
+        $files = $request->files->get('supportingDocuments');
         $hasValidFiles = false;
         if ($files) {
             foreach ($files as $file) {
@@ -399,7 +386,7 @@ class MentoringController extends AbstractController
             }
         }
         if (!$hasValidFiles) {
-            $this->addFlash('error', 'Proof of Expertise is required. Please upload at least one file (JPG, PNG, or PDF).');
+            $this->addFlash('error', 'Supporting documents are required. Please upload at least one file (JPG, PNG, or PDF).');
             return $this->redirectToRoute('mentoring_index');
         }
 
@@ -457,16 +444,13 @@ class MentoringController extends AbstractController
             ->setFirstName($firstName)
             ->setMiddleName($middleName ?: null)
             ->setLastName($lastName)
-            ->setContactNumber($contactNumber ?: null)
             ->setProgramCourse($programCourse ?: null)
             ->setSpecialization($specialization)
-            ->setYearsOfExperience($yearsOfExperience)
-            ->setExperienceUnit($experienceUnit ?: null)
             ->setCurrentProfession($currentProfession ?: null)
             ->setHighestEducation($highestEducation ?: null)
-            ->setSupportingDescription($supportingDescription ?: null)
+            ->setMentoringPublicBio($mentoringPublicBio ?: null)
             ->setAvailabilityTime($availabilityTime ?: null)
-            ->setProofOfExpertise($proofFiles ?: null)
+            ->setSupportingDocuments($proofFiles ?: null)
             ->setStatus('Pending');
 
         $em->persist($application);
@@ -556,7 +540,7 @@ $validUntil = $request->request->get('valid_until');
                 ->setUser($student)
                 ->setDisplayName($name)
                 ->setSpecialization($application->getSpecialization())
-                ->setBio($application->getSupportingDescription() ?: $application->getReason());
+                ->setBio($application->getMentoringPublicBio() ?: $application->getReason());
 
             $em->persist($profile);
         }
@@ -568,7 +552,7 @@ $validUntil = $request->request->get('valid_until');
         $em->flush();
 
         // Notify the user
-        $this->notificationService->notifyMentorApplicationApproved($student, $application->getId(), $validUntilDate);
+        $this->notificationService->notifyMentorApplicationApproved($student, $application->getId());
 
         $this->addFlash('success', 'Student approved as mentor.');
 
@@ -644,16 +628,22 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
-        $availDay   = trim((string) $request->request->get('availability_day'));
+        $availabilityDays = $request->request->all('availabilityDays') ?? [];
         $availStart = trim((string) $request->request->get('availability_start'));
         $availEnd   = trim((string) $request->request->get('availability_end'));
+
+        // Validate at least one mentoring day is selected
+        if (empty($availabilityDays) || !is_array($availabilityDays)) {
+            $this->addFlash('error', 'Please select at least one mentoring day.');
+            return $this->redirectToRoute('mentoring_superadmin_requests');
+        }
 
         $profile = (new MentorProfile())
             ->setUser($user)
             ->setDisplayName((string) $request->request->get('display_name', $user->getEmail()))
             ->setSpecialization((string) $request->request->get('specialization', 'General'))
             ->setBio($request->request->get('bio'))
-            ->setAvailabilityDay($availDay !== '' ? $availDay : null)
+            ->setAvailabilityDays($availabilityDays)
             ->setAvailabilityStart($availStart !== '' ? $availStart : null)
             ->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 
@@ -683,16 +673,21 @@ $validUntil = $request->request->get('valid_until');
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
             }
 
-            $displayName    = trim((string) $request->request->get('display_name'));
-            $specialization = trim((string) $request->request->get('specialization'));
-            $bio            = trim((string) $request->request->get('bio'));
-            $education      = trim((string) $request->request->get('mentor_education'));
-            $availDay       = trim((string) $request->request->get('availability_day'));
-            $availStart     = trim((string) $request->request->get('availability_start'));
-            $availEnd       = trim((string) $request->request->get('availability_end'));
+            $displayName      = trim((string) $request->request->get('display_name'));
+            $specialization   = trim((string) $request->request->get('specialization'));
+            $bio              = trim((string) $request->request->get('bio'));
+            $education        = trim((string) $request->request->get('mentor_education'));
+            $availabilityDays = $request->request->all('availabilityDays') ?? [];
+            $availStart       = trim((string) $request->request->get('availability_start'));
+            $availEnd         = trim((string) $request->request->get('availability_end'));
 
             if ($displayName === '' || $specialization === '') {
                 $this->addFlash('error', 'Display name and specialization are required.');
+                return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
+            }
+
+            if (empty($availabilityDays) || !is_array($availabilityDays)) {
+                $this->addFlash('error', 'Please select at least one mentoring day.');
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
@@ -705,7 +700,7 @@ $validUntil = $request->request->get('valid_until');
             $mentor->setSpecialization($specialization);
             $mentor->setBio($bio ?: null);
             $mentor->setEducation($education ?: null);
-            $mentor->setAvailabilityDay($availDay !== '' ? $availDay : null);
+            $mentor->setAvailabilityDays($availabilityDays);
             $mentor->setAvailabilityStart($availStart !== '' ? $availStart : null);
             $mentor->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
 
@@ -800,6 +795,12 @@ $validUntil = $request->request->get('valid_until');
             'mentor' => $profile
         ], ['scheduledAt' => 'DESC']);
 
+        // Fetch custom requests (scheduled mentoring sessions)
+        $customRequestsWithThisMentor = $em->getRepository(\App\Entity\MentorCustomRequest::class)->findBy([
+            'student' => $this->getUser(),
+            'mentorProfile' => $profile
+        ], ['createdAt' => 'DESC']);
+
         $currentUser = $this->getUser();
         $canSendCustomRequest = $currentUser instanceof User
             && $profile->getUser() !== null
@@ -809,6 +810,7 @@ $validUntil = $request->request->get('valid_until');
             'mentor' => $profile,
             'availabilities' => $availabilities,
             'myAppointments' => $appointmentsWithThisMentor,
+            'myCustomRequests' => $customRequestsWithThisMentor,
             'canSendCustomRequest' => $canSendCustomRequest,
         ]);
     }
@@ -868,9 +870,32 @@ $validUntil = $request->request->get('valid_until');
         if (strlen($message) < 10) {
             $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
             if ($isAjax) {
-                return new JsonResponse(['error' => 'Message too short.'], Response::HTTP_BAD_REQUEST);
+                return new JsonResponse(['error' => 'Message too short. Please provide at least 10 characters.'], Response::HTTP_BAD_REQUEST);
             }
-            $this->addFlash('error', 'Message too short.');
+            $this->addFlash('error', 'Message too short. Please provide at least 10 characters.');
+            return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
+        }
+
+        // Handle scheduled date and time
+        $scheduledDateStr = $request->request->get('scheduled_date');
+        $scheduledTime = $request->request->get('scheduled_time');
+        
+        if (!$scheduledDateStr || !$scheduledTime) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'Please select both a date and time for the mentoring session.'], Response::HTTP_BAD_REQUEST);
+            }
+            $this->addFlash('error', 'Please select both a date and time for the mentoring session.');
+            return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
+        }
+
+        $scheduledDate = \DateTime::createFromFormat('Y-m-d', $scheduledDateStr);
+        if (!$scheduledDate) {
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                return new JsonResponse(['error' => 'Invalid date format.'], Response::HTTP_BAD_REQUEST);
+            }
+            $this->addFlash('error', 'Invalid date format.');
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
 
@@ -878,6 +903,8 @@ $validUntil = $request->request->get('valid_until');
         $customRequest->setStudent($currentUser)
             ->setMentorProfile($profile)
             ->setMessage($message)
+            ->setScheduledDate($scheduledDate)
+            ->setScheduledTime($scheduledTime)
             ->setStatus('Pending');
 
         try {
@@ -933,6 +960,26 @@ $validUntil = $request->request->get('valid_until');
                 ->html($emailHtml);
 
             $mailer->send($emailMessage);
+            
+            // Send confirmation email to student
+            $studentEmailHtml = $this->renderView('emails/student_custom_request_confirmation.html.twig', [
+                'studentName' => $studentName,
+                'mentorName' => $profile->getDisplayName(),
+                'mentorEmail' => $user->getEmail(),
+                'message' => $message,
+                'scheduledDate' => $scheduledDate ? $scheduledDate->format('F d, Y') : null,
+                'scheduledTime' => $scheduledTime,
+                'requestId' => $customRequest->getId(),
+                'requestUrl' => $requestUrl,
+            ]);
+            
+            $studentEmailMessage = (new Email())
+                ->from('noreply@reserva-ftic.edu.ph')
+                ->to($student->getEmail())
+                ->subject('Your Mentoring Request Has Been Sent')
+                ->html($studentEmailHtml);
+            
+            $mailer->send($studentEmailMessage);
         } catch (\Exception $e) {
             // Log but don't fail - user has already seen success message
         }
@@ -1200,10 +1247,72 @@ $validUntil = $request->request->get('valid_until');
 
         $status = $decision === 'accept' ? 'accepted' : 'declined';
         $title = $decision === 'accept' ? 'Custom Mentoring Request Accepted' : 'Custom Mentoring Request Declined';
-        $flashMessage = $decision === 'accept' ? 'Custom request accepted.' : 'Custom request declined.';
-        $message = $decision === 'accept'
-            ? 'Your custom mentoring request has been accepted by ' . $mentorProfile->getDisplayName() . '.'
-            : 'Your custom mentoring request has been declined by ' . $mentorProfile->getDisplayName() . '.';
+        $flashMessage = $decision === 'accept' ? 'Custom request accepted! Meeting details have been sent to the student.' : 'Custom request declined.';
+        
+        // Handle meeting details when accepting
+        $facilityReservedBy = null;
+        if ($decision === 'accept') {
+            $meetingType = trim((string) $request->request->get('meeting_type', ''));
+            $meetingLink = trim((string) $request->request->get('meeting_link', ''));
+            $meetingLocation = trim((string) $request->request->get('meeting_location', ''));
+            $facilityReservedBy = trim((string) $request->request->get('facility_reserved_by', ''));
+            
+            // Set meeting details on the request
+            if ($meetingType) {
+                $customRequest->setMeetingType($meetingType);
+            }
+            if ($meetingLink) {
+                $customRequest->setMeetingLink($meetingLink);
+            }
+            if ($meetingLocation) {
+                $customRequest->setMeetingLocation($meetingLocation);
+            }
+            if ($facilityReservedBy) {
+                $customRequest->setFacilityReservedBy($facilityReservedBy);
+            }
+            
+            // Build detailed message with meeting info
+            $meetingDetails = [];
+            if ($customRequest->getScheduledDate()) {
+                $meetingDetails[] = 'Date: ' . $customRequest->getScheduledDate()->format('F d, Y');
+            }
+            if ($customRequest->getScheduledTime()) {
+                $meetingDetails[] = 'Time: ' . $customRequest->getScheduledTime();
+            }
+            if ($meetingType) {
+                $meetingDetails[] = 'Meeting Type: ' . $meetingType;
+            }
+            if ($meetingLink) {
+                $meetingDetails[] = 'Meeting Link: ' . $meetingLink;
+            }
+            
+            // Handle location based on F2F option
+            if ($meetingType === 'Face-to-Face') {
+                if ($facilityReservedBy === 'mentor') {
+                    $meetingDetails[] = 'Location: Mentor will reserve a facility';
+                } elseif ($facilityReservedBy === 'student') {
+                    $meetingDetails[] = 'Location: You need to reserve a facility';
+                } elseif ($facilityReservedBy === 'outside') {
+                    $meetingDetails[] = 'Location: ' . $meetingLocation;
+                }
+            }
+            
+            $message = 'Your custom mentoring request has been accepted by ' . $mentorProfile->getDisplayName() . '.';
+            if (!empty($meetingDetails)) {
+                $message .= ' Meeting details: ' . implode(' | ', $meetingDetails);
+            }
+            
+            // Add facility reservation instruction based on who handles it
+            if ($meetingType === 'Face-to-Face') {
+                if ($facilityReservedBy === 'mentor') {
+                    $message .= ' The mentor will reserve a facility and notify you of the location.';
+                } elseif ($facilityReservedBy === 'student') {
+                    $message .= ' Please reserve a facility through the FTIC reservation system before the session.';
+                }
+            }
+        } else {
+            $message = 'Your custom mentoring request has been declined by ' . $mentorProfile->getDisplayName() . '.';
+        }
 
         if ($mentorResponse !== '') {
             $customRequest->setMentorResponse($mentorResponse);
@@ -1225,6 +1334,7 @@ $validUntil = $request->request->get('valid_until');
                 'message' => $message,
                 'mentorResponse' => $mentorResponse ?: null,
                 'requestUrl' => $studentRequestUrl,
+                'facilityReservedBy' => $facilityReservedBy,
             ]);
 
             $emailMessage = (new Email())

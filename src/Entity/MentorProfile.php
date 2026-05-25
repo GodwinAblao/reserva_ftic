@@ -31,8 +31,8 @@ class MentorProfile
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $education = null;
 
-    #[ORM\Column(length: 100, nullable: true)]
-    private ?string $availabilityDay = null;
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $availabilityDays = null;
 
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $availabilityStart = null;
@@ -107,8 +107,32 @@ class MentorProfile
     public function getEducation(): ?string { return $this->education; }
     public function setEducation(?string $education): self { $this->education = $education; return $this; }
 
-    public function getAvailabilityDay(): ?string { return $this->availabilityDay; }
-    public function setAvailabilityDay(?string $availabilityDay): self { $this->availabilityDay = $availabilityDay; return $this; }
+    public function getAvailabilityDays(): ?array {
+        // If availabilityDays array is set and not empty, return it
+        if ($this->availabilityDays !== null && !empty($this->availabilityDays)) {
+            return $this->availabilityDays;
+        }
+        // Otherwise, try to parse availabilityDay string into array
+        if ($this->availabilityDay !== null && $this->availabilityDay !== '') {
+            return array_map('trim', explode(',', $this->availabilityDay));
+        }
+        return [];
+    }
+    public function setAvailabilityDays(?array $availabilityDays): self { $this->availabilityDays = $availabilityDays; return $this; }
+    
+    public function getAvailabilityDay(): ?string { 
+        $days = $this->getAvailabilityDays();
+        return $days[0] ?? null; 
+    }
+    public function setAvailabilityDay(?string $availabilityDay): self { 
+        if ($availabilityDay) {
+            // Split comma-separated days into array
+            $this->availabilityDays = array_map('trim', explode(',', $availabilityDay));
+        } else {
+            $this->availabilityDays = null;
+        }
+        return $this; 
+    }
 
     public function getAvailabilityStart(): ?string { return $this->availabilityStart; }
     public function setAvailabilityStart(?string $availabilityStart): self { $this->availabilityStart = $availabilityStart; return $this; }
@@ -133,6 +157,27 @@ class MentorProfile
         $this->engagementPoints += $points;
 
         return $this;
+    }
+
+    /**
+     * Check if a specific day of week is available
+     * @param string $dayName Full day name (e.g., 'Monday', 'Tuesday')
+     */
+    public function isDayAvailable(string $dayName): bool
+    {
+        $days = $this->getAvailabilityDays();
+        if (empty($days)) {
+            return true; // If no days configured, allow all
+        }
+        return in_array($dayName, $days, true);
+    }
+
+    /**
+     * Get availability as JSON string for JavaScript
+     */
+    public function getAvailabilityDaysJson(): string
+    {
+        return json_encode($this->getAvailabilityDays());
     }
 
     public function getCreatedAt(): \DateTimeInterface

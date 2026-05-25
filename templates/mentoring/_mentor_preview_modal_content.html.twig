@@ -1,3 +1,7 @@
+{% set availabilityDays = mentor.availabilityDays|default([]) %}
+{% set availabilityStart = mentor.availabilityStart|default('09:00') %}
+{% set availabilityEnd = mentor.availabilityEnd|default('17:00') %}
+
 <div class="mentor-preview-content">
     <div class="mentor-preview-header" style="display:flex; gap:1rem; align-items:flex-start; margin-bottom:1rem;">
         <div class="mentor-card-avatar" style="flex-shrink:0;">
@@ -23,6 +27,29 @@
         <p style="margin:0; color:#4b5563;">{{ mentor.bio|default('This mentor has not added a bio yet.') }}</p>
     </div>
 
+    {# Mentor Availability Info #}
+    <div class="mentor-availability-info" style="margin-bottom:1.25rem; padding:.75rem; background:#f8fafc; border-radius:8px; border-left:4px solid #3b82f6;">
+        <h4 style="margin:0 0 .5rem 0; font-size:.9rem; color:#1e40af;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:.35rem;">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Available Schedule
+        </h4>
+        <p style="margin:0; font-size:.85rem; color:#4b5563;">
+            {% if availabilityDays %}
+                <strong>Days:</strong> {{ availabilityDays|join(', ') }}<br>
+            {% else %}
+                <strong>Days:</strong> Flexible (contact for availability)<br>
+            {% endif %}
+            {% if availabilityStart and availabilityEnd %}
+                <strong>Time:</strong> {{ availabilityStart|date('g:i A') }} - {{ availabilityEnd|date('g:i A') }}
+            {% endif %}
+        </p>
+    </div>
+
     <div style="margin-bottom:1.25rem;">
         <h4 style="margin:0 0 .35rem 0;">Contact</h4>
         <p style="margin:0; color:#4b5563;">{{ mentor.user ? mentor.user.email : 'N/A' }}</p>
@@ -30,29 +57,89 @@
 
     <div class="custom-request-section" style="margin:0; padding:0; background:transparent; box-shadow:none;">
         <div class="request-header" style="margin-bottom:.75rem;">
-            <h3 style="margin:0 0 .3rem 0;">Send a Custom Mentoring Request</h3>
-            <p class="request-subtitle" style="margin:0;">Share your goals and preferred mentoring support.</p>
+            <h3 style="margin:0 0 .3rem 0;">Schedule a Mentoring Session</h3>
+            <p class="request-subtitle" style="margin:0;">Select an available date and time slot, then share your mentoring goals.</p>
         </div>
 
         {% if canSendCustomRequest %}
-            <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form" data-mentor-preview-form="1">
+            <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form" data-mentor-preview-form="1" data-mentor-id="{{ mentor.id }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
+                
+                {# Calendar Scheduling Section #}
+                <div class="scheduling-section" style="margin-bottom:1rem; padding:1rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 .75rem 0; font-size:.9rem; color:#1e293b;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:.35rem;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        Step 1: Select Date & Time
+                    </h4>
+                    
+                    {# Date Picker #}
+                    <div class="form-section" style="margin-bottom:.75rem;">
+                        <label for="scheduled_date_{{ mentor.id }}" class="form-label">Preferred Date <span class="form-required">*</span></label>
+                        <input type="date" 
+                               name="scheduled_date" 
+                               id="scheduled_date_{{ mentor.id }}"
+                               class="form-input scheduled-date-picker"
+                               required
+                               min="{{ "now"|date('Y-m-d') }}"
+                               data-mentor-id="{{ mentor.id }}"
+                               data-availability-days='{{ availabilityDays|json_encode|raw }}'>
+                        <small class="form-hint" style="color:#64748b; font-size:.75rem;">
+                            {% if availabilityDays %}Only {{ availabilityDays|join(', ') }} are available{% else %}Select any available date{% endif %}
+                        </small>
+                        <div class="date-error" id="date_error_{{ mentor.id }}" style="color:#dc2626; font-size:.8rem; margin-top:.25rem; display:none;"></div>
+                    </div>
+                    
+                    {# Time Slot Selection #}
+                    <div class="form-section" style="margin-bottom:.5rem;">
+                        <label for="scheduled_time_{{ mentor.id }}" class="form-label">Preferred Time <span class="form-required">*</span></label>
+                        <select name="scheduled_time" 
+                                id="scheduled_time_{{ mentor.id }}"
+                                class="form-input scheduled-time-select"
+                                required
+                                data-start-time="{{ availabilityStart }}"
+                                data-end-time="{{ availabilityEnd }}">
+                            <option value="">-- Select a time slot --</option>
+                        </select>
+                        <small class="form-hint" style="color:#64748b; font-size:.75rem;">
+                            Available slots: {{ availabilityStart|date('g:i A') }} - {{ availabilityEnd|date('g:i A') }}
+                        </small>
+                    </div>
+                </div>
 
+                {# Message Section #}
                 <div class="form-section" style="margin-bottom:.75rem;">
-                    <label for="custom_message_preview_{{ mentor.id }}" class="form-label">Your Message <span class="form-required">*</span></label>
+                    <label for="custom_message_preview_{{ mentor.id }}" class="form-label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:.35rem;">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Step 2: Your Message <span class="form-required">*</span>
+                    </label>
                     <textarea
                         name="message"
                         id="custom_message_preview_{{ mentor.id }}"
                         class="custom-textarea"
-                        rows="5"
-                        placeholder="Share your mentoring goals, preferred topics, and availability..."
+                        rows="4"
+                        placeholder="Describe what you'd like to discuss, your goals, or any specific topics you'd like mentoring on..."
                         required
+                        minlength="10"
                         maxlength="500"></textarea>
+                    <small class="char-count" style="color:#64748b; font-size:.75rem; text-align:right; display:block;">0 / 500</small>
                 </div>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary">Send Custom Request</button>
-                    <p class="form-note">{{ mentor.displayName }} will be notified by email and in-site notification.</p>
+                <div class="form-actions" style="display:flex; flex-direction:column; gap:.5rem;">
+                    <button type="submit" class="btn-primary" id="submit_request_{{ mentor.id }}" style="display:flex; align-items:center; justify-content:center; gap:.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        Send Mentoring Request
+                    </button>
+                    <p class="form-note" style="text-align:center; margin:0;">
+                        {{ mentor.displayName }} will review your request and confirm the meeting details.
+                    </p>
                 </div>
             </form>
         {% else %}
@@ -62,3 +149,110 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+(function() {
+    // Availability-based calendar scheduling
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    function generateTimeSlots(startTime, endTime, intervalMinutes = 30) {
+        const slots = [];
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+        
+        let currentHour = startHour;
+        let currentMin = startMin;
+        
+        while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+            const timeStr = String(currentHour).padStart(2, '0') + ':' + String(currentMin).padStart(2, '0');
+            const displayTime = new Date('2000-01-01T' + timeStr).toLocaleTimeString('en-US', {
+                hour: 'numeric', minute: '2-digit', hour12: true
+            });
+            slots.push({ value: timeStr, label: displayTime });
+            
+            currentMin += intervalMinutes;
+            if (currentMin >= 60) {
+                currentHour += 1;
+                currentMin = 0;
+            }
+        }
+        
+        return slots;
+    }
+    
+    document.querySelectorAll('.scheduled-date-picker').forEach(function(datePicker) {
+        const mentorId = datePicker.dataset.mentorId;
+        const availabilityDays = JSON.parse(datePicker.dataset.availabilityDays || '[]');
+        const timeSelect = document.getElementById('scheduled_time_' + mentorId);
+        const startTime = timeSelect?.dataset.startTime || '09:00';
+        const endTime = timeSelect?.dataset.endTime || '17:00';
+        
+        // Generate time slots
+        if (timeSelect) {
+            const slots = generateTimeSlots(startTime, endTime);
+            slots.forEach(function(slot) {
+                const option = document.createElement('option');
+                option.value = slot.value;
+                option.textContent = slot.label;
+                timeSelect.appendChild(option);
+            });
+        }
+        
+        // Date validation based on mentor availability
+        datePicker.addEventListener('change', function() {
+            // Parse date without timezone issues (YYYY-MM-DD format from input)
+            const dateStr = this.value;
+            if (!dateStr) return;
+            
+            const [year, month, day] = dateStr.split('-').map(Number);
+            // JavaScript months are 0-indexed, so subtract 1 from month
+            const selectedDate = new Date(year, month - 1, day);
+            const dayName = dayNames[selectedDate.getDay()];
+            const errorDiv = document.getElementById('date_error_' + mentorId);
+            
+            // DEBUG: Log values to console
+            console.log('DEBUG: Selected date:', dateStr);
+            console.log('DEBUG: Parsed year/month/day:', year, month, day);
+            console.log('DEBUG: Selected day name:', dayName);
+            console.log('DEBUG: Available days:', availabilityDays);
+            console.log('DEBUG: Is day included?', availabilityDays.includes(dayName));
+            
+            // Clear previous error
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            
+            if (availabilityDays.length > 0 && !availabilityDays.includes(dayName)) {
+                errorDiv.textContent = 'This mentor is only available on: ' + availabilityDays.join(', ');
+                errorDiv.textContent += ' (You selected: ' + dayName + ')';
+                errorDiv.style.display = 'block';
+                this.value = '';
+                return;
+            }
+            
+            // Regenerate time slots for the selected date
+            if (timeSelect) {
+                timeSelect.innerHTML = '<option value="">Select time slot...</option>';
+                const slots = generateTimeSlots(startTime, endTime);
+                slots.forEach(function(slot) {
+                    const option = document.createElement('option');
+                    option.value = slot.value;
+                    option.textContent = slot.label;
+                    timeSelect.appendChild(option);
+                });
+            }
+        });
+    });
+    
+    // Character counter for textarea
+    document.querySelectorAll('.custom-textarea').forEach(function(textarea) {
+        const counter = textarea.parentElement.querySelector('.char-count');
+        if (counter) {
+            textarea.addEventListener('input', function() {
+                const len = this.value.length;
+                counter.textContent = len + ' / 500';
+                counter.style.color = len < 10 ? '#dc2626' : (len > 450 ? '#d97706' : '#64748b');
+            });
+        }
+    });
+})();
+</script>

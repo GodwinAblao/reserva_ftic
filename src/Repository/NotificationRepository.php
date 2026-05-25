@@ -94,5 +94,7 @@ class NotificationRepository extends ServiceEntityRepository
             'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0',
             [$user->getId()]
         );
+        // Clear entity manager to prevent cached entities from showing stale data
+        $this->getEntityManager()->clear();
     }
 }

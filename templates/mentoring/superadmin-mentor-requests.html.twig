@@ -454,22 +454,20 @@
             <div class="sa-sec">Mentoring Application</div>
             <div class="sa-hr"></div>
             <div class="sa-sec">Personal Information</div>
-            <div class="sa-grid4">
+            <div class="sa-grid3">
                 <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: '—' }}</p></div>
                 <div class="sa-field"><label>Middle Name</label><p>{{ app.middleName ?: '—' }}</p></div>
                 <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: '—' }}</p></div>
-                <div class="sa-field"><label>Contact Number</label><p>{{ app.contactNumber ?: '—' }}</p></div>
             </div>
-            <div class="sa-grid4">
+            <div class="sa-grid2">
                 <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ app.email }}</p></div>
                 <div class="sa-field"><label>Program / Course</label><p>{{ app.programCourse ?: '—' }}</p></div>
-                <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
             </div>
             <div class="sa-sec">Academic Background &amp; Mentoring</div>
-            <div class="sa-grid4">
+            <div class="sa-grid3">
                 <div class="sa-field"><label>Specialization</label><p>{{ app.specialization }}</p></div>
-                <div class="sa-field"><label>Experience</label><p>{% if app.yearsOfExperience %}{{ app.yearsOfExperience }} {{ app.experienceUnit|default('Years') }}{% else %}—{% endif %}</p></div>
                 <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: '—' }}</p></div>
+                <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
             </div>
             <div class="sa-grid2">
                 <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: '—' }}</p></div>
@@ -479,14 +477,14 @@
             <div class="sa-sec">Reason / Message</div>
             <div class="sa-notes">{{ app.reason }}</div>
             {% endif %}
-            {% if app.supportingDescription %}
-            <div class="sa-sec">Supporting Description</div>
-            <div class="sa-notes">{{ app.supportingDescription }}</div>
+            {% if app.mentoringPublicBio %}
+            <div class="sa-sec">Mentoring Public Bio</div>
+            <div class="sa-notes">{{ app.mentoringPublicBio }}</div>
             {% endif %}
-            {% if app.proofOfExpertise %}
-            <div class="sa-sec">Proof of Expertise</div>
+            {% if app.supportingDocuments %}
+            <div class="sa-sec">Supporting Documents</div>
             <div class="sa-proof-row">
-                {% for file in app.proofOfExpertise %}
+                {% for file in app.supportingDocuments %}
                     {% if file ends with '.pdf' %}
                     <a href="{{ asset('uploads/profiles/' ~ file) }}" target="_blank" class="sa-proof-pdf" title="View PDF">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
@@ -1198,7 +1196,42 @@ function closeFilePreviewModal() {
 (function() {
     const REFRESH_INTERVAL = 10000; // 10 seconds
     const dataUrl = '{{ path("mentoring_superadmin_requests_data") }}';
-    let lastApplicationCount = document.querySelectorAll('.sa-item[data-application-id]').length;
+    const STORAGE_KEY = 'seenMentorApplicationIds';
+    
+    // Get seen application IDs from localStorage
+    function getSeenIds() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+    
+    // Save seen application IDs to localStorage
+    function saveSeenIds(ids) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+        } catch (e) {
+            // Ignore storage errors
+        }
+    }
+    
+    // Initialize seen IDs from current page applications
+    function initializeSeenIds() {
+        const currentIds = Array.from(document.querySelectorAll('.sa-item[data-application-id]'))
+            .map(el => parseInt(el.dataset.applicationId))
+            .filter(id => !isNaN(id));
+        
+        const seenIds = getSeenIds();
+        // Merge current IDs with stored seen IDs
+        const merged = [...new Set([...seenIds, ...currentIds])];
+        saveSeenIds(merged);
+        return merged;
+    }
+    
+    let seenApplicationIds = initializeSeenIds();
+    let isFirstCheck = true; // Flag to skip notification on first load
     
     async function fetchAndUpdateApplications() {
         try {
@@ -1222,15 +1255,25 @@ function closeFilePreviewModal() {
                 pendingBadge.style.display = pendingApplications.length > 0 ? 'inline-block' : 'none';
             }
             
-            // Check for new applications
-            if (applications.length > lastApplicationCount) {
-                // New application arrived!
-                const newCount = applications.length - lastApplicationCount;
-                showNotification(`${newCount} new mentor application${newCount > 1 ? 's' : ''} received`);
+            // Check for new applications by ID (skip on first check after page load)
+            if (!isFirstCheck) {
+                const currentIds = applications.map(app => app.id);
+                const newIds = currentIds.filter(id => !seenApplicationIds.includes(id));
                 
-                // Optional: Auto-refresh the page if user hasn't interacted recently
-                // Or update the DOM directly
-                lastApplicationCount = applications.length;
+                if (newIds.length > 0) {
+                    // New application(s) arrived!
+                    showNotification(`${newIds.length} new mentor application${newIds.length > 1 ? 's' : ''} received`);
+                    
+                    // Update seen IDs
+                    seenApplicationIds = [...new Set([...seenApplicationIds, ...currentIds])];
+                    saveSeenIds(seenApplicationIds);
+                }
+            } else {
+                // First check - just update seen IDs without notifying
+                isFirstCheck = false;
+                const currentIds = applications.map(app => app.id);
+                seenApplicationIds = [...new Set([...seenApplicationIds, ...currentIds])];
+                saveSeenIds(seenApplicationIds);
             }
             
             // Update last refreshed timestamp

@@ -72,6 +72,30 @@ class MentorCustomRequest
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $respondedAt = null;
 
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $scheduledDate = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $scheduledTime = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $meetingType = null; // 'Online', 'Face-to-Face', 'Hybrid'
+
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $meetingLink = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $meetingLocation = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $facilityId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $facilityName = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $facilityReservedBy = null; // 'mentor', 'student', 'outside'
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -198,5 +222,30 @@ class MentorCustomRequest
     {
         $this->updatedAt = new \DateTime();
     }
+
+    // New scheduling and meeting fields
+    public function getScheduledDate(): ?\DateTimeInterface { return $this->scheduledDate; }
+    public function setScheduledDate(?\DateTimeInterface $scheduledDate): self { $this->scheduledDate = $scheduledDate; $this->touch(); return $this; }
+
+    public function getScheduledTime(): ?string { return $this->scheduledTime; }
+    public function setScheduledTime(?string $scheduledTime): self { $this->scheduledTime = $scheduledTime; $this->touch(); return $this; }
+
+    public function getMeetingType(): ?string { return $this->meetingType; }
+    public function setMeetingType(?string $meetingType): self { $this->meetingType = $meetingType; $this->touch(); return $this; }
+
+    public function getMeetingLink(): ?string { return $this->meetingLink; }
+    public function setMeetingLink(?string $meetingLink): self { $this->meetingLink = $meetingLink; $this->touch(); return $this; }
+
+    public function getMeetingLocation(): ?string { return $this->meetingLocation; }
+    public function setMeetingLocation(?string $meetingLocation): self { $this->meetingLocation = $meetingLocation; $this->touch(); return $this; }
+
+    public function getFacilityId(): ?int { return $this->facilityId; }
+    public function setFacilityId(?int $facilityId): self { $this->facilityId = $facilityId; $this->touch(); return $this; }
+
+    public function getFacilityName(): ?string { return $this->facilityName; }
+    public function setFacilityName(?string $facilityName): self { $this->facilityName = $facilityName; $this->touch(); return $this; }
+
+    public function getFacilityReservedBy(): ?string { return $this->facilityReservedBy; }
+    public function setFacilityReservedBy(?string $facilityReservedBy): self { $this->facilityReservedBy = $facilityReservedBy; $this->touch(); return $this; }
 }
 

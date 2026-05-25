@@ -1790,6 +1790,42 @@
   border: 1px dashed rgba(0, 102, 51, 0.15);
 }
 
+/* Custom Request Session Styles */
+.session-custom {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, transparent 100%);
+  border-color: rgba(59, 130, 246, 0.12);
+}
+
+.session-custom:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06) 0%, transparent 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.session-type {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.session-meeting {
+  font-size: 0.8rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-meeting a {
+  color: #3b82f6;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.session-meeting a:hover {
+  color: #2563eb;
+}
+
 .mentor-inline-editor {
   margin-top: 0.9rem;
 }

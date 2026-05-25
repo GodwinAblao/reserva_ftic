@@ -37,18 +37,31 @@
             <div class="form-wrapper">
                 <div class="form-header">
                     <h1 class="form-title">Welcome back!</h1>
-                    <p class="form-subtitle">Sign in your account</p>
+                    <p class="form-subtitle">Log in to your account</p>
                 </div>
 
                 {# Backend Logic: Flash Messages and Errors #}
                 {% for message in app.flashes('success') %}
                     <div class="alert alert-success" style="margin-bottom: 1rem; color: #0D9B00;">{{ message }}</div>
                 {% endfor %}
-                {% if error %}
-                    <div class="alert alert-danger" style="margin-bottom: 1rem; color: #dc2626;">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+                {% set auth_error = app.session.flashbag.get('login_error')|first %}
+                {% if auth_error %}
+                    <div class="alert alert-error" style="background-color: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-weight: 500;">
+                        {{ auth_error }}
+                    </div>
+                {% elseif error %}
+                    <div class="alert alert-error" style="background-color: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-weight: 500;">
+                        {% if error.messageKey is defined %}
+                            {{ error.messageKey|trans(error.messageData|default({}), 'security') }}
+                        {% elseif error.message is defined %}
+                            {{ error.message }}
+                        {% else %}
+                            {{ error }}
+                        {% endif %}
+                    </div>
                 {% endif %}
 
-                <form class="form" method="post" action="{{ path('app_login') }}" id="loginForm">
+                <form class="form" method="post" action="{{ path('app_login') }}" id="loginForm" data-turbo="false">
                     <div class="form-group">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" id="email" name="email" value="{{ last_username }}" class="form-input" required autofocus />
@@ -69,7 +82,7 @@
                     </div>
 
                     <button type="submit" class="submit-button" id="loginSubmitButton">
-                        Sign in
+                        Log in
                     </button>
 
                     <div class="signup-link-container">

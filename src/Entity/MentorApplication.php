@@ -31,9 +31,6 @@ class MentorApplication
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $lastName = null;
 
-    #[ORM\Column(length: 20, nullable: true)]
-    private ?string $contactNumber = null;
-
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $programCourse = null;
 
@@ -43,12 +40,6 @@ class MentorApplication
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $reason = null;
 
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
-    private ?int $yearsOfExperience = null;
-
-    #[ORM\Column(length: 20, nullable: true)]
-    private ?string $experienceUnit = null;
-
     #[ORM\Column(length: 150, nullable: true)]
     private ?string $currentProfession = null;
 
@@ -56,13 +47,13 @@ class MentorApplication
     private ?string $highestEducation = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $supportingDescription = null;
+    private ?string $mentoringPublicBio = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $availabilityTime = null;
 
     #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $proofOfExpertise = null;
+    private ?array $supportingDocuments = null;
 
     #[ORM\Column(length: 50)]
     private string $status = 'Pending';
@@ -100,9 +91,6 @@ class MentorApplication
     public function getLastName(): ?string { return $this->lastName; }
     public function setLastName(?string $lastName): self { $this->lastName = $lastName; $this->touch(); return $this; }
 
-    public function getContactNumber(): ?string { return $this->contactNumber; }
-    public function setContactNumber(?string $contactNumber): self { $this->contactNumber = $contactNumber; $this->touch(); return $this; }
-
     public function getProgramCourse(): ?string { return $this->programCourse; }
     public function setProgramCourse(?string $programCourse): self { $this->programCourse = $programCourse; $this->touch(); return $this; }
 
@@ -111,26 +99,20 @@ class MentorApplication
     public function getReason(): ?string { return $this->reason; }
     public function setReason(?string $reason): self { $this->reason = $reason; $this->touch(); return $this; }
 
-    public function getYearsOfExperience(): ?int { return $this->yearsOfExperience; }
-    public function setYearsOfExperience(?int $yearsOfExperience): self { $this->yearsOfExperience = $yearsOfExperience; $this->touch(); return $this; }
-
-    public function getExperienceUnit(): ?string { return $this->experienceUnit; }
-    public function setExperienceUnit(?string $experienceUnit): self { $this->experienceUnit = $experienceUnit; $this->touch(); return $this; }
-
     public function getCurrentProfession(): ?string { return $this->currentProfession; }
     public function setCurrentProfession(?string $currentProfession): self { $this->currentProfession = $currentProfession; $this->touch(); return $this; }
 
     public function getHighestEducation(): ?string { return $this->highestEducation; }
     public function setHighestEducation(?string $highestEducation): self { $this->highestEducation = $highestEducation; $this->touch(); return $this; }
 
-    public function getSupportingDescription(): ?string { return $this->supportingDescription; }
-    public function setSupportingDescription(?string $supportingDescription): self { $this->supportingDescription = $supportingDescription; $this->touch(); return $this; }
+    public function getMentoringPublicBio(): ?string { return $this->mentoringPublicBio; }
+    public function setMentoringPublicBio(?string $mentoringPublicBio): self { $this->mentoringPublicBio = $mentoringPublicBio; $this->touch(); return $this; }
 
     public function getAvailabilityTime(): ?string { return $this->availabilityTime; }
     public function setAvailabilityTime(?string $availabilityTime): self { $this->availabilityTime = $availabilityTime; $this->touch(); return $this; }
 
-    public function getProofOfExpertise(): ?array { return $this->proofOfExpertise; }
-    public function setProofOfExpertise(?array $proofOfExpertise): self { $this->proofOfExpertise = $proofOfExpertise; $this->touch(); return $this; }
+    public function getSupportingDocuments(): ?array { return $this->supportingDocuments; }
+    public function setSupportingDocuments(?array $supportingDocuments): self { $this->supportingDocuments = $supportingDocuments; $this->touch(); return $this; }
 
     public function getStatus(): string { return $this->status; }
     public function setStatus(string $status): self { $this->status = $status; $this->touch(); return $this; }

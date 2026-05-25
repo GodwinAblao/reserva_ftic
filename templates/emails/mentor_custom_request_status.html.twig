@@ -98,10 +98,20 @@
                     <div class="box">{{ mentorResponse }}</div>
                 {% endif %}
 
+                {% if status == 'Accepted' and facilityReservedBy == 'student' %}
+                    <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                        <strong style="color: #c2410c;">⚠️ Action Required: Reserve a Facility</strong>
+                        <p style="margin: 8px 0 0; color: #7c2d12;">
+                            You need to reserve a facility for this face-to-face session. 
+                            <a href="{{ path('app_facility_index') }}" style="color: #ea580c; font-weight: 600;">Click here to reserve a facility →</a>
+                        </p>
+                    </div>
+                {% endif %}
+
                 <a class="cta" href="{{ requestUrl }}">Open Mentoring Dashboard →</a>
 
                 <p class="note">
-                    You can view the request status inside the mentoring page. If you need to send a follow-up, use the same mentor profile page.
+                    You can view the complete session details inside the mentoring page. If you need to send a follow-up, use the same mentor profile page.
                 </p>
             </div>
             <div class="footer">

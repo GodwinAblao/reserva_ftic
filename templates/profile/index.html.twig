@@ -5,6 +5,42 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ app.request.basepath }}/assets/styles/profile.css">
+    <style>
+        .pf-checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pf-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pf-checkbox-label:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+        .pf-checkbox {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: #0d9b00;
+        }
+        .pf-checkbox-label:has(.pf-checkbox:checked) {
+            background: #0d9b00;
+            border-color: #0d9b00;
+            color: white;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -158,7 +194,7 @@
     {% if is_granted('ROLE_MENTOR') and mentorProfile %}
     {# ── Mentor Profile Section ── #}
     <div class="pf-divider"></div>
-    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form" data-ajax="true">
+    <form method="post" action="{{ path('app_profile') }}" enctype="multipart/form-data" class="pf-form" id="pf-mentor-form" data-ajax="true">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token('profile') }}">
         <div class="pf-section">
             <h3 class="pf-section-title">Mentor Public Profile</h3>
@@ -196,13 +232,17 @@
             </div>
             <div class="pf-row pf-row--3">
                 <div class="pf-field">
-                    <label class="pf-label">Mentoring Day</label>
-                    <select class="pf-input" name="availability_day">
-                        <option value="">Select day…</option>
-                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F'] %}
-                        <option value="{{ day }}" {% if mentorProfile.availabilityDay == day %}selected{% endif %}>{{ day }}</option>
+                    <label class="pf-label">Mentoring Days</label>
+                    <div class="pf-checkbox-group" id="mentoring-days-group">
+                        {% set existingDays = mentorProfile.availabilityDay|split(',')|map(d => d|trim)|filter(d => d) %}
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                        <label class="pf-checkbox-label">
+                            <input type="checkbox" name="availability_days[]" value="{{ day }}" class="pf-checkbox" {% if day in existingDays %}checked{% endif %}>
+                            <span>{{ day[:3] }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
+                    </div>
+                    <input type="hidden" name="availability_day" id="pf_availability_day" value="{{ mentorProfile.availabilityDay }}">
                 </div>
                 <div class="pf-field">
                     <label class="pf-label">Available Time — Start</label>
@@ -215,7 +255,7 @@
                         value="{{ mentorProfile.availabilityEnd }}">
                 </div>
             </div>
-            <div class="pf-actions">
+            <div class="pf-actions" id="pf-mentor-actions">
                 <button type="submit" class="pf-save-btn">Save Mentor Profile</button>
             </div>
         </div>
@@ -226,26 +266,52 @@
 
 <script>
 (function(){
+    // Handle main profile form
     const toggleBtn = document.getElementById('pf-edit-toggle');
     const form = document.getElementById('pf-form');
     const actions = document.getElementById('pf-actions');
-    if (!toggleBtn || !form) return;
+    if (toggleBtn && form) {
+        toggleBtn.addEventListener('click', function(){
+            const inputs = form.querySelectorAll('.pf-input:not(.pf-input--readonly)');
+            const isEditing = toggleBtn.classList.contains('active');
+            if (isEditing) {
+                inputs.forEach(el => el.setAttribute('disabled', ''));
+                actions.style.display = 'none';
+                toggleBtn.classList.remove('active');
+                toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg> Edit';
+            } else {
+                inputs.forEach(el => el.removeAttribute('disabled'));
+                actions.style.display = 'flex';
+                toggleBtn.classList.add('active');
+                toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg> Cancel';
+            }
+        });
+    }
 
-    toggleBtn.addEventListener('click', function(){
-        const inputs = form.querySelectorAll('.pf-input:not(.pf-input--readonly)');
-        const isEditing = toggleBtn.classList.contains('active');
-        if (isEditing) {
-            inputs.forEach(el => el.setAttribute('disabled', ''));
-            actions.style.display = 'none';
-            toggleBtn.classList.remove('active');
-            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg> Edit';
-        } else {
-            inputs.forEach(el => el.removeAttribute('disabled'));
-            actions.style.display = 'flex';
-            toggleBtn.classList.add('active');
-            toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg> Cancel';
-        }
-    });
+    // Handle mentor profile form
+    const mentorForm = document.getElementById('pf-mentor-form');
+    const mentorToggle = document.getElementById('pf-mentor-edit-toggle');
+    const mentorActions = document.getElementById('pf-mentor-actions');
+    if (mentorToggle && mentorForm) {
+        mentorToggle.addEventListener('click', function(){
+            const inputs = mentorForm.querySelectorAll('.pf-input:not(.pf-input--readonly)');
+            const checkboxes = mentorForm.querySelectorAll('.pf-checkbox');
+            const isEditing = mentorToggle.classList.contains('active');
+            if (isEditing) {
+                inputs.forEach(el => el.setAttribute('disabled', ''));
+                checkboxes.forEach(el => el.setAttribute('disabled', ''));
+                mentorActions.style.display = 'none';
+                mentorToggle.classList.remove('active');
+                mentorToggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/></svg> Edit';
+            } else {
+                inputs.forEach(el => el.removeAttribute('disabled'));
+                checkboxes.forEach(el => el.removeAttribute('disabled'));
+                mentorActions.style.display = 'flex';
+                mentorToggle.classList.add('active');
+                mentorToggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg> Cancel';
+            }
+        });
+    }
 
     // Auto-submit profile picture on file select
     const picInput = document.getElementById('profile_picture_trigger');
@@ -358,6 +424,19 @@
         specSelect.addEventListener('change', function() {
             specOtherInput.style.display = this.value === 'Other' ? 'block' : 'none';
             if (this.value !== 'Other') specOtherInput.value = '';
+        });
+    }
+
+    // ── Mentoring Days checkboxes sync ──
+    const dayCheckboxes = document.querySelectorAll('input[name="availability_days[]"]');
+    const dayHidden = document.getElementById('pf_availability_day');
+    if (dayCheckboxes.length && dayHidden) {
+        function updateSelectedDays() {
+            const checked = Array.from(dayCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            dayHidden.value = checked.join(', ');
+        }
+        dayCheckboxes.forEach(function(cb) {
+            cb.addEventListener('change', updateSelectedDays);
         });
     }
 })();

@@ -49,11 +49,21 @@
                         <span class="credential-label">Education</span>
                         <span class="credential-value">{{ mentor.education ?: (user.degreeName ?: user.degree ?: 'N/A') }}</span>
                     </div>
-                    {% if mentor.availabilityDay or (mentor.availabilityStart and mentor.availabilityEnd) %}
+                    {% set availabilityDays = mentor.availabilityDays|default([]) %}
+                    {% if availabilityDays|length > 0 or (mentor.availabilityStart and mentor.availabilityEnd) %}
                     <div class="credential-item">
-                        <span class="credential-label">Available</span>
+                        <span class="credential-label">Schedule</span>
                         <span class="credential-value">
-                            {% if mentor.availabilityDay %}{{ mentor.availabilityDay }}{% endif %}{% if mentor.availabilityStart and mentor.availabilityEnd %}{% if mentor.availabilityDay %}, {% endif %}{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}{% endif %}
+                            {% if availabilityDays|length > 0 %}
+                                <strong style="color:#059669;">{{ availabilityDays|join(', ') }}</strong>
+                            {% else %}
+                                <span style="color:#d97706;">Days not specified</span>
+                            {% endif %}
+                            {% if mentor.availabilityStart and mentor.availabilityEnd %}
+                                <br><span style="color:#64748b; font-size:0.9em;">
+                                    {{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}
+                                </span>
+                            {% endif %}
                         </span>
                     </div>
                     {% endif %}
@@ -74,47 +84,102 @@
     <!-- Custom Request Section -->
     <div class="custom-request-section">
         <div class="request-header">
-            <h2>Send a Custom Mentoring Request</h2>
-            <p class="request-subtitle">Not finding a suitable time slot? Send a personalized message to {{ mentor.displayName }} to discuss your specific needs and find the perfect mentoring arrangement.</p>
+            <h2>Schedule a Mentoring Session</h2>
+            <p class="request-subtitle">Select an available date and time, then share your mentoring goals with {{ mentor.displayName }}.</p>
         </div>
 
         {% if canSendCustomRequest %}
-            <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form">
-                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}" id="custom_request_token">
+            {% set availabilityDays = mentor.availabilityDays|default([]) %}
+            {% set availabilityStart = mentor.availabilityStart|default('09:00') %}
+            {% set availabilityEnd = mentor.availabilityEnd|default('17:00') %}
             
-            <div class="form-section">
-                <label for="custom_message" class="form-label">
-                    Your Message
-                    <span class="form-required">*</span>
-                </label>
-                <p class="form-helper-text">
-                    Share your mentoring goals, preferred topics, availability, and any specific questions you'd like to discuss.
-                </p>
-                <textarea 
-                    name="message" 
-                    id="custom_message" 
-                    class="custom-textarea" 
-                    rows="6" 
-                    placeholder="Example: I'm interested in learning about AI and machine learning. I'm available on weekends and prefer online sessions via Zoom. Please let me know your rates and availability..." 
-                    required 
-                    maxlength="500">
-                </textarea>
-                <div class="character-count">
-                    <span id="char-count">0</span> / 500 characters
+            <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form" id="customRequestForm">
+                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}" id="custom_request_token">
+                
+                {# Calendar Scheduling Section #}
+                <div class="scheduling-section" style="margin-bottom:1.5rem; padding:1.25rem; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 1rem 0; font-size:1rem; color:#1e293b; display:flex; align-items:center; gap:.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Select Date
+                    </h4>
+                    
+                    {# Date Picker #}
+                    <div class="form-section" style="margin-bottom:1rem;">
+                        <label for="scheduled_date" class="form-label">Select Date <span class="form-required">*</span></label>
+                        <input type="date" 
+                               name="scheduled_date" 
+                               id="scheduled_date"
+                               class="form-input scheduled-date-picker"
+                               required
+                               min="{{ "now"|date('Y-m-d') }}"
+                               data-availability-days='{{ availabilityDays|json_encode|raw }}'
+                               style="padding:0.75rem; font-size:1rem;{% if availabilityDays|length == 0 %}border-color:#f59e0b;{% endif %}">
+                        {% if availabilityDays|length > 0 %}
+                            <small class="form-hint" style="color:#059669; font-size:.875rem; margin-top:.25rem; display:block; font-weight:500;">
+                                ✓ Mentor available on: {{ availabilityDays|join(', ') }}
+                            </small>
+                            <small class="form-hint" style="color:#64748b; font-size:.8rem; margin-top:.15rem; display:block;">
+                                Please select one of these days. Other dates will be rejected.
+                            </small>
+                        {% else %}
+                            <small class="form-hint" style="color:#d97706; font-size:.875rem; margin-top:.25rem; display:block; font-weight:500;">
+                                ⚠ This mentor has not set specific available days. Any date can be selected.
+                            </small>
+                        {% endif %}
+                        <div class="date-error" id="date_error" style="color:#dc2626; font-size:.875rem; margin-top:.25rem; display:none; background:#fef2f2; padding:0.5rem; border-radius:4px; border:1px solid #fecaca;"></div>
+                    </div>
+                    
+                    <input type="hidden" name="scheduled_time" id="scheduled_time" value="{{ availabilityStart|default('09:00') }}">
                 </div>
-            </div>
+                
+                {# Message Section #}
+                <div class="form-section" style="margin-bottom:1.25rem;">
+                    <label for="custom_message" class="form-label" style="display:flex; align-items:center; gap:.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Your Message <span class="form-required">*</span>
+                    </label>
+                    <p class="form-helper-text" style="margin-top:.25rem; margin-bottom:.5rem; color:#64748b;">
+                        Share your mentoring goals, preferred topics, and any specific questions you'd like to discuss.
+                    </p>
+                    <textarea 
+                        name="message" 
+                        id="custom_message" 
+                        class="custom-textarea" 
+                        rows="5" 
+                        placeholder="Example: I'm interested in learning about AI and machine learning. I'd like to discuss career paths and get advice on building a portfolio..." 
+                        required 
+                        minlength="10"
+                        maxlength="500"
+                        style="padding:0.75rem; font-size:1rem;"></textarea>
+                    <div class="character-count" style="text-align:right; margin-top:.25rem; font-size:.875rem; color:#64748b;">
+                        <span id="char-count">0</span> / 500 characters
+                        <span id="char-min" style="color:#dc2626; display:none;"> (minimum 10 characters)</span>
+                    </div>
+                </div>
 
                 <div class="form-actions">
-                <button type="submit" class="btn-primary btn-lg" id="submitCustomRequest">
-                    <span class="btn-icon">📨</span>
-                    <span class="btn-text">Send Custom Request</span>
-                </button>
-                <p class="form-note">{{ mentor.displayName }} will receive an email and an in-site notification with your message and can respond within 24-48 hours.</p>
-            </div>
+                    <button type="submit" class="btn-primary btn-lg" id="submitCustomRequest" style="display:flex; align-items:center; justify-content:center; gap:.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        <span class="btn-text">Send Mentoring Request</span>
+                    </button>
+                    <p class="form-note" style="text-align:center; margin-top:.75rem; color:#64748b; font-size:.875rem;">
+                        {{ mentor.displayName }} will review your request and confirm meeting details within 24-48 hours.
+                    </p>
+                </div>
             </form>
         {% else %}
             <div class="custom-request-disabled">
-                <p class="alert alert-info">You cannot send a custom request to your own mentor profile.</p>
+                <p class="alert alert-info" style="margin:0;">You cannot send a custom request to your own mentor profile.</p>
             </div>
         {% endif %}
     </div>
@@ -149,16 +214,52 @@
     <div class="sessions-section">
         <h2>Your Sessions with {{ mentor.displayName }}</h2>
         
-        {% if myAppointments|length > 0 %}
+        {% set hasSessions = myAppointments|length > 0 or myCustomRequests|length > 0 %}
+        
+        {% if hasSessions %}
             <div class="sessions-list">
+                {# Show Custom Requests First #}
+                {% for request in myCustomRequests %}
+                    <div class="session-item session-custom">
+                        <div class="session-datetime">
+                            {% if request.scheduledDate %}
+                                <span class="session-date">📅 {{ request.scheduledDate|date('M d, Y') }}</span>
+                                {% if request.scheduledTime %}
+                                    <span class="session-time">🕐 {{ request.scheduledTime|date('g:i A') }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="session-date">📅 Flexible Schedule</span>
+                            {% endif %}
+                        </div>
+                        <div class="session-details">
+                            <strong>{{ request.message|slice(0, 50) ~ (request.message|length > 50 ? '...' : '') }}</strong>
+                            <small class="session-type">Custom Request</small>
+                            {% if request.meetingType %}
+                                <small class="session-meeting">
+                                    📍 {{ request.meetingType }}
+                                    {% if request.meetingLink %}
+                                        <a href="{{ request.meetingLink }}" target="_blank" style="color:#3b82f6; text-decoration:underline;">Join Meeting</a>
+                                    {% endif %}
+                                    {% if request.facilityName %}
+                                        | {{ request.facilityName }}
+                                    {% endif %}
+                                </small>
+                            {% endif %}
+                        </div>
+                        <span class="status-badge status-{{ request.status|lower }}">{{ request.status|title }}</span>
+                    </div>
+                {% endfor %}
+                
+                {# Show Regular Appointments #}
                 {% for appointment in myAppointments %}
                     <div class="session-item">
                         <div class="session-datetime">
-                            <span class="session-date">📅 {{ appointment.scheduledAt|date('MMM d, Y') }}</span>
-                            <span class="session-time">🕐 {{ appointment.scheduledAt|date('h:mm A') }}</span>
+                            <span class="session-date">📅 {{ appointment.scheduledAt|date('M d, Y') }}</span>
+                            <span class="session-time">🕐 {{ appointment.scheduledAt|date('g:i A') }}</span>
                         </div>
                         <div class="session-details">
                             <strong>{{ appointment.topic ?: 'General Mentoring Session' }}</strong>
+                            <small class="session-type">Scheduled Session</small>
                         </div>
                         <span class="status-badge status-{{ appointment.status|lower }}">{{ appointment.status }}</span>
                     </div>
@@ -168,7 +269,7 @@
             <div class="empty-sessions">
                 <p class="empty-icon">📅</p>
                 <p class="empty-text">You haven't booked any sessions with this mentor yet.</p>
-                <p class="empty-subtext">Send a custom request above or browse available time slots to schedule your first session!</p>
+                <p class="empty-subtext">Send a custom request above to schedule your first mentoring session!</p>
             </div>
         {% endif %}
     </div>
@@ -365,29 +466,85 @@
     document.addEventListener('DOMContentLoaded', function() {
         const textarea = document.getElementById('custom_message');
         const charCount = document.getElementById('char-count');
-        const customRequestForm = document.querySelector('.custom-request-form');
-        const submitButton = document.getElementById('submitCustomRequest');
+        const charMin = document.getElementById('char-min');
+        const customRequestForm = document.getElementById('customRequestForm');
+        const datePicker = document.getElementById('scheduled_date');
+        const dateError = document.getElementById('date_error');
 
-        console.log('Custom request form elements:', {
-            textarea: !!textarea,
-            charCount: !!charCount,
-            customRequestForm: !!customRequestForm,
-            submitButton: !!submitButton
-        });
-
+        // Character counter with min validation
         if (textarea && charCount) {
             function updateCharCount() {
-                charCount.textContent = textarea.value.length;
+                const len = textarea.value.length;
+                charCount.textContent = len;
+                if (charMin) {
+                    charMin.style.display = len > 0 && len < 10 ? 'inline' : 'none';
+                }
+                charCount.style.color = len < 10 ? '#dc2626' : (len > 450 ? '#d97706' : '#64748b');
             }
-
             textarea.addEventListener('input', updateCharCount);
-            textarea.addEventListener('change', updateCharCount);
+            updateCharCount();
         }
 
-        // Regular form submission (no AJAX to avoid JavaScript errors)
-        if (customRequestForm && submitButton) {
-            console.log('Form and button found, using regular submission');
-            // Form will submit normally without AJAX interference
+        // Calendar scheduling functionality
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // Date validation based on mentor availability
+        if (datePicker && dateError) {
+            let availabilityDays = [];
+            try {
+                availabilityDays = JSON.parse(datePicker.dataset.availabilityDays || '[]');
+            } catch (e) {
+                console.error('Error parsing availability days:', e);
+                availabilityDays = [];
+            }
+            
+            console.log('Mentor availability days:', availabilityDays);
+            
+            datePicker.addEventListener('change', function() {
+                if (!this.value) {
+                    dateError.style.display = 'none';
+                    return;
+                }
+                
+                const selectedDate = new Date(this.value + 'T00:00:00');
+                const dayName = dayNames[selectedDate.getDay()];
+                
+                console.log('Selected date:', this.value, 'Day:', dayName);
+                
+                // If mentor has specific available days, validate against them
+                if (availabilityDays.length > 0) {
+                    if (!availabilityDays.includes(dayName)) {
+                        dateError.innerHTML = '<strong>⚠ Date not available</strong><br>This mentor only accepts requests for: <strong>' + availabilityDays.join(', ') + '</strong>. Please select a different date.';
+                        dateError.style.display = 'block';
+                        this.value = '';
+                        // Scroll to error
+                        dateError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    } else {
+                        dateError.style.display = 'none';
+                    }
+                } else {
+                    // No specific days set - any day is allowed
+                    dateError.style.display = 'none';
+                    console.log('No availability days set - allowing any date');
+                }
+            });
+        }
+
+        // Form validation before submit
+        if (customRequestForm) {
+            customRequestForm.addEventListener('submit', function(e) {
+                const dateVal = datePicker ? datePicker.value : '';
+                const messageVal = textarea ? textarea.value.trim() : '';
+                
+                if (!dateVal || !messageVal || messageVal.length < 10) {
+                    e.preventDefault();
+                    let errors = [];
+                    if (!dateVal) errors.push('Please select a date');
+                    if (!messageVal || messageVal.length < 10) errors.push('Please enter a message (minimum 10 characters)');
+                    alert('Please fix the following:\n• ' + errors.join('\n• '));
+                    return false;
+                }
+            });
         }
     });
 

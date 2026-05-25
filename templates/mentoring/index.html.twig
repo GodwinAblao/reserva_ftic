@@ -5,6 +5,32 @@
 {% block stylesheets %}
     {{ parent() }}
     <link rel="stylesheet" href="{{ asset('styles/user_reservations.css') }}">
+    <style>
+        /* Prevent flash of content - hide all sections by default, JS will show the active one */
+        .mentoring-content {
+            display: none;
+        }
+        .mentoring-content:not(.hidden) {
+            display: block;
+        }
+
+        /* ── Cancel Request Modal ── */
+        .cancel-modal-overlay{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;align-items:center;justify-content:center;padding:1.5rem;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+        .cancel-modal-overlay.is-open{display:flex;}
+        .cancel-modal-dialog{width:min(480px,100%);background:#fff;border-radius:20px;padding:2rem 2rem 1.75rem;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28);animation:cancelModalIn .18s ease-out;}
+        .cancel-modal-icon{width:58px;height:58px;margin:0 auto 1rem;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fee2e2;border:1px solid #fecaca;}
+        .cancel-modal-icon svg{color:#dc2626;}
+        .cancel-modal-dialog h3{margin:0 0 .5rem;color:#111827;font-size:1.2rem;font-weight:800;}
+        .cancel-modal-dialog p{margin:0 0 1.25rem;color:#6b7280;line-height:1.55;font-size:.9rem;}
+        .cancel-modal-actions{display:flex;gap:.75rem;justify-content:center;margin-top:1.25rem;}
+        .cancel-modal-actions button{border:none;border-radius:10px;padding:.7rem 1.4rem;font-weight:800;cursor:pointer;font-size:.9rem;transition:background .15s,transform .1s;}
+        .cancel-modal-actions button:active{transform:scale(.97);}
+        .cancel-modal-cancel{background:#f3f4f6;color:#374151;}
+        .cancel-modal-cancel:hover{background:#e5e7eb;}
+        .cancel-modal-confirm{background:#dc2626;color:#fff;}
+        .cancel-modal-confirm:hover{background:#b91c1c;}
+        @keyframes cancelModalIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -71,7 +97,22 @@
                     <div class="reservations-grid">
                         {% if sentCustomRequests|length > 0 %}
                             {% for request in sentCustomRequests %}
-                                <div class="reservation-card-new" data-req-id="{{ request.id }}">
+                                <div class="reservation-card-new {{ request.status == 'accepted' ? 'session-item-clickable' : '' }}" data-req-id="{{ request.id }}"
+                                    {% if request.status == 'accepted' %}
+                                    onclick="openSessionDetailsModal({
+                                        isStudent: true,
+                                        mentorName: '{{ request.mentorProfile ? request.mentorProfile.displayName|e('js') : (request.assignedMentorName|e('js')) }}',
+                                        mentorEmail: '{{ request.mentorProfile ? request.mentorProfile.user.email|e('js') : '' }}',
+                                        scheduledDate: '{{ request.scheduledDate ? request.scheduledDate|date('F d, Y') : 'Flexible' }}',
+                                        scheduledTime: '{{ request.scheduledTime|default('To be confirmed') }}',
+                                        meetingType: '{{ request.meetingType|default('Not specified') }}',
+                                        meetingLink: '{{ request.meetingLink|e('js') }}',
+                                        facilityReservedBy: '{{ request.facilityReservedBy|e('js') }}',
+                                        meetingLocation: '{{ request.meetingLocation|e('js') }}',
+                                        status: '{{ request.status|capitalize }}',
+                                        mentorResponse: '{{ request.mentorResponse|e('js') }}'
+                                    })"
+                                    {% endif %}>
                                     <div class="card-title">
                                         {% if request.mentorProfile %}
                                             {{ request.mentorProfile.displayName }}
@@ -91,6 +132,17 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% if request.status == 'accepted' %}
+                                        <div class="info-item wide">
+                                            <span class="view-details-btn">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                Click to view full details
+                                            </span>
+                                        </div>
+                                        {% endif %}
                                         {% if request.preferredExpertise %}
                                         <div class="info-item">
                                             <span class="info-label">Specialization Needed</span>
@@ -150,10 +202,10 @@
                                     </div>
                                     {% if request.status not in ['Cancelled', 'Completed'] %}
                                     <div class="card-actions" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
-                                        <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" onsubmit="return confirm('Cancel this mentor request? This cannot be undone.');">
+                                        <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" onsubmit="event.preventDefault(); event.stopPropagation(); openCancelModal(this);">
                                             <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
                                             <input type="hidden" name="action" value="cancel">
-                                            <button type="submit" style="background:#dc2626;color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;">
+                                            <button type="submit" style="background:#dc2626;color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;" onclick="event.stopPropagation();">
                                                 Cancel Request
                                             </button>
                                         </form>
@@ -288,7 +340,24 @@
                         {% if is_granted('ROLE_MENTOR') %}
                             {% if incomingCustomRequests|length > 0 %}
                                 {% for request in incomingCustomRequests %}
-                                    <div class="mentoring-card-new">
+                                    <div class="mentoring-card-new {{ request.status == 'accepted' ? 'session-item-clickable' : '' }}"
+                                        {% if request.status == 'accepted' %}
+                                        onclick="openSessionDetailsModal({
+                                            isStudent: false,
+                                            mentorName: '{{ request.mentorProfile ? request.mentorProfile.displayName|e('js') : 'You' }}',
+                                            mentorEmail: '{{ request.mentorProfile ? request.mentorProfile.user.email|e('js') : '' }}',
+                                            studentName: '{{ request.student ? request.student.firstName|e('js') : 'Student' }}',
+                                            studentEmail: '{{ request.student ? request.student.email|e('js') : '' }}',
+                                            scheduledDate: '{{ request.scheduledDate ? request.scheduledDate|date('F d, Y') : 'Flexible' }}',
+                                            scheduledTime: '{{ request.scheduledTime|default('To be confirmed') }}',
+                                            meetingType: '{{ request.meetingType|default('Not specified') }}',
+                                            meetingLink: '{{ request.meetingLink|e('js') }}',
+                                            facilityReservedBy: '{{ request.facilityReservedBy|e('js') }}',
+                                            meetingLocation: '{{ request.meetingLocation|e('js') }}',
+                                            status: '{{ request.status|capitalize }}',
+                                            mentorResponse: '{{ request.mentorResponse|e('js') }}'
+                                        })"
+                                        {% endif %}>
                                         <div class="card-title">{{ request.student.firstName ?: request.student.email }}</div>
                                         <div class="card-divider"></div>
                                         <div class="card-info-grid">
@@ -300,6 +369,17 @@
                                                 <span class="info-label">Submitted</span>
                                                 <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
                                             </div>
+                                            {% if request.status == 'accepted' %}
+                                            <div class="info-item wide">
+                                                <span class="view-details-btn">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                        <circle cx="12" cy="12" r="3"></circle>
+                                                    </svg>
+                                                    Click to view full details
+                                                </span>
+                                            </div>
+                                            {% endif %}
                                             <div class="info-item wide">
                                                 <span class="info-label">Student Email</span>
                                                 <span class="info-value">{{ request.student.email }}</span>
@@ -313,14 +393,23 @@
                                         </div>
                                         {% if request.status == 'Pending' %}
                                         <div class="card-actions">
-                                            <form method="post" action="{{ path('mentoring_custom_request_review', {'id': request.id}) }}" data-no-loading="true">
-                                                <input type="hidden" name="_token" value="{{ csrf_token('custom_request_review_' ~ request.id) }}">
-                                                <textarea name="mentor_response" class="form-input" rows="2" placeholder="Optional response..."></textarea>
-                                                <div class="button-group button-group-mt">
-                                                    <button type="submit" name="decision" value="accept" class="btn btn-primary-small">Accept</button>
-                                                    <button type="submit" name="decision" value="decline" class="btn btn-danger-small">Decline</button>
-                                                </div>
-                                            </form>
+                                            {# Display scheduled date/time if available #}
+                                            {% if request.scheduledDate %}
+                                            <div class="scheduled-info" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:13px;">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2" style="vertical-align:middle; margin-right:6px;">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                                <strong>Requested:</strong> {{ request.scheduledDate|date('F d, Y') }} at {{ request.scheduledTime ? request.scheduledTime|date('g:i A') : '—' }}
+                                            </div>
+                                            {% endif %}
+                                            
+                                            <div class="button-group button-group-mt">
+                                                <button type="button" class="btn btn-primary-small" onclick="openAcceptModal({{ request.id }}, '{{ request.student.firstName|default('Student')|e('js') }}', '{{ request.scheduledDate ? request.scheduledDate|date('Y-m-d') : '' }}', '{{ request.scheduledTime|default('') }}', '{{ csrf_token('custom_request_review_' ~ request.id) }}')">Accept</button>
+                                                <button type="button" class="btn btn-danger-small" onclick="openDeclineModal({{ request.id }}, '{{ csrf_token('custom_request_review_' ~ request.id) }}')">Decline</button>
+                                            </div>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -819,39 +908,10 @@
 
             function statusClass(s){ return s ? s.toLowerCase() : 'pending'; }
 
-            function renderCard(r){
-                var title = r.mentorProfileName || r.assignedMentorName || r.preferredExpertise || 'Mentor Assistance Request';
-                var rows = '';
-                rows += '<div class="info-item"><span class="info-label">Status</span><span class="info-value status-'+statusClass(r.status)+'">'+r.status+'</span></div>';
-                rows += '<div class="info-item"><span class="info-label">Submitted</span><span class="info-value">'+r.createdAt+'</span></div>';
-                if(r.preferredExpertise) rows += '<div class="info-item"><span class="info-label">Specialization Needed</span><span class="info-value">'+r.preferredExpertise+'</span></div>';
-                if(r.departmentCourse)   rows += '<div class="info-item"><span class="info-label">Degree / Course</span><span class="info-value">'+r.departmentCourse+'</span></div>';
-                if(r.availableDates)     rows += '<div class="info-item"><span class="info-label">Preferred Day</span><span class="info-value">'+r.availableDates+'</span></div>';
-                if(r.preferredSchedule)  rows += '<div class="info-item"><span class="info-label">Preferred Time</span><span class="info-value">'+r.preferredSchedule+'</span></div>';
-
-                var footer = '';
-                if(r.message && r.message !== 'No additional notes provided.'){
-                    footer += '<div class="info-item wide"><span class="info-label">Message</span><span class="info-value">'+r.message.slice(0,160)+(r.message.length>160?'…':'')+'</span></div>';
-                }
-                if(r.assignedMentorName){
-                    footer += '<div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;"><span class="info-label">Assigned Mentor</span><span class="info-value status-approved"><strong>'+r.assignedMentorName+'</strong>'+(r.assignedMentorExpertise?' — '+r.assignedMentorExpertise:'')+'</span></div>';
-                }
-                if(r.availableTime){
-                    footer += '<div class="info-item wide"><span class="info-label">Confirmed Time</span><span class="info-value">'+(r.availableDates?r.availableDates+' · ':'')+r.availableTime+'</span></div>';
-                }
-                if(r.meetingMethod){
-                    footer += '<div class="info-item"><span class="info-label">Meeting Method</span><span class="info-value">'+r.meetingMethod+'</span></div>';
-                }
-                if(r.adminInstructions){
-                    footer += '<div class="info-item wide"><span class="info-label">Admin Instructions</span><span class="info-value">'+r.adminInstructions+'</span></div>';
-                }
-
-                return '<div class="reservation-card-new" data-req-id="'+r.id+'">'
-                    + '<div class="card-title">'+title+'</div>'
-                    + '<div class="card-divider"></div>'
-                    + '<div class="card-info-grid">'+rows+'</div>'
-                    + (footer ? '<div class="card-info-footer">'+footer+'</div>' : '')
-                    + '</div>';
+            /* Helper to escape strings for JS */
+            function escapeJS(str){
+                if(!str) return '';
+                return str.replace(/[\\'"]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
             }
 
             function doPoll(){
@@ -859,22 +919,28 @@
                 .then(function(r){ return r.ok ? r.json() : null; })
                 .then(function(data){
                     if(!data || !data.requests) return;
-                    var grid = document.querySelector('#custom-requests-content .reservations-grid');
-                    if(!grid) return;
-
+                    
                     var changed = false;
                     data.requests.forEach(function(r){
                         var prev = _lastStatuses[r.id];
                         if(prev !== undefined && prev !== r.status) changed = true;
                         _lastStatuses[r.id] = r.status;
+                        
+                        /* Update existing card status instead of rebuilding */
+                        var card = document.querySelector('.reservation-card-new[data-req-id="'+r.id+'"]');
+                        if(card){
+                            var statusEl = card.querySelector('.info-value[class*="status-"]');
+                            if(statusEl){
+                                statusEl.className = 'info-value status-'+statusClass(r.status);
+                                statusEl.textContent = r.status;
+                            }
+                            /* Update clickability for accepted status */
+                            if(r.status === 'Accepted' && !card.classList.contains('session-item-clickable')){
+                                card.classList.add('session-item-clickable');
+                                card.setAttribute('onclick', 'openSessionDetailsModal({isStudent:true,mentorName:\''+escapeJS(r.mentorProfileName||r.assignedMentorName||'')+'\',mentorEmail:\''+escapeJS(r.mentorEmail||'')+'\',scheduledDate:\''+escapeJS(r.scheduledDate||'Flexible')+'\',scheduledTime:\''+escapeJS(r.scheduledTime||'To be confirmed')+'\',meetingType:\''+escapeJS(r.meetingType||'Not specified')+'\',meetingLink:\''+escapeJS(r.meetingLink||'')+'\',facilityReservedBy:\''+escapeJS(r.facilityReservedBy||'')+'\',meetingLocation:\''+escapeJS(r.meetingLocation||'')+'\',status:\'Accepted\',mentorResponse:\''+escapeJS(r.mentorResponse||'')+'\'})');
+                            }
+                        }
                     });
-
-                    /* Rebuild the grid cards */
-                    if(data.requests.length === 0){
-                        grid.innerHTML = '<div class="empty-mini-state"><p>You have not sent a custom request yet.</p></div>';
-                    } else {
-                        grid.innerHTML = data.requests.map(renderCard).join('');
-                    }
 
                     /* Also update the sidebar Recent Request snippet */
                     var sideP = document.querySelector('.reservations-side-card p');
@@ -893,6 +959,12 @@
                     }
                 })
                 .catch(function(){});
+            }
+            
+            /* Helper to escape strings for JS */
+            function escapeJS(str){
+                if(!str) return '';
+                return str.replace(/[\\'"]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
             }
 
             function init(){
@@ -947,5 +1019,1040 @@
             font-weight: 500;
             margin-bottom: 0.25rem;
         }
+
+        /* ── Mentor Response Modals ── */
+        .mentor-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .mentor-modal-overlay.is-open { display: flex; }
+        .mentor-modal-dialog {
+            width: min(520px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 20px;
+            padding: 2rem 2rem 1.75rem;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+            animation: mentorModalIn 0.2s ease-out;
+        }
+        @keyframes mentorModalIn {
+            from { opacity: 0; transform: translateY(14px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .mentor-modal-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .mentor-modal-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mentor-modal-icon.accept { background: #f0fdf4; border: 2px solid #bbf7d0; }
+        .mentor-modal-icon.decline { background: #fef2f2; border: 2px solid #fecaca; }
+        .mentor-modal-header h3 {
+            margin: 0 0 0.5rem;
+            color: #111827;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        .mentor-modal-header p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .mentor-modal-body {
+            margin-bottom: 1.5rem;
+        }
+        .mentor-form-group {
+            margin-bottom: 1rem;
+        }
+        .mentor-form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        .mentor-form-group label .required {
+            color: #dc2626;
+            margin-left: 2px;
+        }
+        .mentor-form-input,
+        .mentor-form-select,
+        .mentor-form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #374151;
+            background: #fff;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .mentor-form-input:focus,
+        .mentor-form-select:focus,
+        .mentor-form-textarea:focus {
+            outline: none;
+            border-color: #0D9B00;
+            box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.08);
+        }
+        .mentor-form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .mentor-meeting-types {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+        .mentor-meeting-type-option {
+            position: relative;
+            cursor: pointer;
+        }
+        .mentor-meeting-type-option input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .mentor-meeting-type-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .mentor-meeting-type-option:hover .mentor-meeting-type-label {
+            border-color: #0D9B00;
+            background: #f0fdf4;
+        }
+        .mentor-meeting-type-option input:checked + .mentor-meeting-type-label {
+            border-color: #0D9B00;
+            background: #f0fdf4;
+        }
+        .mentor-meeting-type-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 8px;
+            color: #6b7280;
+        }
+        .mentor-meeting-type-option input:checked + .mentor-meeting-type-label .mentor-meeting-type-icon {
+            color: #0D9B00;
+        }
+        .mentor-meeting-type-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .mentor-modal-footer {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        .mentor-modal-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+        .mentor-modal-btn:active { transform: scale(0.97); }
+        .mentor-modal-btn-cancel {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .mentor-modal-btn-cancel:hover { background: #e5e7eb; }
+        .mentor-modal-btn-confirm {
+            background: #0D9B00;
+            color: #fff;
+        }
+        .mentor-modal-btn-confirm:hover { background: #0a7d00; }
+        .mentor-modal-btn-decline {
+            background: #dc2626;
+            color: #fff;
+        }
+        .mentor-modal-btn-decline:hover { background: #b91c1c; }
+        .mentor-dynamic-fields {
+            display: none;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 10px;
+            margin-top: 0.5rem;
+        }
+        .mentor-dynamic-fields.is-visible { display: block; }
+        .mentor-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        .mentor-scheduled-summary {
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 1rem;
+            font-size: 13px;
+        }
+        .mentor-scheduled-summary strong {
+            color: #1e40af;
+        }
+        
+        /* Face-to-Face Options */
+        .f2f-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .f2f-option {
+            position: relative;
+            cursor: pointer;
+        }
+        .f2f-option input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .f2f-option-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            transition: all 0.15s;
+            background: #fff;
+        }
+        .f2f-option:hover .f2f-option-label {
+            border-color: #0D9B00;
+            background: #f0fdf4;
+        }
+        .f2f-option input:checked + .f2f-option-label {
+            border-color: #0D9B00;
+            background: #f0fdf4;
+        }
+        .f2f-option-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            flex-shrink: 0;
+        }
+        .f2f-option input:checked + .f2f-option-label .f2f-option-icon {
+            background: #0D9B00;
+            color: #fff;
+        }
+        .f2f-option-content {
+            flex: 1;
+        }
+        .f2f-option-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #374151;
+            margin: 0 0 0.25rem;
+        }
+        .f2f-option-desc {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin: 0;
+        }
+        .f2f-option-arrow {
+            color: #9ca3af;
+        }
+        .f2f-option input:checked + .f2f-option-label .f2f-option-arrow {
+            color: #0D9B00;
+        }
+        .f2f-sub-fields {
+            margin-top: 0.75rem;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+        .mentor-meeting-types-2col {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        /* Details Modal Styles */
+        .details-modal {
+            width: min(680px, 95%);
+        }
+        .mentor-modal-icon.details {
+            background: #eff6ff;
+            border: 2px solid #bfdbfe;
+        }
+        .details-grid {
+            display: grid;
+            gap: 1.25rem;
+        }
+        .details-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        .details-section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .details-content {
+            display: grid;
+            gap: 0.75rem;
+        }
+        .details-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .details-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #64748b;
+            min-width: 100px;
+            flex-shrink: 0;
+        }
+        .details-value {
+            font-size: 0.9rem;
+            color: #1e293b;
+            flex: 1;
+        }
+        .details-status-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .details-status-badge.status-accepted {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .details-status-badge.status-declined {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .details-status-badge.status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .details-message-box {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.9rem;
+            color: #475569;
+            font-style: italic;
+        }
+        .details-action-box {
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+        .details-action-box strong {
+            color: #c2410c;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .details-action-box p {
+            margin: 0;
+            color: #7c2d12;
+            font-size: 0.85rem;
+        }
+        
+        /* Clickable session items */
+        .session-item-clickable {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .session-item-clickable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .view-details-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.8rem;
+            color: #3b82f6;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+        .view-details-btn:hover {
+            color: #2563eb;
+        }
+        
+        @media (max-width: 600px) {
+            .mentor-meeting-types { grid-template-columns: 1fr; }
+            .mentor-meeting-types-2col { grid-template-columns: 1fr; }
+            .details-row { flex-direction: column; gap: 0.25rem; }
+            .details-label { min-width: auto; }
+        }
     </style>
+
+    {# ── Accept Modal ── #}
+    <div class="mentor-modal-overlay" id="acceptModal">
+        <div class="mentor-modal-dialog">
+            <div class="mentor-modal-header">
+                <div class="mentor-modal-icon accept">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0D9B00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <h3>Accept Mentoring Request</h3>
+                <p>Confirm your acceptance and set up the session for <strong id="acceptStudentName">the student</strong>.</p>
+            </div>
+            
+            <div class="mentor-modal-body">
+                <form id="acceptForm" method="post" action="">
+                    <input type="hidden" name="_token" id="acceptToken" value="">
+                    <input type="hidden" name="decision" value="accept">
+                    
+                    {# Scheduled Date Summary #}
+                    <div class="mentor-scheduled-summary" id="scheduledSummary" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <strong>Student Requested:</strong> <span id="scheduledDateText">—</span>
+                    </div>
+                    
+                    {# Meeting Type Selection #}
+                    <div class="mentor-form-group">
+                        <label>How will this session be conducted? <span class="required">*</span></label>
+                        <div class="mentor-meeting-types-2col">
+                            {# Online Option #}
+                            <label class="mentor-meeting-type-option">
+                                <input type="radio" name="meeting_type" value="Online" required onchange="toggleMeetingFields('online')">
+                                <span class="mentor-meeting-type-label">
+                                    <svg class="mentor-meeting-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                                    </svg>
+                                    <span class="mentor-meeting-type-text">Online</span>
+                                </span>
+                            </label>
+                            {# Face-to-Face Option #}
+                            <label class="mentor-meeting-type-option">
+                                <input type="radio" name="meeting_type" value="Face-to-Face" required onchange="toggleMeetingFields('f2f')">
+                                <span class="mentor-meeting-type-label">
+                                    <svg class="mentor-meeting-type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                    <span class="mentor-meeting-type-text">Face-to-Face</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    {# Online Fields #}
+                    <div class="mentor-dynamic-fields" id="onlineFields">
+                        <div class="mentor-form-group">
+                            <label for="meetingLink">Meeting Link <span class="required">*</span></label>
+                            <input type="url" name="meeting_link" id="meetingLink" class="mentor-form-input" placeholder="https://zoom.us/j/... or https://meet.google.com/...">
+                            <div class="mentor-hint">Provide a valid meeting URL (Zoom, Google Meet, Teams, etc.)</div>
+                        </div>
+                    </div>
+                    
+                    {# Face-to-Face Fields - 3 Options #}
+                    <div class="mentor-dynamic-fields" id="f2fFields">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.75rem; display: block;">How will the meeting location be handled? <span class="required">*</span></label>
+                        
+                        <div class="f2f-options">
+                            {# Option 1: Mentor Reserves Facility #}
+                            <label class="f2f-option">
+                                <input type="radio" name="facility_reserved_by" value="mentor" onchange="toggleF2fOption('mentor')">
+                                <span class="f2f-option-label">
+                                    <span class="f2f-option-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                        </svg>
+                                    </span>
+                                    <span class="f2f-option-content">
+                                        <p class="f2f-option-title">I'll Reserve a Facility</p>
+                                        <p class="f2f-option-desc">You will be redirected to reserve a room after accepting</p>
+                                    </span>
+                                    <span class="f2f-option-arrow">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                        </svg>
+                                    </span>
+                                </span>
+                            </label>
+                            
+                            {# Option 2: Student Reserves Facility #}
+                            <label class="f2f-option">
+                                <input type="radio" name="facility_reserved_by" value="student" onchange="toggleF2fOption('student')">
+                                <span class="f2f-option-label">
+                                    <span class="f2f-option-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                    </span>
+                                    <span class="f2f-option-content">
+                                        <p class="f2f-option-title">Requestor Will Reserve</p>
+                                        <p class="f2f-option-desc">Student will be notified to reserve the facility themselves</p>
+                                    </span>
+                                    <span class="f2f-option-arrow">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                        </svg>
+                                    </span>
+                                </span>
+                            </label>
+                            
+                            {# Option 3: Outside Location #}
+                            <label class="f2f-option">
+                                <input type="radio" name="facility_reserved_by" value="outside" onchange="toggleF2fOption('outside')">
+                                <span class="f2f-option-label">
+                                    <span class="f2f-option-icon">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                        </svg>
+                                    </span>
+                                    <span class="f2f-option-content">
+                                        <p class="f2f-option-title">Outside Location</p>
+                                        <p class="f2f-option-desc">Meeting will be held outside campus (coffee shop, library, etc.)</p>
+                                    </span>
+                                    <span class="f2f-option-arrow">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                        </svg>
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+                        
+                        {# Outside Location Field #}
+                        <div class="f2f-sub-fields" id="outsideLocationField" style="display: none;">
+                            <div class="mentor-form-group" style="margin-bottom: 0;">
+                                <label for="outsideLocation">Specify Outside Location <span class="required">*</span></label>
+                                <input type="text" name="meeting_location" id="outsideLocation" class="mentor-form-input" placeholder="e.g., Starbucks Main St., City Library 2nd Floor, etc.">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {# Response Message #}
+                    <div class="mentor-form-group">
+                        <label for="acceptResponse">Response to Student (Optional)</label>
+                        <textarea name="mentor_response" id="acceptResponse" class="mentor-form-textarea" rows="3" placeholder="Add any additional notes, preparation instructions, or a welcome message..."></textarea>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="mentor-modal-footer">
+                <button type="button" class="mentor-modal-btn mentor-modal-btn-cancel" onclick="closeAcceptModal()">Cancel</button>
+                <button type="button" class="mentor-modal-btn mentor-modal-btn-confirm" onclick="submitAccept()">Confirm Acceptance</button>
+            </div>
+        </div>
+    </div>
+
+    {# ── Decline Modal ── #}
+    <div class="mentor-modal-overlay" id="declineModal">
+        <div class="mentor-modal-dialog">
+            <div class="mentor-modal-header">
+                <div class="mentor-modal-icon decline">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+                <h3>Decline Request</h3>
+                <p>Are you sure you want to decline this mentoring request? You can optionally provide a reason.</p>
+            </div>
+            
+            <div class="mentor-modal-body">
+                <form id="declineForm" method="post" action="">
+                    <input type="hidden" name="_token" id="declineToken" value="">
+                    <input type="hidden" name="decision" value="decline">
+                    
+                    <div class="mentor-form-group">
+                        <label for="declineReason">Reason for Declining (Optional)</label>
+                        <textarea name="mentor_response" id="declineReason" class="mentor-form-textarea" rows="3" placeholder="e.g., I'm fully booked this week, This is outside my expertise, etc."></textarea>
+                        <div class="mentor-hint">Your response will be shared with the student.</div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="mentor-modal-footer">
+                <button type="button" class="mentor-modal-btn mentor-modal-btn-cancel" onclick="closeDeclineModal()">Cancel</button>
+                <button type="button" class="mentor-modal-btn mentor-modal-btn-decline" onclick="submitDecline()">Decline Request</button>
+            </div>
+        </div>
+    </div>
+
+    {# ── Session Details Modal ── #}
+    <div class="mentor-modal-overlay" id="sessionDetailsModal">
+        <div class="mentor-modal-dialog details-modal">
+            <div class="mentor-modal-header">
+                <div class="mentor-modal-icon details">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+                <h3 id="detailsModalTitle">Mentoring Session Details</h3>
+                <p id="detailsModalSubtitle">View complete session information</p>
+            </div>
+            
+            <div class="mentor-modal-body">
+                <div class="details-grid">
+                    {# Mentor Information #}
+                    <div class="details-section">
+                        <h4 class="details-section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            Mentor Information
+                        </h4>
+                        <div class="details-content" id="detailsMentorInfo">
+                            {# Populated by JS #}
+                        </div>
+                    </div>
+                    
+                    {# Session Type & Setup #}
+                    <div class="details-section">
+                        <h4 class="details-section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            Session Schedule
+                        </h4>
+                        <div class="details-content" id="detailsSchedule">
+                            {# Populated by JS #}
+                        </div>
+                    </div>
+                    
+                    {# Meeting Setup #}
+                    <div class="details-section" id="detailsMeetingSection">
+                        <h4 class="details-section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            Meeting Setup
+                        </h4>
+                        <div class="details-content" id="detailsMeeting">
+                            {# Populated by JS #}
+                        </div>
+                    </div>
+                    
+                    {# Location/Facility #}
+                    <div class="details-section" id="detailsLocationSection">
+                        <h4 class="details-section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            Location
+                        </h4>
+                        <div class="details-content" id="detailsLocation">
+                            {# Populated by JS #}
+                        </div>
+                    </div>
+                    
+                    {# Status & Notes #}
+                    <div class="details-section">
+                        <h4 class="details-section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            Status & Notes
+                        </h4>
+                        <div class="details-content" id="detailsStatusNotes">
+                            {# Populated by JS #}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mentor-modal-footer">
+                <button type="button" class="mentor-modal-btn mentor-modal-btn-cancel" onclick="closeSessionDetailsModal()">Close</button>
+                <button type="button" class="mentor-modal-btn mentor-modal-btn-confirm" id="reserveFacilityBtn" style="display: none;" onclick="window.location.href='{{ path('app_facility_index') }}'">
+                    Reserve Facility
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {# ── Cancel Request Modal ── #}
+    <div class="cancel-modal-overlay" id="cancelRequestModal">
+        <div class="cancel-modal-dialog">
+            <div class="cancel-modal-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+            <h3>Cancel Mentor Request?</h3>
+            <p>Are you sure you want to cancel this mentor request? This action cannot be undone.</p>
+            <div class="cancel-modal-actions">
+                <button type="button" class="cancel-modal-cancel" onclick="closeCancelModal()">No, Keep Request</button>
+                <button type="button" class="cancel-modal-confirm" onclick="confirmCancelRequest()">Yes, Cancel Request</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Mentor Response Modal Functions ──
+        let currentRequestId = null;
+        
+        function openAcceptModal(requestId, studentName, scheduledDate, scheduledTime, csrfToken) {
+            currentRequestId = requestId;
+            document.getElementById('acceptStudentName').textContent = studentName || 'the student';
+            document.getElementById('acceptForm').action = '{{ path("mentoring_custom_request_review", {"id": "REQUEST_ID"}) }}'.replace('REQUEST_ID', requestId);
+            document.getElementById('acceptToken').value = csrfToken;
+            
+            // Show scheduled date if available
+            const summaryDiv = document.getElementById('scheduledSummary');
+            if (scheduledDate) {
+                const dateObj = new Date(scheduledDate);
+                const timeStr = scheduledTime ? ' at ' + scheduledTime : '';
+                document.getElementById('scheduledDateText').textContent = dateObj.toLocaleDateString('en-US', { 
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                }) + timeStr;
+                summaryDiv.style.display = 'block';
+            } else {
+                summaryDiv.style.display = 'none';
+            }
+            
+            // Reset form
+            document.getElementById('acceptForm').reset();
+            document.querySelectorAll('.mentor-dynamic-fields').forEach(el => el.classList.remove('is-visible'));
+            
+            document.getElementById('acceptModal').classList.add('is-open');
+        }
+        
+        function closeAcceptModal() {
+            document.getElementById('acceptModal').classList.remove('is-open');
+        }
+        
+        function openDeclineModal(requestId, csrfToken) {
+            currentRequestId = requestId;
+            document.getElementById('declineForm').action = '{{ path("mentoring_custom_request_review", {"id": "REQUEST_ID"}) }}'.replace('REQUEST_ID', requestId);
+            document.getElementById('declineToken').value = csrfToken;
+            document.getElementById('declineForm').reset();
+            document.getElementById('declineModal').classList.add('is-open');
+        }
+        
+        function closeDeclineModal() {
+            document.getElementById('declineModal').classList.remove('is-open');
+        }
+        
+        function toggleMeetingFields(type) {
+            // Hide all dynamic fields first
+            document.querySelectorAll('.mentor-dynamic-fields').forEach(el => el.classList.remove('is-visible'));
+            
+            // Show relevant fields
+            if (type === 'online') {
+                document.getElementById('onlineFields').classList.add('is-visible');
+            } else if (type === 'f2f') {
+                document.getElementById('f2fFields').classList.add('is-visible');
+            }
+        }
+        
+        function toggleF2fOption(option) {
+            // Hide outside location field by default
+            document.getElementById('outsideLocationField').style.display = 'none';
+            
+            // Show outside location field only when outside option is selected
+            if (option === 'outside') {
+                document.getElementById('outsideLocationField').style.display = 'block';
+            }
+        }
+        
+        function validateAcceptForm() {
+            const meetingType = document.querySelector('input[name="meeting_type"]:checked');
+            if (!meetingType) {
+                alert('Please select a meeting type (Online or Face-to-Face).');
+                return false;
+            }
+            
+            const type = meetingType.value;
+            if (type === 'Online') {
+                const link = document.getElementById('meetingLink').value.trim();
+                if (!link) {
+                    alert('Please provide a meeting link for the online session.');
+                    document.getElementById('meetingLink').focus();
+                    return false;
+                }
+            } else if (type === 'Face-to-Face') {
+                const f2fOption = document.querySelector('input[name="facility_reserved_by"]:checked');
+                if (!f2fOption) {
+                    alert('Please select how the meeting location will be handled.');
+                    return false;
+                }
+                
+                // If outside location is selected, require location text
+                if (f2fOption.value === 'outside') {
+                    const outsideLoc = document.getElementById('outsideLocation').value.trim();
+                    if (!outsideLoc) {
+                        alert('Please specify the outside meeting location.');
+                        document.getElementById('outsideLocation').focus();
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        }
+        
+        let mentorWillReserveFacility = false;
+        
+        function submitAccept() {
+            if (!validateAcceptForm()) return;
+            
+            // Check if mentor chose to reserve facility
+            const f2fOption = document.querySelector('input[name="facility_reserved_by"]:checked');
+            mentorWillReserveFacility = (f2fOption && f2fOption.value === 'mentor');
+            
+            // Store flag in session storage to trigger redirect after form submission
+            if (mentorWillReserveFacility) {
+                sessionStorage.setItem('mentor_reserve_facility', 'true');
+            }
+            
+            document.getElementById('acceptForm').submit();
+        }
+        
+        // Check for facility reservation redirect on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (sessionStorage.getItem('mentor_reserve_facility') === 'true') {
+                sessionStorage.removeItem('mentor_reserve_facility');
+                // Show message and redirect to facility reservation
+                if (confirm('Request accepted! You chose to reserve a facility. Click OK to go to the facility reservation page.')) {
+                    window.location.href = '{{ path("app_facility_index") }}';
+                }
+            }
+        });
+        
+        function submitDecline() {
+            document.getElementById('declineForm').submit();
+        }
+        
+        // Close modals on backdrop click
+        document.getElementById('acceptModal').addEventListener('click', function(e) {
+            if (e.target === this) closeAcceptModal();
+        });
+        document.getElementById('declineModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeclineModal();
+        });
+        
+        // ── Session Details Modal Functions ──
+        function openSessionDetailsModal(requestData) {
+            const modal = document.getElementById('sessionDetailsModal');
+            
+            // Set title based on role
+            const isStudent = requestData.isStudent;
+            document.getElementById('detailsModalTitle').textContent = isStudent ? 'Mentoring Session Details' : 'Mentoring Request Details';
+            document.getElementById('detailsModalSubtitle').textContent = 'Complete session information';
+            
+            // Mentor Info Section
+            const mentorHtml = `
+                <div class="details-row">
+                    <span class="details-label">Name</span>
+                    <span class="details-value">${requestData.mentorName}</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Email</span>
+                    <span class="details-value">${requestData.mentorEmail}</span>
+                </div>
+            `;
+            document.getElementById('detailsMentorInfo').innerHTML = mentorHtml;
+            
+            // Schedule Section
+            let scheduleHtml = `
+                <div class="details-row">
+                    <span class="details-label">Date</span>
+                    <span class="details-value">${requestData.scheduledDate || 'Flexible'}</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-label">Time</span>
+                    <span class="details-value">${requestData.scheduledTime || 'To be confirmed'}</span>
+                </div>
+            `;
+            document.getElementById('detailsSchedule').innerHTML = scheduleHtml;
+            
+            // Meeting Setup Section
+            let meetingHtml = `
+                <div class="details-row">
+                    <span class="details-label">Type</span>
+                    <span class="details-value">${requestData.meetingType}</span>
+                </div>
+            `;
+            if (requestData.meetingLink) {
+                meetingHtml += `
+                    <div class="details-row">
+                        <span class="details-label">Link</span>
+                        <span class="details-value"><a href="${requestData.meetingLink}" target="_blank" style="color: #3b82f6;">Join Meeting</a></span>
+                    </div>
+                `;
+            }
+            document.getElementById('detailsMeeting').innerHTML = meetingHtml;
+            
+            // Location Section
+            let locationHtml = '';
+            if (requestData.meetingType === 'Face-to-Face') {
+                if (requestData.facilityReservedBy === 'mentor') {
+                    locationHtml = `
+                        <div class="details-action-box">
+                            <strong>Facility Reservation</strong>
+                            <p>The mentor will reserve a facility and notify you of the location.</p>
+                        </div>
+                    `;
+                } else if (requestData.facilityReservedBy === 'student') {
+                    locationHtml = `
+                        <div class="details-action-box">
+                            <strong>Action Required: Reserve Facility</strong>
+                            <p>You need to reserve a facility for this session. Click the button below to reserve now.</p>
+                        </div>
+                    `;
+                    document.getElementById('reserveFacilityBtn').style.display = 'inline-block';
+                } else if (requestData.facilityReservedBy === 'outside') {
+                    locationHtml = `
+                        <div class="details-row">
+                            <span class="details-label">Location</span>
+                            <span class="details-value">${requestData.meetingLocation}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                locationHtml = `
+                    <div class="details-row">
+                        <span class="details-label">Mode</span>
+                        <span class="details-value">Online (virtual meeting)</span>
+                    </div>
+                `;
+            }
+            document.getElementById('detailsLocation').innerHTML = locationHtml;
+            
+            // Status & Notes Section
+            let statusHtml = `
+                <div class="details-row">
+                    <span class="details-label">Status</span>
+                    <span class="details-value"><span class="details-status-badge status-${requestData.status.toLowerCase()}">${requestData.status}</span></span>
+                </div>
+            `;
+            if (requestData.mentorResponse) {
+                statusHtml += `
+                    <div class="details-row">
+                        <span class="details-label">Notes</span>
+                        <span class="details-value details-message-box">${requestData.mentorResponse}</span>
+                    </div>
+                `;
+            }
+            document.getElementById('detailsStatusNotes').innerHTML = statusHtml;
+            
+            modal.classList.add('is-open');
+        }
+        
+        function closeSessionDetailsModal() {
+            document.getElementById('sessionDetailsModal').classList.remove('is-open');
+            document.getElementById('reserveFacilityBtn').style.display = 'none';
+        }
+        
+        // Close modals on backdrop click
+        document.getElementById('sessionDetailsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeSessionDetailsModal();
+        });
+        
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAcceptModal();
+                closeDeclineModal();
+                closeSessionDetailsModal();
+                closeCancelModal();
+            }
+        });
+
+        // ── Cancel Request Modal Functions ──
+        let cancelFormToSubmit = null;
+
+        function openCancelModal(form) {
+            cancelFormToSubmit = form;
+            document.getElementById('cancelRequestModal').classList.add('is-open');
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancelRequestModal').classList.remove('is-open');
+            cancelFormToSubmit = null;
+        }
+
+        function confirmCancelRequest() {
+            if (cancelFormToSubmit) {
+                cancelFormToSubmit.submit();
+            }
+            closeCancelModal();
+        }
+
+        // Close cancel modal on backdrop click
+        document.getElementById('cancelRequestModal').addEventListener('click', function(e) {
+            if (e.target === this) closeCancelModal();
+        });
+    </script>
 {% endblock %}
