@@ -709,9 +709,11 @@ class SuperAdminReservationController extends AbstractController
         try {
             $file = $request->files->get('schedule_file');
             $pasteData = $request->request->get('schedule_paste');
+            $startDate = $request->request->get('start_date');
+            $endDate = $request->request->get('end_date');
             $sourceName = $file ? $file->getClientOriginalName() : 'Pasted Data';
 
-            $result = $importService->import($file, $pasteData, $sourceName);
+            $result = $importService->import($file, $pasteData, $sourceName, $startDate, $endDate);
 
             return $this->json([
                 'success' => $result['success'],

@@ -173,6 +173,8 @@ class CalendarDataService
             'reservationDate' => $schedule->getScheduleDate()->format('Y-m-d'),
             'reservationStartTime' => $schedule->getStartTime()->format('H:i'),
             'reservationEndTime' => $schedule->getEndTime()->format('H:i'),
+            'startDate' => $schedule->getStartDate()?->format('Y-m-d'),
+            'endDate' => $schedule->getEndDate()?->format('Y-m-d'),
             'facility' => [
                 'id' => $facility->getId(),
                 'name' => $facility->getName(),

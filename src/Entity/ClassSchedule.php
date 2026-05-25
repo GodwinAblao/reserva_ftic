@@ -68,6 +68,12 @@ class ClassSchedule
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $status = null;
 
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $startDate = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $endDate = null;
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdAt;
 
@@ -273,6 +279,30 @@ class ClassSchedule
     public function setStatus(?string $status): self
     {
         $this->status = $status;
+
+        return $this;
+    }
+
+    public function getStartDate(): ?\DateTimeInterface
+    {
+        return $this->startDate;
+    }
+
+    public function setStartDate(?\DateTimeInterface $startDate): self
+    {
+        $this->startDate = $startDate;
+
+        return $this;
+    }
+
+    public function getEndDate(): ?\DateTimeInterface
+    {
+        return $this->endDate;
+    }
+
+    public function setEndDate(?\DateTimeInterface $endDate): self
+    {
+        $this->endDate = $endDate;
 
         return $this;
     }

@@ -32,13 +32,57 @@ class ClassScheduleImportService
      *   date: ?string
      * }
      */
-    public function import(?UploadedFile $file, string $pasteData, string $sourceName): array
+    public function import(?UploadedFile $file, string $pasteData, string $sourceName, ?string $startDate = null, ?string $endDate = null): array
     {
         $rows = $this->readScheduleRows($file, $pasteData);
         if ($rows === []) {
             return [
                 'success' => false,
                 'message' => 'No schedule rows were found in the uploaded data.',
+                'created' => 0,
+                'processed' => 0,
+                'relocated' => 0,
+                'warnings' => [],
+                'date' => null,
+            ];
+        }
+
+        // Parse start and end dates
+        $startDateTime = null;
+        $endDateTime = null;
+        if ($startDate) {
+            $startDateTime = \DateTime::createFromFormat('!Y-m-d', $startDate);
+            if (!$startDateTime) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid start date format. Use YYYY-MM-DD.',
+                    'created' => 0,
+                    'processed' => 0,
+                    'relocated' => 0,
+                    'warnings' => [],
+                    'date' => null,
+                ];
+            }
+        }
+        if ($endDate) {
+            $endDateTime = \DateTime::createFromFormat('!Y-m-d', $endDate);
+            if (!$endDateTime) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid end date format. Use YYYY-MM-DD.',
+                    'created' => 0,
+                    'processed' => 0,
+                    'relocated' => 0,
+                    'warnings' => [],
+                    'date' => null,
+                ];
+            }
+        }
+
+        if ($startDateTime && $endDateTime && $endDateTime < $startDateTime) {
+            return [
+                'success' => false,
+                'message' => 'End date must be after start date.',
                 'created' => 0,
                 'processed' => 0,
                 'relocated' => 0,
@@ -100,6 +144,26 @@ class ClassScheduleImportService
                 continue;
             }
 
+            // Filter dates by the specified range
+            if ($startDateTime || $endDateTime) {
+                $dates = array_filter($dates, function ($date) use ($startDateTime, $endDateTime) {
+                    $dateStr = $date->format('Y-m-d');
+                    if ($startDateTime && $dateStr < $startDateTime->format('Y-m-d')) {
+                        return false;
+                    }
+                    if ($endDateTime && $dateStr > $endDateTime->format('Y-m-d')) {
+                        return false;
+                    }
+                    return true;
+                });
+                $dates = array_values($dates); // Re-index array
+            }
+
+            if ($dates === []) {
+                $errors[] = "Row $rowNum: No dates within the specified date range.";
+                continue;
+            }
+
             $dayLabel = $this->normalizeDayLabel($parsed['day']);
 
             foreach ($dates as $date) {
@@ -139,6 +203,8 @@ class ClassScheduleImportService
                 $schedule->setSource($sourceName);
                 $schedule->setImportBatchId($importBatchId);
                 $schedule->setScheduleIdentifier(sha1($dedupeKey));
+                $schedule->setStartDate($startDateTime ? clone $startDateTime : null);
+                $schedule->setEndDate($endDateTime ? clone $endDateTime : null);
 
                 if (isset($previousFacilityMap[$matchKey])) {
                     $oldFacilityId = $previousFacilityMap[$matchKey];

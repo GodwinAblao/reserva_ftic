@@ -361,6 +361,17 @@
             <h3>Import Class Schedule</h3>
             <p>Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
 
+            <div class="sa-import-mini-grid">
+                <div class="sa-import-field">
+                    <label>Start Date <span style="color: #dc2626;">*</span></label>
+                    <input type="date" name="start_date" required>
+                </div>
+                <div class="sa-import-field">
+                    <label>End Date <span style="color: #dc2626;">*</span></label>
+                    <input type="date" name="end_date" required>
+                </div>
+            </div>
+
             <div class="sa-import-field">
                 <label>Upload CSV</label>
                 <input type="file" name="schedule_file" accept=".csv,text/csv">
@@ -371,7 +382,7 @@
                 <textarea name="schedule_paste" placeholder="facility,day,start,end,course_code,section,faculty_name,faculty_email" style="height:80px; font-family:monospace;"></textarea>
             </div>
 
-            <p class="sa-warning-text">Importing replaces the previous imported class schedule automatically.</p>
+            <p class="sa-warning-text">Importing replaces the previous imported class schedule automatically. The schedule will only be displayed within the selected date range.</p>
 
             <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
             <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="width:100%; justify-content:center;">Import &amp; Sync Schedule</button>
@@ -1873,9 +1884,10 @@
 
     function updateDateDisplay() {
         const display = document.getElementById('currentDateDisplay');
+        const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         display.textContent = viewMode === 'week'
-            ? 'Weekly Schedule - Monday to Sunday'
-            : `Daily Schedule - ${currentDate.toLocaleDateString('en-US', { weekday: 'long' })}`;
+            ? `Weekly Schedule - ${monthYear}`
+            : `Daily Schedule - ${currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
     }
 
     function formatDate(date) {

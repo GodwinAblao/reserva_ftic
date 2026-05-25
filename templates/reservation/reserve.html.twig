@@ -90,11 +90,11 @@
                                value="{{ userEmail }}" required readonly style="background-color: #f5f5f5; cursor: not-allowed;">
                     </div>
                     <div class="form-group-item">
-                        <label for="contact">Contact Number</label>
+                        <label for="contact">Contact Number <span style="color: #666; font-size: 12px;">(Optional)</span></label>
                         <input type="tel" id="contact" name="contact" class="form-input"
                                placeholder="09XX XXX XXXX" maxlength="13"
                                pattern="^(\+?63|0)9\d{9}$"
-                               title="Enter a valid PH mobile number (e.g. 09123456789 or +639123456789)" required>
+                               title="Enter a valid PH mobile number (e.g. 09123456789 or +639123456789)">
                         <small class="help-text">Philippine mobile only — 09XX or +639XX format.</small>
                     </div>
                 </div>
@@ -1039,7 +1039,7 @@
         for (let hour = 8; hour <= 17; hour++) {
             slots.push(minutesToTime(hour * 60)); // :00
             if (hour < 17) {
-                slots.push(minutesToTime(hour * 60 + 50)); // :50
+                slots.push(minutesToTime(hour * 60 + 30)); // :30
             }
         }
         return slots;
