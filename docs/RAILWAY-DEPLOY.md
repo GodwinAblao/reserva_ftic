@@ -1,79 +1,56 @@
-# Deploy Reserva FTIC on Railway (with Railway PostgreSQL)
+# Deploy Reserva FTIC on Railway
 
-Your database **`reserva-ftic-db`** is already initialized (tables + facilities).
+This project deploys on Railway with Nixpacks.
 
-## Step 1 — Create the web service (if you do not have one yet)
+## 1. Create Or Open The Web Service
 
-1. [railway.app](https://railway.app) → your project.
-2. **+ New** → **GitHub Repo** → select `reserva_ftic` (or **Empty Service** → connect repo later).
-3. Railway detects **`railway.toml`** + **`Dockerfile`** → builds with Docker.
+1. Open the Railway project.
+2. Connect the GitHub repository.
+3. Railway reads `railway.toml`.
+4. `railway.toml` uses:
 
-## Step 2 — Link the database (required)
-
-1. Click your **web service** (Symfony app), not the database.
-2. **Variables** tab.
-3. **+ New Variable** → **Add variable reference** (or "Reference"):
-   - Service: `reserva-ftic-db`
-   - Variable: `DATABASE_URL`
-4. Add these manually:
-
-| Variable | Value |
-|----------|--------|
-| `APP_ENV` | `prod` |
-| `APP_SECRET` | Long random string (e.g. 32+ chars) |
-| `MAILER_DSN` | Your SMTP URL (Brevo/SendGrid/Gmail app password) |
-| `DEFAULT_URI` | Your public URL, e.g. `https://your-app.up.railway.app` |
-
-**Do not** paste `DATABASE_URL` from `.env` (MySQL). The reference to `reserva-ftic-db` is correct.
-
-Symfony uses the **environment** `DATABASE_URL` on Railway; it overrides the MySQL line in committed `.env`.
-
-## Step 3 — Deploy
-
-1. **Deploy** (or push to the connected GitHub branch).
-2. First deploy runs `docker-entrypoint.sh` → creates schema if DB were empty (yours is already done).
-3. Open the generated **Public URL** under **Settings → Networking → Generate Domain**.
-
-## Step 4 — Create a user on production
-
-Railway DB has facilities but no users. On the live site:
-
-- **Register** a new account, or
-- Run once in **Railway Shell** on the web service:
-  ```bash
-  php bin/console doctrine:query:sql "SELECT email FROM \"user\" LIMIT 5"
-  ```
-
-## Local development vs production
-
-| Environment | Config file | Database |
-|-------------|-------------|----------|
-| Normal dev (XAMPP) | `.env` only (rename `.env.local` away) | MySQL localhost |
-| Local Postgres test | `.env.local` | `127.0.0.1` / `reserva_ftic` |
-| **Production (Railway)** | Service **Variables** | `reserva-ftic-db` |
-
-Keep **`.env.local`** on local Postgres for dev. Production uses Railway variables only.
-
-## Optional — test production DB from your PC
-
-Only for debugging (uses public network / egress):
-
-```powershell
-copy .env.railway.local.example .env.railway.local
-# paste Connection URL, then:
-.\scripts\railway-init-db.ps1
-php bin/console dbal:run-sql "SELECT COUNT(*) FROM facility"
+```toml
+[build]
+builder = "NIXPACKS"
 ```
 
-## Troubleshooting
+## 2. Configure Variables
+
+Set these on the Railway web service:
+
+| Variable | Value |
+| --- | --- |
+| `APP_ENV` | `prod` |
+| `APP_SECRET` | Long random string |
+| `COMPOSER_ALLOW_SUPERUSER` | `1` |
+| `DATABASE_URL` | Reference the `reserva-ftic-db` PostgreSQL service |
+| `MAILER_DSN` | `null://null` while testing |
+| `NIXPACKS_PHP_ROOT_DIR` | `/app/public` |
+| `NIXPACKS_PHP_FALLBACK_PATH` | `/index.php` |
+| `RAILPACK_PHP_ROOT_DIR` | `/app/public` |
+
+Do not use the local MySQL URL from `.env` for production.
+
+## 3. Deploy
+
+Push to the connected branch or trigger a Railway redeploy.
+
+The start command in `railway.toml` runs Doctrine migrations, then starts PHP on Railway's `$PORT`:
+
+```bash
+php bin/console doctrine:migrations:migrate --no-interaction --env=prod && php -S 0.0.0.0:$PORT -t public public/index.php
+```
+
+## 4. Troubleshooting
 
 | Problem | Fix |
-|---------|-----|
-| 500 / database error | Web service must reference `reserva-ftic-db` `DATABASE_URL` |
-| `could not find driver` | Dockerfile includes `pdo_pgsql` — redeploy |
-| Login works locally, not online | Register user on Railway DB (separate from XAMPP) |
-| Migrations fail | Expected on Postgres; schema already created via init script |
+| --- | --- |
+| 500 on `/` but `/health` works | Check Railway logs for the Symfony exception |
+| Database connection error | Verify the web service has `DATABASE_URL` from `reserva-ftic-db` |
+| `could not find driver` | Ensure `ext-pdo_pgsql` is in `composer.json`, then redeploy |
+| Login works locally, not online | Register a user in the Railway database |
+| SMTP errors | Keep `MAILER_DSN=null://null` until the app works |
 
-## Security
+## 5. Email
 
-Rotate the database password in Railway if it was shared. Update the variable reference after rotation.
+After the app loads correctly, replace `MAILER_DSN=null://null` with a third-party SMTP provider such as Resend, SendGrid, Mailgun, Brevo, or Postmark.

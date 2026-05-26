@@ -1,56 +1,45 @@
 # Railway setup (Symfony + PostgreSQL)
 
-**Deploy guide:** see [RAILWAY-DEPLOY.md](./RAILWAY-DEPLOY.md)
+Deploy guide: see [RAILWAY-DEPLOY.md](./RAILWAY-DEPLOY.md).
 
-## 1. Database (`reserva-ftic-db`)
+## Database
 
-Already created and initialized (schema + facilities). Connection URL format:
+The Railway PostgreSQL service is `reserva-ftic-db`.
+
+Use a Railway variable reference for `DATABASE_URL` when possible:
 
 ```text
-postgresql://postgres:PASSWORD@zephyr.proxy.rlwy.net:PORT/railway?sslmode=require
+${{reserva-ftic-db.DATABASE_URL}}
 ```
 
-## 2. Link database to the web service
+If pasting a URL manually, use this shape:
 
-1. Railway project → **Symfony/web service** (not the DB).
-2. **Variables** → **New Variable** → **Add reference** → select `reserva-ftic-db` → `DATABASE_URL`.
-3. Or paste the full Connection URL as `DATABASE_URL`.
-4. Add: `APP_ENV=prod`, `APP_SECRET=` (random string), `MAILER_DSN=` (your SMTP).
-5. **Deploy** the web service (Dockerfile from repo root).
-
-Use **Private Network** between services in the same project when possible.
-
-## 3. Initialize tables (first time only)
-
-From your PC (once), with the Railway password:
-
-```powershell
-cd C:\Users\user\reserva_ftic
-copy .env.railway.local.example .env.railway.local
-# Edit .env.railway.local — paste Connection URL from Railway (show password)
-
-.\scripts\railway-init-db.ps1
+```text
+postgresql://USER:PASSWORD@HOST:5432/railway?serverVersion=16&charset=utf8
 ```
 
-Or set env and run:
+## Required Web Service Variables
 
-```powershell
-$env:DATABASE_URL = "postgresql://postgres:PASSWORD@HOST:PORT/railway?serverVersion=16&charset=utf8&sslmode=require"
-.\scripts\railway-init-db.ps1
+```env
+APP_ENV=prod
+APP_SECRET=your-random-secret
+COMPOSER_ALLOW_SUPERUSER=1
+DATABASE_URL=${{reserva-ftic-db.DATABASE_URL}}
+MAILER_DSN=null://null
+NIXPACKS_PHP_ROOT_DIR=/app/public
+NIXPACKS_PHP_FALLBACK_PATH=/index.php
+RAILPACK_PHP_ROOT_DIR=/app/public
 ```
 
-## 4. View data
+Use `MAILER_DSN=null://null` while testing. Replace it with a real SMTP provider after the site loads correctly.
 
-- **pgAdmin**: register server with Railway host/port/user/password, database `railway`.
-- **Railway**: database service → **Data** tab (if available on your plan).
+## Local vs Railway
 
-## 5. Local vs Railway
+| File or source | Database |
+| --- | --- |
+| `.env` | Local development defaults |
+| `.env.local` | Local overrides, ignored by Git |
+| `.env.railway.local` | Local Railway debugging only, ignored by Git |
+| Railway service variables | Production config |
 
-| File | Database |
-|------|----------|
-| `.env` | XAMPP MySQL (default dev) |
-| `.env.local` | Local PostgreSQL 18 |
-| `.env.railway.local` | Railway (init script only; gitignored) |
-| Railway service vars | Production `DATABASE_URL` |
-
-Do not commit passwords. Rotate if exposed.
+Do not commit production passwords or secrets.
