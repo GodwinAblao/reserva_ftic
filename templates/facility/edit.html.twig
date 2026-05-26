@@ -4,6 +4,7 @@
 
 {% block content %}
     <div class="content-header">
+        <a href="{{ path('app_facility_management') }}" class="btn-secondary" style="margin-right: 15px;">← Back</a>
         <h2>Edit Facility</h2>
     </div>
 
@@ -29,7 +30,8 @@
                 {% if facility.image %}
                     <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; text-align: center;">
                         <img src="{{ facility.image }}" alt="{{ facility.name }}" style="max-width: 200px; max-height: 200px; margin-bottom: 10px; border-radius: 6px; display: block; margin-left: auto; margin-right: auto;">
-                        <p style="margin: 0; color: #666; font-size: 12px;">Current Image</p>
+                        <p style="margin: 0; color: #666; font-size: 12px; margin-bottom: 8px;">Current Image</p>
+                        <button type="button" onclick="deleteMainImage({{ facility.id }})" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">Delete Image</button>
                     </div>
                 {% endif %}
                 <input type="file" id="image" name="image" accept="image/*">
@@ -47,28 +49,14 @@
                         <p style="margin: 0; color: #374151; font-weight: 500;">Click to add images</p>
                         <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">or drag and drop files here</p>
                     </div>
-                    <input type="file" id="images" name="images[]" accept="image/*" multiple style="display: none;" onchange="handleImageSelection(this)">
+                    <input type="file" id="images" name="images[]" accept="image/*" multiple style="display: none;">
                 </div>
                 
                 <div id="selectedImagesPreview" style="display: none; margin-top: 1rem;">
                     <p style="font-size: 0.875rem; color: #374151; font-weight: 500; margin-bottom: 0.5rem;">
-                        New images to add: <span id="selectedCount">0</span>
+                        Selected images: <span id="selectedCount">0</span>
                     </p>
                     <div id="selectedImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem;"></div>
-                </div>
-            </div>
-
-            <!-- Custom Modal for Alerts -->
-            <div id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
-                <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 400px; width: 90%; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); animation: slideIn 0.3s ease;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-                        <h3 style="margin: 0 0 0.5rem 0; color: #374151;">Notice</h3>
-                        <p id="modalMessage" style="margin: 0 0 1.5rem 0; color: #6b7280; line-height: 1.5;"></p>
-                        <button onclick="closeModal()" style="background: #3b82f6; color: white; border: none; padding: 0.75rem 2rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; width: 100%;">
-                            OK
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -98,10 +86,7 @@
                     {% for image in facility.images %}
                         <div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px;">
                             <img src="{{ image.path }}" alt="{{ facility.name }}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;">
-                            <form action="{{ path('app_facility_image_delete', {id: image.id}) }}" method="POST" onsubmit="return confirm('Remove this image?');" style="margin-top:8px;">
-                                <input type="hidden" name="_token" value="{{ csrf_token('delete_image' ~ image.id) }}">
-                                <button type="submit" class="btn-secondary" style="width:100%;">Remove</button>
-                            </form>
+                            <button type="button" onclick="deleteGalleryImage({{ image.id }}, '{{ csrf_token('delete_image' ~ image.id) }}')" class="btn-secondary" style="width:100%; margin-top:8px;">Remove</button>
                         </div>
                     {% endfor %}
                 </div>
@@ -109,60 +94,152 @@
         {% endif %}
     </div>
 
+    <!-- Delete Main Image Modal -->
+    <div id="deleteImageModal" class="delete-schedule-modal">
+        <div class="delete-schedule-dialog">
+            <div class="delete-schedule-icon">!</div>
+            <h3>Delete Facility Image?</h3>
+            <p>This will permanently delete the facility image. This action cannot be undone.</p>
+            <div class="delete-schedule-actions">
+                <button type="button" id="cancelDeleteImage" class="delete-schedule-cancel">Cancel</button>
+                <button type="button" id="confirmDeleteImage" class="delete-schedule-confirm">Yes, Delete Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Gallery Image Modal -->
+    <div id="deleteGalleryImageModal" class="delete-schedule-modal">
+        <div class="delete-schedule-dialog">
+            <div class="delete-schedule-icon">!</div>
+            <h3>Delete Gallery Image?</h3>
+            <p>This will permanently delete this gallery image. This action cannot be undone.</p>
+            <div class="delete-schedule-actions">
+                <button type="button" id="cancelDeleteGalleryImage" class="delete-schedule-cancel">Cancel</button>
+                <button type="button" id="confirmDeleteGalleryImage" class="delete-schedule-confirm">Yes, Delete Image</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .delete-schedule-modal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999; align-items:center; justify-content:center; padding:1.5rem; background:rgba(15,23,42,.6); backdrop-filter:blur(8px); }
+        .delete-schedule-modal.is-open { display:flex; }
+        .delete-schedule-dialog { width:min(440px,100%); background:white; border-radius:20px; padding:2rem; text-align:center; box-shadow:0 24px 70px rgba(15,23,42,.28); animation:deleteModalIn .18s ease-out; }
+        .delete-schedule-icon { width:56px; height:56px; margin:0 auto 1rem; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#991b1b; background:#fee2e2; border:1px solid #fecaca; font-size:1.6rem; font-weight:800; }
+        .delete-schedule-dialog h3 { margin:0 0 .75rem; color:#111827; font-size:1.25rem; }
+        .delete-schedule-dialog p  { margin:0; color:#6b7280; line-height:1.55; font-size:.9rem; }
+        .delete-schedule-actions { display:flex; gap:.75rem; justify-content:center; margin-top:1.5rem; }
+        .delete-schedule-actions button { border:none; border-radius:10px; padding:.7rem 1.1rem; font-weight:800; cursor:pointer; font-size:.9rem; }
+        .delete-schedule-cancel  { background:#f3f4f6; color:#374151; }
+        .delete-schedule-confirm { background:#dc2626; color:white; }
+        @keyframes deleteModalIn { from{opacity:0;transform:translateY(12px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+    </style>
+
     <script>
         const maxImages = 5;
-        let selectedFiles = [];
         const currentImageCount = {{ facility.images|length }};
+        let selectedFiles = [];
+        let deleteImageCallback = null;
+        let deleteGalleryImageCallback = null;
+
+        // Move modals to body to ensure they cover header/sidebar and center properly
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('deleteImageModal');
+            if (modal && modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+            const galleryModal = document.getElementById('deleteGalleryImageModal');
+            if (galleryModal && galleryModal.parentElement !== document.body) {
+                document.body.appendChild(galleryModal);
+            }
+        });
 
         function showModal(message) {
-            document.getElementById('modalMessage').textContent = message;
-            document.getElementById('customModal').style.display = 'flex';
+            // Simple alert for non-confirm messages
+            alert(message);
         }
 
-        function closeModal() {
-            document.getElementById('customModal').style.display = 'none';
+        function deleteMainImage(facilityId) {
+            deleteImageCallback = function() {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ path('app_facility_delete_main_image', {id: 'PLACEHOLDER'}) }}'.replace('PLACEHOLDER', facilityId);
+                
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '_token';
+                tokenInput.value = '{{ csrf_token('delete_image' ~ facility.id) }}';
+                
+                form.appendChild(tokenInput);
+                document.body.appendChild(form);
+                form.submit();
+            };
+            document.getElementById('deleteImageModal').classList.add('is-open');
         }
 
-        function handleImageSelection(input) {
-            console.log('handleImageSelection called, files:', input.files);
-            const files = input.files;
-            handleFiles(files);
+        function deleteGalleryImage(imageId, token) {
+            deleteGalleryImageCallback = function() {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ path('app_facility_image_delete', {id: 'PLACEHOLDER'}) }}'.replace('PLACEHOLDER', imageId);
+                
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '_token';
+                tokenInput.value = token;
+                
+                form.appendChild(tokenInput);
+                document.body.appendChild(form);
+                form.submit();
+            };
+            document.getElementById('deleteGalleryImageModal').classList.add('is-open');
         }
 
-        function handleFiles(files) {
-            console.log('handleFiles called with', files.length, 'files');
-            
-            let addedCount = 0;
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file.type.startsWith('image/')) {
-                    const totalAfterAdd = currentImageCount + selectedFiles.length + 1;
-                    if (totalAfterAdd > maxImages) {
-                        showModal(`Maximum ${maxImages} images allowed. You already have ${currentImageCount + selectedFiles.length} images.`);
-                        break;
-                    }
-                    selectedFiles.push(file);
-                    addedCount++;
-                }
+        document.getElementById('cancelDeleteImage').addEventListener('click', function() {
+            document.getElementById('deleteImageModal').classList.remove('is-open');
+            deleteImageCallback = null;
+        });
+
+        document.getElementById('confirmDeleteImage').addEventListener('click', function() {
+            if (deleteImageCallback) {
+                deleteImageCallback();
             }
+            document.getElementById('deleteImageModal').classList.remove('is-open');
+            deleteImageCallback = null;
+        });
 
-            if (addedCount === 0) {
-                showModal('Please select valid image files.');
-                return;
+        document.getElementById('cancelDeleteGalleryImage').addEventListener('click', function() {
+            document.getElementById('deleteGalleryImageModal').classList.remove('is-open');
+            deleteGalleryImageCallback = null;
+        });
+
+        document.getElementById('confirmDeleteGalleryImage').addEventListener('click', function() {
+            if (deleteGalleryImageCallback) {
+                deleteGalleryImageCallback();
             }
+            document.getElementById('deleteGalleryImageModal').classList.remove('is-open');
+            deleteGalleryImageCallback = null;
+        });
 
-            console.log('Added', addedCount, 'images. Total selected:', selectedFiles.length);
-            updateSelectedImagesPreview();
-        }
+        // Close modals when clicking outside
+        document.getElementById('deleteImageModal').addEventListener('click', function(e) {
+            if (e.target.id === 'deleteImageModal') {
+                document.getElementById('deleteImageModal').classList.remove('is-open');
+                deleteImageCallback = null;
+            }
+        });
 
-        function updateSelectedImagesPreview() {
-            console.log('updateSelectedImagesPreview called, selectedFiles:', selectedFiles.length);
+        document.getElementById('deleteGalleryImageModal').addEventListener('click', function(e) {
+            if (e.target.id === 'deleteGalleryImageModal') {
+                document.getElementById('deleteGalleryImageModal').classList.remove('is-open');
+                deleteGalleryImageCallback = null;
+            }
+        });
+
+        function updatePreview() {
             const previewContainer = document.getElementById('selectedImagesPreview');
             const imagesList = document.getElementById('selectedImagesList');
             const selectedCount = document.getElementById('selectedCount');
             const currentImageCountDisplay = document.getElementById('currentImageCount');
-
-            console.log('DOM elements found:', { previewContainer, imagesList, selectedCount, currentImageCountDisplay });
 
             if (selectedFiles.length === 0) {
                 previewContainer.style.display = 'none';
@@ -193,23 +270,19 @@
                     removeBtn.onmouseout = function() { this.style.background = 'rgba(220, 38, 38, 0.9)'; };
                     removeBtn.onclick = function() {
                         selectedFiles.splice(index, 1);
-                        updateSelectedImagesPreview();
-                        updateFileInput();
+                        updatePreview();
+                        syncFileInput();
                     };
                     
                     imageContainer.appendChild(img);
                     imageContainer.appendChild(removeBtn);
                     imagesList.appendChild(imageContainer);
-                    console.log('Image preview added for index:', index);
                 };
                 reader.readAsDataURL(file);
             });
-
-            updateFileInput();
-            console.log('updateSelectedImagesPreview completed');
         }
 
-        function updateFileInput() {
+        function syncFileInput() {
             const fileInput = document.getElementById('images');
             const dataTransfer = new DataTransfer();
             selectedFiles.forEach(file => {
@@ -223,12 +296,38 @@
             const uploadArea = document.getElementById('galleryUploadArea');
             const fileInput = document.getElementById('images');
             
-            console.log('File input found:', fileInput);
-            console.log('Upload area found:', uploadArea);
-            
             // Click handler for upload area
             uploadArea.addEventListener('click', function() {
                 fileInput.click();
+            });
+
+            // Show preview when files are selected - ADD to existing selection
+            fileInput.addEventListener('change', function() {
+                const files = fileInput.files;
+                
+                if (files.length === 0) {
+                    return;
+                }
+
+                // Validate total count
+                const totalAfterAdd = currentImageCount + selectedFiles.length + files.length;
+                if (totalAfterAdd > maxImages) {
+                    showModal(`Maximum ${maxImages} images allowed. You already have ${currentImageCount} existing and ${selectedFiles.length} selected. You can only add ${maxImages - currentImageCount - selectedFiles.length} more.`);
+                    fileInput.value = '';
+                    return;
+                }
+
+                // Add new files to selection
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.type.startsWith('image/')) {
+                        selectedFiles.push(file);
+                    }
+                }
+
+                updatePreview();
+                syncFileInput();
+                fileInput.value = ''; // Clear input so same files can be selected again if needed
             });
 
             // Handle drag and drop
@@ -251,7 +350,23 @@
                 uploadArea.style.backgroundColor = '#f9fafb';
                 
                 const files = e.dataTransfer.files;
-                handleFiles(files);
+                const totalAfterAdd = currentImageCount + selectedFiles.length + files.length;
+                
+                if (totalAfterAdd > maxImages) {
+                    showModal(`Maximum ${maxImages} images allowed. You already have ${currentImageCount} existing and ${selectedFiles.length} selected. You can only add ${maxImages - currentImageCount - selectedFiles.length} more.`);
+                    return;
+                }
+                
+                // Add dropped files to selection
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.type.startsWith('image/')) {
+                        selectedFiles.push(file);
+                    }
+                }
+                
+                updatePreview();
+                syncFileInput();
             });
 
             // Form submission validation
@@ -262,6 +377,7 @@
                     showModal(`Gallery cannot exceed ${maxImages} images. You have ${currentImageCount} existing and ${selectedFiles.length} new images.`);
                     return false;
                 }
+                syncFileInput(); // Ensure file input is synced before submission
             });
         });
     </script>

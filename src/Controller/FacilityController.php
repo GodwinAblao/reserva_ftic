@@ -8,6 +8,7 @@ use App\Entity\Facility;
 use App\Entity\FacilityImage;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityImageRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,7 +42,7 @@ class FacilityController extends AbstractController
 
     #[Route('/new', name: 'app_facility_new', methods: ['GET', 'POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function new(Request $request, FacilityRepository $facilityRepository): Response
+    public function new(Request $request, FacilityRepository $facilityRepository, EntityManagerInterface $entityManager): Response
     {
         $facility = new Facility();
 
@@ -55,11 +56,13 @@ class FacilityController extends AbstractController
             if ($uploadedFile instanceof UploadedFile) {
                 $imagePath = $this->handleImageUpload($uploadedFile);
                 if ($imagePath) {
+                    // Delete old image file if it exists
+                    $this->deleteImageFile($facility->getImage());
                     $facility->setImage($imagePath);
                 }
             }
 
-            $this->handleMultipleImageUploads($request, $facility);
+            $this->handleMultipleImageUploads($request, $facility, $entityManager);
             $facilityRepository->save($facility, true);
 
             $this->addFlash('success', 'Facility created successfully!');
@@ -74,23 +77,31 @@ class FacilityController extends AbstractController
 
     #[Route('/{id}/edit', name: 'app_facility_edit', methods: ['GET', 'POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function edit(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
+    public function edit(Request $request, Facility $facility, FacilityRepository $facilityRepository, EntityManagerInterface $entityManager): Response
     {
         if ($request->isMethod('POST')) {
             $facility->setName((string) $request->request->get('name'));
             $facility->setCapacity((int) $request->request->get('capacity'));
             $facility->setDescription((string) $request->request->get('description'));
 
+            // Debug: Check what files are received
+            $allFiles = $request->files->all();
+            $galleryFiles = $request->files->get('images');
+            error_log('DEBUG - All files: ' . json_encode($allFiles));
+            error_log('DEBUG - Gallery files: ' . json_encode($galleryFiles));
+
             // Handle image upload
             $uploadedFile = $request->files->get('image');
             if ($uploadedFile instanceof UploadedFile) {
                 $imagePath = $this->handleImageUpload($uploadedFile);
                 if ($imagePath) {
+                    // Delete old image file if it exists
+                    $this->deleteImageFile($facility->getImage());
                     $facility->setImage($imagePath);
                 }
             }
 
-            $this->handleMultipleImageUploads($request, $facility);
+            $this->handleMultipleImageUploads($request, $facility, $entityManager);
             $facilityRepository->save($facility, true);
 
             $this->addFlash('success', 'Facility updated successfully!');
@@ -111,11 +122,35 @@ class FacilityController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/delete-main-image', name: 'app_facility_delete_main_image', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function deleteMainImage(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
+    {
+        if ($this->isCsrfTokenValid('delete_image' . $facility->getId(), $request->request->get('_token'))) {
+            // Delete the actual file
+            $this->deleteImageFile($facility->getImage());
+            
+            $facility->setImage(null);
+            $facilityRepository->save($facility, true);
+            $this->addFlash('success', 'Facility image deleted successfully!');
+        }
+
+        return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
+    }
+
     #[Route('/{id}/delete', name: 'app_facility_delete', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function delete(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
     {
         if ($this->isCsrfTokenValid('delete' . $facility->getId(), $request->request->get('_token'))) {
+            // Delete main image file
+            $this->deleteImageFile($facility->getImage());
+            
+            // Delete all gallery image files
+            foreach ($facility->getImages() as $image) {
+                $this->deleteImageFile($image->getPath());
+            }
+            
             $facilityRepository->remove($facility, true);
 
             $this->addFlash('success', 'Facility deleted successfully!');
@@ -156,6 +191,9 @@ class FacilityController extends AbstractController
         }
 
         if ($this->isCsrfTokenValid('delete_image' . $image->getId(), (string) $request->request->get('_token'))) {
+            // Delete the actual file
+            $this->deleteImageFile($image->getPath());
+            
             $imageRepository->remove($image, true);
             $this->addFlash('success', 'Facility image removed.');
         } else {
@@ -179,47 +217,72 @@ class FacilityController extends AbstractController
         }
     }
 
-    private function handleMultipleImageUploads(Request $request, Facility $facility): void
+    private function deleteImageFile(?string $imagePath): void
     {
-        // Accept multiple files from inputs named images[]
-        $uploadedFiles = $request->files->get('images');
+        if (!$imagePath) {
+            return;
+        }
 
+        $filePath = $this->getParameter('kernel.project_dir') . '/public' . $imagePath;
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+    }
+
+    private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): void
+    {
+        $uploadedFiles = $request->files->get('images');
+        
+        // Handle single file case
         if ($uploadedFiles instanceof UploadedFile) {
             $uploadedFiles = [$uploadedFiles];
         }
-
-        if (!is_array($uploadedFiles) || count($uploadedFiles) === 0) {
+        
+        // Must be an array with files
+        if (!is_array($uploadedFiles) || empty($uploadedFiles)) {
             return;
         }
-
-        // Flatten possible nested arrays (e.g. when files are grouped)
-        $files = [];
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveArrayIterator($uploadedFiles));
-        foreach ($iterator as $f) {
-            if ($f instanceof UploadedFile) {
-                $files[] = $f;
-            }
-        }
-
-        if (count($files) === 0) {
-            return;
-        }
-
+        
         $position = $facility->getImages()->count();
-        foreach ($files as $uploadedFile) {
+        $uploadedCount = 0;
+        
+        foreach ($uploadedFiles as $uploadedFile) {
+            // Skip if not a valid uploaded file
+            if (!$uploadedFile instanceof UploadedFile) {
+                continue;
+            }
+            
+            // Upload the file
             $imagePath = $this->handleImageUpload($uploadedFile);
             if (!$imagePath) {
                 continue;
             }
-
+            
+            // Create and configure the image entity
             $image = new FacilityImage();
             $image->setPath($imagePath);
             $image->setPosition($position++);
+            $image->setFacility($facility);
+            
+            // Persist directly to ensure it's saved
+            $entityManager->persist($image);
+            
+            // Also add to facility's collection for cascade
             $facility->addImage($image);
-
+            
+            // Set as main image if facility doesn't have one
             if (!$facility->getImage()) {
                 $facility->setImage($imagePath);
             }
+            
+            $uploadedCount++;
+        }
+        
+        // Flush immediately to ensure images are saved
+        $entityManager->flush();
+        
+        if ($uploadedCount > 0) {
+            $this->addFlash('success', $uploadedCount . ' gallery image(s) uploaded successfully!');
         }
     }
 

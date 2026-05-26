@@ -161,6 +161,13 @@
     font-weight: 700;
     line-height: 1;
     backdrop-filter: blur(8px);
+    gap: 4px;
+}
+
+.regular-user-theme .facility-card-wrapper .facility-pill-photos,
+.regular-user-theme .facility-feature-card .facility-pill-photos {
+    background: rgba(13, 155, 0, 0.35);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .regular-user-theme .facility-card-wrapper .capacity,

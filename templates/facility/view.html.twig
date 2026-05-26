@@ -18,24 +18,51 @@
 
     <div class="fv-layout">
 
-        <!-- LEFT: image gallery -->
+        <!-- LEFT: Steam-like image gallery -->
         <div class="fv-gallery-col">
-            <div class="fv-main-img-wrap">
-                {% if facility.images|length > 0 %}
-                    <img src="{{ facility.images[0].path }}" alt="{{ facility.name }}" id="fvMainImage" class="fv-main-img">
-                {% elseif facility.image %}
-                    <img src="{{ facility.image }}" alt="{{ facility.name }}" id="fvMainImage" class="fv-main-img">
-                {% else %}
-                    <div class="fv-main-placeholder">{{ facility.name|first|upper }}</div>
-                {% endif %}
+            {% set allImages = [] %}
+            {% if facility.images|length > 0 %}
+                {% for image in facility.images %}
+                    {% set allImages = allImages|merge([image.path]) %}
+                {% endfor %}
+            {% elseif facility.image %}
+                {% set allImages = allImages|merge([facility.image]) %}
+            {% endif %}
+
+            <div class="fv-media-viewer" id="mediaViewer" data-image-count="{{ allImages|length }}">
+                <div class="fv-media-stage">
+                    {% if allImages|length > 0 %}
+                        <img src="{{ allImages[0] }}" alt="{{ facility.name }}" id="fvMainImage" class="fv-media-img">
+                        
+                        {% if allImages|length > 1 %}
+                        <button class="fv-nav-btn fv-nav-prev" onclick="fvPrevImage()" aria-label="Previous image">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                        </button>
+                        <button class="fv-nav-btn fv-nav-next" onclick="fvNextImage()" aria-label="Next image">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                        </button>
+                        {% endif %}
+                        
+                        <div class="fv-media-counter" id="imageCounter">1 / {{ allImages|length }}</div>
+                        
+                        {% if allImages|length > 1 %}
+                        <button class="fv-fullscreen-btn" onclick="fvOpenLightbox()" aria-label="View fullscreen">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                        </button>
+                        {% endif %}
+                    {% else %}
+                        <div class="fv-main-placeholder">{{ facility.name|first|upper }}</div>
+                    {% endif %}
+                </div>
             </div>
 
-            {% if facility.images|length > 1 %}
-            <div class="fv-thumb-strip">
+            {% if facility.images|length > 0 %}
+            <div class="fv-thumb-strip" id="thumbStrip">
                 {% for image in facility.images %}
                     <div class="fv-thumb {% if loop.first %}fv-thumb-active{% endif %}"
-                         onclick="fvSetMain('{{ image.path }}', this)">
-                        <img src="{{ image.path }}" alt="{{ facility.name }}">
+                         data-index="{{ loop.index0 }}"
+                         onclick="fvGoToImage({{ loop.index0 }}, this)">
+                        <img src="{{ image.path }}" alt="{{ facility.name }} - {{ loop.index }}">
                     </div>
                 {% endfor %}
             </div>
@@ -74,12 +101,18 @@
                         {% endif %}
                     </span>
                 </div>
+                {% if facility.images|length > 0 %}
+                <div class="fv-meta-row">
+                    <span class="fv-meta-label">GALLERY</span>
+                    <span class="fv-meta-value">{{ facility.images|length }} image{{ facility.images|length > 1 ? 's' : '' }}</span>
+                </div>
+                {% endif %}
             </div>
 
             <div class="fv-tags-row">
                 <span class="fv-tag">{{ facility.capacity }} pax</span>
                 {% if facility.images|length > 0 %}
-                    <span class="fv-tag">{{ facility.images|length }} photos</span>
+                    <span class="fv-tag">{{ facility.images|length }} photo{{ facility.images|length > 1 ? 's' : '' }}</span>
                 {% endif %}
                 <span class="fv-tag">FTIC Facility</span>
             </div>
@@ -101,12 +134,128 @@
     </div>
 </div>
 
+<!-- Lightbox Overlay -->
+<div class="fv-lightbox" id="fvLightbox" onclick="fvCloseLightbox(event)">
+    <button class="fv-lightbox-close" onclick="fvCloseLightbox()">&times;</button>
+    <button class="fv-lightbox-nav fv-lightbox-prev" onclick="fvPrevImage(); event.stopPropagation();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <img src="" alt="{{ facility.name }}" id="lightboxImage" class="fv-lightbox-img">
+    <button class="fv-lightbox-nav fv-lightbox-next" onclick="fvNextImage(); event.stopPropagation();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <div class="fv-lightbox-counter" id="lightboxCounter"></div>
+</div>
+
 <script>
-function fvSetMain(src, thumb) {
-    const img = document.getElementById('fvMainImage');
-    if (img) img.src = src;
-    document.querySelectorAll('.fv-thumb').forEach(t => t.classList.remove('fv-thumb-active'));
-    if (thumb) thumb.classList.add('fv-thumb-active');
+// Gallery image URLs from Twig
+const fvImageList = {{ allImages|json_encode|raw }};
+let fvCurrentIndex = 0;
+
+// Move lightbox to body to ensure it covers header/sidebar and centers properly
+document.addEventListener('DOMContentLoaded', function() {
+    const lightbox = document.getElementById('fvLightbox');
+    if (lightbox && lightbox.parentElement !== document.body) {
+        document.body.appendChild(lightbox);
+    }
+});
+
+function fvUpdateImage(index) {
+    if (!fvImageList.length || index < 0 || index >= fvImageList.length) return;
+    fvCurrentIndex = index;
+    
+    const mainImg = document.getElementById('fvMainImage');
+    const counter = document.getElementById('imageCounter');
+    const lightboxImg = document.getElementById('lightboxImage');
+    const lightboxCounter = document.getElementById('lightboxCounter');
+    
+    // Update main image with fade
+    if (mainImg) {
+        mainImg.style.opacity = '0.7';
+        setTimeout(() => {
+            mainImg.src = fvImageList[index];
+            mainImg.style.opacity = '1';
+        }, 120);
+    }
+    
+    // Update counter
+    if (counter) counter.textContent = (index + 1) + ' / ' + fvImageList.length;
+    if (lightboxCounter) lightboxCounter.textContent = (index + 1) + ' / ' + fvImageList.length;
+    if (lightboxImg) lightboxImg.src = fvImageList[index];
+    
+    // Update thumbnails
+    document.querySelectorAll('.fv-thumb').forEach((t, i) => {
+        t.classList.toggle('fv-thumb-active', i === index);
+    });
+    
+    // Scroll active thumb into view
+    const activeThumb = document.querySelector('.fv-thumb-active');
+    if (activeThumb && activeThumb.scrollIntoView) {
+        activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+}
+
+function fvNextImage() {
+    if (fvImageList.length <= 1) return;
+    fvUpdateImage((fvCurrentIndex + 1) % fvImageList.length);
+}
+
+function fvPrevImage() {
+    if (fvImageList.length <= 1) return;
+    fvUpdateImage((fvCurrentIndex - 1 + fvImageList.length) % fvImageList.length);
+}
+
+function fvGoToImage(index, thumb) {
+    fvUpdateImage(index);
+}
+
+function fvOpenLightbox() {
+    const lightbox = document.getElementById('fvLightbox');
+    const lightboxImg = document.getElementById('lightboxImage');
+    if (lightbox && lightboxImg) {
+        lightboxImg.src = fvImageList[fvCurrentIndex];
+        lightbox.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function fvCloseLightbox(e) {
+    if (e && e.target !== e.currentTarget) return;
+    const lightbox = document.getElementById('fvLightbox');
+    if (lightbox) {
+        lightbox.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+    const lightbox = document.getElementById('fvLightbox');
+    const isLightboxOpen = lightbox && lightbox.classList.contains('is-open');
+    
+    if (e.key === 'ArrowRight') fvNextImage();
+    if (e.key === 'ArrowLeft') fvPrevImage();
+    if (e.key === 'Escape' && isLightboxOpen) fvCloseLightbox();
+});
+
+// Touch/swipe support for mobile
+let touchStartX = 0;
+let touchEndX = 0;
+
+const mediaStage = document.querySelector('.fv-media-stage');
+if (mediaStage && fvImageList.length > 1) {
+    mediaStage.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    mediaStage.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) fvNextImage();
+            else fvPrevImage();
+        }
+    }, { passive: true });
 }
 </script>
 
@@ -141,37 +290,112 @@ function fvSetMain(src, thumb) {
 /* Two-column layout */
 .fv-layout {
     display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    gap: 28px;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 32px;
     align-items: start;
 }
 
-/* Gallery column */
+/* Gallery column - Steam-like design */
 .fv-gallery-col {
     display: flex;
     flex-direction: column;
     gap: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     background: #1a1a1a;
-    box-shadow: 0 6px 28px rgba(0,0,0,0.18);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.22);
 }
 
-.fv-main-img-wrap {
+.fv-media-viewer {
+    position: relative;
+    background: #111;
+}
+
+.fv-media-stage {
     width: 100%;
-    aspect-ratio: 16/9;
+    aspect-ratio: 16/10;
     background: #111;
     overflow: hidden;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.fv-main-img {
+
+.fv-media-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    transition: transform 0.35s ease;
+    transition: opacity 0.25s ease, transform 0.4s ease;
+    cursor: pointer;
 }
-.fv-main-img:hover { transform: scale(1.015); }
+.fv-media-img:hover { transform: scale(1.02); }
+
+/* Navigation arrows */
+.fv-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+    z-index: 5;
+    padding: 0;
+}
+.fv-media-stage:hover .fv-nav-btn { opacity: 1; }
+.fv-nav-btn:hover { background: rgba(0,0,0,0.75); }
+.fv-nav-btn svg { width: 22px; height: 22px; }
+.fv-nav-prev { left: 12px; }
+.fv-nav-next { right: 12px; }
+
+/* Media counter */
+.fv-media-counter {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+}
+
+/* Fullscreen button */
+.fv-fullscreen-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+    z-index: 5;
+    padding: 0;
+}
+.fv-media-stage:hover .fv-fullscreen-btn { opacity: 1; }
+.fv-fullscreen-btn:hover { background: rgba(0,0,0,0.75); }
+.fv-fullscreen-btn svg { width: 18px; height: 18px; }
 
 .fv-main-placeholder {
     width: 100%;
@@ -181,30 +405,37 @@ function fvSetMain(src, thumb) {
     justify-content: center;
     font-size: 80px;
     font-weight: 900;
-    color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.15);
 }
 
+/* Thumbnail strip */
 .fv-thumb-strip {
     display: flex;
     gap: 0;
     background: #111;
-    padding: 6px 6px 6px;
+    padding: 8px;
     overflow-x: auto;
-    gap: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #444 #222;
 }
+.fv-thumb-strip::-webkit-scrollbar { height: 6px; }
+.fv-thumb-strip::-webkit-scrollbar-track { background: #222; }
+.fv-thumb-strip::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
 .fv-thumb {
     flex-shrink: 0;
-    width: 96px;
-    height: 68px;
-    border-radius: 4px;
+    width: 100px;
+    height: 70px;
+    border-radius: 6px;
     overflow: hidden;
     cursor: pointer;
     border: 3px solid transparent;
-    opacity: 0.7;
-    transition: opacity 0.2s, border-color 0.2s;
+    opacity: 0.6;
+    transition: opacity 0.2s, border-color 0.2s, transform 0.15s;
+    margin-right: 8px;
 }
-.fv-thumb:hover { opacity: 1; border-color: rgba(255,255,255,0.5); }
-.fv-thumb-active { opacity: 1; border-color: var(--feu-green) !important; }
+.fv-thumb:hover { opacity: 0.85; transform: translateY(-2px); }
+.fv-thumb-active { opacity: 1 !important; border-color: var(--feu-green) !important; transform: translateY(-2px); }
 .fv-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* Details column */
@@ -216,7 +447,7 @@ function fvSetMain(src, thumb) {
 }
 
 .fv-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 800;
     color: #1f2937;
     margin: 0;
@@ -232,9 +463,9 @@ function fvSetMain(src, thumb) {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 20px;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 700;
 }
 .fv-badge-available {
@@ -249,7 +480,7 @@ function fvSetMain(src, thumb) {
 }
 
 .fv-description {
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     color: #4b5563;
     line-height: 1.65;
     margin: 0;
@@ -266,21 +497,21 @@ function fvSetMain(src, thumb) {
     display: flex;
     align-items: baseline;
     gap: 14px;
-    padding: 9px 0;
+    padding: 10px 0;
     border-bottom: 1px solid #f3f4f6;
 }
 .fv-meta-row:last-child { border-bottom: none; }
 .fv-meta-label {
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.07em;
+    letter-spacing: 0.08em;
     color: #9ca3af;
     width: 100px;
     flex-shrink: 0;
 }
 .fv-meta-value {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: #374151;
     font-weight: 600;
 }
@@ -289,13 +520,13 @@ function fvSetMain(src, thumb) {
 .fv-tags-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 7px;
+    gap: 8px;
 }
 .fv-tag {
-    padding: 4px 12px;
+    padding: 5px 14px;
     background: #f3f4f6;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
     font-weight: 700;
     color: #374151;
     border: 1px solid #e5e7eb;
@@ -308,15 +539,15 @@ function fvSetMain(src, thumb) {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
-    margin-top: 4px;
+    margin-top: 8px;
 }
 .fv-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 24px;
-    border-radius: 8px;
-    font-size: 0.88rem;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 0.9rem;
     font-weight: 700;
     text-decoration: none;
     transition: all 0.2s;
@@ -343,14 +574,94 @@ function fvSetMain(src, thumb) {
     background: #e5e7eb;
 }
 
+/* Lightbox */
+.fv-lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.92);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.fv-lightbox.is-open { display: flex; }
+
+.fv-lightbox-img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.fv-lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 10;
+}
+.fv-lightbox-close:hover { background: rgba(255,255,255,0.3); }
+
+.fv-lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 10;
+    padding: 0;
+}
+.fv-lightbox-nav:hover { background: rgba(255,255,255,0.25); }
+.fv-lightbox-nav svg { width: 24px; height: 24px; }
+.fv-lightbox-prev { left: 20px; }
+.fv-lightbox-next { right: 20px; }
+
+.fv-lightbox-counter {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.15);
+    color: white;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+}
+
 @media (max-width: 900px) {
     .fv-layout { grid-template-columns: 1fr; }
-    .fv-thumb { width: 80px; height: 56px; }
+    .fv-title { font-size: 1.6rem; }
 }
 @media (max-width: 560px) {
     .fv-title { font-size: 1.4rem; }
-    .fv-thumb { width: 64px; height: 46px; }
     .fv-btn { flex: 1 1 100%; }
+    .fv-nav-btn { opacity: 1; width: 38px; height: 38px; }
+    .fv-thumb { width: 84px; height: 60px; }
+    .fv-media-stage { aspect-ratio: 16/11; }
 }
 </style>
 {% endblock %}

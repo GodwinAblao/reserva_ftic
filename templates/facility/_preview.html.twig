@@ -1,108 +1,207 @@
+{% set previewImages = [] %}
+{% if facility.images|length > 0 %}
+    {% for image in facility.images %}
+        {% set previewImages = previewImages|merge([image.path]) %}
+    {% endfor %}
+{% elseif facility.image %}
+    {% set previewImages = previewImages|merge([facility.image]) %}
+{% endif %}
+
 <style>
-/* Preview card specific styles to match design */
-.facility-popup-card {
+/* Steam-like preview gallery */
+.preview-popup-card {
     border-radius: 18px;
     background: #ffffff;
     padding: 24px;
     border: 1px solid #e5e7eb;
     box-shadow: 0 22px 54px rgba(15, 23, 42, 0.14);
 }
-.facility-view-content {
+.preview-view-content {
     display: grid;
     grid-template-columns: 420px 1fr;
-    gap: 36px;
+    gap: 32px;
     align-items: start;
 }
-.main-image { height: 300px; border-radius: 12px; overflow: hidden; }
-.main-image img { width:100%; height:100%; object-fit:cover; display:block; }
-.thumbnail-strip { display:flex; gap:10px; padding-top:12px; }
-.thumbnail { width:72px; height:54px; border-radius:6px; overflow:hidden; cursor:pointer; border:3px solid transparent; }
-.thumbnail img { width:100%; height:100%; object-fit:cover; display:block; }
-.thumbnail.active { border-color: var(--feu-green); }
-.facility-title { font-size:32px; color:#6b6b6b; margin:0 0 8px 0; font-weight:700; }
-.facility-header .facility-meta { color:#9aa0a6; display:flex; gap:12px; align-items:center; margin-top:6px; }
-.description-text { color:#707070; line-height:1.6; }
-.capacity-display { display:flex; gap:12px; align-items:center; }
-.capacity-number { font-size:34px; color:var(--feu-green); font-weight:700; }
-.capacity-label { color:#666; }
-.action-section { display:flex; justify-content:center; margin-top:18px; }
-.btn-reserve { background: var(--feu-green); color: white; padding:10px 28px; border-radius:10px; font-size:15px; text-decoration:none; display:inline-block; }
-.btn-reserve:hover { background: var(--feu-green-dark); }
-@media (max-width:900px) {
-    .facility-view-content { grid-template-columns: 1fr; }
-    .main-image { height: 220px; }
+
+/* Gallery */
+.preview-gallery-col {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #1a1a1a;
+}
+.preview-media-stage {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background: #111;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.preview-media-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.preview-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 5;
+    padding: 0;
+}
+.preview-media-stage:hover .preview-nav-btn { opacity: 1; }
+.preview-nav-btn:hover { background: rgba(0,0,0,0.75); }
+.preview-nav-btn svg { width: 18px; height: 18px; }
+.preview-nav-prev { left: 8px; }
+.preview-nav-next { right: 8px; }
+
+.preview-counter {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    z-index: 5;
+}
+
+.preview-thumb-strip {
+    display: flex;
+    gap: 6px;
+    background: #111;
+    padding: 6px;
+    overflow-x: auto;
+}
+.preview-thumb {
+    flex-shrink: 0;
+    width: 72px;
+    height: 52px;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    opacity: 0.6;
+    transition: opacity 0.2s, border-color 0.2s;
+}
+.preview-thumb:hover { opacity: 0.85; }
+.preview-thumb.active { opacity: 1; border-color: var(--feu-green); }
+.preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.preview-placeholder {
+    font-size: 64px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.15);
+}
+
+/* Details */
+.preview-details { display: flex; flex-direction: column; gap: 14px; }
+.preview-title { font-size: 28px; color: #374151; margin: 0; font-weight: 800; }
+.preview-meta { color: #9ca3af; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 0.85rem; }
+.preview-desc { color: #4b5563; line-height: 1.6; font-size: 0.9rem; margin: 0; }
+.preview-capacity-row { display: flex; align-items: baseline; gap: 8px; }
+.preview-capacity-num { font-size: 32px; color: var(--feu-green); font-weight: 800; }
+.preview-capacity-label { color: #6b7280; font-size: 0.9rem; }
+.preview-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.preview-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 24px; border-radius: 10px; font-size: 0.88rem;
+    font-weight: 700; text-decoration: none; transition: all 0.2s; flex: 1; min-width: 120px;
+}
+.preview-btn-primary { background: var(--feu-green); color: white; border: 2px solid var(--feu-green); }
+.preview-btn-primary:hover { background: var(--feu-green-dark); border-color: var(--feu-green-dark); transform: translateY(-1px); }
+.preview-btn-secondary { background: #f3f4f6; color: #374151; border: 2px solid #e5e7eb; }
+.preview-btn-secondary:hover { background: #e5e7eb; }
+
+@media (max-width: 900px) {
+    .preview-view-content { grid-template-columns: 1fr; }
 }
 </style>
 
-<div class="facility-popup-card" role="dialog" aria-modal="true">
-    <div class="facility-view-content">
+<div class="preview-popup-card" role="dialog" aria-modal="true">
+    <div class="preview-view-content">
         <!-- Image Gallery Section -->
-        <div class="image-gallery-section">
-        {% if facility.images|length > 0 %}
-            <div class="main-gallery">
-                <div class="main-image">
-                    <img src="{{ facility.images[0].path }}" alt="{{ facility.name }}" id="mainImage">
-                </div>
-                {% if facility.images|length > 1 %}
-                    <div class="thumbnail-strip">
-                        {% for image in facility.images %}
-                            <div class="thumbnail {% if loop.first %}active{% endif %}" data-img-src="{{ image.path }}">
-                                <img src="{{ image.path }}" alt="{{ facility.name }}">
-                            </div>
-                        {% endfor %}
-                    </div>
+        <div class="preview-gallery-col">
+            <div class="preview-media-stage" id="previewStage">
+                {% if previewImages|length > 0 %}
+                    <img src="{{ previewImages[0] }}" alt="{{ facility.name }}" id="previewMainImage">
+                    {% if previewImages|length > 1 %}
+                        <button class="preview-nav-btn preview-nav-prev" onclick="previewPrev()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                        </button>
+                        <button class="preview-nav-btn preview-nav-next" onclick="previewNext()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                        </button>
+                        <div class="preview-counter" id="previewCounter">1 / {{ previewImages|length }}</div>
+                    {% endif %}
+                {% else %}
+                    <div class="preview-placeholder">{{ facility.name|first|upper }}</div>
                 {% endif %}
             </div>
-        {% elseif facility.image %}
-            <div class="single-image">
-                <img src="{{ facility.image }}" alt="{{ facility.name }}">
-            </div>
-        {% else %}
-            <div class="placeholder-image">
-                <span>{{ facility.name | first }}</span>
-            </div>
-        {% endif %}
+            {% if facility.images|length > 0 %}
+                <div class="preview-thumb-strip">
+                    {% for image in facility.images %}
+                        <div class="preview-thumb {% if loop.first %}active{% endif %}"
+                             data-src="{{ image.path }}"
+                             onclick="previewGoTo({{ loop.index0 }}, this)">
+                            <img src="{{ image.path }}" alt="{{ facility.name }}">
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
 
         <!-- Details Section -->
-        <div class="details-section">
-            <div class="facility-header">
-                <h1 class="facility-title">{{ facility.name }}</h1>
-                <div class="facility-meta">
-                    <span class="meta-item">👥 Capacity: <strong>{{ facility.capacity }}</strong></span>
-                    <span class="meta-item">{% if facility.isAvailableForReservation() %}<span style="color:#2d6a2f;font-weight:600;">Available for reservation</span>{% else %}Not available{% endif %}</span>
+        <div class="preview-details">
+            <div>
+                <h1 class="preview-title">{{ facility.name }}</h1>
+                <div class="preview-meta">
+                    <span>Capacity: <strong>{{ facility.capacity }}</strong></span>
+                    <span>{% if facility.isAvailableForReservation() %}<span style="color:var(--feu-green);font-weight:700;">Available</span>{% else %}<span style="color:#9ca3af;">Unavailable</span>{% endif %}</span>
+                    {% if facility.images|length > 0 %}
+                        <span>{{ facility.images|length }} photo{{ facility.images|length > 1 ? 's' : '' }}</span>
+                    {% endif %}
                 </div>
             </div>
 
             {% if facility.description %}
-                <div class="info-card">
-                    <h2 class="card-title">About this Facility</h2>
-                    <p class="description-text">{{ facility.description }}</p>
-                </div>
+                <p class="preview-desc">{{ facility.description }}</p>
             {% endif %}
 
-            <div class="info-card">
-                <h2 class="card-title">Capacity</h2>
-                <div class="capacity-display">
-                    <span class="capacity-number">{{ facility.capacity }}</span>
-                    <span class="capacity-label">persons</span>
-                </div>
+            <div class="preview-capacity-row">
+                <span class="preview-capacity-num">{{ facility.capacity }}</span>
+                <span class="preview-capacity-label">persons capacity</span>
             </div>
 
-            <div class="action-section">
+            <div class="preview-actions">
                 {% if is_granted('ROLE_SUPER_ADMIN') %}
-                    <div class="admin-actions">
-                        <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="btn btn-primary">Edit Facility</a>
-                        <a href="{{ path('app_facility_management') }}" class="btn btn-secondary">Back to Management</a>
-                    </div>
+                    <a href="{{ path('app_facility_edit', {id: facility.id}) }}" class="preview-btn preview-btn-primary">Edit Facility</a>
+                    <a href="{{ path('app_facility_management') }}" class="preview-btn preview-btn-secondary">Management</a>
                 {% else %}
-                    <div class="user-actions">
-                        {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-                            <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-reserve">Reserve Now</a>
-                        {% else %}
-                            <a href="{{ path('app_login') }}" class="btn-reserve" data-turbo="false" target="_self">Sign In to Reserve</a>
-                        {% endif %}
-                    </div>
+                    {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                        <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="preview-btn preview-btn-primary">Reserve Now</a>
+                    {% else %}
+                        <a href="{{ path('app_login') }}" class="preview-btn preview-btn-primary" data-turbo="false" target="_self">Sign In to Reserve</a>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -110,14 +209,35 @@
 </div>
 
 <script>
-// thumbnail click handling delegated from parent script
-document.querySelectorAll('.thumbnail').forEach(t => {
-    t.addEventListener('click', function () {
-        const src = this.dataset.imgSrc;
-        const main = document.getElementById('mainImage');
-        if (main && src) main.src = src;
-        document.querySelectorAll('.thumbnail').forEach(x => x.classList.remove('active'));
-        this.classList.add('active');
-    });
+const previewImageList = {{ previewImages|json_encode|raw }};
+let previewIndex = 0;
+
+// Move preview popup to body to ensure it covers header/sidebar and centers properly
+document.addEventListener('DOMContentLoaded', function() {
+    const previewCard = document.querySelector('.preview-popup-card');
+    if (previewCard && previewCard.parentElement !== document.body) {
+        document.body.appendChild(previewCard);
+    }
 });
+
+function previewUpdate(idx) {
+    if (!previewImageList.length) return;
+    previewIndex = idx;
+    const main = document.getElementById('previewMainImage');
+    const counter = document.getElementById('previewCounter');
+    if (main) main.src = previewImageList[idx];
+    if (counter) counter.textContent = (idx + 1) + ' / ' + previewImageList.length;
+    document.querySelectorAll('.preview-thumb').forEach((t, i) => t.classList.toggle('active', i === idx));
+}
+function previewNext() {
+    if (previewImageList.length <= 1) return;
+    previewUpdate((previewIndex + 1) % previewImageList.length);
+}
+function previewPrev() {
+    if (previewImageList.length <= 1) return;
+    previewUpdate((previewIndex - 1 + previewImageList.length) % previewImageList.length);
+}
+function previewGoTo(idx, el) {
+    previewUpdate(idx);
+}
 </script>
