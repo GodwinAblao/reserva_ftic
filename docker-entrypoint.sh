@@ -1,16 +1,18 @@
 #!/bin/bash
 set -e
 
-PORT="${PORT:-80}"
+PORT="${PORT:-8080}"
 
 configure_apache_port() {
   echo "Configuring Apache to listen on port ${PORT}..."
-  echo "ServerName localhost" >> /etc/apache2/apache2.conf
-  sed -i "s/^Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf
+  grep -q "^ServerName " /etc/apache2/apache2.conf || echo "ServerName localhost" >> /etc/apache2/apache2.conf
+  sed -i "s/^Listen .*/Listen 0.0.0.0:${PORT}/" /etc/apache2/ports.conf
   sed -i "s/<VirtualHost \\*:[0-9]*>/<VirtualHost *:${PORT}>/" /etc/apache2/sites-available/000-default.conf
   if [ -f /etc/apache2/sites-enabled/000-default.conf ]; then
     sed -i "s/<VirtualHost \\*:[0-9]*>/<VirtualHost *:${PORT}>/" /etc/apache2/sites-enabled/000-default.conf
   fi
+
+  apache2ctl -t
 }
 
 configure_apache_port
@@ -38,4 +40,4 @@ if [ "${SKIP_DB_SETUP:-0}" != "1" ]; then
 fi
 
 echo "Starting Apache on port ${PORT}..."
-exec apache2-foreground
+exec "$@"
