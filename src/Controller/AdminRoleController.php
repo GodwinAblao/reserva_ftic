@@ -512,7 +512,7 @@ class AdminRoleController extends AbstractController
                     u.roles AS user_roles
              FROM reservation r
              LEFT JOIN facility f ON f.id = r.facility_id
-             LEFT JOIN user u     ON u.id = r.user_id
+             LEFT JOIN "user" u   ON u.id = r.user_id
              WHERE DATE(r.reservation_date) = :today
              ORDER BY r.created_at DESC',
             ['today' => $today]
