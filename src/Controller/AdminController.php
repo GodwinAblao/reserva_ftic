@@ -341,7 +341,7 @@ class AdminController extends AbstractController
                     u.roles AS user_roles
              FROM reservation r
              LEFT JOIN facility f ON f.id = r.facility_id
-             LEFT JOIN user u     ON u.id = r.user_id
+             LEFT JOIN "user" u   ON u.id = r.user_id
              WHERE DATE(r.reservation_date) = :today
              ORDER BY r.created_at DESC',
             ['today' => $today]
@@ -713,7 +713,7 @@ class AdminController extends AbstractController
              UNION ALL
              SELECT 'meta', 'facilities', COUNT(*) FROM facility
              UNION ALL
-             SELECT 'meta', 'users',      COUNT(*) FROM `user`
+             SELECT 'meta', 'users',      COUNT(*) FROM \"user\"
              UNION ALL
              SELECT 'meta', 'today_res',  COUNT(*) FROM reservation WHERE reservation_date = ? AND status != 'Suggested'
              UNION ALL

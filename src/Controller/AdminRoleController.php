@@ -158,14 +158,14 @@ class AdminRoleController extends AbstractController
             'SELECT mcr.preferred_expertise, mcr.created_at,
                     u.first_name, u.last_name, u.email
              FROM mentor_custom_request mcr
-             LEFT JOIN user u ON mcr.student_id = u.id
+             LEFT JOIN "user" u ON mcr.student_id = u.id
              ORDER BY mcr.created_at DESC LIMIT 5'
         )->fetchAllAssociative();
 
         $lbRows = $conn->executeQuery(
             'SELECT mp.display_name, mp.specialization, mp.engagement_points, u.degree
              FROM mentor_profile mp
-             LEFT JOIN user u ON mp.user_id = u.id
+             LEFT JOIN "user" u ON mp.user_id = u.id
              ORDER BY mp.engagement_points DESC LIMIT 5'
         )->fetchAllAssociative();
 
