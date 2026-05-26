@@ -63,7 +63,6 @@ class MentoringAuditLogRepository extends ServiceEntityRepository
             ->select('a')
             ->leftJoin('a.performedBy', 'u')
             ->addSelect('u')
-            ->distinct(true)
             ->orderBy('a.id', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
