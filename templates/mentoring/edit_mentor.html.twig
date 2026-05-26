@@ -76,12 +76,19 @@
                 </div>
                 <div class="em-field">
                     <label class="em-label" for="specialization">Specialization <span class="em-req">*</span></label>
+                    {% set emStdNames = allSpecializations|map(s => s.name) %}
+                    {% set emIsCustom = mentor.specialization and mentor.specialization != 'Other' and mentor.specialization not in emStdNames %}
+                    {% set emSpecVal = emIsCustom ? 'Other' : mentor.specialization %}
                     <select id="specialization" name="specialization" class="em-input em-select" required>
                         <option value="">Select specialization…</option>
                         {% for specialization in allSpecializations %}
-                        <option value="{{ specialization.name }}" {% if mentor.specialization == specialization.name %}selected{% endif %}>{{ specialization.name }}</option>
+                        <option value="{{ specialization.name }}" {{ emSpecVal == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
                         {% endfor %}
+                        {% if 'Other' not in emStdNames %}
+                        <option value="Other" {{ emSpecVal == 'Other' ? 'selected' : '' }}>Other</option>
+                        {% endif %}
                     </select>
+                    <input type="text" name="specialization_other" id="em-spec-other" class="em-input" placeholder="Please specify specialization…" style="margin-top:6px;{{ emIsCustom ? '' : 'display:none;' }}" value="{{ emIsCustom ? mentor.specialization : '' }}">
                 </div>
             </div>
             <div class="em-row em-cols-1">
@@ -150,6 +157,18 @@
 
 <script>
 (function(){
+    /* Specialization Other toggle */
+    const emSpecSel = document.getElementById('specialization');
+    const emSpecOther = document.getElementById('em-spec-other');
+    if (emSpecSel && emSpecOther) {
+        emSpecSel.addEventListener('change', function() {
+            const isOther = this.value === 'Other';
+            emSpecOther.style.display = isOther ? 'block' : 'none';
+            if (!isOther) emSpecOther.value = '';
+            if (isOther) emSpecOther.focus();
+        });
+    }
+
     /* End time > Start time validation */
     const startEl = document.getElementById('availability_start');
     const endEl   = document.getElementById('availability_end');

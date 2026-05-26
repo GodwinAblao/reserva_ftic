@@ -13,6 +13,11 @@
     background: #ffffff;
 }
 
+/* Collapse to 2 columns when no user-right-col present (e.g. mentoring page) */
+.app-shell.regular-user-shell:not(:has(.user-right-col)) {
+    grid-template-columns: 260px minmax(0, 1fr) !important;
+}
+
 /* ── User right sidebar column ── */
 .user-right-col {
     grid-column: 3;

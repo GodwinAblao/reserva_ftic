@@ -281,11 +281,13 @@
                         <div class="mc-assign-grid">
                             <div class="mc-assign-field">
                                 <label>Meeting Method</label>
-                                <select name="meeting_method" class="mc-assign-input">
-                                    <option value="In Person" {{ req.meetingMethod == 'In Person' ? 'selected' : '' }}>In Person</option>
+                                <select name="meeting_method" class="mc-assign-input" onchange="mcToggleMethod(this)">
+                                    <option value="">Select…</option>
                                     <option value="Online" {{ req.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
-                                    <option value="Hybrid" {{ req.meetingMethod == 'Hybrid' ? 'selected' : '' }}>Hybrid</option>
+                                    <option value="In Person" {{ req.meetingMethod == 'In Person' ? 'selected' : '' }}>In Person</option>
                                 </select>
+                                <input type="url" name="meeting_link" class="mc-assign-input" placeholder="Meeting link (Zoom/Google Meet)…" style="margin-top:4px;{{ req.meetingMethod == 'Online' ? '' : 'display:none;' }}" value="{{ req.meetingLink }}">
+                                <input type="text" name="meeting_location" class="mc-assign-input" placeholder="Specify location…" style="margin-top:4px;{{ req.meetingMethod == 'In Person' ? '' : 'display:none;' }}" value="{{ req.meetingLocation }}">
                             </div>
                         </div>
                         <div class="mc-assign-field" style="margin-top:10px;">
@@ -308,6 +310,14 @@
 </div>
 
 <script>
+function mcToggleMethod(sel) {
+    var form = sel.closest('form');
+    if (!form) return;
+    var linkInput = form.querySelector('input[name="meeting_link"]');
+    var locInput  = form.querySelector('input[name="meeting_location"]');
+    if (linkInput) { linkInput.style.display = sel.value === 'Online'    ? 'block' : 'none'; if (sel.value !== 'Online')    linkInput.value = ''; }
+    if (locInput)  { locInput.style.display  = sel.value === 'In Person' ? 'block' : 'none'; if (sel.value !== 'In Person') locInput.value  = ''; }
+}
 function selectRequest(id) {
     document.querySelectorAll('.mc-req-detail').forEach(function(el){ el.style.display = 'none'; });
     var detail = document.getElementById('mc-req-' + id);

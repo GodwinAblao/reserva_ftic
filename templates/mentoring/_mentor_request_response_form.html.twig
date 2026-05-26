@@ -71,12 +71,19 @@
         </div>
 
         {# Specialization dropdown #}
-        <select name="expertise" class="form-input">
+        {% set stdSpecNames = allSpecializations|map(s => s.name) %}
+        {% set isCustomExpertise = request.assignedMentorExpertise and request.assignedMentorExpertise != 'Other' and request.assignedMentorExpertise not in stdSpecNames %}
+        {% set expertiseSelectVal = isCustomExpertise ? 'Other' : request.assignedMentorExpertise %}
+        <select name="expertise" class="form-input mr-expertise-select">
             <option value="">Select specialization…</option>
             {% for specialization in allSpecializations %}
-                <option value="{{ specialization.name }}" {{ request.assignedMentorExpertise == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
+                <option value="{{ specialization.name }}" {{ expertiseSelectVal == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
             {% endfor %}
+            {% if 'Other' not in stdSpecNames %}
+                <option value="Other" {{ expertiseSelectVal == 'Other' ? 'selected' : '' }}>Other</option>
+            {% endif %}
         </select>
+        <input type="text" name="expertise_other" class="form-input mr-expertise-other" placeholder="Please specify specialization…" style="margin-top:4px;{{ (expertiseSelectVal == 'Other') ? '' : 'display:none;' }}" value="{{ isCustomExpertise ? request.assignedMentorExpertise : '' }}">
 
         <input type="date" class="form-input" name="available_dates"
             aria-label="Available Date" value="{{ request.availableDates }}">
@@ -92,11 +99,13 @@
                 value="{{ request.availableTime and '–' in request.availableTime ? request.availableTime|split('–')|last|trim : '' }}">
         </div>
 
-        <select name="meeting_method" class="form-input">
+        <select name="meeting_method" class="form-input mr-method-select" onchange="mrToggleMethod(this)">
             <option value="">Meeting Method</option>
             <option value="Online" {{ request.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
-            <option value="Face-to-Face" {{ request.meetingMethod == 'Face-to-Face' ? 'selected' : '' }}>Face-to-Face</option>
+            <option value="In Person" {{ request.meetingMethod == 'In Person' ? 'selected' : '' }}>In Person</option>
         </select>
+        <input type="url" name="meeting_link" class="form-input" placeholder="Meeting link (e.g. Zoom/Google Meet URL)…" style="margin-top:4px;{{ request.meetingMethod == 'Online' ? '' : 'display:none;' }}" value="{{ request.meetingLink }}">
+        <input type="text" name="meeting_location" class="form-input" placeholder="Specify location…" style="margin-top:4px;{{ request.meetingMethod == 'In Person' ? '' : 'display:none;' }}" value="{{ request.meetingLocation }}">
 
         <textarea class="form-input" name="instructions" rows="3"
             placeholder="Additional instructions or notes">{{ request.adminInstructions }}</textarea>
@@ -145,20 +154,72 @@
 
 <script>
 (function(){
+    function setExpertiseValue(specSelect, otherInput, value) {
+        let matched = false;
+        for (let i = 0; i < specSelect.options.length; i++) {
+            if (specSelect.options[i].value === value) {
+                specSelect.selectedIndex = i;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched && value) {
+            // Custom value — select "Other" and fill text box
+            for (let i = 0; i < specSelect.options.length; i++) {
+                if (specSelect.options[i].value === 'Other') {
+                    specSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            if (otherInput) { otherInput.style.display = 'block'; otherInput.value = value; }
+        } else {
+            if (otherInput) { otherInput.style.display = 'none'; otherInput.value = ''; }
+        }
+    }
+
     document.querySelectorAll('.mr-mentor-select').forEach(function(sel){
         sel.addEventListener('change', function(){
             const opt = this.options[this.selectedIndex];
             const form = this.closest('form');
             if (!opt || !opt.value) return;
             const nameInput = form.querySelector('input[name="mentor_name"]');
-            const specSelect = form.querySelector('select[name="expertise"]');
+            const specSelect = form.querySelector('select.mr-expertise-select');
+            const otherInput = form.querySelector('input.mr-expertise-other');
             if (nameInput && !nameInput.value) nameInput.value = opt.dataset.name || '';
-            if (specSelect) {
-                for (let i = 0; i < specSelect.options.length; i++) {
-                    if (specSelect.options[i].value === opt.dataset.spec) {
-                        specSelect.selectedIndex = i; break;
-                    }
-                }
+            if (specSelect) setExpertiseValue(specSelect, otherInput, opt.dataset.spec || '');
+        });
+    });
+
+    document.querySelectorAll('select.mr-expertise-select').forEach(function(sel){
+        const form = sel.closest('form');
+        const otherInput = form ? form.querySelector('input.mr-expertise-other') : null;
+        sel.addEventListener('change', function(){
+            const isOther = this.value === 'Other';
+            if (otherInput) {
+                otherInput.style.display = isOther ? 'block' : 'none';
+                if (!isOther) otherInput.value = '';
+                if (isOther) otherInput.focus();
+            }
+        });
+    });
+
+    // Meeting method toggle
+    window.mrToggleMethod = function(sel) {
+        var form = sel.closest('form');
+        if (!form) return;
+        var linkInput = form.querySelector('input[name="meeting_link"]');
+        var locInput  = form.querySelector('input[name="meeting_location"]');
+        if (linkInput) { linkInput.style.display = sel.value === 'Online'    ? 'block' : 'none'; if (sel.value !== 'Online')    linkInput.value = ''; }
+        if (locInput)  { locInput.style.display  = sel.value === 'In Person' ? 'block' : 'none'; if (sel.value !== 'In Person') locInput.value  = ''; }
+    };
+
+    // On submit: merge expertise_other into expertise if Other selected
+    document.querySelectorAll('.mentor-admin-response-form').forEach(function(form){
+        form.addEventListener('submit', function(){
+            const specSelect = form.querySelector('select.mr-expertise-select');
+            const otherInput = form.querySelector('input.mr-expertise-other');
+            if (specSelect && otherInput && specSelect.value === 'Other' && otherInput.value.trim()) {
+                specSelect.value = otherInput.value.trim();
             }
         });
     });

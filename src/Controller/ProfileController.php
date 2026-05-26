@@ -51,8 +51,9 @@ class ProfileController extends AbstractController
                 $firstName = $request->request->get('first_name');
                 $middleName = $request->request->get('middle_name');
                 $lastName = $request->request->get('last_name');
-                $degree = $request->request->get('degree');
-                $degreeName = $request->request->get('degree_name');
+                $degree      = $request->request->get('degree');
+                $degreeOther = trim((string) $request->request->get('degree_other'));
+                $degreeName  = $request->request->get('degree_name');
                 $currentPassword = $request->request->get('current_password');
                 $password = $request->request->get('password');
                 $passwordConfirm = $request->request->get('password_confirm');
@@ -61,7 +62,10 @@ class ProfileController extends AbstractController
                 if ($firstName) $user->setFirstName($firstName);
                 if ($middleName !== null) $user->setMiddleName($middleName ?: null);
                 if ($lastName) $user->setLastName($lastName);
-                if ($degree !== null) $user->setDegree($degree ?: null);
+                if ($degree !== null) {
+                    $finalDegree = ($degree === 'Other' && $degreeOther !== '') ? $degreeOther : ($degree ?: null);
+                    $user->setDegree($finalDegree);
+                }
                 if ($degreeName !== null) $user->setDegreeName($degreeName ?: null);
 
                 // Password change — require current password + confirmation match
@@ -119,8 +123,9 @@ class ProfileController extends AbstractController
                         $mentorProfile->setUser($user);
                     }
 
-                    $displayName      = $request->request->get('display_name');
-                    $specialization   = $request->request->get('specialization');
+                    $displayName         = $request->request->get('display_name');
+                    $specialization      = $request->request->get('specialization');
+                    $specializationOther = trim((string) $request->request->get('specialization_other'));
                     $bio              = $request->request->get('bio');
                     $education        = $request->request->get('mentor_education');
                     $availDay         = trim((string) $request->request->get('availability_day'));
@@ -131,7 +136,10 @@ class ProfileController extends AbstractController
                         $mentorProfile->setDisplayName($displayName);
                     }
                     if ($specialization) {
-                        $mentorProfile->setSpecialization($specialization);
+                        $finalSpecialization = ($specialization === 'Other' && $specializationOther !== '')
+                            ? $specializationOther
+                            : $specialization;
+                        $mentorProfile->setSpecialization($finalSpecialization);
                     }
                     if ($bio !== null) {
                         $mentorProfile->setBio($bio);

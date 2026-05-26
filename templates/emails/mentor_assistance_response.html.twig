@@ -15,6 +15,12 @@
                 <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Available Dates</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.availableDates }}</td></tr>
                 <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Available Time</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.availableTime }}</td></tr>
                 <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Meeting Method</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.meetingMethod }}</td></tr>
+                {% if request.meetingMethod == 'Online' and request.meetingLink %}
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Meeting Link</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><a href="{{ request.meetingLink }}" style="color:#006633;font-weight:600;">Join Meeting</a></td></tr>
+                {% endif %}
+                {% if request.meetingMethod == 'In Person' and request.meetingLocation %}
+                <tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>Location</strong></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;">{{ request.meetingLocation }}</td></tr>
+                {% endif %}
             </table>
             {% if request.adminInstructions %}
                 <div style="background:#f8faf9;border-left:4px solid #006633;padding:14px 16px;margin:18px 0;">

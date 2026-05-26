@@ -59,12 +59,12 @@ class MentoringController extends AbstractController
             }
         }
 
-        // Convert to array format expected by template
+        // Only include specializations that have at least one custom request
         $specializationRows = [];
-        foreach ($specializations as $spec) {
+        foreach ($specializationStats as $specName => $total) {
             $specializationRows[] = [
-                'specialization' => $spec->getName(),
-                'total' => $specializationStats[$spec->getName()] ?? 0,
+                'specialization' => $specName,
+                'total'          => $total,
             ];
         }
 
@@ -151,16 +151,29 @@ class MentoringController extends AbstractController
         $appointments = $currentUser instanceof User
             ? $em->getRepository(MentoringAppointment::class)->findBy(['student' => $currentUser], ['scheduledAt' => 'DESC'])
             : [];
-        $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10);
+        $leaderboard = $em->getRepository(MentorProfile::class)->createQueryBuilder('mp')
+            ->where('mp.engagementPoints > 0')
+            ->orderBy('mp.engagementPoints', 'DESC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
 
         $availability = $em->getRepository(MentorAvailability::class)->findBy(['isBooked' => false], ['availableDate' => 'ASC', 'startTime' => 'ASC']);
         $applications = $currentUser instanceof User
             ? $em->getRepository(MentorApplication::class)->findBy(['student' => $currentUser], ['createdAt' => 'DESC'])
             : [];
         $customRequestRepo = $em->getRepository(MentorCustomRequest::class);
-        $sentCustomRequests = $currentUser instanceof User
+        $rawSentRequests = $currentUser instanceof User
             ? $customRequestRepo->findByStudent($currentUser)
             : [];
+        usort($rawSentRequests, static function ($a, $b) {
+            $activeStatuses = ['Pending', 'Accepted', 'In Progress'];
+            $aActive = in_array($a->getStatus(), $activeStatuses, true);
+            $bActive = in_array($b->getStatus(), $activeStatuses, true);
+            if ($aActive !== $bActive) return $aActive ? -1 : 1;
+            return $b->getCreatedAt() <=> $a->getCreatedAt();
+        });
+        $sentCustomRequests = $rawSentRequests;
         $incomingCustomRequests = $mentorProfile
             ? $customRequestRepo->findByMentor($mentorProfile)
             : [];
@@ -731,8 +744,12 @@ $validUntil = $request->request->get('valid_until');
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
             }
 
-            $displayName      = trim((string) $request->request->get('display_name'));
-            $specialization   = trim((string) $request->request->get('specialization'));
+            $displayName           = trim((string) $request->request->get('display_name'));
+            $specialization        = trim((string) $request->request->get('specialization'));
+            $specializationOther   = trim((string) $request->request->get('specialization_other'));
+            if ($specialization === 'Other' && $specializationOther !== '') {
+                $specialization = $specializationOther;
+            }
             $bio              = trim((string) $request->request->get('bio'));
             $education        = trim((string) $request->request->get('mentor_education'));
             $availabilityDays = $request->request->all('availabilityDays') ?? [];
@@ -1071,7 +1088,11 @@ $validUntil = $request->request->get('valid_until');
 
         $fullName = trim((string) $request->request->get('full_name'));
         $departmentCourse = trim((string) $request->request->get('department_course'));
-        $preferredExpertise = trim((string) $request->request->get('preferred_expertise'));
+        $preferredExpertise      = trim((string) $request->request->get('preferred_expertise'));
+        $preferredExpertiseOther = trim((string) $request->request->get('preferred_expertise_other'));
+        if ($preferredExpertise === 'Other' && $preferredExpertiseOther !== '') {
+            $preferredExpertise = $preferredExpertiseOther;
+        }
         $availableDates = trim((string) $request->request->get('available_dates'));
         $scheduleStart = trim((string) $request->request->get('preferred_schedule_start'));
         $scheduleEnd = trim((string) $request->request->get('preferred_schedule_end'));
@@ -1190,7 +1211,11 @@ $validUntil = $request->request->get('valid_until');
         $mentorId = (int) $request->request->get('mentor_id', 0);
         $mentorNameManual = trim((string) $request->request->get('mentor_name'));
         $mentorName = $mentorNameManual;
-        $expertise = trim((string) $request->request->get('expertise'));
+        $expertise      = trim((string) $request->request->get('expertise'));
+        $expertiseOther = trim((string) $request->request->get('expertise_other'));
+        if ($expertise === 'Other' && $expertiseOther !== '') {
+            $expertise = $expertiseOther;
+        }
         if ($mentorId > 0) {
             $existingMentor = $em->getRepository(MentorProfile::class)->find($mentorId);
             if ($existingMentor) {
@@ -1207,7 +1232,9 @@ $validUntil = $request->request->get('valid_until');
             return $dt ? $dt->format('g:i A') : $t;
         };
         $availableTime = ($timeStart !== '' && $timeEnd !== '') ? $fmtTime($timeStart) . ' – ' . $fmtTime($timeEnd) : trim((string) $request->request->get('available_time'));
-        $meetingMethod = trim((string) $request->request->get('meeting_method'));
+        $meetingMethod   = trim((string) $request->request->get('meeting_method'));
+        $meetingLink     = trim((string) $request->request->get('meeting_link'));
+        $meetingLocation = trim((string) $request->request->get('meeting_location'));
         $instructions = trim((string) $request->request->get('instructions'));
 
         if (in_array($status, ['Assigned', 'Completed'], true) && ($mentorName === '' || $expertise === '' || $availableDates === '' || $availableTime === '' || $meetingMethod === '')) {
@@ -1224,6 +1251,8 @@ $validUntil = $request->request->get('valid_until');
             ->setAvailableDates($availableDates ?: null)
             ->setAvailableTime($availableTime ?: null)
             ->setMeetingMethod($meetingMethod ?: null)
+            ->setMeetingLink($meetingLink !== '' ? $meetingLink : null)
+            ->setMeetingLocation($meetingLocation !== '' ? $meetingLocation : null)
             ->setAdminInstructions($instructions ?: null);
 
         if (in_array($status, ['Assigned', 'Completed', 'Cancelled'], true)) {

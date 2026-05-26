@@ -349,7 +349,8 @@
         {% endif %}
         {% endif %}
 
-        {% if is_regular_user and is_granted('IS_AUTHENTICATED_FULLY') %}
+        {% set hide_user_right_col = route starts with 'mentoring_' %}
+        {% if is_regular_user and is_granted('IS_AUTHENTICATED_FULLY') and not hide_user_right_col %}
         {# User sidebar meta tag — read by app.js section 7 #}
         <meta name="user-sidebar-api" content="{{ path('api_user_sidebar') }}">
         <div class="user-right-col">

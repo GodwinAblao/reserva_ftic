@@ -115,12 +115,19 @@
             <div class="pf-row pf-row--2">
                 <div class="pf-field">
                     <label class="pf-label">Specialization</label>
-                    <select class="pf-input" name="degree" disabled>
+                    {% set degreeStdNames = specializations|map(s => s.name) %}
+                    {% set isDegreeCustom = app.user.degree and app.user.degree != 'Other' and app.user.degree not in degreeStdNames %}
+                    {% set degreeSelectVal = isDegreeCustom ? 'Other' : app.user.degree %}
+                    <select class="pf-input" name="degree" id="degree-select" disabled>
                         <option value="">Select specialization...</option>
                         {% for specialization in specializations %}
-                            <option value="{{ specialization.name }}" {{ app.user.degree == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
+                            <option value="{{ specialization.name }}" {{ degreeSelectVal == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
                         {% endfor %}
+                        {% if 'Other' not in degreeStdNames %}
+                            <option value="Other" {{ degreeSelectVal == 'Other' ? 'selected' : '' }}>Other</option>
+                        {% endif %}
                     </select>
+                    <input type="text" name="degree_other" id="degree-other-input" class="pf-input" placeholder="Please specify your specialization..." value="{{ isDegreeCustom ? app.user.degree : '' }}" style="margin-top: 8px; {{ (degreeSelectVal == 'Other') ? '' : 'display:none;' }}" disabled>
                 </div>
                 <div class="pf-field">
                     <label class="pf-label">Degree Program <span class="pf-optional">(optional)</span></label>
@@ -197,13 +204,19 @@
                 </div>
                 <div class="pf-field">
                     <label class="pf-label">Specialization</label>
-                    <select class="pf-input" name="specialization">
+                    {% set stdNames = specializations|map(s => s.name) %}
+                    {% set isCustomSpec = mentorProfile.specialization and mentorProfile.specialization != 'Other' and mentorProfile.specialization not in stdNames %}
+                    {% set specSelectVal = isCustomSpec ? 'Other' : mentorProfile.specialization %}
+                    <select class="pf-input" name="specialization" id="spec-select">
                         <option value="">Select specialization...</option>
                         {% for specialization in specializations %}
-                            <option value="{{ specialization.name }}" {{ mentorProfile.specialization == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
+                            <option value="{{ specialization.name }}" {{ specSelectVal == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
                         {% endfor %}
+                        {% if 'Other' not in stdNames %}
+                            <option value="Other" {{ specSelectVal == 'Other' ? 'selected' : '' }}>Other</option>
+                        {% endif %}
                     </select>
-                    <input type="text" name="specialization_other" class="pf-input" placeholder="Please specify your specialization..." value="{{ mentorProfile.specialization == 'Other' ? mentorProfile.specialization : '' }}" style="margin-top: 8px; {{ mentorProfile.specialization == 'Other' ? '' : 'display:none;' }}">
+                    <input type="text" name="specialization_other" id="spec-other-input" class="pf-input" placeholder="Please specify your specialization..." value="{{ isCustomSpec ? mentorProfile.specialization : '' }}" style="margin-top: 8px; {{ (specSelectVal == 'Other') ? '' : 'display:none;' }}">
                 </div>
             </div>
             <div class="pf-field">
@@ -400,13 +413,28 @@
         });
     }
 
-    // ── Specialization "Other" option toggle ──
-    const specSelect = document.querySelector('select[name="specialization"]');
-    const specOtherInput = document.querySelector('input[name="specialization_other"]');
+    // ── Degree specialization "Other" toggle ──
+    const degreeSelect = document.getElementById('degree-select');
+    const degreeOtherInput = document.getElementById('degree-other-input');
+    if (degreeSelect && degreeOtherInput) {
+        degreeSelect.addEventListener('change', function() {
+            const isOther = this.value === 'Other';
+            degreeOtherInput.style.display = isOther ? 'block' : 'none';
+            degreeOtherInput.disabled = !isOther;
+            if (!isOther) degreeOtherInput.value = '';
+            if (isOther) { degreeOtherInput.removeAttribute('disabled'); degreeOtherInput.focus(); }
+        });
+    }
+
+    // ── Mentor specialization "Other" toggle ──
+    const specSelect = document.getElementById('spec-select');
+    const specOtherInput = document.getElementById('spec-other-input');
     if (specSelect && specOtherInput) {
         specSelect.addEventListener('change', function() {
-            specOtherInput.style.display = this.value === 'Other' ? 'block' : 'none';
-            if (this.value !== 'Other') specOtherInput.value = '';
+            const isOther = this.value === 'Other';
+            specOtherInput.style.display = isOther ? 'block' : 'none';
+            if (!isOther) specOtherInput.value = '';
+            if (isOther) specOtherInput.focus();
         });
     }
 })();

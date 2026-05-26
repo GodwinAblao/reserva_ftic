@@ -193,6 +193,18 @@
                                             <span class="info-value">{{ request.meetingMethod }}</span>
                                         </div>
                                         {% endif %}
+                                        {% if request.meetingMethod == 'Online' and request.meetingLink %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Meeting Link</span>
+                                            <span class="info-value"><a href="{{ request.meetingLink }}" target="_blank" rel="noopener noreferrer" style="color:#0D9B00;font-weight:600;">Join Meeting</a></span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod == 'In Person' and request.meetingLocation %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Location</span>
+                                            <span class="info-value">{{ request.meetingLocation }}</span>
+                                        </div>
+                                        {% endif %}
                                         {% if request.adminInstructions %}
                                         <div class="info-item wide">
                                             <span class="info-label">Admin Instructions</span>
@@ -500,14 +512,14 @@
                         </div>
                         <div class="mentor-info">
                             <div class="mentor-name">{{ mentor.displayName }}</div>
-                            <div class="mentor-program">Computer Science</div>
+                            <div class="mentor-program">{{ mentor.specialization ?: 'General' }}</div>
                         </div>
                         <div class="mentor-points">
                             <span>Pts:</span> <strong>{{ mentor.engagementPoints }}</strong>
                         </div>
                     </div>
                 {% else %}
-                    <p>No mentors available yet.</p>
+                    <p style="font-size:12px;color:#6b7280;">No engagement points recorded yet. Points are earned when mentors complete sessions.</p>
                 {% endfor %}
             </div>
         </section>
