@@ -18,9 +18,12 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# php:8.2-apache must use a single MPM (prefork + mod_php); disable event/worker if both got enabled
-RUN a2dismod mpm_event mpm_worker 2>/dev/null || true \
-    && a2enmod mpm_prefork
+# php:8.2-apache requires exactly one MPM (prefork + mod_php). Remove competing module links.
+RUN set -eux; \
+    rm -fv /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf; \
+    a2enmod mpm_prefork; \
+    test "$(find /etc/apache2/mods-enabled -maxdepth 1 -name 'mpm_*.load' | wc -l)" -eq 1; \
+    apache2ctl -t
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
