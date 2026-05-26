@@ -1,6 +1,6 @@
 .app-shell.regular-user-shell {
     display: grid !important;
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr) 220px;
     gap: 0;
     padding: 0;
     position: fixed;
@@ -12,6 +12,63 @@
     align-items: stretch;
     background: #ffffff;
 }
+
+/* ── User right sidebar column ── */
+.user-right-col {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 10px 14px 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    min-width: 0;
+    height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.1) transparent;
+}
+
+.user-right-col .user-right-panel {
+    margin: 0 !important;
+    height: auto !important;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 14px 12px 12px;
+}
+
+.user-right-col .admin-right-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#userResvList,
+#userMentorshipList,
+#userMentorReqList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+    will-change: contents;
+    contain: layout style;
+}
+
+.user-rp-viewmore {
+    display: block;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: #006633;
+    text-decoration: none;
+    margin-top: 8px;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.user-rp-viewmore:hover { opacity: 1; }
 
 .sidebar.regular-user-sidebar {
     position: static !important;
@@ -200,6 +257,15 @@
     font-weight: 700;
     line-height: 1.1;
     text-transform: capitalize;
+}
+
+@media (max-width: 1100px) {
+    .app-shell.regular-user-shell {
+        grid-template-columns: 260px minmax(0, 1fr) !important;
+    }
+    .user-right-col {
+        display: none;
+    }
 }
 
 @media (max-width: 900px) {

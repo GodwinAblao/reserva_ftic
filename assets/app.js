@@ -608,3 +608,181 @@ const NavProgress = (() => {
         initStats();
     }
 })();
+
+
+/* ─────────────────────────────────────────────────────────────
+   7. End-user right sidebar live updates
+   · Polls /api/user/sidebar every 15 s
+   · Populates: userResvList, userMentorshipList, userMentorReqList
+   · Hash-diff: DOM write only when data actually changed
+   · Shows/hides Mentor Requests panel based on API data
+   · Turbo-safe: resets state on every navigation
+───────────────────────────────────────────────────────────── */
+(() => {
+    const POLL_MS = 15000;
+
+    const SC = {
+        Pending:   ['#fef3c7','#92400e'],
+        Approved:  ['#dcfce7','#166534'],
+        Rejected:  ['#fee2e2','#991b1b'],
+        Cancelled: ['#f3f4f6','#6b7280'],
+        Canceled:  ['#f3f4f6','#6b7280'],
+        Completed: ['#dbeafe','#1e40af'],
+        Accepted:  ['#dcfce7','#166534'],
+        _:         ['#e0f2fe','#075985'],
+    };
+
+    function badge(status) {
+        const [bg, tc] = SC[status] ?? SC._;
+        return `<span class="rp-status-badge" style="--bg:${bg};--tc:${tc}">${esc(status)}</span>`;
+    }
+
+    const EMPTY = msg =>
+        `<div style="text-align:center;color:#9ca3af;font-size:12.5px;padding:20px 12px;line-height:1.5">${msg}</div>`;
+
+    function buildResvCard(r) {
+        const [bg, tc] = SC[r.status] ?? SC._;
+        return `<div class="admin-notif-card">`
+            + `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px">`
+            + `<div class="admin-notif-card-title" style="flex:1;min-width:0">${esc(r.facilityName)}</div>`
+            + `<span class="rp-status-badge" style="--bg:${bg};--tc:${tc}">${esc(r.status)}</span>`
+            + `</div>`
+            + `<div class="admin-notif-card-desc">${esc(r.date)}${r.time ? ' at ' + esc(r.time) : ''}</div>`
+            + `</div>`;
+    }
+
+    function buildMentorshipCard(m) {
+        const [bg, tc] = SC[m.status] ?? SC._;
+        return `<div class="admin-notif-card">`
+            + `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px">`
+            + `<div class="admin-notif-card-title" style="flex:1;min-width:0">${esc(m.title)}</div>`
+            + `<span class="rp-status-badge" style="--bg:${bg};--tc:${tc}">${esc(m.status)}</span>`
+            + `</div>`
+            + `<div class="admin-notif-card-desc">${esc(m.mentor)} · ${esc(m.date)}</div>`
+            + `</div>`;
+    }
+
+    function buildMentorReqCard(r) {
+        const [bg, tc] = SC[r.status] ?? SC._;
+        return `<div class="admin-notif-card">`
+            + `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px">`
+            + `<div class="admin-notif-card-title" style="flex:1;min-width:0">${esc(r.topic)}</div>`
+            + `<span class="rp-status-badge" style="--bg:${bg};--tc:${tc}">${esc(r.status)}</span>`
+            + `</div>`
+            + `<div class="admin-notif-card-desc">updated ${esc(r.updatedAt)}</div>`
+            + `</div>`;
+    }
+
+    let _timer   = null;
+    let _fetching = false;
+    let _hashes   = { resv: null, ment: null, req: null };
+
+    function pollUserSidebar(url) {
+        if (_fetching) return;
+        _fetching = true;
+
+        apiFetch(url).then(data => {
+            _fetching = false;
+            if (!data) return;
+
+            // ── Reservations panel ──
+            const resvEl = document.getElementById('userResvList');
+            if (resvEl) {
+                const list = (data.recentReservations ?? []).slice(0, 8);
+                const html = list.length
+                    ? list.map(buildResvCard).join('')
+                    : EMPTY('You have no upcoming reservations yet.<br>Book a facility to get started!');
+                if (hashStr(html) !== _hashes.resv) {
+                    _hashes.resv = hashStr(html);
+                    resvEl.innerHTML = html;
+                }
+            }
+
+            // ── Mentorships panel ──
+            const mentEl = document.getElementById('userMentorshipList');
+            if (mentEl) {
+                const list = (data.mentorships ?? []).slice(0, 8);
+                const html = list.length
+                    ? list.map(buildMentorshipCard).join('')
+                    : EMPTY("You don't have any scheduled mentor sessions at the moment.<br>Request one now to get started!");
+                if (hashStr(html) !== _hashes.ment) {
+                    _hashes.ment = hashStr(html);
+                    mentEl.innerHTML = html;
+                }
+            }
+
+            // ── Mentor Requests panel ──
+            const reqEl  = document.getElementById('userMentorReqList');
+            const reqPnl = document.getElementById('userMentorReqPanel');
+            if (reqEl) {
+                const list = (data.mentorRequests ?? []).slice(0, 8);
+                const hasApps = (data.mentorApplications ?? []).length > 0;
+                const visible = list.length > 0 || hasApps;
+
+                if (reqPnl) reqPnl.style.display = visible ? '' : 'none';
+
+                const html = list.length
+                    ? list.map(buildMentorReqCard).join('')
+                    : EMPTY('No mentor requests yet.');
+                if (hashStr(html) !== _hashes.req) {
+                    _hashes.req = hashStr(html);
+                    reqEl.innerHTML = html;
+                }
+            }
+        });
+    }
+
+    let _guardTimer = null;
+
+    function resetState() {
+        clearInterval(_timer);
+        clearTimeout(_guardTimer);
+        _timer = _guardTimer = null;
+        _fetching = false;
+        _hashes = { resv: null, ment: null, req: null };
+    }
+
+    function boot() {
+        resetState();
+
+        const meta = document.querySelector('meta[name="user-sidebar-api"]');
+        if (!meta) return;
+
+        const url = meta.content;
+
+        // Immediate first fetch
+        pollUserSidebar(url);
+
+        // Safety: replace stuck skeletons after 9 s if first fetch failed
+        _guardTimer = setTimeout(() => {
+            ['userResvList','userMentorshipList','userMentorReqList'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.querySelector('.rp-skeleton')) {
+                    el.innerHTML = EMPTY('Could not load — retrying…');
+                }
+            });
+        }, 9000);
+
+        // Fixed 15 s poll — skip when tab hidden
+        _timer = setInterval(() => {
+            if (!document.hidden) pollUserSidebar(url);
+        }, POLL_MS);
+    }
+
+    document.addEventListener('turbo:load', boot);
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && _timer) {
+            const meta = document.querySelector('meta[name="user-sidebar-api"]');
+            if (meta) pollUserSidebar(meta.content);
+        }
+    });
+
+    if (typeof Turbo === 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot);
+        } else {
+            boot();
+        }
+    }
+})();

@@ -234,8 +234,9 @@ class ReservationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Find available alternatives for a given capacity, date/time, excluding a facility
-     * Returns facilities with capacity >= requested capacity that are available on that date/time
+     * Find available alternatives for a given capacity, date/time, excluding a facility.
+     * Returns up to 20 facilities with the closest capacity match (within ±3× the requested
+     * capacity), sorted by absolute capacity difference ascending.
      */
     public function findAvailableAlternatives(
         int $capacity,
@@ -245,28 +246,30 @@ class ReservationRepository extends ServiceEntityRepository
         ?Facility $excludeFacility = null
     ): array {
         $startOfDay = (clone $date)->setTime(0, 0, 0);
-        $endOfDay = (clone $date)->setTime(23, 59, 59);
+        $endOfDay   = (clone $date)->setTime(23, 59, 59);
 
-        $facilitiesWithCapacity = $this->getEntityManager()
+        // Candidate pool: capacity between requested and requested + 20 only
+        $maxCapacity = $capacity + 20;
+
+        $candidates = $this->getEntityManager()
             ->getRepository(Facility::class)
             ->createQueryBuilder('f')
             ->andWhere('f.capacity >= :capacity')
+            ->andWhere('f.capacity <= :maxCapacity')
             ->andWhere('f.availableForReservation = :available')
             ->setParameter('capacity', $capacity)
+            ->setParameter('maxCapacity', $maxCapacity)
             ->setParameter('available', true)
-            ->orderBy('f.capacity', 'ASC')
             ->getQuery()
             ->getResult();
 
         $alternatives = [];
 
-        foreach ($facilitiesWithCapacity as $facility) {
-            // Exclude the original facility if provided
+        foreach ($candidates as $facility) {
             if ($excludeFacility && $facility->getId() === $excludeFacility->getId()) {
                 continue;
             }
 
-            // Check if facility is available for the given time range
             $bookingCount = $this->createQueryBuilder('r')
                 ->select('COUNT(r.id)')
                 ->andWhere('r.facility = :facility')
@@ -283,7 +286,7 @@ class ReservationRepository extends ServiceEntityRepository
                 ->getQuery()
                 ->getSingleScalarResult();
 
-            $em = $this->getEntityManager();
+            $em      = $this->getEntityManager();
             $blocked = $em->getRepository(FacilityScheduleBlock::class)
                     ->isBlocked($facility, $date, $startTime, $endTime)
                 || $em->getRepository(ClassSchedule::class)
@@ -294,7 +297,12 @@ class ReservationRepository extends ServiceEntityRepository
             }
         }
 
-        return $alternatives;
+        // Sort by closest capacity match, then cap at 20
+        usort($alternatives, static fn($a, $b) =>
+            abs($a->getCapacity() - $capacity) <=> abs($b->getCapacity() - $capacity)
+        );
+
+        return array_slice($alternatives, 0, 20);
     }
 
     /**
