@@ -23,7 +23,7 @@ class NotificationRepository extends ServiceEntityRepository
     public function getUnreadCount(User $user): int
     {
         return (int) $this->getEntityManager()->getConnection()->fetchOne(
-            'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = 0 AND status != ?',
+            'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = false AND status != ?',
             [$user->getId(), 'Suggested']
         );
     }
@@ -35,7 +35,7 @@ class NotificationRepository extends ServiceEntityRepository
     public function getPollData(User $user): array
     {
         $row = $this->getEntityManager()->getConnection()->fetchAssociative(
-            'SELECT COUNT(CASE WHEN is_read = 0 THEN 1 END) AS unread_count,
+            'SELECT COUNT(CASE WHEN is_read = false THEN 1 END) AS unread_count,
                     MAX(id) AS newest_id
              FROM notifications
              WHERE user_id = ? AND status != ?',
@@ -91,7 +91,7 @@ class NotificationRepository extends ServiceEntityRepository
     public function markAllReadForUser(User $user): void
     {
         $this->getEntityManager()->getConnection()->executeStatement(
-            'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0',
+            'UPDATE notifications SET is_read = true WHERE user_id = ? AND is_read = false',
             [$user->getId()]
         );
         // Clear entity manager to prevent cached entities from showing stale data
