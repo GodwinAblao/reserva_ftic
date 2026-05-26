@@ -48,7 +48,15 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/var
 
 # Configure Apache DocumentRoot
-RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf \
+    && printf '%s\n' \
+        '<Directory /var/www/html/public>' \
+        '    Options FollowSymLinks' \
+        '    AllowOverride None' \
+        '    Require all granted' \
+        '    FallbackResource /index.php' \
+        '</Directory>' \
+        >> /etc/apache2/apache2.conf
 
 # Railway injects PORT at runtime (commonly 8080)
 ENV PORT=8080
