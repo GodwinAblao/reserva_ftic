@@ -50,8 +50,9 @@ RUN chown -R www-data:www-data /var/www/html \
 # Configure Apache DocumentRoot
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Expose port
-EXPOSE 80
+# Railway injects PORT at runtime (commonly 8080)
+ENV PORT=8080
+EXPOSE 8080
 
 # Use entrypoint script
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
