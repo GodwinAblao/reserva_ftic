@@ -3,6 +3,15 @@ set -e
 
 PORT="${PORT:-8080}"
 
+configure_apache_mpm() {
+  echo "Configuring Apache MPM..."
+  rm -f /etc/apache2/mods-enabled/mpm_event.load \
+        /etc/apache2/mods-enabled/mpm_event.conf \
+        /etc/apache2/mods-enabled/mpm_worker.load \
+        /etc/apache2/mods-enabled/mpm_worker.conf
+  a2enmod mpm_prefork >/dev/null
+}
+
 configure_apache_port() {
   echo "Configuring Apache to listen on port ${PORT}..."
   grep -q "^ServerName " /etc/apache2/apache2.conf || echo "ServerName localhost" >> /etc/apache2/apache2.conf
@@ -15,6 +24,7 @@ configure_apache_port() {
   apache2ctl -t
 }
 
+configure_apache_mpm
 configure_apache_port
 
 # Run DB/cache setup after Apache starts (nohup survives exec)

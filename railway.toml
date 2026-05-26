@@ -1,7 +1,6 @@
 # Railway deploy config — https://docs.railway.com/reference/config-as-code
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "NIXPACKS"
 
 [deploy]
 healthcheckPath = "/health"
