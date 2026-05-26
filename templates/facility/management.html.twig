@@ -30,13 +30,9 @@
     }
 </style>
 
-{% if app.flashes('success') %}
-    <div class="alert alert-success">
-        {% for message in app.flashes('success') %}
-            {{ message }}
-        {% endfor %}
-    </div>
-{% endif %}
+<script>
+    const successMessage = '{{ success|default('') }}';
+</script>
 
 {% if facilities is empty %}
     <div class="no-facilities">
@@ -74,10 +70,7 @@
                             {% if facility.availableForReservation %}Disable Reservations{% else %}Enable Reservations{% endif %}
                         </button>
                     </form>
-                    <form action="{{ path('app_facility_delete', {id: facility.id}) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure?');">
-                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ facility.id) }}">
-                        <button type="submit" class="btn-link btn-danger">Delete</button>
-                    </form>
+                    <button type="button" onclick="deleteFacility({{ facility.id }}, '{{ csrf_token('delete' ~ facility.id) }}')" class="btn-link btn-danger">Delete</button>
                 </div>
             </div>
         {% endfor %}
@@ -231,5 +224,188 @@
     .btn-success:hover {
         color: #229954 !important;
     }
+
+    .flash-message {
+        border-radius: 12px;
+        padding: 16px 20px;
+        animation: flashSlideIn 0.3s ease-out;
+    }
+
+    .flash-success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border: 1px solid #c3e6cb;
+        color: #155724;
+    }
+
+    .flash-error {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+    }
+
+    .flash-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .flash-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .flash-success .flash-icon {
+        background: #155724;
+        color: white;
+    }
+
+    .flash-error .flash-icon {
+        background: #721c24;
+        color: white;
+    }
+
+    @keyframes flashSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 </style>
+
+<!-- Delete Facility Modal -->
+<div id="deleteFacilityModal" class="delete-schedule-modal">
+    <div class="delete-schedule-dialog">
+        <div class="delete-schedule-icon">!</div>
+        <h3>Delete Facility?</h3>
+        <p>This will permanently delete this facility and all its images. This action cannot be undone.</p>
+        <div class="delete-schedule-actions">
+            <button type="button" id="cancelDeleteFacility" class="delete-schedule-cancel">Cancel</button>
+            <button type="button" id="confirmDeleteFacility" class="delete-schedule-confirm">Yes, Delete Facility</button>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="delete-schedule-modal">
+    <div class="delete-schedule-dialog">
+        <div class="delete-schedule-icon" style="color:#0d9b00; background:#dcfce7; border-color:#bbf7d0;">✓</div>
+        <h3 id="successModalTitle">Success!</h3>
+        <p id="successModalMessage">Action completed successfully.</p>
+        <div class="delete-schedule-actions">
+            <button type="button" id="closeSuccessModal" class="delete-schedule-confirm" style="background:#0d9b00;">OK</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .delete-schedule-modal { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999; align-items:center; justify-content:center; padding:1.5rem; background:rgba(15,23,42,.6); backdrop-filter:blur(8px); }
+    .delete-schedule-modal.is-open { display:flex; }
+    .delete-schedule-dialog { width:min(440px,100%); background:white; border-radius:20px; padding:2rem; text-align:center; box-shadow:0 24px 70px rgba(15,23,42,.28); animation:deleteModalIn .18s ease-out; }
+    .delete-schedule-icon { width:56px; height:56px; margin:0 auto 1rem; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#991b1b; background:#fee2e2; border:1px solid #fecaca; font-size:1.6rem; font-weight:800; }
+    .delete-schedule-dialog h3 { margin:0 0 .75rem; color:#111827; font-size:1.25rem; }
+    .delete-schedule-dialog p  { margin:0; color:#6b7280; line-height:1.55; font-size:.9rem; }
+    .delete-schedule-actions { display:flex; gap:.75rem; justify-content:center; margin-top:1.5rem; }
+    .delete-schedule-actions button { border:none; border-radius:10px; padding:.7rem 1.1rem; font-weight:800; cursor:pointer; font-size:.9rem; }
+    .delete-schedule-cancel  { background:#f3f4f6; color:#374151; }
+    .delete-schedule-confirm { background:#dc2626; color:white; }
+    @keyframes deleteModalIn { from{opacity:0;transform:translateY(12px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+</style>
+
+<script>
+    let deleteFacilityCallback = null;
+
+    // Move modals to body to ensure they cover header/sidebar and center properly
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteFacilityModal');
+        if (deleteModal && deleteModal.parentElement !== document.body) {
+            document.body.appendChild(deleteModal);
+        }
+        const successModal = document.getElementById('successModal');
+        if (successModal && successModal.parentElement !== document.body) {
+            document.body.appendChild(successModal);
+        }
+
+        // Show success modal if success parameter exists
+        console.log('Success message:', successMessage);
+        if (successMessage && successMessage !== '') {
+            const messageMap = {
+                'edited': 'Edited',
+                'deleted': 'Deleted'
+            };
+            const displayMessage = messageMap[successMessage] || successMessage;
+            showSuccessModal(displayMessage);
+            
+            // Clear URL parameter to prevent popup showing on refresh
+            const url = new URL(window.location);
+            url.searchParams.delete('success');
+            window.history.replaceState({}, '', url);
+        }
+    });
+
+    function showSuccessModal(message) {
+        document.getElementById('successModalMessage').textContent = message;
+        document.getElementById('successModal').classList.add('is-open');
+    }
+
+    function deleteFacility(facilityId, token) {
+        deleteFacilityCallback = function() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ path('app_facility_delete', {id: 'PLACEHOLDER'}) }}'.replace('PLACEHOLDER', facilityId);
+            
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '_token';
+            tokenInput.value = token;
+            
+            form.appendChild(tokenInput);
+            document.body.appendChild(form);
+            form.submit();
+        };
+        document.getElementById('deleteFacilityModal').classList.add('is-open');
+    }
+
+    document.getElementById('cancelDeleteFacility').addEventListener('click', function() {
+        document.getElementById('deleteFacilityModal').classList.remove('is-open');
+        deleteFacilityCallback = null;
+    });
+
+    document.getElementById('confirmDeleteFacility').addEventListener('click', function() {
+        if (deleteFacilityCallback) {
+            deleteFacilityCallback();
+        }
+        document.getElementById('deleteFacilityModal').classList.remove('is-open');
+        deleteFacilityCallback = null;
+    });
+
+    document.getElementById('closeSuccessModal').addEventListener('click', function() {
+        document.getElementById('successModal').classList.remove('is-open');
+    });
+
+    // Close modals when clicking outside
+    document.getElementById('deleteFacilityModal').addEventListener('click', function(e) {
+        if (e.target.id === 'deleteFacilityModal') {
+            document.getElementById('deleteFacilityModal').classList.remove('is-open');
+            deleteFacilityCallback = null;
+        }
+    });
+
+    document.getElementById('successModal').addEventListener('click', function(e) {
+        if (e.target.id === 'successModal') {
+            document.getElementById('successModal').classList.remove('is-open');
+        }
+    });
+</script>
 {% endblock %}

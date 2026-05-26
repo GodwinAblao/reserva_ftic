@@ -31,12 +31,13 @@ class FacilityController extends AbstractController
 
     #[Route('/management', name: 'app_facility_management', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function management(FacilityRepository $facilityRepository): Response
+    public function management(FacilityRepository $facilityRepository, Request $request): Response
     {
         $facilities = $facilityRepository->findAll();
-
+        $success = $request->query->get('success');
         return $this->render('facility/management.html.twig', [
             'facilities' => $facilities,
+            'success' => $success,
         ]);
     }
 
@@ -104,9 +105,7 @@ class FacilityController extends AbstractController
             $this->handleMultipleImageUploads($request, $facility, $entityManager);
             $facilityRepository->save($facility, true);
 
-            $this->addFlash('success', 'Facility updated successfully!');
-
-            return $this->redirectToRoute('app_facility_management');
+            return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
         }
 
         return $this->render('facility/edit.html.twig', [
@@ -152,11 +151,9 @@ class FacilityController extends AbstractController
             }
             
             $facilityRepository->remove($facility, true);
-
-            $this->addFlash('success', 'Facility deleted successfully!');
         }
 
-        return $this->redirectToRoute('app_facility_management');
+        return $this->redirectToRoute('app_facility_management', ['success' => 'deleted']);
     }
 
     #[Route('/{id}/images/reorder', name: 'app_facility_images_reorder', methods: ['POST'])]
@@ -294,9 +291,6 @@ class FacilityController extends AbstractController
             $currentStatus = $facility->isAvailableForReservation();
             $facility->setAvailableForReservation(!$currentStatus);
             $facilityRepository->save($facility, true);
-
-            $status = $facility->isAvailableForReservation() ? 'enabled' : 'disabled';
-            $this->addFlash('success', 'Facility reservation status has been ' . $status . '.');
         }
 
         return $this->redirectToRoute('app_facility_management');

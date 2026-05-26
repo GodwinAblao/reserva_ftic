@@ -1,5 +1,69 @@
 {% extends 'base.html.twig' %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .flash-message {
+            margin: 20px;
+            border-radius: 12px;
+            padding: 16px 20px;
+            animation: flashSlideIn 0.3s ease-out;
+        }
+
+        .flash-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .flash-error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .flash-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .flash-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .flash-success .flash-icon {
+            background: #155724;
+            color: white;
+        }
+
+        .flash-error .flash-icon {
+            background: #721c24;
+            color: white;
+        }
+
+        @keyframes flashSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+{% endblock %}
+
 {% set is_regular_user = not is_granted('ROLE_SUPER_ADMIN') and not is_granted('ROLE_ADMIN') %}
 {% set route = app.request.attributes.get('_route') %}
 {% set regular_user_page_name = 'Dashboard' %}
