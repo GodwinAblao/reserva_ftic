@@ -1,3 +1,4 @@
+
 /* End-user facility listing cards */
 .regular-user-theme .facility-top-row {
     display: flex;
@@ -161,13 +162,6 @@
     font-weight: 700;
     line-height: 1;
     backdrop-filter: blur(8px);
-    gap: 4px;
-}
-
-.regular-user-theme .facility-card-wrapper .facility-pill-photos,
-.regular-user-theme .facility-feature-card .facility-pill-photos {
-    background: rgba(13, 155, 0, 0.35);
-    color: rgba(255, 255, 255, 0.95);
 }
 
 .regular-user-theme .facility-card-wrapper .capacity,
@@ -410,6 +404,487 @@
     }
 }
 
+@media (max-width: 640px) {
+    .regular-user-theme .facility-top-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .regular-user-theme .search-bar {
+        max-width: none;
+    }
+
+    .regular-user-theme .facility-count {
+        text-align: center;
+    }
+
+    .regular-user-theme .facilities-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .regular-user-theme .facility-card-wrapper .facility-feature-card {
+        min-height: 360px;
+    }
+
+    .facility-preview-overlay {
+        padding: 12px;
+    }
+}
+
+/* Modal styles for facility quick view (matches facility view design) */
+.facility-modal {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 2000;
+}
+.facility-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(18, 24, 28, 0.38);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+.facility-modal-dialog {
+    position: relative;
+    width: min(980px, 95%);
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    z-index: 2;
+}
+.facility-modal-close {
+    position: absolute;
+    right: 12px;
+    top: 8px;
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+}
+.facility-modal .facility-view-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+.facility-modal .facility-image-section img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+.facility-modal .facility-image-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.facility-modal .modal-main-image-wrap {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f4f4f4;
+}
+.facility-modal .modal-main-image {
+    width: 100%;
+    height: 320px;
+    object-fit: cover;
+    display: block;
+}
+.facility-modal .modal-thumbnail-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.facility-modal .modal-thumbnail {
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+.facility-modal .modal-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.facility-modal .modal-thumbnail.is-active {
+    border-color: var(--feu-green);
+    box-shadow: 0 0 0 2px rgba(13, 155, 0, 0.12);
+}
+.facility-modal .placeholder-image {
+    width: 100%;
+    aspect-ratio: 1;
+}
+.facility-modal .modal-placeholder-image {
+    min-height: 320px;
+}
+
+@media (max-width: 768px) {
+    .facility-modal .facility-view-content {
+        grid-template-columns: 1fr;
+    }
+    .facility-modal .modal-main-image {
+        height: 240px;
+    }
+    .facility-modal .modal-placeholder-image {
+        min-height: 240px;
+    }
+}
+
+/* Reserve button inside facility modal */
+.facility-modal .btn-reserve {
+    background: var(--feu-green);
+    color: white;
+    text-decoration: none;
+    display: inline-block;
+    padding: 14px 24px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.facility-modal .btn-reserve:hover {
+    background: var(--feu-green-dark);
+    box-shadow: 0 4px 12px rgba(13,155,0,0.25);
+}
+
+/* Steam-style facility preview layout used by end-user and landing popups */
+
+.facility-preview-body {
+    max-width: 1200px;
+}
+
+.facility-preview-body .facility-popup-card,
+.facility-modal .facility-modal-dialog {
+    width: min(1200px, calc(100vw - 32px));
+    max-height: min(760px, calc(100vh - 32px));
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid rgba(97, 126, 153, 0.35);
+    border-radius: 4px;
+    background: #ffffff;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.48);
+}
+
+.facility-preview-body .facility-view-content,
+.facility-modal .facility-view-content {
+    display: grid;
+    grid-template-columns: minmax(0, 2.08fr) minmax(310px, 1fr);
+    gap: 0;
+    align-items: stretch;
+    min-height: 540px;
+    background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+}
+
+.facility-preview-body .image-gallery-section,
+.facility-modal .facility-image-section {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 4px;
+    overflow: hidden;
+    border-radius: 0;
+    background: #07111c;
+    box-shadow: none;
+}
+
+.facility-preview-body .main-gallery {
+    min-width: 0;
+    min-height: 0;
+    display: contents;
+}
+
+.facility-preview-body .main-image,
+.facility-preview-body .single-image,
+.facility-preview-body .image-gallery-section > .placeholder-image,
+.facility-modal .modal-main-image-wrap,
+.facility-modal .modal-placeholder-image {
+    width: 100%;
+    height: 455px;
+    min-height: 455px;
+    overflow: hidden;
+    border-radius: 0;
+    background: #ffffff;
+}
+
+.facility-preview-body .main-image img,
+.facility-preview-body .single-image img,
+.facility-modal .modal-main-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.facility-preview-body .thumbnail-strip,
+.facility-modal .modal-thumbnail-strip {
+    display: flex;
+    gap: 4px;
+    min-height: 72px;
+    padding: 4px 0 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: #07111c;
+    scrollbar-color: #28445e #0c1722;
+}
+
+.facility-preview-body .thumbnail,
+.facility-modal .modal-thumbnail {
+    width: 116px;
+    height: 66px;
+    flex: 0 0 116px;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid transparent;
+    border-radius: 0;
+    background: #ffffff;
+    cursor: pointer;
+    opacity: 0.72;
+    transition: opacity 0.16s ease, border-color 0.16s ease;
+}
+
+.facility-preview-body .thumbnail:hover,
+.facility-preview-body .thumbnail.active,
+.facility-modal .modal-thumbnail:hover,
+.facility-modal .modal-thumbnail.is-active {
+    opacity: 1;
+    border-color: #d6e6f5;
+    box-shadow: none;
+}
+
+.facility-preview-body .thumbnail img,
+.facility-modal .modal-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.facility-preview-body .details-section,
+.facility-modal .facility-info-section {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 0 16px 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+    color: #ffffff;
+    overflow-y: auto;
+}
+
+.facility-preview-side-media {
+    width: calc(100% + 32px);
+    height: 174px;
+    margin: 0 -16px 0;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.facility-preview-side-media img,
+.facility-preview-side-media .placeholder-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.facility-preview-side-media .placeholder-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #ffffff, #ffffff);
+    color: #05920c;
+    font-size: 48px;
+    font-weight: 800;
+}
+
+.facility-preview-body .facility-header,
+.facility-preview-body .info-card,
+.facility-modal .info-box {
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.facility-preview-body .facility-title,
+.facility-modal #modalFacilityName {
+    margin: 0;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.18;
+    letter-spacing: 0;
+}
+
+.facility-preview-body .facility-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.facility-preview-body .meta-item {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 6px 9px;
+    border-radius: 2px;
+    background: rgb(255, 254, 254);
+    color: #000000;
+    font-size: 12px;
+    line-height: 1;
+}
+
+
+.facility-preview-body .description-text,
+.facility-modal #modalDescription {
+    margin: 0;
+    color: #c7d5e0;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.facility-facts {
+    display: grid;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.facility-fact-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    align-items: center;
+    color: #6f8598;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.facility-fact-row strong {
+    color: #05920c;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: none;
+}
+
+.facility-preview-body .action-section,
+.facility-modal .user-actions {
+    margin-top: auto;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.facility-preview-body .btn-reserve,
+.facility-modal .btn-reserve {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 12px 18px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #75b022 0%, #588a1b 100%);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: none;
+}
+
+.facility-preview-body .btn-reserve:hover,
+.facility-modal .btn-reserve:hover {
+    background: linear-gradient(90deg, #8cc83a 0%, #67a124 100%);
+    box-shadow: none;
+    transform: none;
+}
+
+.facility-preview-close,
+.facility-modal-close {
+    top: 10px;
+    right: 10px;
+    z-index: 5;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(199, 213, 224, 0.24);
+    border-radius: 2px;
+    background: rgba(5, 13, 22, 0.62);
+    color: #c7d5e0;
+    line-height: 1;
+}
+
+.facility-preview-close:hover,
+.facility-modal-close:hover {
+    background: rgba(102, 192, 244, 0.22);
+    color: #ffffff;
+}
+
+@media (max-width: 980px) {
+    .facility-preview-body .facility-view-content,
+    .facility-modal .facility-view-content {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .facility-preview-body .main-image,
+    .facility-preview-body .single-image,
+    .facility-preview-body .image-gallery-section > .placeholder-image,
+    .facility-modal .modal-main-image-wrap,
+    .facility-modal .modal-placeholder-image {
+        height: 320px;
+        min-height: 320px;
+    }
+
+    .facility-preview-body .details-section,
+    .facility-modal .facility-info-section {
+        max-height: none;
+    }
+}
+
+@media (max-width: 620px) {
+    .facility-preview-body .facility-popup-card,
+    .facility-modal .facility-modal-dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+    }
+
+    .facility-preview-body .main-image,
+    .facility-preview-body .single-image,
+    .facility-preview-body .image-gallery-section > .placeholder-image,
+    .facility-modal .modal-main-image-wrap,
+    .facility-modal .modal-placeholder-image {
+        height: 235px;
+        min-height: 235px;
+    }
+
+    .facility-preview-body .thumbnail,
+    .facility-modal .modal-thumbnail {
+        width: 86px;
+        height: 54px;
+        flex-basis: 86px;
+    }
+
+    .facility-preview-side-media {
+        height: 132px;
+    }
+
+    .facility-fact-row {
+        grid-template-columns: 88px 1fr;
+    }
+}
+
 /* Final facility detail modal overlay: full-page dim/blur with centered card */
 .facility-preview-overlay,
 .facility-modal {
@@ -441,9 +916,9 @@
     z-index: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    background: rgba(18, 24, 28, 0.38) !important;
-    backdrop-filter: blur(5px) !important;
-    -webkit-backdrop-filter: blur(5px) !important;
+    background: rgba(255, 255, 255, 0.34) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
 }
 
 .facility-preview-body,

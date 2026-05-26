@@ -1,0 +1,234 @@
+/* Managerial Analytics — panel-ready visualizations */
+.an-pro-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.an-pro-header h2 {
+    margin: 0 0 6px;
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #004d26;
+    letter-spacing: -0.02em;
+}
+
+.an-pro-header p {
+    margin: 0;
+    color: #6b7280;
+    max-width: 520px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.an-pro-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.an-pro-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.an-pro-badge.live {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+}
+
+.an-pro-badge.demo {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e;
+}
+
+.an-pro-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.an-pro-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    background: #fff;
+    min-width: 180px;
+}
+
+.an-pro-btn-dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #004d26;
+    background: #fff;
+    border: 1px solid rgba(0, 102, 51, 0.25);
+    transition: all 0.15s;
+}
+
+.an-pro-btn-dl:hover {
+    background: #f0fdf4;
+    border-color: #006633;
+}
+
+.an-pro-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.an-pro-kpi {
+    background: linear-gradient(145deg, #ffffff 0%, #f6faf7 100%);
+    border: 1px solid rgba(0, 102, 51, 0.1);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 14px rgba(0, 50, 30, 0.05);
+}
+
+.an-pro-kpi .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.an-pro-kpi .value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #004d26;
+    line-height: 1.1;
+}
+
+.an-pro-kpi .sub {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+
+.an-pro-chart-card {
+    background: #fff;
+    border: 1px solid #e8ede6;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 8px 24px rgba(12, 30, 20, 0.04);
+    min-height: 360px;
+}
+
+.an-pro-chart-card h4 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.an-pro-chart-card .chart-sub {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.an-pro-chart-card canvas {
+    width: 100% !important;
+    height: 300px !important;
+}
+
+.an-pro-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+@media (max-width: 900px) {
+    .an-pro-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.an-pro-heatmap {
+    overflow-x: auto;
+    margin-top: 8px;
+}
+
+.an-pro-heatmap table {
+    border-collapse: collapse;
+    font-size: 11px;
+    width: 100%;
+}
+
+.an-pro-heatmap th,
+.an-pro-heatmap td {
+    padding: 6px 8px;
+    text-align: center;
+    border: 1px solid #f3f4f6;
+}
+
+.an-pro-heatmap th {
+    background: #f9fafb;
+    font-weight: 700;
+    color: #374151;
+}
+
+.an-pro-heatmap .cell {
+    border-radius: 4px;
+    font-weight: 700;
+    color: #fff;
+    min-width: 28px;
+}
+
+.an-pro-insights {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border-left: 4px solid #006633;
+    border-radius: 0 12px 12px 0;
+    padding: 14px 18px;
+    margin-top: 16px;
+}
+
+.an-pro-insights h5 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #004d26;
+}
+
+.an-pro-insights ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #374151;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.sa-analytics-source.demo {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.sa-analytics-source.live {
+    color: #065f46;
+    background: #d1fae5;
+}
+
+.sa-chart-container.an-pro-chart-card {
+    min-height: 380px;
+}
