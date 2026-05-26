@@ -23,6 +23,7 @@ DROP TABLE IF EXISTS `messenger_messages`;
 DROP TABLE IF EXISTS `class_schedule_notification_log`;
 DROP TABLE IF EXISTS `class_schedule`;
 DROP TABLE IF EXISTS `user`;
+DROP TABLE IF EXISTS `specialization`;
 DROP TABLE IF EXISTS `doctrine_migration_versions`;
 
 CREATE TABLE IF NOT EXISTS `user` (
@@ -42,6 +43,28 @@ CREATE TABLE IF NOT EXISTS `user` (
     UNIQUE INDEX `UNIQ_8D93D649E7927C74` (`email`),
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `specialization` (
+    `id` INT AUTO_INCREMENT NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `created_at` DATETIME NOT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `specialization` (`name`, `created_at`)
+VALUES
+    ('Business Analytics', NOW()),
+    ('BSITBA', NOW()),
+    ('BSCS', NOW()),
+    ('Software Engineering', NOW()),
+    ('Data Science', NOW()),
+    ('Cybersecurity', NOW()),
+    ('Cloud Computing', NOW()),
+    ('Web Development', NOW()),
+    ('Mobile Development', NOW()),
+    ('UI/UX Design', NOW()),
+    ('Research', NOW()),
+    ('Other', NOW());
 
 CREATE TABLE IF NOT EXISTS `facility` (
     `id` INT AUTO_INCREMENT NOT NULL,
@@ -579,6 +602,7 @@ VALUES
 ('DoctrineMigrations\\Version20261203000000', NOW(), 100),
 ('DoctrineMigrations\\Version20261204000000', NOW(), 100),
 ('DoctrineMigrations\\Version20260523120000', NOW(), 100),
-('DoctrineMigrations\\Version20260523130000', NOW(), 100);
+('DoctrineMigrations\\Version20260523130000', NOW(), 100),
+('DoctrineMigrations\\Version20260526070053', NOW(), 100);
 
 COMMIT;

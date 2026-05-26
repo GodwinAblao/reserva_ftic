@@ -56,28 +56,53 @@
     </div>
 
     <div class="custom-request-section" style="margin:0; padding:0; background:transparent; box-shadow:none;">
-        <div class="request-header" style="margin-bottom:.75rem;">
-            <h3 style="margin:0 0 .3rem 0;">Schedule a Mentoring Session</h3>
-            <p class="request-subtitle" style="margin:0;">Select an available date and time slot, then share your mentoring goals.</p>
+        <div class="request-header" style="margin-bottom:1rem;">
+            <h3 style="margin:0 0 .35rem 0; font-size:1.1rem; font-weight:700; color:#111827;">Schedule a Mentoring Session</h3>
+            <p class="request-subtitle" style="margin:0; font-size:.85rem; color:#6b7280;">Select your specialization, date, and share your mentoring goals.</p>
         </div>
 
         {% if canSendCustomRequest %}
             <form method="post" action="{{ path('mentoring_custom_request', {'id': mentor.id}) }}" class="custom-request-form" data-mentor-preview-form="1" data-mentor-id="{{ mentor.id }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('custom_request_' ~ mentor.id) }}">
                 
+                {# Specialization Section #}
+                <div class="form-section" style="margin-bottom:1rem;">
+                    <label for="specialization_{{ mentor.id }}" class="form-label" style="display:block; margin-bottom:.4rem; font-size:.85rem; font-weight:600; color:#374151;">
+                        Your Specialization <span class="form-required">*</span>
+                    </label>
+                    <select name="specialization" 
+                            id="specialization_{{ mentor.id }}"
+                            class="form-input"
+                            required
+                            onchange="toggleSpecializationOther(this, 'specialization_other_{{ mentor.id }}')"
+                            style="width:100%; padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:8px; font-size:.9rem; color:#374151; background:#fff;">
+                        <option value="">Select specialization…</option>
+                        {% for specialization in allSpecializations %}
+                        <option value="{{ specialization.name }}">{{ specialization.name }}</option>
+                        {% endfor %}
+                        <option value="Other">Other (specify below)</option>
+                    </select>
+                    <input type="text" 
+                           name="specialization_other" 
+                           id="specialization_other_{{ mentor.id }}"
+                           class="form-input"
+                           placeholder="Please specify your specialization..."
+                           style="width:100%; padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:8px; font-size:.9rem; color:#374151; background:#fff; margin-top:.5rem; display:none;">
+                </div>
+                
                 {# Calendar Scheduling Section #}
-                <div class="scheduling-section" style="margin-bottom:1rem; padding:1rem; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
-                    <h4 style="margin:0 0 .75rem 0; font-size:.9rem; color:#1e293b;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:.35rem;">
+                <div class="scheduling-section" style="margin-bottom:1rem; padding:1rem; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 .75rem 0; font-size:.9rem; font-weight:600; color:#1e293b; display:flex; align-items:center; gap:.4rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <polyline points="12 6 12 12 16 14"></polyline>
                         </svg>
-                        Step 1: Select Date & Time
+                        Select Date & Time
                     </h4>
                     
                     {# Date Picker #}
                     <div class="form-section" style="margin-bottom:.75rem;">
-                        <label for="scheduled_date_{{ mentor.id }}" class="form-label">Preferred Date <span class="form-required">*</span></label>
+                        <label for="scheduled_date_{{ mentor.id }}" class="form-label" style="display:block; margin-bottom:.4rem; font-size:.85rem; font-weight:600; color:#374151;">Preferred Date <span class="form-required">*</span></label>
                         <input type="date" 
                                name="scheduled_date" 
                                id="scheduled_date_{{ mentor.id }}"
@@ -85,37 +110,39 @@
                                required
                                min="{{ "now"|date('Y-m-d') }}"
                                data-mentor-id="{{ mentor.id }}"
-                               data-availability-days='{{ availabilityDays|json_encode|raw }}'>
-                        <small class="form-hint" style="color:#64748b; font-size:.75rem;">
+                               data-availability-days='{{ availabilityDays|json_encode|raw }}'
+                               style="width:100%; padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:8px; font-size:.9rem; color:#374151; background:#fff;">
+                        <small class="form-hint" style="color:#64748b; font-size:.75rem; display:block; margin-top:.3rem;">
                             {% if availabilityDays %}Only {{ availabilityDays|join(', ') }} are available{% else %}Select any available date{% endif %}
                         </small>
-                        <div class="date-error" id="date_error_{{ mentor.id }}" style="color:#dc2626; font-size:.8rem; margin-top:.25rem; display:none;"></div>
+                        <div class="date-error" id="date_error_{{ mentor.id }}" style="color:#dc2626; font-size:.8rem; margin-top:.25rem; display:none; background:#fef2f2; padding:.4rem; border-radius:6px; border:1px solid #fecaca;"></div>
                     </div>
                     
                     {# Time Slot Selection #}
                     <div class="form-section" style="margin-bottom:.5rem;">
-                        <label for="scheduled_time_{{ mentor.id }}" class="form-label">Preferred Time <span class="form-required">*</span></label>
+                        <label for="scheduled_time_{{ mentor.id }}" class="form-label" style="display:block; margin-bottom:.4rem; font-size:.85rem; font-weight:600; color:#374151;">Preferred Time <span class="form-required">*</span></label>
                         <select name="scheduled_time" 
                                 id="scheduled_time_{{ mentor.id }}"
                                 class="form-input scheduled-time-select"
                                 required
                                 data-start-time="{{ availabilityStart }}"
-                                data-end-time="{{ availabilityEnd }}">
+                                data-end-time="{{ availabilityEnd }}"
+                                style="width:100%; padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:8px; font-size:.9rem; color:#374151; background:#fff;">
                             <option value="">-- Select a time slot --</option>
                         </select>
-                        <small class="form-hint" style="color:#64748b; font-size:.75rem;">
+                        <small class="form-hint" style="color:#64748b; font-size:.75rem; display:block; margin-top:.3rem;">
                             Available slots: {{ availabilityStart|date('g:i A') }} - {{ availabilityEnd|date('g:i A') }}
                         </small>
                     </div>
                 </div>
 
                 {# Message Section #}
-                <div class="form-section" style="margin-bottom:.75rem;">
-                    <label for="custom_message_preview_{{ mentor.id }}" class="form-label">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:.35rem;">
+                <div class="form-section" style="margin-bottom:1rem;">
+                    <label for="custom_message_preview_{{ mentor.id }}" class="form-label" style="display:flex; align-items:center; gap:.4rem; margin-bottom:.4rem; font-size:.85rem; font-weight:600; color:#374151;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        Step 2: Your Message <span class="form-required">*</span>
+                        Your Message <span class="form-required">*</span>
                     </label>
                     <textarea
                         name="message"
@@ -125,26 +152,27 @@
                         placeholder="Describe what you'd like to discuss, your goals, or any specific topics you'd like mentoring on..."
                         required
                         minlength="10"
-                        maxlength="500"></textarea>
-                    <small class="char-count" style="color:#64748b; font-size:.75rem; text-align:right; display:block;">0 / 500</small>
+                        maxlength="500"
+                        style="width:100%; padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:8px; font-size:.9rem; color:#374151; background:#fff; resize:vertical; font-family:inherit;"></textarea>
+                    <small class="char-count" style="color:#64748b; font-size:.75rem; text-align:right; display:block; margin-top:.3rem;">0 / 500</small>
                 </div>
 
                 <div class="form-actions" style="display:flex; flex-direction:column; gap:.5rem;">
-                    <button type="submit" class="btn-primary" id="submit_request_{{ mentor.id }}" style="display:flex; align-items:center; justify-content:center; gap:.5rem;">
+                    <button type="submit" class="btn-primary" id="submit_request_{{ mentor.id }}" style="display:flex; align-items:center; justify-content:center; gap:.5rem; width:100%; padding:.7rem 1.25rem; background:#0D9B00; color:#fff; border:none; border-radius:8px; font-size:.95rem; font-weight:600; cursor:pointer; transition:background .2s;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
                         Send Mentoring Request
                     </button>
-                    <p class="form-note" style="text-align:center; margin:0;">
+                    <p class="form-note" style="text-align:center; margin:0; font-size:.8rem; color:#6b7280;">
                         {{ mentor.displayName }} will review your request and confirm the meeting details.
                     </p>
                 </div>
             </form>
         {% else %}
             <div class="custom-request-disabled">
-                <p class="alert alert-info" style="margin:0;">You cannot send a custom request to your own mentor profile.</p>
+                <p class="alert alert-info" style="margin:0; padding:.75rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:.9rem;">You cannot send a custom request to your own mentor profile.</p>
             </div>
         {% endif %}
     </div>
@@ -152,6 +180,17 @@
 
 <script>
 (function() {
+    // Toggle "Other" specialization text box
+    window.toggleSpecializationOther = function(select, otherInputId) {
+        const otherInput = document.getElementById(otherInputId);
+        if (otherInput) {
+            otherInput.style.display = select.value === 'Other' ? 'block' : 'none';
+            if (select.value !== 'Other') {
+                otherInput.value = '';
+            }
+        }
+    };
+
     // Availability-based calendar scheduling
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     

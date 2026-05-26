@@ -23,8 +23,10 @@ use App\Repository\MentorProfileRepository;
 use App\Repository\MentorApplicationRepository;
 use App\Repository\MentoringAppointmentRepository;
 use App\Repository\ReservationRepository;
+use App\Repository\SpecializationRepository;
 use App\Entity\MentorAvailability;
 use App\Entity\MentorCustomRequest;
+use App\Entity\Specialization;
 use Psr\Log\LoggerInterface;
 
 
@@ -43,12 +45,76 @@ class AccountManagementController extends AbstractController
         ]);
     }
 
+    #[Route('/specializations', name: 'app_specialization_management')]
+    public function specializationIndex(SpecializationRepository $specializationRepository): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+
+        $specializations = $specializationRepository->findAllOrderedByName();
+
+        return $this->render('account_management/specializations.html.twig', [
+            'specializations' => $specializations,
+        ]);
+    }
+
+    #[Route('/specializations/new', name: 'app_specialization_new', methods: ['POST'])]
+    public function newSpecialization(Request $request, SpecializationRepository $specializationRepository, CsrfTokenManagerInterface $csrfTokenManager): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+
+        $token = $request->request->get('_csrf_token');
+        if (!$csrfTokenManager->isTokenValid(new CsrfToken('specialization_create', $token))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $name = $request->request->get('name');
+        
+        if (!$name) {
+            $this->addFlash('error', 'Specialization name is required.');
+            return $this->redirectToRoute('app_specialization_management');
+        }
+
+        // Check if specialization already exists
+        $existing = $specializationRepository->findOneBy(['name' => $name]);
+        if ($existing) {
+            $this->addFlash('error', 'Specialization already exists.');
+            return $this->redirectToRoute('app_specialization_management');
+        }
+
+        $specialization = new Specialization();
+        $specialization->setName($name);
+        $specializationRepository->save($specialization);
+
+        $this->addFlash('success', 'Specialization added successfully.');
+
+        return $this->redirectToRoute('app_specialization_management');
+    }
+
+    #[Route('/specializations/{id}/delete', name: 'app_specialization_delete', methods: ['POST'])]
+    public function deleteSpecialization(Specialization $specialization, Request $request, SpecializationRepository $specializationRepository, CsrfTokenManagerInterface $csrfTokenManager): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_SUPER_ADMIN');
+
+        $token = $request->request->get('_csrf_token');
+        if (!$csrfTokenManager->isTokenValid(new CsrfToken('delete_specialization_' . $specialization->getId(), $token))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $specializationRepository->remove($specialization);
+
+        $this->addFlash('success', 'Specialization deleted successfully.');
+
+        return $this->redirectToRoute('app_specialization_management');
+    }
+
     #[Route('/new', name: 'app_account_management_new')]
-    public function new(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger, LoggerInterface $logger): Response
+    public function new(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger, LoggerInterface $logger, SpecializationRepository $specializationRepository): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $logger->info('Account management new page accessed', ['method' => $request->getMethod()]);
+
+        $specializations = $specializationRepository->findAllOrderedByName();
 
         if ($request->getMethod() === 'POST') {
             $logger->info('POST request received for account creation');
@@ -130,7 +196,9 @@ class AccountManagementController extends AbstractController
             }
         }
 
-        return $this->render('account_management/new.html.twig');
+        return $this->render('account_management/new.html.twig', [
+            'specializations' => $specializations,
+        ]);
     }
 
     #[Route('/{id}', name: 'app_account_management_view')]
@@ -159,9 +227,11 @@ class AccountManagementController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'app_account_management_edit')]
-    public function edit(User $user, Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger, LoggerInterface $logger): Response
+    public function edit(User $user, Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, SluggerInterface $slugger, LoggerInterface $logger, SpecializationRepository $specializationRepository): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $specializations = $specializationRepository->findAllOrderedByName();
 
         if ($request->getMethod() === 'POST') {
             $logger->info('POST request received for account edit', ['user_id' => $user->getId()]);
@@ -255,6 +325,7 @@ class AccountManagementController extends AbstractController
 
         return $this->render('account_management/edit.html.twig', [
             'user' => $user,
+            'specializations' => $specializations,
         ]);
     }
 

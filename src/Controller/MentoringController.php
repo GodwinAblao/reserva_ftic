@@ -12,6 +12,7 @@ use App\Entity\MentoringAppointment;
 use App\Entity\MentoringAuditLog;
 use App\Entity\User;
 use App\Service\NotificationService;
+use App\Repository\SpecializationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,7 +35,7 @@ class MentoringController extends AbstractController
         $this->notificationService = $notificationService;
     }
     #[Route('', name: 'mentoring_index', methods: ['GET'])]
-    public function index(Request $request, EntityManagerInterface $em): Response
+    public function index(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
     {
         $this->ensureFacultyMentorProfiles($em);
 
@@ -42,6 +43,33 @@ class MentoringController extends AbstractController
         $mentorProfile = $currentUser instanceof User
             ? $em->getRepository(MentorProfile::class)->findOneBy(['user' => $currentUser])
             : null;
+
+        $specializations = $specializationRepository->findAllOrderedByName();
+
+        // Build specialization statistics for preferred specializations section
+        $specializationStats = [];
+        $customRequests = $em->getRepository(MentorCustomRequest::class)->findAll();
+        foreach ($customRequests as $req) {
+            $spec = $req->getPreferredExpertise();
+            if ($spec) {
+                if (!isset($specializationStats[$spec])) {
+                    $specializationStats[$spec] = 0;
+                }
+                $specializationStats[$spec]++;
+            }
+        }
+
+        // Convert to array format expected by template
+        $specializationRows = [];
+        foreach ($specializations as $spec) {
+            $specializationRows[] = [
+                'specialization' => $spec->getName(),
+                'total' => $specializationStats[$spec->getName()] ?? 0,
+            ];
+        }
+
+        // Sort by request count (descending)
+        usort($specializationRows, fn($a, $b) => $b['total'] - $a['total']);
 
         // Get search and filter parameters
         $searchTerm = $request->query->get('search', '');
@@ -102,7 +130,6 @@ class MentoringController extends AbstractController
                 ];
             }
         }
-        $specializations = $this->specializationStats($em);
 
         // Check if this is an AJAX request
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
@@ -113,7 +140,7 @@ class MentoringController extends AbstractController
                 'mentorApplicationMeta' => $mentorApplicationMeta,
             ]);
             $specializationsHtml = $this->renderView('mentoring/_preferred_specializations.html.twig', [
-                'specializations' => $specializations,
+                'specializations' => $specializationRows,
             ]);
             return new JsonResponse([
                 'html' => $mentorHtml,
@@ -125,13 +152,6 @@ class MentoringController extends AbstractController
             ? $em->getRepository(MentoringAppointment::class)->findBy(['student' => $currentUser], ['scheduledAt' => 'DESC'])
             : [];
         $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10);
-        
-        // Get all unique specializations for the dropdown
-        $allSpecializations = $em->getRepository(MentorProfile::class)->createQueryBuilder('m')
-            ->select('DISTINCT m.specialization')
-            ->orderBy('m.specialization', 'ASC')
-            ->getQuery()
-            ->getResult();
 
         $availability = $em->getRepository(MentorAvailability::class)->findBy(['isBooked' => false], ['availableDate' => 'ASC', 'startTime' => 'ASC']);
         $applications = $currentUser instanceof User
@@ -156,8 +176,8 @@ class MentoringController extends AbstractController
             'mentorApplicationMeta' => $mentorApplicationMeta,
             'appointments' => $appointments,
             'leaderboard' => $leaderboard,
-            'specializations' => $specializations,
-            'allSpecializations' => $allSpecializations,
+            'specializations' => $specializationRows,
+            'allSpecializations' => $specializations,
             'availability' => $availability,
             'applications' => $applications,
             'sentCustomRequests' => $sentCustomRequests,
@@ -186,12 +206,15 @@ class MentoringController extends AbstractController
 
     #[Route('/super-admin/mentor-requests', name: 'mentoring_superadmin_requests', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function adminMentorRequests(Request $request, EntityManagerInterface $em): Response
+    public function adminMentorRequests(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
     {
         $this->ensureFacultyMentorProfiles($em);
         $allRequests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
         $assistanceRequests = array_values(array_filter($allRequests, fn($r) => $r->isAssistanceRequest()));
         $directRequests     = array_values(array_filter($allRequests, fn($r) => !$r->isAssistanceRequest()));
+        
+        $specializations = $specializationRepository->findAllOrderedByName();
+        
         return $this->render('mentoring/superadmin-mentor-requests.html.twig', [
             'requests'           => $assistanceRequests,
             'directRequests'     => $directRequests,
@@ -202,6 +225,7 @@ class MentoringController extends AbstractController
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'is_super_admin'     => $this->isGranted('ROLE_SUPER_ADMIN'),
             'auditLogs'          => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
+            'allSpecializations' => $specializations,
         ]);
     }
 
@@ -390,8 +414,8 @@ class MentoringController extends AbstractController
             return $this->redirectToRoute('mentoring_index');
         }
 
-        // Handle file uploads (store as JSON array)
-        $proofFiles = [];
+        // Validate files but don't move them yet (defer to async)
+        $uploadedFiles = [];
         if ($files) {
             foreach ($files as $file) {
                 if ($file && $file->isValid()) {
@@ -406,15 +430,16 @@ class MentoringController extends AbstractController
                         $this->addFlash('error', 'File ' . $file->getClientOriginalName() . ' must be JPG, PNG, or PDF.');
                         return $this->redirectToRoute('mentoring_index');
                     }
-                    // Store file with proper extension
+                    // Store file info for async processing
                     $extension = $file->getClientOriginalExtension();
                     if (empty($extension)) {
                         $extension = 'pdf';
                     }
-                    $newFilename = 'mentor_' . uniqid() . '.' . $extension;
-                    $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles';
-                    $file->move($targetDir, $newFilename);
-                    $proofFiles[] = $newFilename;
+                    $uploadedFiles[] = [
+                        'file' => $file,
+                        'extension' => $extension,
+                        'filename' => 'mentor_' . uniqid() . '.' . $extension
+                    ];
                 }
             }
         }
@@ -450,20 +475,51 @@ class MentoringController extends AbstractController
             ->setHighestEducation($highestEducation ?: null)
             ->setMentoringPublicBio($mentoringPublicBio ?: null)
             ->setAvailabilityTime($availabilityTime ?: null)
-            ->setSupportingDocuments($proofFiles ?: null)
+            ->setSupportingDocuments(null) // Will be set after file upload
             ->setStatus('Pending');
 
         $em->persist($application);
         $em->flush();
 
-        // Notify the user
-        $this->notificationService->notifyMentorApplicationSubmitted($user, $application->getId());
+        // Defer file uploads and notifications to after response to prevent blocking
+        register_shutdown_function(function() use ($uploadedFiles, $em, $user, $application, $firstName, $lastName) {
+            try {
+                // Move files and update application
+                $proofFiles = [];
+                $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles';
+                
+                foreach ($uploadedFiles as $fileInfo) {
+                    $fileInfo['file']->move($targetDir, $fileInfo['filename']);
+                    $proofFiles[] = $fileInfo['filename'];
+                }
+                
+                $application->setSupportingDocuments($proofFiles ?: null);
+                $em->flush();
 
-        // Notify all super admins
-        $superAdmins = $em->getRepository(User::class)->findAdmins();
-        foreach ($superAdmins as $admin) {
-            $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $firstName . ' ' . $lastName);
-        }
+                // Notify the user
+                $this->notificationService->notifyMentorApplicationSubmitted($user, $application->getId());
+
+                // Notify only super admins
+                $superAdmins = $em->getRepository(User::class)->createQueryBuilder('u')
+                    ->where('u.roles LIKE :role')
+                    ->setParameter('role', '%ROLE_SUPER_ADMIN%')
+                    ->getQuery()
+                    ->getResult();
+                
+                foreach ($superAdmins as $admin) {
+                    $this->notificationService->create(
+                        $admin,
+                        'mentor',
+                        'New Mentor Application',
+                        'A new mentor application has been submitted by ' . $firstName . ' ' . $lastName . '.',
+                        'Pending',
+                        $application->getId()
+                    );
+                }
+            } catch (\Exception $e) {
+                error_log('Failed to process application (async): ' . $e->getMessage());
+            }
+        });
 
         $this->addFlash('success', 'Your mentor application has been submitted and is pending Super Admin review.');
 
@@ -666,8 +722,10 @@ $validUntil = $request->request->get('valid_until');
 
     #[Route('/admin/mentor/{id}/edit', name: 'mentoring_edit_mentor', methods: ['GET', 'POST'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
-    public function editMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em): Response
+    public function editMentor(MentorProfile $mentor, Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
     {
+        $specializations = $specializationRepository->findAllOrderedByName();
+
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('edit_mentor_' . $mentor->getId(), (string) $request->request->get('_token'))) {
                 throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -712,6 +770,7 @@ $validUntil = $request->request->get('valid_until');
 
         return $this->render('mentoring/edit_mentor.html.twig', [
             'mentor' => $mentor,
+            'allSpecializations' => $specializations,
         ]);
     }
 

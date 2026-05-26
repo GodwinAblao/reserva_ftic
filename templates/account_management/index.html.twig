@@ -343,7 +343,12 @@
 
     <div class="content-header">
         <h2>Account Management</h2>
-        <a href="{{ path('app_account_management_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, #0d9b00 0%, #0d9b00 100%); color: white; font-weight: 700;">+ Create Account</a>
+        <div style="display: flex; gap: 12px;">
+            {% if is_granted('ROLE_SUPER_ADMIN') %}
+                <a href="{{ path('app_specialization_management') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, #6366f1 0%, #4f46e5 100%); color: white; font-weight: 700;">Manage Specializations</a>
+            {% endif %}
+            <a href="{{ path('app_account_management_new') }}" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 16px; border-radius: 12px; background: linear-gradient(130deg, #0d9b00 0%, #0d9b00 100%); color: white; font-weight: 700;">+ Create Account</a>
+        </div>
     </div>
 
     {% for message in app.flashes('success') %}

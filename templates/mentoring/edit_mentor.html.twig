@@ -4,7 +4,7 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/styles/mentoring.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -78,8 +78,8 @@
                     <label class="em-label" for="specialization">Specialization <span class="em-req">*</span></label>
                     <select id="specialization" name="specialization" class="em-input em-select" required>
                         <option value="">Select specialization…</option>
-                        {% for spec in ['Business Analytics','BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
-                        <option value="{{ spec }}" {% if mentor.specialization == spec %}selected{% endif %}>{{ spec }}</option>
+                        {% for specialization in allSpecializations %}
+                        <option value="{{ specialization.name }}" {% if mentor.specialization == specialization.name %}selected{% endif %}>{{ specialization.name }}</option>
                         {% endfor %}
                     </select>
                 </div>

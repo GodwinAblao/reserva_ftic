@@ -1,7 +1,7 @@
 {% extends 'layouts/app.html.twig' %}
 {% block title %}Mentors | Reserva FTIC{% endblock %}
 {% block stylesheets %}{{ parent() }}
-<link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/styles/mentoring.css') }}">
 <style>
 .ml-page { display:flex; flex-direction:column; gap:18px; }
 .ml-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -100,10 +100,10 @@
                         {{ mentor.engagementPoints }} pts
                     </p>
                 </div>
-                {% if mentor.availabilityDay or (mentor.availabilityStart and mentor.availabilityEnd) %}
+                {% if mentor.availabilityDays or (mentor.availabilityStart and mentor.availabilityEnd) %}
                 <div class="ml-meta-item">
                     <label>Availability</label>
-                    <p>{% if mentor.availabilityDay %}{{ mentor.availabilityDay }}{% endif %}{% if mentor.availabilityStart and mentor.availabilityEnd %}{% if mentor.availabilityDay %}, {% endif %}{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}{% endif %}</p>
+                    <p>{% if mentor.availabilityDays %}{{ mentor.availabilityDays|join(', ') }}{% endif %}{% if mentor.availabilityStart and mentor.availabilityEnd %}{% if mentor.availabilityDays %}, {% endif %}{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}{% endif %}</p>
                 </div>
                 {% endif %}
                 {% if mentor.user %}
@@ -122,13 +122,10 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Edit
                 </button>
-                <form method="post" action="{{ path('mentoring_delete_mentor', {'id': mentor.id}) }}" onsubmit="return confirm('Delete {{ mentor.displayName }}?')" style="flex:1;display:flex;">
-                    <input type="hidden" name="_token" value="{{ csrf_token('delete_mentor_' ~ mentor.id) }}">
-                    <button type="submit" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#fff;color:#ef4444;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        Delete
-                    </button>
-                </form>
+                <button type="button" onclick="mlOpenDelete('{{ path('mentoring_delete_mentor', {'id': mentor.id}) }}', '{{ csrf_token('delete_mentor_' ~ mentor.id) }}', '{{ mentor.displayName }}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#fff;color:#ef4444;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    Delete
+                </button>
             </div>
             {% endif %}
         </div>
@@ -149,7 +146,27 @@
         </div>
     </div>
 </div>
-{% endif %}{# end is_super_admin check for modal #}
+
+{# ── Delete Confirmation Modal - Only for Super Admin ── #}
+<div id="mlDeleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9300;align-items:center;justify-content:center;overflow-y:auto;padding:24px 16px;">
+    <div id="mlDeleteBackdrop" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:0;" onclick="mlCloseDelete()"></div>
+    <div style="position:relative;z-index:1;background:#fff;border-radius:16px;padding:32px 36px 28px;width:100%;max-width:480px;margin:auto;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+        <button onclick="mlCloseDelete()" style="position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer;line-height:1;">×</button>
+        <div style="text-align:center;margin-bottom:24px;">
+            <div style="width:64px;height:64px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+            </div>
+            <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 8px;">Delete Mentor</h3>
+            <p style="font-size:14px;color:#6b7280;margin:0;">Are you sure you want to delete <strong id="mlDeleteMentorName"></strong>? This action cannot be undone.</p>
+        </div>
+        <form id="mlDeleteForm" method="post" style="display:flex;gap:12px;justify-content:center;">
+            <input type="hidden" name="_token" id="mlDeleteToken">
+            <button type="button" onclick="mlCloseDelete()" style="flex:1;padding:10px 24px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+            <button type="submit" style="flex:1;padding:10px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Delete</button>
+        </form>
+    </div>
+</div>
+{% endif %}{# end is_super_admin check for modals #}
 
 <script>
 {% if is_super_admin %}
@@ -167,19 +184,76 @@ function mlOpenEdit(url, id) {
             var form = doc.querySelector('form[action*="/edit"]') || doc.querySelector('form');
             if (!form) { body.innerHTML = '<div style="padding:20px;color:#ef4444;">Could not load edit form.</div>'; return; }
 
-            /* Restyle form for modal context */
-            form.style.cssText = '';
-            /* Replace any btn-primary / btn-secondary styling */
-            form.querySelectorAll('.btn-primary').forEach(function(b){ b.style.cssText='padding:10px 28px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;'; });
-            form.querySelectorAll('.btn-secondary').forEach(function(b){ b.style.display='none'; });
-            form.querySelectorAll('.form-input').forEach(function(i){ i.style.cssText='width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#374151;background:#fff;box-sizing:border-box;font-family:inherit;'; });
-            form.querySelectorAll('.form-group label').forEach(function(l){ l.style.cssText='display:block;margin-bottom:5px;font-size:11px;font-weight:600;color:#6b7280;'; });
-            form.querySelectorAll('.form-group').forEach(function(g){ g.style.marginBottom='14px'; });
-            /* Remove user-info read-only section to keep modal clean */
-            form.querySelectorAll('.user-info').forEach(function(u){ u.closest('.form-group') && (u.closest('.form-group').style.display='none'); });
+            /* Extract the form content and preserve styling */
+            var container = doc.querySelector('.em-container');
+            if (container) {
+                container.style.maxWidth = '100%';
+                container.style.margin = '0';
+                body.innerHTML = '';
+                body.appendChild(container);
+            } else {
+                body.innerHTML = '';
+                body.appendChild(form);
+            }
 
-            body.innerHTML = '';
-            body.appendChild(form);
+            /* Hide the back button and content header in modal */
+            var contentHeader = body.querySelector('.content-header');
+            if (contentHeader) contentHeader.style.display = 'none';
+
+            /* Apply inline styles to ensure form looks good in modal */
+            var inputs = body.querySelectorAll('.em-input');
+            inputs.forEach(function(input) {
+                input.style.width = '100%';
+                input.style.padding = '10px 12px';
+                input.style.border = '1px solid #e5e7eb';
+                input.style.borderRadius = '8px';
+                input.style.fontSize = '14px';
+                input.style.color = '#374151';
+                input.style.background = '#fff';
+                input.style.boxSizing = 'border-box';
+            });
+
+            var labels = body.querySelectorAll('.em-label');
+            labels.forEach(function(label) {
+                label.style.display = 'block';
+                label.style.marginBottom = '6px';
+                label.style.fontSize = '13px';
+                label.style.fontWeight = '600';
+                label.style.color = '#374151';
+            });
+
+            var sections = body.querySelectorAll('.em-section');
+            sections.forEach(function(section) {
+                section.style.background = '#fff';
+                section.style.border = '1px solid #e5e7eb';
+                section.style.borderRadius = '12px';
+                section.style.padding = '20px';
+                section.style.marginBottom = '16px';
+            });
+
+            var saveBtn = body.querySelector('.em-btn-save');
+            if (saveBtn) {
+                saveBtn.style.padding = '10px 24px';
+                saveBtn.style.background = '#0D9B00';
+                saveBtn.style.color = '#fff';
+                saveBtn.style.border = 'none';
+                saveBtn.style.borderRadius = '8px';
+                saveBtn.style.fontSize = '14px';
+                saveBtn.style.fontWeight = '600';
+                saveBtn.style.cursor = 'pointer';
+            }
+
+            var cancelBtn = body.querySelector('.em-btn-cancel');
+            if (cancelBtn) {
+                cancelBtn.style.padding = '10px 24px';
+                cancelBtn.style.background = '#f3f4f6';
+                cancelBtn.style.color = '#374151';
+                cancelBtn.style.border = '1px solid #e5e7eb';
+                cancelBtn.style.borderRadius = '8px';
+                cancelBtn.style.fontSize = '14px';
+                cancelBtn.style.fontWeight = '600';
+                cancelBtn.style.cursor = 'pointer';
+            }
 
             /* Intercept submit → AJAX */
             form.addEventListener('submit', function(e) {
@@ -210,7 +284,26 @@ function mlOpenEdit(url, id) {
 function mlCloseEdit() {
     document.getElementById('mlEditModal').style.display = 'none';
 }
-document.addEventListener('keydown', function(e){ if (e.key === 'Escape') mlCloseEdit(); });
+function mlOpenDelete(url, token, mentorName) {
+    var modal = document.getElementById('mlDeleteModal');
+    var form = document.getElementById('mlDeleteForm');
+    var nameEl = document.getElementById('mlDeleteMentorName');
+    var tokenEl = document.getElementById('mlDeleteToken');
+    
+    modal.style.display = 'flex';
+    form.action = url;
+    tokenEl.value = token;
+    nameEl.textContent = mentorName;
+}
+function mlCloseDelete() {
+    document.getElementById('mlDeleteModal').style.display = 'none';
+}
+document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+        mlCloseEdit();
+        mlCloseDelete();
+    }
+});
 {% endif %}
 function mlToast(msg, ok) {
     var n = document.createElement('div');

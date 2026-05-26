@@ -30,7 +30,8 @@ class NotificationService
         string $title,
         string $message,
         string $status,
-        ?int $referenceId = null
+        ?int $referenceId = null,
+        bool $flush = true
     ): Notification {
         $notification = new Notification();
         $notification->setUser($user);
@@ -43,7 +44,9 @@ class NotificationService
         $notification->setCreatedAt(new \DateTime());
 
         $this->em->persist($notification);
-        $this->em->flush();
+        if ($flush) {
+            $this->em->flush();
+        }
 
         return $notification;
     }
@@ -51,7 +54,7 @@ class NotificationService
     /**
      * Notify user about mentor application submission
      */
-    public function notifyMentorApplicationSubmitted(User $user, int $applicationId): void
+    public function notifyMentorApplicationSubmitted(User $user, int $applicationId, bool $flush = true): void
     {
         // Create in-app notification
         $this->create(
@@ -60,11 +63,19 @@ class NotificationService
             'Mentor Application Submitted',
             'Your mentor application has been submitted and is awaiting Super Admin review.',
             'Pending',
-            $applicationId
+            $applicationId,
+            $flush
         );
 
-        // Send email notification
-        $this->sendMentorApplicationEmail($user, $applicationId, 'submitted');
+        // Send email notification asynchronously (non-blocking)
+        // Email sending is deferred to prevent blocking the response
+        register_shutdown_function(function() use ($user, $applicationId) {
+            try {
+                $this->sendMentorApplicationEmail($user, $applicationId, 'submitted');
+            } catch (\Exception $e) {
+                error_log('Failed to send mentor application email (async): ' . $e->getMessage());
+            }
+        });
     }
 
     /**

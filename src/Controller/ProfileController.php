@@ -17,6 +17,7 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 
 use App\Entity\User;
 use App\Entity\MentorProfile;
+use App\Repository\SpecializationRepository;
 
 class ProfileController extends AbstractController
 {
@@ -26,7 +27,8 @@ class ProfileController extends AbstractController
         EntityManagerInterface $em, 
         UserPasswordHasherInterface $passwordHasher, 
         CsrfTokenManagerInterface $csrfTokenManager, 
-        SluggerInterface $slugger
+        SluggerInterface $slugger,
+        SpecializationRepository $specializationRepository
     ): Response
     {
         $user = $this->getUser();
@@ -35,6 +37,7 @@ class ProfileController extends AbstractController
         }
 
         $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
+        $specializations = $specializationRepository->findAllOrderedByName();
 
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
 
@@ -136,11 +139,10 @@ class ProfileController extends AbstractController
                     if ($education !== null) {
                         $mentorProfile->setEducation($education ?: null);
                     }
-                    $mentorProfile->setAvailabilityDay($availDay !== '' ? $availDay : null);
-                    // Also set availabilityDays array for the modal template
-                    if ($availDay !== '') {
-                        $daysArray = array_map('trim', explode(',', $availDay));
-                        $mentorProfile->setAvailabilityDays($daysArray);
+                    // Handle availability days from checkbox array
+                    $availabilityDays = $request->request->all('availability_days') ?? [];
+                    if (!empty($availabilityDays) && is_array($availabilityDays)) {
+                        $mentorProfile->setAvailabilityDays($availabilityDays);
                     } else {
                         $mentorProfile->setAvailabilityDays(null);
                     }
@@ -165,6 +167,7 @@ class ProfileController extends AbstractController
 
         return $this->render('profile/index.html.twig', [
             'mentorProfile' => $mentorProfile,
+            'specializations' => $specializations,
         ]);
     }
 }

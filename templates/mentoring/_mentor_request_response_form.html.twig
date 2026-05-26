@@ -73,10 +73,8 @@
         {# Specialization dropdown #}
         <select name="expertise" class="form-input">
             <option value="">Select specialization…</option>
-            {% set specs = ['BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity',
-                            'Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
-            {% for spec in specs %}
-                <option value="{{ spec }}" {{ request.assignedMentorExpertise == spec ? 'selected' : '' }}>{{ spec }}</option>
+            {% for specialization in allSpecializations %}
+                <option value="{{ specialization.name }}" {{ request.assignedMentorExpertise == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
             {% endfor %}
         </select>
 

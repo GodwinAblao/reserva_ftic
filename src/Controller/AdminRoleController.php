@@ -13,6 +13,7 @@ use App\Repository\FacilityRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\ClassScheduleNotificationLogRepository;
 use App\Repository\ReservationStatusLogRepository;
+use App\Repository\SpecializationRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
@@ -640,12 +641,14 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
-    public function mentorshipCoordination(EntityManagerInterface $em): Response
+    public function mentorshipCoordination(EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
     {
         // Redirect Super Admin to the full-featured Super Admin interface
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
+
+        $specializations = $specializationRepository->findAllOrderedByName();
 
         return $this->render('admin/admin_mentoring.html.twig', [
             'applications' => $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
@@ -658,6 +661,7 @@ class AdminRoleController extends AbstractController
             'topExpertise' => $this->topExpertise($em),
             'is_super_admin' => false,
             'auditLogs' => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
+            'allSpecializations' => $specializations,
         ]);
     }
 

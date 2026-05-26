@@ -216,18 +216,9 @@
                         <label for="specialization">Specialization</label>
                         <select name="specialization" id="specialization">
                             <option value="">Select specialization...</option>
-                            <option value="Business Analytics" {% if user.specialization == 'Business Analytics' %}selected{% endif %}>Business Analytics</option>
-                            <option value="BSITBA" {% if user.specialization == 'BSITBA' %}selected{% endif %}>BSITBA</option>
-                            <option value="BSCS" {% if user.specialization == 'BSCS' %}selected{% endif %}>BSCS</option>
-                            <option value="Software Engineering" {% if user.specialization == 'Software Engineering' %}selected{% endif %}>Software Engineering</option>
-                            <option value="Data Science" {% if user.specialization == 'Data Science' %}selected{% endif %}>Data Science</option>
-                            <option value="Cybersecurity" {% if user.specialization == 'Cybersecurity' %}selected{% endif %}>Cybersecurity</option>
-                            <option value="Cloud Computing" {% if user.specialization == 'Cloud Computing' %}selected{% endif %}>Cloud Computing</option>
-                            <option value="Web Development" {% if user.specialization == 'Web Development' %}selected{% endif %}>Web Development</option>
-                            <option value="Mobile Development" {% if user.specialization == 'Mobile Development' %}selected{% endif %}>Mobile Development</option>
-                            <option value="UI/UX Design" {% if user.specialization == 'UI/UX Design' %}selected{% endif %}>UI/UX Design</option>
-                            <option value="Research" {% if user.specialization == 'Research' %}selected{% endif %}>Research</option>
-                            <option value="Other" {% if user.specialization == 'Other' %}selected{% endif %}>Other</option>
+                            {% for specialization in specializations %}
+                                <option value="{{ specialization.name }}" {% if user.specialization == specialization.name %}selected{% endif %}>{{ specialization.name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>

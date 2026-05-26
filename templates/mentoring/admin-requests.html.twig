@@ -244,10 +244,8 @@
                                 <label>Specialization</label>
                                 <select name="expertise" class="mc-assign-input" id="mc-spec-{{ req.id }}">
                                     <option value="">Select specialization…</option>
-                                    {% set specs = ['BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity',
-                                                    'Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
-                                    {% for spec in specs %}
-                                    <option value="{{ spec }}" {{ req.assignedMentorExpertise == spec ? 'selected' : '' }}>{{ spec }}</option>
+                                    {% for specialization in allSpecializations %}
+                                    <option value="{{ specialization.name }}" {{ req.assignedMentorExpertise == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>

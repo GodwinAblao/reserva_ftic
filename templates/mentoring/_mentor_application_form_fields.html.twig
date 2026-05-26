@@ -58,8 +58,8 @@
                 <label class="mentor-field-label">Mentoring Specialization <span class="mentor-req">*</span></label>
                 <select name="specialization" id="mentor_specialization" class="mentor-input mentor-select" required onchange="handleOtherOption(this, 'specializationOther')">
                     <option value="">Select specialization</option>
-                    {% for spec in ['Business Analytics','BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
-                    <option value="{{ spec }}">{{ spec }}</option>
+                    {% for specialization in allSpecializations %}
+                    <option value="{{ specialization.name }}">{{ specialization.name }}</option>
                     {% endfor %}
                 </select>
                 <input type="text" id="specializationOther" name="specializationOther" class="mentor-input mentor-other-input" style="display: none; margin-top: 8px;" placeholder="Please specify your specialization">

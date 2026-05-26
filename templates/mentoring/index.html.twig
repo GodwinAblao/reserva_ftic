@@ -59,8 +59,8 @@
                         <select id="specializationFilter" name="specialization" class="filter-dropdown">
                             <option value="">All Specialization</option>
                             {% for spec in allSpecializations %}
-                                <option value="{{ spec.specialization }}" {% if app.request.query.get('specialization') == spec.specialization %}selected{% endif %}>
-                                    {{ spec.specialization }}
+                                <option value="{{ spec.name }}" {% if app.request.query.get('specialization') == spec.name %}selected{% endif %}>
+                                    {{ spec.name }}
                                 </option>
                             {% endfor %}
                         </select>
@@ -451,16 +451,6 @@
 
         <!-- Recent Request Summary (now contains Request button) -->
         <section class="reservations-side-card reservations-info-card">
-            <div style="margin-bottom:12px;">
-                <a href="#" onclick="openMentorAssistance(); return false;" class="reserve-btn-large">
-                    <span class="reserve-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                        </svg>
-                    </span>
-                    <span class="reserve-text">Request a Mentor</span>
-                </a>
-            </div>
             <div class="reservations-side-card-head">
                 <h3>Recent Request</h3>
             </div>
@@ -482,6 +472,18 @@
             {% else %}
                 <p>You have no mentoring requests yet. Submit a request to get started!</p>
             {% endif %}
+            
+            <div style="margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb;">
+                <p style="margin:0 0 10px 0; font-size:13px; color:#6b7280; line-height:1.4;">Can't find a mentor that matches your needs? Click below to request assistance from the admin.</p>
+                <a href="#" onclick="openMentorAssistance(); return false;" class="reserve-btn-large">
+                    <span class="reserve-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                        </svg>
+                    </span>
+                    <span class="reserve-text">Request a Mentor</span>
+                </a>
+            </div>
         </section>
 
         <!-- Top Mentors -->
@@ -553,7 +555,7 @@
 
                     <form method="post" action="{{ path('mentoring_apply') }}" class="mentor-form" enctype="multipart/form-data">
                         <input type="hidden" name="_token" value="{{ csrf_token('mentor_application') }}">
-                        {% include 'mentoring/_mentor_application_form_fields.html.twig' with { defaultUser: app.user } only %}
+                        {% include 'mentoring/_mentor_application_form_fields.html.twig' with { defaultUser: app.user, allSpecializations: allSpecializations } only %}
                         <div class="app-modal-actions mentor-modal-actions">
                             <button type="button" class="btn-secondary mentor-modal-cancel" onclick="closeMentorApplication()">Cancel</button>
                         </div>
@@ -569,7 +571,7 @@
             <div class="app-modal-header">
                 <div>
                     <h3 id="mentorAssistanceTitle">Request a Mentor</h3>
-                    <p>Tell Admin what kind of mentor support you need.</p>
+                    <p>Can't find a mentor that matches your needs? Fill out this form and the admin will help you find the right mentor match.</p>
                 </div>
                 <button type="button" class="icon-button" onclick="closeMentorAssistance()" aria-label="Close">x</button>
             </div>
@@ -589,20 +591,14 @@
                         </div>
                         <div class="form-group">
                             <label for="assistance_expertise">Mentor Specialization Needed</label>
-                            <select id="assistance_expertise" class="form-input" name="preferred_expertise" required>
+                            <select id="assistance_expertise" class="form-input" name="preferred_expertise" required onchange="toggleAssistanceSpecializationOther(this, 'assistance_specialization_other')">
                                 <option value="">Select specialization...</option>
-                                <option value="BSITBA">BSITBA (IT Business Analysis)</option>
-                                <option value="BSCS">BSCS (Computer Science)</option>
-                                <option value="Software Engineering">Software Engineering</option>
-                                <option value="Data Science">Data Science</option>
-                                <option value="Cybersecurity">Cybersecurity</option>
-                                <option value="Cloud Computing">Cloud Computing</option>
-                                <option value="Web Development">Web Development</option>
-                                <option value="Mobile Development">Mobile Development</option>
-                                <option value="UI/UX Design">UI/UX Design</option>
-                                <option value="Research">Research</option>
-                                <option value="Other">Other</option>
+                                {% for specialization in allSpecializations %}
+                                    <option value="{{ specialization.name }}">{{ specialization.name }}</option>
+                                {% endfor %}
+                                <option value="Other">Other (specify below)</option>
                             </select>
+                            <input type="text" id="assistance_specialization_other" class="form-input" name="preferred_expertise_other" placeholder="Please specify your specialization..." style="display:none; margin-top:0.5rem; width:100%; box-sizing:border-box;">
                         </div>
                     </div>
                     <div class="form-grid form-grid-2">
@@ -888,6 +884,16 @@
             modal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
         }
+
+        window.toggleAssistanceSpecializationOther = function(select, otherInputId) {
+            const otherInput = document.getElementById(otherInputId);
+            if (otherInput) {
+                otherInput.style.display = select.value === 'Other' ? 'block' : 'none';
+                if (select.value !== 'Other') {
+                    otherInput.value = '';
+                }
+            }
+        };
 
         if (!window.__mentoringGlobalListenersBound) {
             window.__mentoringGlobalListenersBound = true;

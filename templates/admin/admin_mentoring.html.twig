@@ -386,7 +386,7 @@
                     <div class="sa-assign-field"><label>Specialization</label>
                         <select name="expertise" class="sa-inp" id="rq-spec-{{ req.id }}">
                             <option value="">Select…</option>
-                            {% for spec in ['BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}<option value="{{ spec }}" {{ req.assignedMentorExpertise==spec?'selected':'' }}>{{ spec }}</option>{% endfor %}
+                            {% for specialization in allSpecializations %}<option value="{{ specialization.name }}" {{ req.assignedMentorExpertise==specialization.name?'selected':'' }}>{{ specialization.name }}</option>{% endfor %}
                         </select>
                     </div>
                 </div>
@@ -695,8 +695,8 @@ function auditFilter(){
                 <div class="sa-modal-field"><label>Specialization</label>
                     <select name="specialization" class="sa-modal-input" required>
                         <option value="">Select specialization…</option>
-                        {% for spec in ['Business Analytics','BSITBA','BSCS','Software Engineering','Data Science','Cybersecurity','Cloud Computing','Web Development','Mobile Development','UI/UX Design','Research','Other'] %}
-                        <option value="{{ spec }}">{{ spec }}</option>{% endfor %}
+                        {% for specialization in allSpecializations %}
+                        <option value="{{ specialization.name }}">{{ specialization.name }}</option>{% endfor %}
                     </select>
                 </div>
             </div>

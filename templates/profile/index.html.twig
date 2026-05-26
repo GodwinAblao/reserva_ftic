@@ -117,17 +117,9 @@
                     <label class="pf-label">Specialization</label>
                     <select class="pf-input" name="degree" disabled>
                         <option value="">Select specialization...</option>
-                        <option value="BSITBA" {{ app.user.degree == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
-                        <option value="BSCS" {{ app.user.degree == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
-                        <option value="Software Engineering" {{ app.user.degree == 'Software Engineering' ? 'selected' : '' }}>Software Engineering</option>
-                        <option value="Data Science" {{ app.user.degree == 'Data Science' ? 'selected' : '' }}>Data Science</option>
-                        <option value="Cybersecurity" {{ app.user.degree == 'Cybersecurity' ? 'selected' : '' }}>Cybersecurity</option>
-                        <option value="Cloud Computing" {{ app.user.degree == 'Cloud Computing' ? 'selected' : '' }}>Cloud Computing</option>
-                        <option value="Web Development" {{ app.user.degree == 'Web Development' ? 'selected' : '' }}>Web Development</option>
-                        <option value="Mobile Development" {{ app.user.degree == 'Mobile Development' ? 'selected' : '' }}>Mobile Development</option>
-                        <option value="UI/UX Design" {{ app.user.degree == 'UI/UX Design' ? 'selected' : '' }}>UI/UX Design</option>
-                        <option value="Research" {{ app.user.degree == 'Research' ? 'selected' : '' }}>Research</option>
-                        <option value="Other" {{ app.user.degree == 'Other' ? 'selected' : '' }}>Other</option>
+                        {% for specialization in specializations %}
+                            <option value="{{ specialization.name }}" {{ app.user.degree == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
                 <div class="pf-field">
@@ -207,17 +199,9 @@
                     <label class="pf-label">Specialization</label>
                     <select class="pf-input" name="specialization">
                         <option value="">Select specialization...</option>
-                        <option value="BSITBA" {{ mentorProfile.specialization == 'BSITBA' ? 'selected' : '' }}>BSITBA (IT Business Analysis)</option>
-                        <option value="BSCS" {{ mentorProfile.specialization == 'BSCS' ? 'selected' : '' }}>BSCS (Computer Science)</option>
-                        <option value="Software Engineering" {{ mentorProfile.specialization == 'Software Engineering' ? 'selected' : '' }}>Software Engineering</option>
-                        <option value="Data Science" {{ mentorProfile.specialization == 'Data Science' ? 'selected' : '' }}>Data Science</option>
-                        <option value="Cybersecurity" {{ mentorProfile.specialization == 'Cybersecurity' ? 'selected' : '' }}>Cybersecurity</option>
-                        <option value="Cloud Computing" {{ mentorProfile.specialization == 'Cloud Computing' ? 'selected' : '' }}>Cloud Computing</option>
-                        <option value="Web Development" {{ mentorProfile.specialization == 'Web Development' ? 'selected' : '' }}>Web Development</option>
-                        <option value="Mobile Development" {{ mentorProfile.specialization == 'Mobile Development' ? 'selected' : '' }}>Mobile Development</option>
-                        <option value="UI/UX Design" {{ mentorProfile.specialization == 'UI/UX Design' ? 'selected' : '' }}>UI/UX Design</option>
-                        <option value="Research" {{ mentorProfile.specialization == 'Research' ? 'selected' : '' }}>Research</option>
-                        <option value="Other" {{ mentorProfile.specialization == 'Other' ? 'selected' : '' }}>Other</option>
+                        {% for specialization in specializations %}
+                            <option value="{{ specialization.name }}" {{ mentorProfile.specialization == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
+                        {% endfor %}
                     </select>
                     <input type="text" name="specialization_other" class="pf-input" placeholder="Please specify your specialization..." value="{{ mentorProfile.specialization == 'Other' ? mentorProfile.specialization : '' }}" style="margin-top: 8px; {{ mentorProfile.specialization == 'Other' ? '' : 'display:none;' }}">
                 </div>
@@ -234,7 +218,7 @@
                 <div class="pf-field">
                     <label class="pf-label">Mentoring Days</label>
                     <div class="pf-checkbox-group" id="mentoring-days-group">
-                        {% set existingDays = mentorProfile.availabilityDay|split(',')|map(d => d|trim)|filter(d => d) %}
+                        {% set existingDays = mentorProfile.availabilityDays ?? [] %}
                         {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
                         <label class="pf-checkbox-label">
                             <input type="checkbox" name="availability_days[]" value="{{ day }}" class="pf-checkbox" {% if day in existingDays %}checked{% endif %}>
@@ -242,7 +226,6 @@
                         </label>
                         {% endfor %}
                     </div>
-                    <input type="hidden" name="availability_day" id="pf_availability_day" value="{{ mentorProfile.availabilityDay }}">
                 </div>
                 <div class="pf-field">
                     <label class="pf-label">Available Time — Start</label>
@@ -424,19 +407,6 @@
         specSelect.addEventListener('change', function() {
             specOtherInput.style.display = this.value === 'Other' ? 'block' : 'none';
             if (this.value !== 'Other') specOtherInput.value = '';
-        });
-    }
-
-    // ── Mentoring Days checkboxes sync ──
-    const dayCheckboxes = document.querySelectorAll('input[name="availability_days[]"]');
-    const dayHidden = document.getElementById('pf_availability_day');
-    if (dayCheckboxes.length && dayHidden) {
-        function updateSelectedDays() {
-            const checked = Array.from(dayCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
-            dayHidden.value = checked.join(', ');
-        }
-        dayCheckboxes.forEach(function(cb) {
-            cb.addEventListener('change', updateSelectedDays);
         });
     }
 })();

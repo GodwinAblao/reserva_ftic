@@ -108,30 +108,25 @@ class MentorProfile
     public function setEducation(?string $education): self { $this->education = $education; return $this; }
 
     public function getAvailabilityDays(): ?array {
-        // If availabilityDays array is set and not empty, return it
-        if ($this->availabilityDays !== null && !empty($this->availabilityDays)) {
-            return $this->availabilityDays;
-        }
-        // Otherwise, try to parse availabilityDay string into array
-        if ($this->availabilityDay !== null && $this->availabilityDay !== '') {
-            return array_map('trim', explode(',', $this->availabilityDay));
-        }
-        return [];
+        return $this->availabilityDays;
     }
     public function setAvailabilityDays(?array $availabilityDays): self { $this->availabilityDays = $availabilityDays; return $this; }
-    
-    public function getAvailabilityDay(): ?string { 
+
+    // Backward compatibility getter for availabilityDay (returns comma-separated string)
+    public function getAvailabilityDay(): ?string {
         $days = $this->getAvailabilityDays();
-        return $days[0] ?? null; 
+        if (empty($days)) {
+            return null;
+        }
+        return implode(', ', $days);
     }
-    public function setAvailabilityDay(?string $availabilityDay): self { 
+    public function setAvailabilityDay(?string $availabilityDay): self {
         if ($availabilityDay) {
-            // Split comma-separated days into array
             $this->availabilityDays = array_map('trim', explode(',', $availabilityDay));
         } else {
             $this->availabilityDays = null;
         }
-        return $this; 
+        return $this;
     }
 
     public function getAvailabilityStart(): ?string { return $this->availabilityStart; }

@@ -215,18 +215,9 @@
                         <label for="specialization">Specialization</label>
                         <select name="specialization" id="specialization">
                             <option value="">Select specialization...</option>
-                            <option value="Business Analytics">Business Analytics</option>
-                            <option value="BSITBA">BSITBA</option>
-                            <option value="BSCS">BSCS</option>
-                            <option value="Software Engineering">Software Engineering</option>
-                            <option value="Data Science">Data Science</option>
-                            <option value="Cybersecurity">Cybersecurity</option>
-                            <option value="Cloud Computing">Cloud Computing</option>
-                            <option value="Web Development">Web Development</option>
-                            <option value="Mobile Development">Mobile Development</option>
-                            <option value="UI/UX Design">UI/UX Design</option>
-                            <option value="Research">Research</option>
-                            <option value="Other">Other</option>
+                            {% for specialization in specializations %}
+                                <option value="{{ specialization.name }}">{{ specialization.name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>
