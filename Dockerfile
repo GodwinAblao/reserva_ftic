@@ -31,7 +31,9 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Copy application files
 COPY . .
 
-# Install PHP dependencies
+# Allow Composer plugins as root so symfony/flex registers symfony-cmd for post-install scripts
+ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV APP_ENV=prod
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Set proper permissions

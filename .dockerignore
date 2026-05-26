@@ -1,0 +1,11 @@
+.env.local
+.env.*.local
+.git
+.github
+var/cache/*
+var/log/*
+node_modules
+analytics/.venv
+analytics/__pycache__
+tests
+.phpunit.cache
