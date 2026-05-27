@@ -1030,7 +1030,7 @@ $validUntil = $request->request->get('valid_until');
             ]);
 
             $emailMessage = (new Email())
-                ->from('noreply@reserva-ftic.edu.ph')
+                ->from('noreply@fticreserva.website')
                 ->to($user->getEmail())
                 ->subject('New Custom Mentoring Request from ' . $studentName)
                 ->html($emailHtml);
@@ -1050,7 +1050,7 @@ $validUntil = $request->request->get('valid_until');
             ]);
             
             $studentEmailMessage = (new Email())
-                ->from('noreply@reserva-ftic.edu.ph')
+                ->from('noreply@fticreserva.website')
                 ->to($student->getEmail())
                 ->subject('Your Mentoring Request Has Been Sent')
                 ->html($studentEmailHtml);
@@ -1426,7 +1426,7 @@ $validUntil = $request->request->get('valid_until');
             ]);
 
             $emailMessage = (new Email())
-                ->from('noreply@reserva-ftic.edu.ph')
+                ->from('noreply@fticreserva.website')
                 ->to($student->getEmail())
                 ->subject($title)
                 ->html($emailHtml);
@@ -1600,7 +1600,7 @@ $validUntil = $request->request->get('valid_until');
     {
         try {
             $email = (new Email())
-                ->from('noreply@reserva-ftic.edu.ph')
+                ->from('noreply@fticreserva.website')
                 ->to($admin->getEmail())
                 ->subject('New Mentor Assistance Request')
                 ->html($this->renderView('emails/mentor_assistance_request.html.twig', [
@@ -1618,7 +1618,7 @@ $validUntil = $request->request->get('valid_until');
     {
         try {
             $email = (new Email())
-                ->from('noreply@reserva-ftic.edu.ph')
+                ->from('noreply@fticreserva.website')
                 ->to($student->getEmail())
                 ->subject('Mentor Details for Your Request')
                 ->html($this->renderView('emails/mentor_assistance_response.html.twig', [

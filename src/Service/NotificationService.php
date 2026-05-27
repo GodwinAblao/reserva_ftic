@@ -141,7 +141,7 @@ class NotificationService
         ]);
 
         $email = (new Email())
-            ->from(new Address('noreply@reserva-ftic.com', 'Reserva FTIC'))
+            ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
             ->to(new Address($email, $user->getFirstName() . ' ' . $user->getLastName()))
             ->subject($subject)
             ->html($emailBody);
