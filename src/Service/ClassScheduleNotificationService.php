@@ -154,7 +154,7 @@ class ClassScheduleNotificationService
     private function sendEmail(string $to, ClassSchedule $schedule, string $message): void
     {
         $email = (new TemplatedEmail())
-            ->from(new Address('hurstdale101@gmail.com', 'Reserva FTIC'))
+            ->from(new Address('onboarding@resend.dev', 'Reserva FTIC'))
             ->to($to)
             ->subject('Class schedule update — ' . $schedule->getCourseCode())
             ->htmlTemplate('email/class_schedule_notify.html.twig')
