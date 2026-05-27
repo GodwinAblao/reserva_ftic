@@ -197,7 +197,7 @@ class ReservationMailer
             ]);
 
             $email = (new Email())
-                ->from(new Address('onboarding@resend.dev', 'Reserva FTIC'))
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->replyTo('hurstdale101@gmail.com')
                 ->to($to)
                 ->subject($subjects[$status] ?? 'Reservation Update – Reserva FTIC')

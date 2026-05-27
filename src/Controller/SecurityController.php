@@ -178,7 +178,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $emailSent = false;
                 try {
                     $verificationEmail = (new Email())
-                        ->from(new Address('onboarding@resend.dev', 'Reserva FTIC'))
+                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                         ->replyTo('hurstdale101@gmail.com')
                         ->to($pendingData['email'])
                         ->subject('Reserva FTIC - Verify Your Registration')
@@ -369,7 +369,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
                 try {
                     $verificationEmail = (new Email())
-                        ->from(new Address('onboarding@resend.dev', 'Reserva FTIC'))
+                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                         ->replyTo('hurstdale101@gmail.com')
                         ->to($pendingData['email'])
                         ->subject('Reserva FTIC - New Verification Code')
@@ -419,7 +419,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
                     try {
                         $verificationEmail = (new Email())
-                            ->from(new Address('onboarding@resend.dev', 'Reserva FTIC'))
+                            ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                             ->replyTo('hurstdale101@gmail.com')
                             ->to($user->getEmail())
                             ->subject('Reserva FTIC - New Verification Code')
@@ -511,7 +511,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
                 try {
                     $emailMessage = (new Email())
-                        ->from(new Address('onboarding@resend.dev', 'Reserva FTIC'))
+                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                         ->to($email)
                         ->subject('Reserva FTIC Password Reset OTP')
                         ->html($this->renderView('email/password_reset_otp.html.twig', [

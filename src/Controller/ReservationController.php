@@ -551,7 +551,7 @@ private function notifyAdminNewReservation(Reservation $reservation, MailerInter
         // 1. Send email notification to admin
         try {
             $email = (new Email())
-                ->from('Reserva FTIC <onboarding@resend.dev>')
+                ->from('Reserva FTIC <noreply@fticreserva.website>')
                 ->to('admin@reserva-ftic.edu.ph')
                 ->subject('New Facility Reservation Request')
                 ->html($this->renderView('email/new_reservation.html.twig', [
