@@ -11,8 +11,6 @@ use App\Entity\MentoringAppointment;
 use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\ReservationRepository;
-use App\Repository\ClassScheduleNotificationLogRepository;
-use App\Repository\ReservationStatusLogRepository;
 use App\Repository\SpecializationRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleNotificationService;
@@ -215,8 +213,6 @@ class AdminRoleController extends AbstractController
     #[Route('/reservation-monitoring', name: 'admin_role_reservation_monitoring', methods: ['GET'])]
     public function reservationMonitoring(
         EntityManagerInterface $em,
-        ReservationStatusLogRepository $auditRepo,
-        ClassScheduleNotificationLogRepository $classNotifyAuditRepo,
     ): Response {
         $today = new \DateTime('today');
         $tomorrow = new \DateTime('tomorrow');
@@ -233,8 +229,6 @@ class AdminRoleController extends AbstractController
             'reservations' => $todayReservations,
             'statusCounts' => $this->reservationStatusCountsToday($em),
             'facilityCounts' => $this->facilityReservationCountsToday($em),
-            'statusAuditLogs' => $auditRepo->findRecent(30),
-            'classScheduleNotifyLogs' => $classNotifyAuditRepo->findRecent(30),
         ]);
     }
 
@@ -480,32 +474,6 @@ class AdminRoleController extends AbstractController
         return $this->json(['success' => true, 'message' => 'Status updated to ' . $newStatus . '.']);
     }
 
-    #[Route('/api/reservation-audit', name: 'admin_role_api_reservation_audit', methods: ['GET'])]
-    public function apiReservationAudit(ReservationStatusLogRepository $auditRepo): JsonResponse
-    {
-        $logs = array_map(static function ($log) {
-            $reservation = $log->getReservation();
-            $facility = $reservation?->getFacility();
-            $user = $log->getChangedBy();
-
-            return [
-                'changedAt' => $log->getChangedAt()->format('M d, Y H:i'),
-                'actorRole' => $log->getActorRoleLabel(),
-                'actorEmail' => $user?->getEmail() ?? '',
-                'facility' => $facility?->getName() ?? '',
-                'requester' => $reservation?->getName() ?? '',
-                'previousStatus' => $log->getPreviousStatus(),
-                'newStatus' => $log->getNewStatus(),
-                'action' => $log->getAction(),
-                'note' => $log->getNote(),
-            ];
-        }, $auditRepo->findRecent(50));
-
-        $response = $this->json(['logs' => $logs]);
-        $response->headers->set('Cache-Control', 'private, no-store');
-
-        return $response;
-    }
 
     #[Route('/api/reservation-monitoring', name: 'admin_role_api_reservation_monitoring', methods: ['GET'])]
     public function apiReservationMonitoring(EntityManagerInterface $em): JsonResponse
