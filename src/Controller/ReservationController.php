@@ -186,7 +186,11 @@ public function reserve(
         $userName = '';
         if ($user instanceof User) {
             $userEmail = $user->getEmail();
-            $userName = $user->getFirstName() ?? $user->getEmail();
+            $userName = trim(implode(' ', array_filter([
+                $user->getFirstName(),
+                $user->getMiddleName(),
+                $user->getLastName(),
+            ]))) ?: $user->getEmail();
         }
 
         return $this->render('reservation/reserve.html.twig', [
