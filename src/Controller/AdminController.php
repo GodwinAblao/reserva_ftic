@@ -13,7 +13,6 @@ use App\Entity\MentoringAuditLog;
 use App\Repository\MentoringAuditLogRepository;
 use App\Entity\Reservation;
 use App\Entity\User;
-use App\Repository\ReservationStatusLogRepository;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -284,8 +283,6 @@ class AdminController extends AbstractController
     #[Route('/reservation-monitoring', name: 'admin_reservation_monitoring', methods: ['GET'])]
     public function reservationMonitoring(
         EntityManagerInterface $em,
-        ReservationStatusLogRepository $auditRepo,
-        \App\Repository\ClassScheduleNotificationLogRepository $classNotifyAuditRepo,
     ): Response {
         if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->redirectToRoute('admin_role_reservation_monitoring');
@@ -322,8 +319,6 @@ class AdminController extends AbstractController
             'reservations' => $todayReservations,
             'statusCounts' => $statusCounts,
             'facilityCounts' => $facilityCounts,
-            'statusAuditLogs' => $auditRepo->findRecent(30),
-            'classScheduleNotifyLogs' => $classNotifyAuditRepo->findRecent(30),
         ]);
     }
 
