@@ -11,7 +11,7 @@
 <div class="fv-page">
 
     <div class="fv-back-bar">
-        <a href="{{ path('app_facility_index') }}" class="fv-back-btn">
+        <a href="{{ is_granted('ROLE_SUPER_ADMIN') ? path('app_facility_management') : path('app_facility_index') }}" class="fv-back-btn">
             ← Back to Facilities
         </a>
     </div>
