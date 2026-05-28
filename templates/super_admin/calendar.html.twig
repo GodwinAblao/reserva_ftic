@@ -393,7 +393,7 @@
 
         {% if calendar_full_mode %}
         <form id="modifyScheduleForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
-            <h3>Schedule Managementt</h3>
+            <h3>Schedule Management</h3>
             <input type="hidden" name="_token" id="modifyFormToken" value="{{ csrf_token('manual_schedule_block') }}">
             <input type="hidden" id="modifyBlockId" name="block_id" value="">
             <input type="hidden" id="modifyClassScheduleId" name="class_schedule_id" value="">
