@@ -419,17 +419,19 @@
                 <input type="date" name="date" id="modifyScheduleDate" required class="sa-import-field">
                 <select name="start_time" id="modifyStartTime" required class="sa-import-field">
                     <option value="">Select Start Time</option>
+                    <option value="07:00" selected>7:00 AM</option>
                     {% for hour in 7..18 %}
-                        <option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>
+                        {% if hour != 7 %}<option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>{% endif %}
                         <option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>
                     {% endfor %}
                     <option value="19:00">7:00 PM</option>
                 </select>
                 <select name="end_time" id="modifyEndTime" required class="sa-import-field">
                     <option value="">Select End Time</option>
+                    <option value="08:00" selected>8:00 AM</option>
                     {% for hour in 7..18 %}
-                        <option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>
-                        <option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>
+                        {% if hour != 8 %}<option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>{% endif %}
+                        {% if hour != 8 %}<option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>{% endif %}
                     {% endfor %}
                     <option value="19:00">7:00 PM</option>
                     <option value="20:00">8:00 PM</option>
