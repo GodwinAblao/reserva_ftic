@@ -1,6 +1,43 @@
 import './stimulus_bootstrap.js';
 import './styles/app.css';
 
+/* ── Global: Reservation detail modal (used by both admin & user sidebars) ── */
+window.showResvDetail = function(r) {
+    const SC = {
+        Pending:   ['#fef3c7','#92400e'],
+        Approved:  ['#dcfce7','#166534'],
+        Rejected:  ['#fee2e2','#991b1b'],
+        Cancelled: ['#f3f4f6','#6b7280'],
+        Canceled:  ['#f3f4f6','#6b7280'],
+        _:         ['#e0f2fe','#075985'],
+    };
+    const esc = s => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+    const [bg, tc] = SC[r.status] ?? SC._;
+    let modal = document.getElementById('_resvDetailModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = '_resvDetailModal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);';
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<div style="background:#fff;border-radius:16px;padding:28px 24px;min-width:290px;max-width:380px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
+        <button onclick="document.getElementById('_resvDetailModal').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:22px;cursor:pointer;color:#666;line-height:1;">&times;</button>
+        <div style="font-size:16px;font-weight:700;color:#0d9b00;margin-bottom:4px;">${esc(r.facilityName)}</div>
+        <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${tc};margin-bottom:16px;">${esc(r.status)}</span>
+        <div style="display:grid;gap:11px;font-size:13px;color:#374151;">
+            ${r.userName  ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">REQUESTER</span>${esc(r.userName)}</div>` : ''}
+            ${r.eventName ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">EVENT NAME</span>${esc(r.eventName)}</div>` : ''}
+            ${r.email     ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">EMAIL</span>${esc(r.email)}</div>` : ''}
+            ${r.contact   ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">CONTACT</span>${esc(r.contact)}</div>` : ''}
+            <div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">DATE &amp; TIME</span>${esc(r.date)}${r.time ? ', ' + esc(r.time) : ''}${r.endTime ? ' – ' + esc(r.endTime) : ''}</div>
+            ${r.capacity  ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">ATTENDEES</span>${esc(String(r.capacity))} people</div>` : ''}
+            ${r.purpose   ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">EVENT OBJECTIVE</span>${esc(r.purpose)}</div>` : ''}
+        </div>
+    </div>`;
+    modal.style.display = 'flex';
+};
+
 /* ═══════════════════════════════════════════════════════════════
    RESERVA FTIC  —  Global UX + Performance Layer
    ═══════════════════════════════════════════════════════════════
@@ -246,7 +283,7 @@ const NavProgress = (() => {
     /* ── card builders ── */
     function buildResvCard(r) {
         const [bg, tc] = SC[r.status] ?? SC._;
-        return `<div class="admin-notif-card">`
+        return `<div class="admin-notif-card" style="cursor:pointer;" data-resv='${JSON.stringify(r).replace(/'/g,"&#39;")}' onclick="window.showResvDetail(JSON.parse(this.dataset.resv))">`
             + `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px">`
             + `<div class="admin-notif-card-title" style="flex:1;min-width:0">${esc(r.facilityName||'Facility')}</div>`
             + `<span class="rp-status-badge" style="--bg:${bg};--tc:${tc}">${esc(r.status||'')}</span>`
@@ -649,31 +686,6 @@ const NavProgress = (() => {
             + `</div>`
             + `<div class="admin-notif-card-desc">${esc(r.date)}${r.time ? ' at ' + esc(r.time) : ''}</div>`
             + `</div>`;
-    }
-
-    window.showResvDetail = function showResvDetail(r) {
-        let modal = document.getElementById('_resvDetailModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = '_resvDetailModal';
-            modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);';
-            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-            document.body.appendChild(modal);
-        }
-        const [bg, tc] = SC[r.status] ?? SC._;
-        modal.innerHTML = `<div style="background:#fff;border-radius:16px;padding:28px 24px;min-width:280px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
-            <button onclick="document.getElementById('_resvDetailModal').remove()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#666;">&times;</button>
-            <div style="font-size:15px;font-weight:700;color:#0d9b00;margin-bottom:4px;">${esc(r.facilityName)}</div>
-            <span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${bg};color:${tc};margin-bottom:14px;">${esc(r.status)}</span>
-            <div style="display:grid;gap:10px;font-size:13px;color:#374151;">
-                ${r.eventName ? `<div><span style="color:#9ca3af;font-size:11px;display:block;">Event</span>${esc(r.eventName)}</div>` : ''}
-                <div><span style="color:#9ca3af;font-size:11px;display:block;">Date</span>${esc(r.date)}</div>
-                <div><span style="color:#9ca3af;font-size:11px;display:block;">Time</span>${esc(r.time)}${r.endTime ? ' – ' + esc(r.endTime) : ''}</div>
-                ${r.capacity ? `<div><span style="color:#9ca3af;font-size:11px;display:block;">Participants</span>${esc(String(r.capacity))} people</div>` : ''}
-                ${r.purpose ? `<div><span style="color:#9ca3af;font-size:11px;display:block;">Objective</span>${esc(r.purpose)}</div>` : ''}
-            </div>
-        </div>`;
-        modal.style.display = 'flex';
     }
 
     function buildMentorshipCard(m) {

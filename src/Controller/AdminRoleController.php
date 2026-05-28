@@ -124,7 +124,11 @@ class AdminRoleController extends AbstractController
         $conn = $em->getConnection();
         $rows = $conn->executeQuery(
             "SELECT r.name AS \"userName\", f.name AS \"facilityName\",
-                    r.reservation_date AS \"date\", r.reservation_start_time AS \"time\", r.status
+                    r.reservation_date AS \"date\",
+                    r.reservation_start_time AS \"time\",
+                    r.reservation_end_time AS \"endTime\",
+                    r.event_name AS \"eventName\",
+                    r.email, r.contact, r.capacity, r.purpose, r.status
              FROM reservation r
              INNER JOIN facility f ON r.facility_id = f.id
              WHERE r.status != 'Suggested'
@@ -137,7 +141,13 @@ class AdminRoleController extends AbstractController
                     'facilityName' => $r['facilityName'] ?? ($r['facilityname'] ?? 'Unknown'),
                     'userName'     => $r['userName'] ?? ($r['username'] ?? ''),
                     'date'         => $r['date'] ? date('M j, Y', strtotime($r['date'])) : '',
-                    'time'         => $r['time'] ? substr($r['time'], 0, 5) : '',
+                    'time'         => $r['time'] ? date('g:i A', strtotime($r['time'])) : '',
+                    'endTime'      => !empty($r['endTime']) ? date('g:i A', strtotime($r['endTime'])) : '',
+                    'eventName'    => $r['eventName'] ?? ($r['eventname'] ?? ''),
+                    'email'        => $r['email'] ?? '',
+                    'contact'      => $r['contact'] ?? '',
+                    'capacity'     => $r['capacity'] ?? '',
+                    'purpose'      => $r['purpose'] ?? '',
                     'status'       => $r['status'] ?? '',
                 ];
             }, $rows),
