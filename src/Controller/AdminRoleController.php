@@ -126,7 +126,7 @@ class AdminRoleController extends AbstractController
             'SELECT r.name AS userName, f.name AS facilityName,
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r
-             LEFT JOIN facility f ON r.facility_id = f.id
+             INNER JOIN facility f ON r.facility_id = f.id
              WHERE r.status NOT IN (:statuses)
              ORDER BY r.created_at DESC LIMIT 8',
             ['statuses' => ['Suggested']],
