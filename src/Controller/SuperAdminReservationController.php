@@ -499,7 +499,6 @@ class SuperAdminReservationController extends AbstractController
         $schedule->setScheduleDate($date);
         $schedule->setStartTime($start);
         $schedule->setEndTime($end);
-        $schedule->setUpdatedAt(new \DateTime());
 
         $courseCode = trim((string) $request->request->get('course_code', $schedule->getCourseCode()));
         if ($courseCode !== '') {
