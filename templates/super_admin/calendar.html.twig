@@ -455,7 +455,7 @@
                 </div>
             </div>
             
-            <div id="blockFields" class="sa-import-mini-grid" style="display:none;">
+            <div id="blockFields" class="sa-import-mini-grid" style="display:grid;">
                 <div class="sa-import-field">
                     <label>Block Type</label>
                     <select name="block_type" id="modifyBlockType">
@@ -466,6 +466,10 @@
                 <div class="sa-import-field">
                     <label>Block Reason</label>
                     <input type="text" name="block_reason" id="modifyBlockReason" placeholder="Reason for blocking">
+                </div>
+                <div class="sa-import-field" style="grid-column:span 2;">
+                    <label>Title / Label</label>
+                    <input type="text" name="title" id="modifyBlockTitle" placeholder="e.g. Room Unavailable, Under Repair">
                 </div>
             </div>
             
@@ -1359,6 +1363,8 @@
         document.getElementById('modifyClassSummary').style.display = 'none';
         document.getElementById('modifyFields').style.display = 'none';
         document.getElementById('blockFields').style.display = 'grid';
+        document.getElementById('modifyBlockTitle').value = '';
+        document.getElementById('modifyBlockReason').value = '';
         document.getElementById('modifySubmit').textContent = 'Submit';
         document.getElementById('modifyCancelEdit').style.display = 'none';
         // Hide action type dropdown when no class is selected
@@ -1464,6 +1470,9 @@
                 messageBox.style.display = 'block';
                 resetModifyScheduleForm(false);
                 calendarEventsCache.clear();
+                // Navigate to the block/schedule date so user can see it
+                const savedDate = result.block?.reservationDate || result.schedule?.reservationDate;
+                if (savedDate) { currentDate = parseDateOnly(savedDate); }
                 await renderCalendar(true);
             } else {
                 const errorMsg = result.message || 'Failed to update schedule';
@@ -2051,8 +2060,9 @@
             ' data-status-csrf="' + escapeHtml(event.statusCsrfToken || '') + '">' +
             '<div class="event-title">' + safeFacility + '</div>' +
             '<div class="event-requester">' + safeName + '</div>' +
+            (itemType === 'block' && safePurpose ? '<div class="event-requester" style="font-style:italic;opacity:0.8;">' + safePurpose + '</div>' : '') +
             '<div class="event-time">' + timeDisplay + '</div>' +
-            '<span class="event-status ' + status + '">' + safeStatus + '</span>' +
+            '<span class="event-status ' + status + '">' + (itemType === 'block' ? '🚫 ' : '') + safeStatus + '</span>' +
             '</div>';
     }
 
