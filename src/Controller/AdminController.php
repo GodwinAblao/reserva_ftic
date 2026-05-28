@@ -673,13 +673,12 @@ class AdminController extends AbstractController
     {
         $conn = $em->getConnection();
         $rows = $conn->executeQuery(
-            'SELECT r.name AS userName, f.name AS facilityName,
+            "SELECT r.name AS userName, f.name AS facilityName,
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r
              INNER JOIN facility f ON r.facility_id = f.id
-             WHERE r.status != :suggestedStatus
-             ORDER BY r.created_at DESC LIMIT 8',
-            ['suggestedStatus' => 'Suggested']
+             WHERE r.status != 'Suggested'
+             ORDER BY r.created_at DESC LIMIT 8"
         )->fetchAllAssociative();
 
         return [
@@ -746,13 +745,11 @@ class AdminController extends AbstractController
         $resTotal = (int) array_sum($resCounts);
 
         $recentRaw = $conn->executeQuery(
-            'SELECT r.name AS userName, f.name AS facilityName,
+            "SELECT r.name AS userName, f.name AS facilityName,
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r INNER JOIN facility f ON r.facility_id = f.id
-             WHERE r.status NOT IN (:statuses)
-             ORDER BY r.created_at DESC LIMIT 8',
-            ['statuses' => ['Suggested']],
-            ['statuses' => \Doctrine\DBAL\ArrayParameterType::STRING]
+             WHERE r.status != 'Suggested'
+             ORDER BY r.created_at DESC LIMIT 8"
         )->fetchAllAssociative();
 
         return [
