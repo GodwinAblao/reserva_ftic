@@ -125,6 +125,14 @@
                             <p>{{ reservation.name }}</p>
                         </div>
                         <div class="sa-detail-col">
+                            <label>Email</label>
+                            <p>{{ reservation.email }}</p>
+                        </div>
+                        <div class="sa-detail-col">
+                            <label>Contact</label>
+                            <p>{{ reservation.contact ?: '—' }}</p>
+                        </div>
+                        <div class="sa-detail-col">
                             <label>Date &amp; Time</label>
                             <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} – {{ reservation.reservationEndTime|date('h:i A') }}</p>
                         </div>
@@ -132,6 +140,18 @@
                             <label>Attendees</label>
                             <p>{{ reservation.capacity }} / {{ reservation.facility.capacity }}</p>
                         </div>
+                        {% if reservation.eventName %}
+                            <div class="sa-detail-col">
+                                <label>Event Name</label>
+                                <p>{{ reservation.eventName }}</p>
+                            </div>
+                        {% endif %}
+                        {% if reservation.purpose %}
+                            <div class="sa-detail-col full-width">
+                                <label>Event Objectives</label>
+                                <p>{{ reservation.purpose }}</p>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}
@@ -165,9 +185,33 @@
                             <p>{{ reservation.name }}</p>
                         </div>
                         <div class="sa-detail-col">
+                            <label>Email</label>
+                            <p>{{ reservation.email }}</p>
+                        </div>
+                        <div class="sa-detail-col">
+                            <label>Contact</label>
+                            <p>{{ reservation.contact ?: '—' }}</p>
+                        </div>
+                        <div class="sa-detail-col">
                             <label>Date &amp; Time</label>
                             <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} – {{ reservation.reservationEndTime|date('h:i A') }}</p>
                         </div>
+                        <div class="sa-detail-col">
+                            <label>Attendees</label>
+                            <p>{{ reservation.capacity }} / {{ reservation.facility.capacity }}</p>
+                        </div>
+                        {% if reservation.eventName %}
+                            <div class="sa-detail-col">
+                                <label>Event Name</label>
+                                <p>{{ reservation.eventName }}</p>
+                            </div>
+                        {% endif %}
+                        {% if reservation.purpose %}
+                            <div class="sa-detail-col full-width">
+                                <label>Event Objectives</label>
+                                <p>{{ reservation.purpose }}</p>
+                            </div>
+                        {% endif %}
                         {% if reservation.rejectionReason %}
                             <div class="sa-detail-col full-width">
                                 <label>Rejection Reason</label>
