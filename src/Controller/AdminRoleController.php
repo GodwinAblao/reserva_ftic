@@ -720,7 +720,7 @@ class AdminRoleController extends AbstractController
         $appointmentRepo = $em->getRepository(MentoringAppointment::class);
 
         $recentRaw = $reservationRepo->createQueryBuilder('r')
-            ->leftJoin('r.facility', 'f')
+            ->innerJoin('r.facility', 'f')
             ->addSelect('f')
             ->where('r.status != :suggestedStatus')
             ->setParameter('suggestedStatus', 'Suggested')
@@ -739,16 +739,20 @@ class AdminRoleController extends AbstractController
             ];
         }, $recentRaw);
 
+        $excludeSuggested = fn($qb) => $qb->where('r.status != :s')->setParameter('s', 'Suggested')->getQuery()->getSingleScalarResult();
+
         return [
             'reservations' => [
-                'total' => $reservationRepo->count([]),
+                'total' => (int) $excludeSuggested($reservationRepo->createQueryBuilder('r')->select('COUNT(r.id)')),
                 'approved' => $reservationRepo->count(['status' => 'Approved']),
                 'pending' => $reservationRepo->count(['status' => 'Pending']),
                 'rejected' => $reservationRepo->count(['status' => 'Rejected']),
                 'today' => $reservationRepo->createQueryBuilder('r')
                     ->select('COUNT(r.id)')
                     ->where('r.reservationDate >= :today')
+                    ->andWhere('r.status != :sug')
                     ->setParameter('today', new \DateTime('today'))
+                    ->setParameter('sug', 'Suggested')
                     ->getQuery()
                     ->getSingleScalarResult(),
             ],

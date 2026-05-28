@@ -676,7 +676,7 @@ class AdminController extends AbstractController
             'SELECT r.name AS userName, f.name AS facilityName,
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
              FROM reservation r
-             LEFT JOIN facility f ON r.facility_id = f.id
+             INNER JOIN facility f ON r.facility_id = f.id
              WHERE r.status != :suggestedStatus
              ORDER BY r.created_at DESC LIMIT 8',
             ['suggestedStatus' => 'Suggested']
@@ -748,10 +748,10 @@ class AdminController extends AbstractController
         $recentRaw = $conn->executeQuery(
             'SELECT r.name AS userName, f.name AS facilityName,
                     r.reservation_date AS date, r.reservation_start_time AS time, r.status
-             FROM reservation r LEFT JOIN facility f ON r.facility_id = f.id
+             FROM reservation r INNER JOIN facility f ON r.facility_id = f.id
              WHERE r.status NOT IN (:statuses)
              ORDER BY r.created_at DESC LIMIT 8',
-            ['statuses' => []],
+            ['statuses' => ['Suggested']],
             ['statuses' => \Doctrine\DBAL\ArrayParameterType::STRING]
         )->fetchAllAssociative();
 
