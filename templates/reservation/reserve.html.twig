@@ -1132,14 +1132,24 @@
         }
     }
 
+    let isSubmitting = false;
+
     async function submitReservation(e) {
         e.preventDefault();
+
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        const submitBtn = document.querySelector('#reservationForm button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
 
         await refreshAvailabilityData(false);
 
         // Validate selections
         if (!selectedDate || !selectedStartTime || !selectedEndTime) {
             showError('Please select a start and end time');
+            isSubmitting = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Reservation'; }
             return;
         }
 
@@ -1159,6 +1169,8 @@
         if (isSelectedRangeUnavailable()) {
             showError('This time range is unavailable because it overlaps with a reservation, pending request, class schedule, or manual block.');
             renderTimeSlots(selectedDate);
+            isSubmitting = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Reservation'; }
             return;
         }
 
@@ -1167,6 +1179,8 @@
         const maxCapacity = {{ facility.capacity }};
         if (capacity > maxCapacity) {
             showError(`Capacity cannot exceed facility maximum of ${maxCapacity}`);
+            isSubmitting = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Reservation'; }
             return;
         }
 
@@ -1224,6 +1238,8 @@
         .catch(error => {
             console.error('Reservation submit failed:', error);
             showError(error.message);
+            isSubmitting = false;
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Reservation'; }
         });
     }
 

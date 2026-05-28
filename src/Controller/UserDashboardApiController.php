@@ -112,12 +112,16 @@ class UserDashboardApiController extends AbstractController
 
         $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
 
-        // ── Recent reservation requests (this user only) ──
-        $reservations = $em->getRepository(Reservation::class)->findBy(
-            ['user' => $user],
-            ['updatedAt' => 'DESC'],
-            8
-        );
+        // ── Recent reservation requests (this user only, excluding Suggested) ──
+        $reservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->where('r.user = :user')
+            ->andWhere('r.status != :suggested')
+            ->setParameter('user', $user)
+            ->setParameter('suggested', 'Suggested')
+            ->orderBy('r.updatedAt', 'DESC')
+            ->setMaxResults(8)
+            ->getQuery()
+            ->getResult();
         $recentReservations = array_map(static fn($r) => [
             'facilityName' => $r->getFacility()->getName(),
             'date'         => $r->getReservationDate()->format('M j, Y'),

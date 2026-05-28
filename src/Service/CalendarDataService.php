@@ -45,8 +45,10 @@ class CalendarDataService
                 ->select('r.id', 'r.name', 'r.eventName', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
                 ->innerJoin('r.facility', 'f')
                 ->where('r.reservationDate BETWEEN :start AND :end')
+                ->andWhere('r.status != :suggestedStatus')
                 ->setParameter('start', $startDate)
                 ->setParameter('end', $endDate)
+                ->setParameter('suggestedStatus', 'Suggested')
                 ->orderBy('r.reservationDate', 'ASC')
                 ->addOrderBy('r.reservationStartTime', 'ASC');
 
