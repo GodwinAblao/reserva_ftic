@@ -108,7 +108,7 @@
                             </div>
                         </div>
                         <div class="user-actions">
-                            <a href="{{ path('app_register') }}" class="btn btn-reserve">Reserve Now</a>
+                            <a href="{{ is_granted('IS_AUTHENTICATED_FULLY') ? path('app_dashboard') : path('app_login') }}" class="btn btn-reserve" data-turbo="false">Reserve Now</a>
                         </div>
                     </div>
                 </div>
@@ -260,12 +260,7 @@
                                         {% set facilityImages = facilityImages|merge([image.path]) %}
                                     {% endfor %}
                                 {% endif %}
-                                <a href="javascript:void(0)" class="btn-book-now btn-view-modal"
-                                   data-id="{{ facility.id }}"
-                                   data-name="{{ facility.name|e('html_attr') }}"
-                                   data-capacity="{{ facility.capacity }}"
-                                   data-description="{{ facility.description|e('html_attr') }}"
-                                   data-images="{{ facilityImages|json_encode|e('html_attr') }}">
+                                <a href="{{ is_granted('IS_AUTHENTICATED_FULLY') ? path('facility_reserve', {id: facility.id}) : path('app_login') }}" class="btn-book-now" data-turbo="false">
                                     Reserve now
                                 </a>
                             </div>
