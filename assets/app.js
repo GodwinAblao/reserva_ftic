@@ -679,12 +679,13 @@ const NavProgress = (() => {
 
     function buildResvCard(r) {
         const [bg, tc] = SC[r.status] ?? SC._;
+        const desc = (r.eventName ? esc(r.eventName) + ' · ' : '') + esc(r.date) + (r.time ? ' at ' + esc(r.time) : '');
         return `<div class="admin-notif-card" style="cursor:pointer;" data-resv='${JSON.stringify(r).replace(/'/g, "&#39;")}' onclick="window.showResvDetail(JSON.parse(this.dataset.resv))">`
             + `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:3px">`
             + `<div class="admin-notif-card-title" style="flex:1;min-width:0">${esc(r.facilityName)}</div>`
             + `<span class="rp-status-badge" style="--bg:${bg};--tc:${tc}">${esc(r.status)}</span>`
             + `</div>`
-            + `<div class="admin-notif-card-desc">${esc(r.date)}${r.time ? ' at ' + esc(r.time) : ''}</div>`
+            + `<div class="admin-notif-card-desc">${desc}</div>`
             + `</div>`;
     }
 
