@@ -203,7 +203,8 @@ class FacilityController extends AbstractController
     private function handleImageUpload(UploadedFile $file): ?string
     {
         try {
-            $filename = uniqid() . '.' . $file->guessExtension();
+            $ext = $file->guessExtension() ?? strtolower($file->getClientOriginalExtension()) ?: 'jpg';
+            $filename = uniqid() . '.' . $ext;
             $file->move($this->getParameter('kernel.project_dir') . '/public/uploads', $filename);
 
             return '/uploads/' . $filename;

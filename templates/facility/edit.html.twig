@@ -34,7 +34,8 @@
                         <button type="button" onclick="deleteMainImage({{ facility.id }})" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">Delete Image</button>
                     </div>
                 {% endif %}
-                <input type="file" id="image" name="image" accept="image/*">
+                <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+                <small style="color:#6b7280;">Accepted: JPEG, PNG, WebP (HEIC not supported by browsers)</small>
             </div>
 
             <div class="form-group">
@@ -49,7 +50,7 @@
                         <p style="margin: 0; color: #374151; font-weight: 500;">Click to add images</p>
                         <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">or drag and drop files here</p>
                     </div>
-                    <input type="file" id="images" name="images[]" accept="image/*" multiple style="display: none;">
+                    <input type="file" id="images" name="images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display: none;">
                 </div>
                 
                 <div id="selectedImagesPreview" style="display: none; margin-top: 1rem;">
