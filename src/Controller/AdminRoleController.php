@@ -123,8 +123,8 @@ class AdminRoleController extends AbstractController
     {
         $conn = $em->getConnection();
         $rows = $conn->executeQuery(
-            "SELECT r.name AS userName, f.name AS facilityName,
-                    r.reservation_date AS date, r.reservation_start_time AS time, r.status
+            "SELECT r.name AS \"userName\", f.name AS \"facilityName\",
+                    r.reservation_date AS \"date\", r.reservation_start_time AS \"time\", r.status
              FROM reservation r
              INNER JOIN facility f ON r.facility_id = f.id
              WHERE r.status != 'Suggested'
@@ -134,8 +134,8 @@ class AdminRoleController extends AbstractController
         $response = $this->json([
             'recentReservations' => array_map(static function ($r) {
                 return [
-                    'facilityName' => $r['facilityName'] ?? 'Unknown',
-                    'userName'     => $r['userName'] ?? '',
+                    'facilityName' => $r['facilityName'] ?? ($r['facilityname'] ?? 'Unknown'),
+                    'userName'     => $r['userName'] ?? ($r['username'] ?? ''),
                     'date'         => $r['date'] ? date('M j, Y', strtotime($r['date'])) : '',
                     'time'         => $r['time'] ? substr($r['time'], 0, 5) : '',
                     'status'       => $r['status'] ?? '',

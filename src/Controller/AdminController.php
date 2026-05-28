@@ -673,8 +673,8 @@ class AdminController extends AbstractController
     {
         $conn = $em->getConnection();
         $rows = $conn->executeQuery(
-            "SELECT r.name AS userName, f.name AS facilityName,
-                    r.reservation_date AS date, r.reservation_start_time AS time, r.status
+            "SELECT r.name AS \"userName\", f.name AS \"facilityName\",
+                    r.reservation_date AS \"date\", r.reservation_start_time AS \"time\", r.status
              FROM reservation r
              INNER JOIN facility f ON r.facility_id = f.id
              WHERE r.status != 'Suggested'
@@ -684,8 +684,8 @@ class AdminController extends AbstractController
         return [
             'recentReservations' => array_map(static function ($r) {
                 return [
-                    'facilityName' => $r['facilityName'] ?? 'Unknown',
-                    'userName'     => $r['userName'] ?? '',
+                    'facilityName' => $r['facilityName'] ?? ($r['facilityname'] ?? 'Unknown'),
+                    'userName'     => $r['userName'] ?? ($r['username'] ?? ''),
                     'date'         => $r['date']  ? (new \DateTime($r['date']))->format('M j, Y') : '',
                     'time'         => $r['time']  ? substr($r['time'], 0, 5) : '',
                     'status'       => $r['status'] ?? '',
