@@ -32,12 +32,16 @@ class UserDashboardApiController extends AbstractController
 
         $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
 
-        // Get reservations
-        $reservations = $em->getRepository(Reservation::class)->findBy(
-            ['user' => $user],
-            ['reservationDate' => 'DESC'],
-            10
-        );
+        // Get reservations (exclude Suggested — unconfirmed pending facility choice)
+        $reservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->where('r.user = :user')
+            ->andWhere('r.status != :suggested')
+            ->setParameter('user', $user)
+            ->setParameter('suggested', 'Suggested')
+            ->orderBy('r.reservationDate', 'DESC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
 
         // Get mentoring as student
         $mentoringAsStudent = $em->getRepository(MentoringAppointment::class)->findBy(

@@ -40,11 +40,15 @@ class DashboardController extends AbstractController
         $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
 
         // Load user dashboard data
-        $reservations = $em->getRepository(Reservation::class)->findBy(
-            ['user' => $user],
-            ['updatedAt' => 'DESC'],
-            6
-        );
+        $reservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->where('r.user = :user')
+            ->andWhere('r.status != :suggested')
+            ->setParameter('user', $user)
+            ->setParameter('suggested', 'Suggested')
+            ->orderBy('r.updatedAt', 'DESC')
+            ->setMaxResults(6)
+            ->getQuery()
+            ->getResult();
         
         $mentoringAsStudent = $em->getRepository(MentoringAppointment::class)->findBy(
             ['student' => $user],
@@ -100,7 +104,7 @@ class DashboardController extends AbstractController
 
         // Stats
         $stats = [
-            'totalReservations' => $em->getRepository(Reservation::class)->count(['user' => $user]),
+            'totalReservations' => (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')->select('COUNT(r.id)')->where('r.user = :u')->andWhere('r.status != :s')->setParameter('u', $user)->setParameter('s', 'Suggested')->getQuery()->getSingleScalarResult(),
             'pendingReservations' => $em->getRepository(Reservation::class)->count(['user' => $user, 'status' => 'Pending']),
             'approvedReservations' => $em->getRepository(Reservation::class)->count(['user' => $user, 'status' => 'Approved']),
             'mentoringSessions' => count($mentoringAsStudent) + count($mentoringAsMentor),
