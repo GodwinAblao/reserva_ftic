@@ -386,53 +386,6 @@
                 </a>
             </section>
 
-            <!-- Recent Reservation Summary -->
-            <section class="reservations-side-card reservations-info-card">
-                <div class="reservations-side-card-head">
-                    <h3>Recent Reservation</h3>
-                </div>
-                {% set allReservations = reservations['Approved']|merge(reservations['Pending']) %}
-                {% set recentReservation = allReservations|sort((a, b) => b.createdAt <=> a.createdAt)|first %}
-                {% if recentReservation %}
-                    <button type="button" class="recent-reservation-card recent-reservation-{{ recentReservation.status|lower }}" onclick="openRecentReservationModal()">
-                        <div class="recent-reservation-header">
-                            <span class="recent-reservation-facility">{{ recentReservation.facility.name }}</span>
-                            <span class="recent-reservation-status status-{{ recentReservation.status|lower }}">
-                                {% if recentReservation.status == 'Approved' %}✓{% elseif recentReservation.status == 'Pending' %}⏳{% endif %}
-                                {{ recentReservation.status }}
-                            </span>
-                        </div>
-                        <div class="recent-reservation-details">
-                            <div class="recent-reservation-detail">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2"/>
-                                    <line x1="16" y1="2" x2="16" y2="6"/>
-                                    <line x1="8" y1="2" x2="8" y2="6"/>
-                                    <line x1="3" y1="10" x2="21" y2="10"/>
-                                </svg>
-                                <span>{{ recentReservation.reservationDate|date('M d, Y') }}</span>
-                            </div>
-                            <div class="recent-reservation-detail">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                                <span>{{ recentReservation.reservationStartTime|date('h:i A') }} - {{ recentReservation.reservationEndTime|date('h:i A') }}</span>
-                            </div>
-                        </div>
-                        {% if recentReservation.status == 'Approved' %}
-                            <div class="recent-reservation-badge">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                                Ready for check-in
-                            </div>
-                        {% endif %}
-                    </button>
-                {% else %}
-                    <p class="no-reservations">You have no reservations yet. Book a facility to get started!</p>
-                {% endif %}
-            </section>
 
             <!-- Recent Reservation Modal -->
             {% if recentReservation %}

@@ -127,9 +127,14 @@ class UserDashboardApiController extends AbstractController
             ->getQuery()
             ->getResult();
         $recentReservations = array_map(static fn($r) => [
+            'id'           => $r->getId(),
             'facilityName' => $r->getFacility()->getName(),
             'date'         => $r->getReservationDate()->format('M j, Y'),
-            'time'         => $r->getReservationStartTime()->format('H:i'),
+            'time'         => $r->getReservationStartTime()->format('g:i A'),
+            'endTime'      => $r->getReservationEndTime()->format('g:i A'),
+            'eventName'    => $r->getEventName(),
+            'capacity'     => $r->getCapacity(),
+            'purpose'      => $r->getPurpose(),
             'status'       => $r->getStatus(),
         ], $reservations);
 
