@@ -1389,6 +1389,19 @@
         
         try {
             const formData = new FormData(form);
+            // If selects are disabled, they won't be included in FormData — add them manually
+            const facilitySelect = document.getElementById('modifyFacilitySelect');
+            if (facilitySelect && facilitySelect.disabled && facilitySelect.value) {
+                formData.set('facility', facilitySelect.value);
+            }
+            const startTimeSelect = document.getElementById('modifyStartTime');
+            if (startTimeSelect && startTimeSelect.disabled && startTimeSelect.value) {
+                formData.set('start_time', startTimeSelect.value);
+            }
+            const endTimeSelect = document.getElementById('modifyEndTime');
+            if (endTimeSelect && endTimeSelect.disabled && endTimeSelect.value) {
+                formData.set('end_time', endTimeSelect.value);
+            }
             const actionType = formData.get('action_type');
             const classScheduleId = formData.get('class_schedule_id');
             const editMode = formData.get('edit_mode');
