@@ -9,9 +9,7 @@ use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityScheduleBlockRepository;
 use App\Repository\ReservationRepository;
-use App\Repository\ReservationStatusLogRepository;
 use App\Repository\ClassScheduleRepository;
-use App\Repository\ClassScheduleNotificationLogRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleFacultyMatcher;
 use App\Service\ScheduleRevisionService;
@@ -34,26 +32,15 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/reservations', name: 'admin_reservations')]
     public function listReservations(
         ReservationRepository $reservationRepo,
-        ReservationStatusLogRepository $auditRepo,
-        ClassScheduleNotificationLogRepository $classNotifyAuditRepo,
     ): Response {
         $pending = $reservationRepo->findBy(['status' => 'Pending'], ['createdAt' => 'DESC']);
         $approved = $reservationRepo->findBy(['status' => 'Approved'], ['reservationDate' => 'DESC']);
         $rejected = $reservationRepo->findBy(['status' => 'Rejected'], ['reservationDate' => 'DESC']);
 
-        // Combine all audit logs into one variable for the template
-        $statusAuditLogs = array_merge(
-            $auditRepo->findBy(['newStatus' => 'Pending'], ['changedAt' => 'DESC']),
-            $auditRepo->findBy(['newStatus' => 'Approved'], ['changedAt' => 'DESC']),
-            $auditRepo->findBy(['newStatus' => 'Rejected'], ['changedAt' => 'DESC'])
-        );
-
         return $this->render('super_admin/reservations.html.twig', [
             'pending' => $pending,
             'approved' => $approved,
             'rejected' => $rejected,
-            'statusAuditLogs' => $statusAuditLogs,
-            'classNotifyAudit' => $classNotifyAuditRepo->findAll(),
         ]);
     }
 
