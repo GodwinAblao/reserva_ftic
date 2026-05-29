@@ -168,7 +168,7 @@ class SuperAdminReservationController extends AbstractController
             'calendar_import_delete_url' => $this->generateUrl('admin_calendar_import_delete'),
             'calendar_block_update_pattern' => str_replace('{id}', 'ID_PLACEHOLDER', $this->generateUrl('admin_calendar_block_update', ['id' => 'ID_PLACEHOLDER'])),
             'calendar_block_delete_pattern' => str_replace('{id}', 'ID_PLACEHOLDER', $this->generateUrl('admin_calendar_block_delete', ['id' => 'ID_PLACEHOLDER'])),
-            'calendar_notify_url_pattern' => str_replace('{id}', 'ID_PLACEHOLDER', $this->generateUrl('admin_class_schedule_notify', ['id' => 'ID_PLACEHOLDER'])),
+            'calendar_notify_url_pattern' => '/super-admin/class-schedule/{id}/notify',
             'calendar_class_schedule_update_pattern' => str_replace('{id}', 'ID_PLACEHOLDER', $this->generateUrl('admin_class_schedule_update', ['id' => 'ID_PLACEHOLDER'])),
             'calendar_class_schedule_delete_pattern' => str_replace('{id}', 'ID_PLACEHOLDER', $this->generateUrl('admin_class_schedule_delete', ['id' => 'ID_PLACEHOLDER'])),
             'calendar_class_schedule_available_url' => $this->generateUrl('admin_class_schedule_available_facilities'),
