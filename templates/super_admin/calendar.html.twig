@@ -738,6 +738,16 @@
     </div>
 </div>
 
+<!-- Notification Modal -->
+<div id="notificationModal" class="modal" style="display:none;">
+    <div class="modal-content" style="border-radius:16px; max-width:400px; text-align:center; padding:2rem;">
+        <div id="notificationIcon" style="font-size:3rem; margin-bottom:1rem;"></div>
+        <h3 id="notificationTitle" style="margin-bottom:0.75rem;"></h3>
+        <p id="notificationMessage" style="color:#6b7280; margin-bottom:1.5rem;"></p>
+        <button type="button" onclick="closeNotificationModal()" style="background:#0d9b00; color:white; padding:0.6rem 1.5rem; border:none; border-radius:8px; cursor:pointer; font-size:1rem;">OK</button>
+    </div>
+</div>
+
 <div id="revertScheduleModal" class="delete-schedule-modal">
     <div class="delete-schedule-dialog">
         <div class="delete-schedule-icon" style="color:#0d9b00; background:#dcfce7; border-color:#bbf7d0;">↺</div>
@@ -2465,9 +2475,35 @@
             }
             closeModal();
             setCalendarStatus(result.message, 'success', true);
+            showNotificationModal('Success', result.message, 'success');
         } catch (error) {
             setCalendarStatus(error.message || 'Notification failed.', 'error', false);
+            showNotificationModal('Error', error.message || 'Notification failed.', 'error');
         }
+    }
+
+    function showNotificationModal(title, message, type) {
+        const modal = document.getElementById('notificationModal');
+        const icon = document.getElementById('notificationIcon');
+        const titleEl = document.getElementById('notificationTitle');
+        const messageEl = document.getElementById('notificationMessage');
+
+        if (type === 'success') {
+            icon.textContent = '✓';
+            icon.style.color = '#0d9b00';
+        } else {
+            icon.textContent = '✕';
+            icon.style.color = '#dc2626';
+        }
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        modal.style.display = 'flex';
+    }
+
+    function closeNotificationModal() {
+        const modal = document.getElementById('notificationModal');
+        modal.style.display = 'none';
     }
 
     async function saveReservationStatusFromModal(data) {
