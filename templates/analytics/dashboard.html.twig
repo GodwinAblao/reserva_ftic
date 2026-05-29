@@ -42,7 +42,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script>
-const API = 'http://127.0.0.1:8002';
+const API = '/analytics/proxy';
 let charts = [];
 let currentFn = 'planning';
 let facilities = [];
@@ -68,7 +68,7 @@ function queryParams() {
 }
 
 function loadMeta() {
-    fetch(API + '/api/analytics/meta' + queryParams()).then(r => r.json()).then(meta => {
+    fetch(API + '/meta' + queryParams()).then(r => r.json()).then(meta => {
         facilities = meta.facilities || [];
         const sel = document.getElementById('facility-filter');
         const currentVal = sel.value;
@@ -121,7 +121,7 @@ async function loadAnalytics(fn) {
     box.innerHTML = '<div class="sa-loading">Loading ' + fn + '…</div>';
     destroyCharts();
     try {
-        const res = await fetch(API + '/api/analytics/' + fn + queryParams());
+        const res = await fetch(API + '/' + fn + queryParams());
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         updateBadge(data);

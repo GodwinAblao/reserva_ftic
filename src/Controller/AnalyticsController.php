@@ -8,6 +8,7 @@ use App\Entity\Facility;
 use App\Entity\Reservation;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -62,6 +63,30 @@ class AnalyticsController extends AbstractController
             'fastApiUrl' => 'http://127.0.0.1:8002',
             'localAnalytics' => $localAnalytics,
         ]);
+    }
+
+    #[Route('/proxy/{endpoint}', name: 'analytics_proxy', methods: ['GET'])]
+    public function proxy(string $endpoint, Request $request): Response
+    {
+        $queryParams = $request->query->all();
+        $queryString = http_build_query($queryParams);
+        $targetUrl = 'http://127.0.0.1:8002/api/analytics/' . $endpoint . ($queryString ? '?' . $queryString : '');
+
+        try {
+            $response = $this->httpClient->request('GET', $targetUrl, [
+                'timeout' => 2
+            ]);
+
+            if ($response->getStatusCode() === 200) {
+                return new Response($response->getContent(), 200, [
+                    'Content-Type' => 'application/json'
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Fall through to 502
+        }
+
+        return $this->json(['error' => 'FastAPI unavailable'], 502);
     }
 
     private function isFastApiAvailable(): bool
