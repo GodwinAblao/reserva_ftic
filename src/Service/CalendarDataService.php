@@ -46,9 +46,11 @@ class CalendarDataService
                 ->innerJoin('r.facility', 'f')
                 ->where('r.reservationDate BETWEEN :start AND :end')
                 ->andWhere('r.status != :suggestedStatus')
+                ->andWhere('r.status NOT IN (:excludedStatuses)')
                 ->setParameter('start', $startDate)
                 ->setParameter('end', $endDate)
                 ->setParameter('suggestedStatus', 'Suggested')
+                ->setParameter('excludedStatuses', ['Rejected', 'Cancelled'])
                 ->orderBy('r.reservationDate', 'ASC')
                 ->addOrderBy('r.reservationStartTime', 'ASC');
 
