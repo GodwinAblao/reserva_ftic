@@ -680,6 +680,7 @@
     @keyframes calFadeIn { from{opacity:0} to{opacity:1} }
     .modal-content { background:white; padding:2rem; border-radius:16px; max-width:600px; width:90%; max-height:90vh; overflow-y:auto; position:relative; animation:calSlideDown .28s; box-shadow:0 24px 60px rgba(12,30,20,.22); }
     @keyframes calSlideDown { from{transform:translateY(-40px);opacity:0} to{transform:translateY(0);opacity:1} }
+    #notificationModal.is-open .modal-content { margin:auto; transform:none; }
     .modal-close { position:absolute; right:1.25rem; top:1.25rem; font-size:1.75rem; font-weight:300; color:#9ca3af; cursor:pointer; transition:color .2s; background:none; border:none; line-height:1; }
     .modal-close:hover { color:#374151; }
     .modal-body { margin-bottom:1.25rem; }
