@@ -3,7 +3,7 @@
 
 # Install Python dependencies first
 cd analytics
-pip install -r requirements.txt
+pip install -r requirements.txt --break-system-packages
 
 # Start FastAPI with nohup to keep it running
 nohup python -m uvicorn app:app --host 0.0.0.0 --port 8002 > /tmp/fastapi.log 2>&1 &
