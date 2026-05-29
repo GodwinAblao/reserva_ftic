@@ -347,7 +347,7 @@
 <div class="sa-page-header">
     <div class="sa-page-header-left">
         <h2>Reservation Calendar</h2>
-        <p>{% if calendar_full_mode %}View and manage all facility reservations on the calendar{% else %}View reservations and update status (Pending, Approved, Rejected, Cancelled){% endif %}</p>
+        <p>{% if calendar_full_mode %}View and manage all facility reservations on the calendar{% else %}View reservations and update status (Pending, Approved){% endif %}</p>
     </div>
     <div class="sa-header-actions">
         <a href="{{ calendar_back_url|default(path('admin_reservations')) }}" class="sa-btn sa-btn-secondary">← Back</a>
@@ -508,8 +508,6 @@
                     <option value="">All Statuses</option>
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Cancelled">Cancelled</option>
                     <option value="Class Schedule">Class Schedule</option>
                     <option value="Blocked">Blocked</option>
                     <option value="Maintenance">Maintenance</option>
@@ -2181,7 +2179,7 @@
                     document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Blocked schedule (view only)</p>';
                 }
             } else {
-                const statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
+                const statuses = ['Pending', 'Approved'];
                 const options = statuses.map(s => `<option value="${s}" ${s === data.status ? 'selected' : ''}>${s}</option>`).join('');
                 document.getElementById('modalActions').innerHTML = `
                     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;">
