@@ -450,6 +450,7 @@ class SuperAdminReservationController extends AbstractController
         ClassScheduleFacultyMatcher $facultyMatcher,
         EntityManagerInterface $em,
         ScheduleRevisionService $scheduleRevision,
+        ClassScheduleNotificationService $notificationService,
     ): JsonResponse {
         // Skip CSRF validation for Super Admin operations
         // Super Admin has full privileges and doesn't need CSRF protection
@@ -495,6 +496,8 @@ class SuperAdminReservationController extends AbstractController
         $schedule->setSection($section !== '' ? $section : null);
         $facultyName = trim((string) $request->request->get('faculty_name', $schedule->getFacultyName() ?? ''));
         $schedule->setFacultyName($facultyName !== '' ? $facultyName : null);
+
+        $oldFacultyEmail = $schedule->getFacultyEmail();
         $facultyEmail = trim((string) $request->request->get('faculty_email', $schedule->getFacultyEmail() ?? ''));
         $schedule->setFacultyEmail($facultyEmail !== '' ? $facultyEmail : null);
         $schedule->setFacultyUser($facultyMatcher->resolveFacultyUser($schedule->getFacultyEmail()));
@@ -502,6 +505,15 @@ class SuperAdminReservationController extends AbstractController
         $em->flush();
 
         $message = 'Class schedule updated successfully.';
+        $notificationResult = null;
+
+        // Notify faculty if email was added or changed
+        if ($facultyEmail !== '' && $facultyEmail !== $oldFacultyEmail) {
+            $notificationResult = $notificationService->notifyFaculty($schedule);
+            $message = $notificationResult['success']
+                ? 'Class schedule updated and faculty notified.'
+                : 'Class schedule updated, but notification failed: ' . $notificationResult['message'];
+        }
 
         return $this->json([
             'success' => true,
