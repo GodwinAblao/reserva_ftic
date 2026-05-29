@@ -26,7 +26,6 @@
 <div class="sa-analytics-nav">
     <button class="sa-analytics-btn active analytics-btn" type="button" data-fn="planning">Planning</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="organizing">Organizing</button>
-    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="staffing">Staffing</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Leading</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="controlling">Controlling</button>
 </div>
@@ -112,12 +111,11 @@ function renderTab(fn, data, isFallback) {
     html += '<div class="sa-analytics-grid">';
     if (fn === 'planning') html += planningHtml(data);
     else if (fn === 'organizing') html += organizingHtml(data);
-    else if (fn === 'staffing') html += staffingHtml(data);
     else if (fn === 'leading') html += leadingHtml(data);
     else html += controllingHtml(data);
     html += '</div>';
-    if (data.control_recommendations || data.optimization_suggestions || data.staffing_recommendations) {
-        const tips = data.control_recommendations || data.optimization_suggestions || data.staffing_recommendations;
+    if (data.control_recommendations || data.optimization_suggestions) {
+        const tips = data.control_recommendations || data.optimization_suggestions;
         html += '<div class="an-pro-insights sa-chart-wide"><h5>Managerial insights</h5><ul>' + tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>';
     }
     document.getElementById('analytics-content').innerHTML = html;
@@ -141,8 +139,6 @@ function kpiRow(fn, d) {
     } else if (fn === 'leading') {
         cards.push(kpi('Approval rate', (d.overall_completion_rate ?? 0) + '%', 'Approved share'));
         cards.push(kpi('RSO rate', (d.rso_completion_rate ?? 0) + '%', 'RSO-related'));
-    } else {
-        cards.push(kpi('Peak months', Object.keys(d.participant_demand_trend || {}).length, 'Demand periods'));
     }
     return '<div class="an-pro-kpi-row sa-chart-wide">' + cards.join('') + '</div>';
 }
@@ -166,12 +162,6 @@ function organizingHtml(d) {
     <div class="sa-chart-container an-pro-chart-card"><h4>Peak usage by hour</h4><canvas id="c-peak"></canvas></div>
     <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Utilization rate by facility</h4><canvas id="c-util"></canvas></div>
     <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Peak usage heatmap (hour × day)</h4><div class="an-pro-heatmap" id="heatmap"></div></div>`;
-}
-
-function staffingHtml(d) {
-    return `
-    <div class="sa-chart-container an-pro-chart-card"><h4>Staffing requirements (1:20 ratio)</h4><canvas id="c-staff"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Participant demand trend</h4><canvas id="c-part"></canvas></div>`;
 }
 
 function leadingHtml(d) {
@@ -208,15 +198,6 @@ function drawCharts(fn, d, isFallback) {
         Object.entries(d.room_utilization || {}).forEach(([k,v]) => util[k] = (v.utilization_rate || 0) * 100);
         charts.push(makeBar('c-util', util, '#0f766e'));
         renderHeatmap('heatmap', d.peak_usage_heatmap || {});
-    } else if (fn === 'staffing') {
-        const trends = d.participation_trends || {};
-        const staff = {}; const part = {};
-        Object.entries(trends).forEach(([k,v]) => {
-            staff[k] = typeof v === 'object' ? (v.required_staff ?? 0) : 0;
-            part[k] = typeof v === 'object' ? (v.sum ?? v) : v;
-        });
-        charts.push(makeLine('c-staff', staff, '#2563eb', 'Required staff'));
-        charts.push(makeLine('c-part', d.participant_demand_trend || part, '#7c3aed', 'Participants'));
     } else if (fn === 'leading') {
         charts.push(makeBar('c-success', d.event_success_by_type || {}, '#0f766e'));
         const top = d.top_events || {};
@@ -356,7 +337,7 @@ function palette() {
 
 function title(fn) { return fn.charAt(0).toUpperCase() + fn.slice(1); }
 function summary(fn) {
-    const m = { planning: 'ARIMA weekly/monthly demand forecasts and event mix.', organizing: 'Facility allocation, peak times, and utilization.', staffing: 'Participant-driven staffing estimates.', leading: 'Approval and purpose-based success metrics.', controlling: 'Compliance, status mix, and utilization control.' };
+    const m = { planning: 'ARIMA weekly/monthly demand forecasts and event mix.', organizing: 'Facility allocation, peak times, and utilization.', leading: 'Approval and purpose-based success metrics.', controlling: 'Compliance, status mix, and utilization control.' };
     return m[fn] || '';
 }
 function formatLabel(l) { return String(l); }
