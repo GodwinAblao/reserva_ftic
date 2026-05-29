@@ -203,7 +203,8 @@ function organizingHtml(d) {
 function leadingHtml(d) {
     return `
     <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Event success by purpose (% approved)</h4><canvas id="c-success"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Top events by volume</h4><canvas id="c-top"></canvas></div>`;
+    <div class="sa-chart-container an-pro-chart-card"><h4>Top events by volume</h4><canvas id="c-top"></canvas></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Participant demand trend (Event Execution Volume)</h4><canvas id="c-part"></canvas></div>`;
 }
 
 function controllingHtml(d) {
@@ -245,6 +246,7 @@ function drawCharts(fn, d, isFallback) {
                 el.parentElement.insertAdjacentHTML('beforeend', '<p class="chart-sub" style="color:#6b7280;">No event names recorded yet.</p>');
             }
         }
+        charts.push(makeLine('c-part', d.participant_demand_trend || {}, '#7c3aed', 'Participants'));
     } else {
         charts.push(makeDoughnut('c-status', d.target_achievement || {}));
         const fu = {}; Object.entries(d.facility_utilization_rate || {}).forEach(([k,v]) => fu[k] = Number(v) * 100);

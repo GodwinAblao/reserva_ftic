@@ -398,6 +398,13 @@ def leading_analytics(facility_id: int | None = None, data_source: str = "auto")
         .sort_values(ascending=False)
     )
 
+    approved_df = _approved_df(df)
+    if not approved_df.empty:
+        monthly_participation = approved_df.groupby(pd.Grouper(key="reservation_date", freq="ME"))["capacity"].sum()
+        participation_trends = _series_dict(monthly_participation)
+    else:
+        participation_trends = {}
+
     return {
         **meta,
         "overall_completion_rate": completion_rate,
@@ -410,6 +417,7 @@ def leading_analytics(facility_id: int | None = None, data_source: str = "auto")
         else 0.0,
         "event_success_by_type": {str(k): float(v) for k, v in success.items()},
         "top_events": _top_events_dict(df),
+        "participant_demand_trend": participation_trends,
     }
 
 
