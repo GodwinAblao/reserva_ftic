@@ -739,8 +739,8 @@
 </div>
 
 <!-- Notification Modal -->
-<div id="notificationModal" class="modal" style="display:none; align-items:center; justify-content:center;">
-    <div class="modal-content" style="border-radius:16px; max-width:400px; text-align:center; padding:2rem; margin:auto;">
+<div id="notificationModal" class="modal">
+    <div class="modal-content" style="border-radius:16px; max-width:400px; text-align:center; padding:2rem;">
         <div id="notificationIcon" style="font-size:3rem; margin-bottom:1rem;"></div>
         <h3 id="notificationTitle" style="margin-bottom:0.75rem;"></h3>
         <p id="notificationMessage" style="color:#6b7280; margin-bottom:1.5rem;"></p>
@@ -2498,12 +2498,12 @@
 
         titleEl.textContent = title;
         messageEl.textContent = message;
-        modal.style.display = 'flex';
+        modal.classList.add('is-open');
     }
 
     function closeNotificationModal() {
         const modal = document.getElementById('notificationModal');
-        modal.style.display = 'none';
+        modal.classList.remove('is-open');
     }
 
     async function saveReservationStatusFromModal(data) {
