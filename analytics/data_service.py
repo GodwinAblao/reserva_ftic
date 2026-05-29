@@ -12,6 +12,15 @@ import pandas as pd
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ANALYTICS_STATUSES = ("Approved", "Pending", "Suggested")
 COUNT_STATUSES = ("Approved", "Pending", "Suggested", "Rejected", "Cancelled")
+DEFAULT_FACILITIES = [
+    {"id": 1, "name": "CS Project Room", "capacity": 48},
+    {"id": 2, "name": "Discussion Room 3", "capacity": 6},
+    {"id": 3, "name": "Discussion Room 4", "capacity": 8},
+    {"id": 4, "name": "Presentation Room 1", "capacity": 40},
+    {"id": 5, "name": "Presentation Room 2", "capacity": 60},
+    {"id": 6, "name": "COE Project Room", "capacity": 48},
+    {"id": 7, "name": "Lounge Area", "capacity": 150},
+]
 
 
 def read_database_url() -> str | None:
@@ -56,7 +65,8 @@ def dummy_csv_paths() -> list[Path]:
 
 def load_from_database() -> pd.DataFrame | None:
     try:
-        import pymysql
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
     except ModuleNotFoundError:
         return None
 
@@ -64,12 +74,10 @@ def load_from_database() -> pd.DataFrame | None:
     if not database_url:
         return None
 
-    config = parse_mysql_url(database_url)
-    if not config or not config["database"]:
+    try:
+        connection = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+    except Exception:
         return None
-
-    config["cursorclass"] = pymysql.cursors.DictCursor
-    connection = pymysql.connect(**config)
 
     try:
         with connection.cursor() as cursor:
@@ -101,6 +109,9 @@ def load_from_database() -> pd.DataFrame | None:
                 """
             )
             rows = cursor.fetchall()
+            rows = [dict(row) for row in rows]
+    except Exception:
+        return None
     finally:
         connection.close()
 
@@ -118,6 +129,49 @@ def load_from_database() -> pd.DataFrame | None:
     df["setup_date"] = df["created_at"]
     df["rso_letter_attached"] = df["purpose"].str.contains("RSO", case=False, na=False)
     return df
+
+
+def load_facilities_from_database() -> list[dict]:
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+    except ModuleNotFoundError:
+        return []
+
+    database_url = read_database_url()
+    if not database_url:
+        return []
+
+    try:
+        connection = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+    except Exception:
+        return []
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, name, capacity
+                FROM facility
+                WHERE available_for_reservation = true
+                ORDER BY name ASC
+                """
+            )
+            rows = cursor.fetchall()
+            rows = [dict(row) for row in rows]
+    except Exception:
+        return []
+    finally:
+        connection.close()
+
+    return [
+        {
+            "id": int(row["id"]),
+            "name": str(row["name"]),
+            "capacity": int(row.get("capacity") or 0),
+        }
+        for row in rows
+    ]
 
 
 def load_from_csv() -> pd.DataFrame:
@@ -186,25 +240,24 @@ def load_daily_overview(days: int = 30) -> dict:
     source = "demo"
 
     try:
-        import pymysql
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
     except ModuleNotFoundError:
-        pymysql = None
+        psycopg2 = None
 
     database_url = read_database_url()
-    if pymysql and database_url:
-        config = parse_mysql_url(database_url)
-        if config and config.get("database"):
-            config["cursorclass"] = pymysql.cursors.DictCursor
-            connection = pymysql.connect(**config)
+    if psycopg2 and database_url:
+        try:
+            connection = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
             try:
                 with connection.cursor() as cursor:
                     cursor.execute(
                         """
-                        SELECT DATE(reservation_date) AS dt, COUNT(*) AS cnt
+                        SELECT CAST(reservation_date AS DATE) AS dt, COUNT(*) AS cnt
                         FROM reservation
                         WHERE status IN ('Approved','Pending','Suggested')
-                          AND DATE(reservation_date) BETWEEN %s AND %s
-                        GROUP BY DATE(reservation_date)
+                          AND CAST(reservation_date AS DATE) BETWEEN %s AND %s
+                        GROUP BY CAST(reservation_date AS DATE)
                         """,
                         (start_date, end_date),
                     )
@@ -215,10 +268,10 @@ def load_daily_overview(days: int = 30) -> dict:
 
                     cursor.execute(
                         """
-                        SELECT DATE(scheduled_at) AS dt, COUNT(*) AS cnt
+                        SELECT CAST(scheduled_at AS DATE) AS dt, COUNT(*) AS cnt
                         FROM mentoring_appointment
-                        WHERE DATE(scheduled_at) BETWEEN %s AND %s
-                        GROUP BY DATE(scheduled_at)
+                        WHERE CAST(scheduled_at AS DATE) BETWEEN %s AND %s
+                        GROUP BY CAST(scheduled_at AS DATE)
                         """,
                         (start_date, end_date),
                     )
@@ -228,6 +281,8 @@ def load_daily_overview(days: int = 30) -> dict:
                             mentoring_counts[key] = int(row["cnt"])
             finally:
                 connection.close()
+        except Exception:
+            pass
 
     live_total = sum(reservation_counts.values())
     if live_total == 0:
