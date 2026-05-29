@@ -1,4 +1,4 @@
-"""Reservation data: live MySQL when available, else demo CSV."""
+"""Reservation data: live Supabase/Postgres when available, else demo CSV."""
 
 from __future__ import annotations
 
@@ -20,6 +20,28 @@ DEFAULT_FACILITIES = [
     {"id": 5, "name": "Presentation Room 2", "capacity": 60},
     {"id": 6, "name": "COE Project Room", "capacity": 48},
     {"id": 7, "name": "Lounge Area", "capacity": 150},
+]
+RESERVATION_COLUMNS = [
+    "id",
+    "user_id",
+    "facility_id",
+    "facility_name",
+    "facility_capacity",
+    "event_name",
+    "requester_name",
+    "email",
+    "contact",
+    "reservation_date",
+    "reservation_start_time",
+    "reservation_end_time",
+    "capacity",
+    "purpose",
+    "status",
+    "created_at",
+    "updated_at",
+    "rejection_reason",
+    "setup_date",
+    "rso_letter_attached",
 ]
 
 
@@ -116,7 +138,7 @@ def load_from_database() -> pd.DataFrame | None:
         connection.close()
 
     if not rows:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=RESERVATION_COLUMNS)
 
     df = pd.DataFrame(rows)
     df["reservation_date"] = pd.to_datetime(df["reservation_date"])
@@ -209,15 +231,15 @@ def resolve_dataframe(data_source: str = "auto") -> tuple[pd.DataFrame, str, int
     if data_source == "demo" or data_source == "dummy":
         return demo_df.copy(), "demo", live_count
     elif data_source == "live":
-        return (live_df.copy() if live_df is not None else pd.DataFrame()), "live", live_count
+        return (live_df.copy() if live_df is not None else pd.DataFrame(columns=RESERVATION_COLUMNS)), "live", live_count
     elif data_source == "combined":
         if live_df is not None and not live_df.empty and not demo_df.empty:
             combined_df = pd.concat([demo_df, live_df], ignore_index=True)
             return combined_df, "combined", live_count
         elif live_df is not None and not live_df.empty:
-            return live_df.copy(), "live", live_count
+            return live_df.copy(), "combined", live_count
         else:
-            return demo_df.copy(), "demo", 0
+            return demo_df.copy(), "combined", live_count
     else:
         # Default 'auto' behavior
         if live_count > 0:

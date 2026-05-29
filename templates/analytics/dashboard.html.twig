@@ -67,33 +67,57 @@ function queryParams() {
     return params.length ? '?' + params.join('&') : '';
 }
 
-function loadMeta() {
-    fetch(API + '/meta' + queryParams()).then(r => r.json()).then(meta => {
-        facilities = meta.facilities || [];
-        const sel = document.getElementById('facility-filter');
-        const currentVal = sel.value;
-        // Keep only the default "All facilities" option, then rebuild
-        sel.innerHTML = '<option value="">All facilities</option>';
-        facilities.forEach(f => {
-            const o = document.createElement('option');
-            o.value = f.id || '';
-            o.textContent = f.name + ' (' + f.count + ')';
-            if (f.id && String(f.id) === String(currentVal)) o.selected = true;
-            sel.appendChild(o);
+function sourceParam() {
+    const src = document.getElementById('source-filter').value;
+    return src ? '?data_source=' + encodeURIComponent(src) : '';
+}
+
+function localFacilityOptions() {
+    return ({{ usage|json_encode|raw }} || []).map(f => ({
+        id: f.id || '',
+        name: f.name || 'Facility',
+        count: Number(f.total || 0)
+    }));
+}
+
+function mergeFacilities(apiFacilities) {
+    const merged = new Map();
+    localFacilityOptions().forEach(f => {
+        merged.set(String(f.id || f.name), f);
+    });
+    (apiFacilities || []).forEach(f => {
+        const key = String(f.id || f.name);
+        const existing = merged.get(key) || {};
+        merged.set(key, {
+            id: f.id || existing.id || '',
+            name: f.name || existing.name || 'Facility',
+            count: Number(f.count ?? existing.count ?? 0)
         });
+    });
+    return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderFacilityOptions(nextFacilities) {
+    facilities = nextFacilities;
+    const sel = document.getElementById('facility-filter');
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">All facilities</option>';
+    facilities.forEach(f => {
+        const o = document.createElement('option');
+        o.value = f.id || '';
+        o.textContent = f.name + ' (' + (f.count || 0) + ')';
+        if (String(f.id || '') === String(currentVal)) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+function loadMeta() {
+    fetch(API + '/meta' + sourceParam()).then(r => r.json()).then(meta => {
+        renderFacilityOptions(mergeFacilities(meta.facilities || []));
         updateBadge(meta);
     }).catch(() => {
         console.info('Using frontend facility fallback from Symfony database');
-        const localFacilities = {{ usage|json_encode|raw }};
-        const sel = document.getElementById('facility-filter');
-        if (sel.options.length <= 1) {
-            localFacilities.forEach(f => {
-                const o = document.createElement('option');
-                o.value = f.id || '';
-                o.textContent = f.name + ' (' + (f.total || 0) + ')';
-                sel.appendChild(o);
-            });
-        }
+        renderFacilityOptions(localFacilityOptions());
     });
 }
 
@@ -140,7 +164,7 @@ function destroyCharts() {
 }
 
 function renderTab(fn, data, isFallback) {
-    const src = data.source === 'live' ? 'live' : (isFallback ? 'fallback' : 'demo');
+    const src = data.source === 'live' ? 'live' : (data.source === 'combined' ? 'combined' : (isFallback ? 'fallback' : 'demo'));
     let html = '<div class="sa-analytics-title-row"><div><h3>' + title(fn) + '</h3><p>' + summary(fn) + '</p></div>';
     html += '<span class="sa-analytics-source ' + src + '">' + (data.dataSourceLabel || src) + '</span></div>';
     html += kpiRow(fn, data);

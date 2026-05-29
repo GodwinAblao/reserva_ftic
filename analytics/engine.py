@@ -139,18 +139,18 @@ def arima_forecast_series(
 
 def weekly_counts(df: pd.DataFrame, facility_name: str | None = None) -> pd.Series:
     data = _approved_df(df)
-    if facility_name:
+    if facility_name and "facility_name" in data.columns:
         data = data[data["facility_name"] == facility_name]
-    if data.empty:
+    if data.empty or "reservation_date" not in data.columns:
         return pd.Series(dtype=float)
     return data.groupby(pd.Grouper(key="reservation_date", freq="W")).size()
 
 
 def monthly_counts(df: pd.DataFrame, facility_name: str | None = None) -> pd.Series:
     data = _approved_df(df)
-    if facility_name:
+    if facility_name and "facility_name" in data.columns:
         data = data[data["facility_name"] == facility_name]
-    if data.empty:
+    if data.empty or "reservation_date" not in data.columns:
         return pd.Series(dtype=float)
     return data.groupby(pd.Grouper(key="reservation_date", freq="ME")).size()
 
@@ -198,9 +198,14 @@ def facility_list(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 
 def meta_payload(df: pd.DataFrame, source: str, live_count: int) -> dict[str, Any]:
+    labels = {
+        "live": "Live database only",
+        "demo": "Demo dataset only",
+        "combined": "Combined dataset (demo + live)",
+    }
     return {
         "source": source,
-        "dataSourceLabel": "Live reservation data" if source == "live" else "Demo dataset (no live reservations yet)",
+        "dataSourceLabel": labels.get(source, "Auto data source"),
         "reservationCount": live_count if source == "live" else len(df),
         "totalRows": len(df),
         "facilities": facility_list(df),
