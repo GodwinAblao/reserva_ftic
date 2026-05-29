@@ -2444,10 +2444,6 @@
             return;
         }
 
-        if (!window.confirm('Send notification to the faculty member about this class schedule?')) {
-            return;
-        }
-
         const url = calendarConfig.notifyUrlPattern.replace('{id}', classId);
         const formData = new FormData();
         formData.append('_token', data.notifyCsrf || '');

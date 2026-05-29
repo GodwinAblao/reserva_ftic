@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\ClassSchedule;
-use App\Entity\ClassScheduleNotificationLog;
 use App\Entity\User;
-use App\Repository\ClassScheduleNotificationLogRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -21,9 +19,7 @@ class ClassScheduleNotificationService
         private readonly MailerInterface $mailer,
         private readonly NotificationService $notificationService,
         private readonly ClassScheduleFacultyMatcher $facultyMatcher,
-        private readonly ClassScheduleNotificationLogRepository $logRepository,
         private readonly Security $security,
-        private readonly ReservationAuditLogger $auditLogger,
     ) {
     }
 
@@ -76,21 +72,6 @@ class ClassScheduleNotificationService
         }
 
         $channelLabel = $inAppSent ? 'in_app+email' : 'email_only';
-
-        $log = new ClassScheduleNotificationLog();
-        $log->setClassSchedule($schedule);
-        $log->setNotifiedBy($actor);
-        $log->setFacultyUser($facultyUser);
-        $log->setRecipientEmail($recipientEmail);
-        $log->setActorRoleLabel($this->auditLogger->resolveActorRoleLabel($actor));
-        $log->setChannels($channelLabel);
-        $log->setMessage($message);
-        $log->setEmailSent($emailSent);
-        $log->setInAppSent($inAppSent);
-        $log->setPreviousFacility($schedule->getPreviousFacility());
-        $log->setNewFacility($schedule->getFacility());
-        $this->em->persist($log);
-        $this->em->flush();
 
         return [
             'success' => true,
