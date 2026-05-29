@@ -200,20 +200,33 @@ def load_from_csv() -> pd.DataFrame:
     return df
 
 
-def resolve_dataframe() -> tuple[pd.DataFrame, str, int]:
-    """Return (dataframe, source_label, live_count). source: live | demo"""
+def resolve_dataframe(data_source: str = "auto") -> tuple[pd.DataFrame, str, int]:
+    """Return (dataframe, source_label, live_count). source: live | demo | combined"""
     live_df = load_from_database()
     live_count = 0 if live_df is None else len(live_df)
-
-    if live_count > 0:
-        return live_df.copy(), "live", live_count
-
     demo_df = load_from_csv()
-    return demo_df.copy(), "demo", live_count
+
+    if data_source == "demo" or data_source == "dummy":
+        return demo_df.copy(), "demo", live_count
+    elif data_source == "live":
+        return (live_df.copy() if live_df is not None else pd.DataFrame()), "live", live_count
+    elif data_source == "combined":
+        if live_df is not None and not live_df.empty and not demo_df.empty:
+            combined_df = pd.concat([demo_df, live_df], ignore_index=True)
+            return combined_df, "combined", live_count
+        elif live_df is not None and not live_df.empty:
+            return live_df.copy(), "live", live_count
+        else:
+            return demo_df.copy(), "demo", 0
+    else:
+        # Default 'auto' behavior
+        if live_count > 0:
+            return live_df.copy(), "live", live_count
+        return demo_df.copy(), "demo", live_count
 
 
-def analytics_dataframe(facility_id: int | None = None) -> tuple[pd.DataFrame, str, int]:
-    df, source, live_count = resolve_dataframe()
+def analytics_dataframe(facility_id: int | None = None, data_source: str = "auto") -> tuple[pd.DataFrame, str, int]:
+    df, source, live_count = resolve_dataframe(data_source)
     if df.empty:
         return df, source, live_count
 
@@ -229,7 +242,7 @@ def date_keys(days: int) -> list[str]:
     return [(start + timedelta(days=i)).isoformat() for i in range(days)]
 
 
-def load_daily_overview(days: int = 30) -> dict:
+def load_daily_overview(days: int = 30, data_source: str = "auto") -> dict:
     """Overview endpoint: reservations + mentoring counts per day."""
     dates = date_keys(days)
     start_date = dates[0]
@@ -246,7 +259,9 @@ def load_daily_overview(days: int = 30) -> dict:
         psycopg2 = None
 
     database_url = read_database_url()
-    if psycopg2 and database_url:
+    
+    # Query database unless the user requested 'demo' only
+    if psycopg2 and database_url and data_source != "demo" and data_source != "dummy":
         try:
             connection = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
             try:
@@ -285,7 +300,12 @@ def load_daily_overview(days: int = 30) -> dict:
             pass
 
     live_total = sum(reservation_counts.values())
-    if live_total == 0:
+
+    # Add CSV data if either:
+    # 1. We chose "demo" / "dummy" explicitly
+    # 2. We chose "combined" explicitly
+    # 3. We chose "auto" but there is no live data in the database
+    if data_source == "demo" or data_source == "dummy" or data_source == "combined" or (data_source == "auto" and live_total == 0):
         df = load_from_csv()
         if not df.empty:
             start = datetime.fromisoformat(start_date).date()
@@ -295,7 +315,11 @@ def load_daily_overview(days: int = 30) -> dict:
                 key = d.isoformat()
                 if start <= d <= today and key in reservation_counts:
                     reservation_counts[key] += 1
-        source = "demo" if live_total == 0 else "live"
+        
+        if data_source == "combined":
+            source = "combined"
+        else:
+            source = "demo"
     else:
         source = "live"
 
@@ -309,10 +333,18 @@ def load_daily_overview(days: int = 30) -> dict:
     ]
 
     last7 = daily_stats[-7:]
+    
+    if source == "combined":
+        label = "Combined dataset (Demo history + live database)"
+    elif source == "live":
+        label = "Live reservation data"
+    else:
+        label = "Demo dataset (no live reservations yet)"
+
     return {
         "source": source,
-        "dataSourceLabel": "Live reservation data" if source == "live" else "Demo dataset (no live reservations yet)",
-        "reservationCount": live_total,
+        "dataSourceLabel": label,
+        "reservationCount": sum(reservation_counts.values()),
         "dailyStats": daily_stats,
         "reservationTrends": [
             {

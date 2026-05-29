@@ -10,7 +10,13 @@ import numpy as np
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 
-from data_service import ANALYTICS_STATUSES, analytics_dataframe, resolve_dataframe
+from data_service import (
+    ANALYTICS_STATUSES,
+    DEFAULT_FACILITIES,
+    analytics_dataframe,
+    load_facilities_from_database,
+    resolve_dataframe,
+)
 
 
 def _approved_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -150,22 +156,45 @@ def monthly_counts(df: pd.DataFrame, facility_name: str | None = None) -> pd.Ser
 
 
 def facility_list(df: pd.DataFrame) -> list[dict[str, Any]]:
-    if df.empty or "facility_name" not in df.columns:
-        return []
-    grouped = (
-        df.groupby(["facility_id", "facility_name"], dropna=False)
-        .size()
-        .reset_index(name="count")
-        .sort_values("count", ascending=False)
-    )
-    return [
-        {
-            "id": int(row["facility_id"]) if pd.notna(row["facility_id"]) else None,
-            "name": str(row["facility_name"]),
-            "count": int(row["count"]),
-        }
-        for _, row in grouped.iterrows()
-    ]
+    counts_by_id: dict[int, int] = {}
+    counts_by_name: dict[str, int] = {}
+    if not df.empty and "facility_name" in df.columns:
+        grouped = (
+            df.groupby(["facility_id", "facility_name"], dropna=False)
+            .size()
+            .reset_index(name="count")
+        )
+        for _, row in grouped.iterrows():
+            count = int(row["count"])
+            name = str(row["facility_name"])
+            counts_by_name[name] = counts_by_name.get(name, 0) + count
+            if pd.notna(row["facility_id"]):
+                counts_by_id[int(row["facility_id"])] = counts_by_id.get(int(row["facility_id"]), 0) + count
+
+    facilities = load_facilities_from_database() or DEFAULT_FACILITIES
+    seen: set[tuple[int | None, str]] = set()
+    items: list[dict[str, Any]] = []
+
+    for facility in facilities:
+        facility_id = facility.get("id")
+        name = str(facility["name"])
+        key = (int(facility_id) if facility_id is not None else None, name)
+        seen.add(key)
+        items.append(
+            {
+                "id": key[0],
+                "name": name,
+                "capacity": int(facility.get("capacity") or 0),
+                "count": counts_by_id.get(key[0], counts_by_name.get(name, 0)) if key[0] is not None else counts_by_name.get(name, 0),
+            }
+        )
+
+    for name, count in counts_by_name.items():
+        matched = any(item["name"] == name for item in items)
+        if not matched:
+            items.append({"id": None, "name": name, "capacity": 0, "count": count})
+
+    return sorted(items, key=lambda item: item["name"])
 
 
 def meta_payload(df: pd.DataFrame, source: str, live_count: int) -> dict[str, Any]:
@@ -179,8 +208,8 @@ def meta_payload(df: pd.DataFrame, source: str, live_count: int) -> dict[str, An
     }
 
 
-def planning_analytics(facility_id: int | None = None, facility_name: str | None = None) -> dict[str, Any]:
-    df, source, live_count = analytics_dataframe(facility_id)
+def planning_analytics(facility_id: int | None = None, facility_name: str | None = None, data_source: str = "auto") -> dict[str, Any]:
+    df, source, live_count = analytics_dataframe(facility_id, data_source=data_source)
     meta = meta_payload(df, source, live_count)
 
     if facility_name is None and facility_id is not None and not df.empty:
@@ -241,8 +270,8 @@ def planning_analytics(facility_id: int | None = None, facility_name: str | None
     }
 
 
-def organizing_analytics(facility_id: int | None = None) -> dict[str, Any]:
-    df, source, live_count = analytics_dataframe(facility_id)
+def organizing_analytics(facility_id: int | None = None, data_source: str = "auto") -> dict[str, Any]:
+    df, source, live_count = analytics_dataframe(facility_id, data_source=data_source)
     meta = meta_payload(df, source, live_count)
     approved = _approved_df(df)
 
@@ -309,8 +338,8 @@ def organizing_analytics(facility_id: int | None = None) -> dict[str, Any]:
     }
 
 
-def staffing_analytics(facility_id: int | None = None) -> dict[str, Any]:
-    df, source, live_count = analytics_dataframe(facility_id)
+def staffing_analytics(facility_id: int | None = None, data_source: str = "auto") -> dict[str, Any]:
+    df, source, live_count = analytics_dataframe(facility_id, data_source=data_source)
     meta = meta_payload(df, source, live_count)
     approved = _approved_df(df)
 
@@ -346,8 +375,8 @@ def staffing_analytics(facility_id: int | None = None) -> dict[str, Any]:
     }
 
 
-def leading_analytics(facility_id: int | None = None) -> dict[str, Any]:
-    df, source, live_count = analytics_dataframe(facility_id)
+def leading_analytics(facility_id: int | None = None, data_source: str = "auto") -> dict[str, Any]:
+    df, source, live_count = analytics_dataframe(facility_id, data_source=data_source)
     meta = meta_payload(df, source, live_count)
 
     if df.empty:
@@ -384,8 +413,8 @@ def leading_analytics(facility_id: int | None = None) -> dict[str, Any]:
     }
 
 
-def controlling_analytics(facility_id: int | None = None) -> dict[str, Any]:
-    df, source, live_count = analytics_dataframe(facility_id)
+def controlling_analytics(facility_id: int | None = None, data_source: str = "auto") -> dict[str, Any]:
+    df, source, live_count = analytics_dataframe(facility_id, data_source=data_source)
     meta = meta_payload(df, source, live_count)
 
     if df.empty:

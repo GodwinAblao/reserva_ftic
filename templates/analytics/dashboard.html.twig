@@ -15,6 +15,12 @@
     </div>
     <div class="an-pro-toolbar">
         <span id="data-source-badge" class="an-pro-badge demo"><span class="dot"></span> Loading…</span>
+        <select id="source-filter" class="an-pro-select" title="Choose Data Source" style="margin-right: 8px;">
+            <option value="auto">Auto (Live if exists)</option>
+            <option value="demo">Demo Dataset Only</option>
+            <option value="live">Live Database Only</option>
+            <option value="combined">Combined (Demo + Live)</option>
+        </select>
         <select id="facility-filter" class="an-pro-select" title="Filter by facility">
             <option value="">All facilities</option>
         </select>
@@ -46,15 +52,33 @@ document.querySelectorAll('.analytics-btn').forEach(btn => {
 });
 
 document.getElementById('facility-filter').addEventListener('change', () => loadAnalytics(currentFn));
+document.getElementById('source-filter').addEventListener('change', () => {
+    // Reload meta to update counts when data source changes
+    loadMeta();
+    loadAnalytics(currentFn);
+});
 
-document.addEventListener('DOMContentLoaded', () => {
-    fetch(API + '/api/analytics/meta').then(r => r.json()).then(meta => {
+function queryParams() {
+    const fac = document.getElementById('facility-filter').value;
+    const src = document.getElementById('source-filter').value;
+    const params = [];
+    if (fac) params.push('facility_id=' + encodeURIComponent(fac));
+    if (src) params.push('data_source=' + encodeURIComponent(src));
+    return params.length ? '?' + params.join('&') : '';
+}
+
+function loadMeta() {
+    fetch(API + '/api/analytics/meta' + queryParams()).then(r => r.json()).then(meta => {
         facilities = meta.facilities || [];
         const sel = document.getElementById('facility-filter');
+        const currentVal = sel.value;
+        // Keep only the default "All facilities" option, then rebuild
+        sel.innerHTML = '<option value="">All facilities</option>';
         facilities.forEach(f => {
             const o = document.createElement('option');
             o.value = f.id || '';
             o.textContent = f.name + ' (' + f.count + ')';
+            if (f.id && String(f.id) === String(currentVal)) o.selected = true;
             sel.appendChild(o);
         });
         updateBadge(meta);
@@ -71,21 +95,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadMeta();
     loadAnalytics('planning');
 });
-
-function facilityParam() {
-    const v = document.getElementById('facility-filter').value;
-    return v ? '?facility_id=' + encodeURIComponent(v) : '';
-}
 
 function updateBadge(data) {
     const el = document.getElementById('data-source-badge');
     const live = data.source === 'live';
-    el.className = 'an-pro-badge ' + (live ? 'live' : 'demo');
-    el.innerHTML = '<span class="dot"></span> ' + (data.dataSourceLabel || (live ? 'Live data' : 'Demo data'));
+    const combined = data.source === 'combined';
+    el.className = 'an-pro-badge ' + (combined ? 'combined' : (live ? 'live' : 'demo'));
+    el.innerHTML = '<span class="dot"></span> ' + (data.dataSourceLabel || (combined ? 'Combined data' : (live ? 'Live data' : 'Demo data')));
     const dlWeekly = document.getElementById('dl-weekly');
-    if (dlWeekly) dlWeekly.href = '{{ path('admin_role_analytics_export_weekly') }}' + facilityParam();
+    if (dlWeekly) dlWeekly.href = '{{ path('admin_role_analytics_export_weekly') }}' + queryParams();
 }
 
 async function loadAnalytics(fn) {
@@ -97,7 +121,7 @@ async function loadAnalytics(fn) {
     box.innerHTML = '<div class="sa-loading">Loading ' + fn + '…</div>';
     destroyCharts();
     try {
-        const res = await fetch(API + '/api/analytics/' + fn + facilityParam());
+        const res = await fetch(API + '/api/analytics/' + fn + queryParams());
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         updateBadge(data);

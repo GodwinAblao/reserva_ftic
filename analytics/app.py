@@ -53,38 +53,38 @@ async def root():
 
 
 @app.get("/api/analytics/overview")
-async def overview():
-    return load_daily_overview(30)
+async def overview(data_source: str = Query("auto")):
+    return load_daily_overview(30, data_source=data_source)
 
 
 @app.get("/api/analytics/meta")
-async def meta(facility_id: Optional[int] = Query(None)):
-    return planning_analytics(facility_id)
+async def meta(facility_id: Optional[int] = Query(None), data_source: str = Query("auto")):
+    return planning_analytics(facility_id, data_source=data_source)
 
 
 @app.get("/api/analytics/planning")
-async def planning(facility_id: Optional[int] = Query(None)):
-    return planning_analytics(facility_id)
+async def planning(facility_id: Optional[int] = Query(None), data_source: str = Query("auto")):
+    return planning_analytics(facility_id, data_source=data_source)
 
 
 @app.get("/api/analytics/organizing")
-async def organizing(facility_id: Optional[int] = Query(None)):
-    return organizing_analytics(facility_id)
+async def organizing(facility_id: Optional[int] = Query(None), data_source: str = Query("auto")):
+    return organizing_analytics(facility_id, data_source=data_source)
 
 
 @app.get("/api/analytics/staffing")
-async def staffing(facility_id: Optional[int] = Query(None)):
-    return staffing_analytics(facility_id)
+async def staffing(facility_id: Optional[int] = Query(None), data_source: str = Query("auto")):
+    return staffing_analytics(facility_id, data_source=data_source)
 
 
 @app.get("/api/analytics/leading")
-async def leading(facility_id: Optional[int] = Query(None)):
-    return leading_analytics(facility_id)
+async def leading(facility_id: Optional[int] = Query(None), data_source: str = Query("auto")):
+    return leading_analytics(facility_id, data_source=data_source)
 
 
 @app.get("/api/analytics/controlling")
-async def controlling(facility_id: Optional[int] = Query(None)):
-    return controlling_analytics(facility_id)
+async def controlling(facility_id: Optional[int] = Query(None), data_source: str = Query("auto")):
+    return controlling_analytics(facility_id, data_source=data_source)
 
 
 @app.get("/api/analytics/export/weekly-forecast")
