@@ -6,7 +6,7 @@ NIXPACKS_PHP_FALLBACK_PATH = "/index.php"
 RAILPACK_PHP_ROOT_DIR = "/app/public"
 
 [phases.setup]
-nixPkgs = ['python311', 'python311Packages.pip', 'php83', 'php83Packages.composer']
+nixPkgs = ['python311', 'python311Packages.pip', 'php83', 'php83Packages.composer', 'supervisor']
 
 [phases.build]
 cmds = [
