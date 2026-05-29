@@ -25,7 +25,7 @@ class AnalyticsController extends AbstractController
     public function dashboard(EntityManagerInterface $em): Response
     {
         $usage = $em->createQueryBuilder()
-            ->select('f.name, COUNT(r.id) AS total, COALESCE(SUM(r.capacity), 0) AS attendees')
+            ->select('f.id, f.name, COUNT(r.id) AS total, COALESCE(SUM(r.capacity), 0) AS attendees')
             ->from(Facility::class, 'f')
             ->leftJoin(Reservation::class, 'r', 'WITH', 'r.facility = f AND r.status = :approved')
             ->setParameter('approved', 'Approved')

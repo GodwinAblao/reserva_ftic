@@ -58,7 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
             sel.appendChild(o);
         });
         updateBadge(meta);
-    }).catch(() => {});
+    }).catch(() => {
+        console.info('Using frontend facility fallback from Symfony database');
+        const localFacilities = {{ usage|json_encode|raw }};
+        const sel = document.getElementById('facility-filter');
+        if (sel.options.length <= 1) {
+            localFacilities.forEach(f => {
+                const o = document.createElement('option');
+                o.value = f.id || '';
+                o.textContent = f.name + ' (' + (f.total || 0) + ')';
+                sel.appendChild(o);
+            });
+        }
+    });
     loadAnalytics('planning');
 });
 
