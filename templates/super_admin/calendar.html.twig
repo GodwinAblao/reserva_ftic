@@ -1391,10 +1391,34 @@
         const form = document.getElementById('modifyScheduleForm');
         const submitBtn = document.getElementById('modifySubmit');
         const messageBox = document.getElementById('modifyMessage');
-        
+
+        // Copy faculty email from input field to hidden field before submission
+        const facultyEmailInput = document.getElementById('modifyFacultyEmailInput');
+        const facultyEmailHidden = document.getElementById('modifyFacultyEmail');
+        if (facultyEmailInput && facultyEmailHidden) {
+            facultyEmailHidden.value = facultyEmailInput.value.trim();
+        }
+
+        // Copy other input fields to hidden fields
+        const courseCodeInput = document.getElementById('modifyCourseCodeInput');
+        const courseCodeHidden = document.getElementById('modifyCourseCode');
+        if (courseCodeInput && courseCodeHidden) {
+            courseCodeHidden.value = courseCodeInput.value.trim();
+        }
+        const sectionInput = document.getElementById('modifySectionInput');
+        const sectionHidden = document.getElementById('modifySection');
+        if (sectionInput && sectionHidden) {
+            sectionHidden.value = sectionInput.value.trim();
+        }
+        const facultyNameInput = document.getElementById('modifyFacultyNameInput');
+        const facultyNameHidden = document.getElementById('modifyFacultyName');
+        if (facultyNameInput && facultyNameHidden) {
+            facultyNameHidden.value = facultyNameInput.value.trim();
+        }
+
         submitBtn.disabled = true;
         submitBtn.textContent = 'Processing...';
-        
+
         try {
             const formData = new FormData(form);
             // If selects are disabled, they won't be included in FormData — add them manually
