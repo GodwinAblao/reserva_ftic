@@ -61,7 +61,7 @@ class ProfileController extends AbstractController
 
                 if ($firstName) $user->setFirstName($firstName);
                 if ($middleName !== null) $user->setMiddleName($middleName ?: null);
-                if ($lastName) $user->setLastName($lastName);
+                if ($lastName !== null) $user->setLastName($lastName ?: null);
                 if ($degree !== null) {
                     $finalDegree = ($degree === 'Other' && $degreeOther !== '') ? $degreeOther : ($degree ?: null);
                     $user->setDegree($finalDegree);
