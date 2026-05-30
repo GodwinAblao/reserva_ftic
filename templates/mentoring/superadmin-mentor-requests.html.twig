@@ -351,7 +351,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
                 Student selected: <strong>{{ req.mentorProfile.displayName }}</strong> ({{ req.mentorProfile.specialization }})
             </div>
-            <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
+            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" data-no-loading="true">
                 <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
                 <input type="hidden" name="mentor_name" value="{{ req.mentorProfile.displayName }}">
                 <input type="hidden" name="expertise" value="{{ req.mentorProfile.specialization }}">
@@ -381,7 +381,7 @@
                 </button></div>
             </form>
             {% else %}
-            <form method="post" data-ajax="true" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}">
+            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" data-no-loading="true">
                 <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
                 <div class="sa-grid2">
                     <div class="sa-assign-field">
@@ -893,21 +893,7 @@ function rqFill(id){
         specOther.style.display='none';specOther.value='';
     }
 }
-/* Merge expertise_other into expertise on submit */
-document.querySelectorAll('form[data-ajax]').forEach(function(form){
-    form.addEventListener('submit',function(){
-        var specSel=form.querySelector('select.sa-expertise-select');
-        var specOther=form.querySelector('input[name="expertise_other"]');
-        if(specSel&&specOther&&specSel.value==='Other'&&specOther.value.trim()){
-            // Dynamically add the custom value as an option and select it
-            var opt=document.createElement('option');
-            opt.value=specOther.value.trim();
-            opt.textContent=opt.value;
-            specSel.appendChild(opt);
-            specSel.value=opt.value;
-        }
-    });
-});
+/* Merge expertise_other into expertise on submit - handled by bindAjaxForms */
 /* ── decline application ── */
 function saDeclineApp(id){
     document.getElementById('rejectModalAppId').value = id;
@@ -1038,43 +1024,25 @@ function saFilterList(){
         setInterval(doPoll, INTERVAL);
     });
 })();
-/* ── AJAX for assign forms (with post-success lock to prevent double audit logs) ── */
-function bindAjaxForms(){
-    document.querySelectorAll('form[data-ajax="true"]').forEach(function(form){
-        if(form.dataset.ajaxBound === '1') return;
-        form.dataset.ajaxBound = '1';
-        form.addEventListener('submit',function(e){
-            e.preventDefault();
-            var btn=form.querySelector('button[type="submit"]');
-            var orig=btn?btn.innerHTML:'';
-            if(btn){btn.disabled=true;btn.innerHTML='Saving…';}
-            fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:new FormData(form)})
-            .then(function(r){if(!r.ok)throw new Error();return r.json();})
-            .then(function(j){
-                if(j.success){
-                    /* Lock form permanently so the same action cannot be submitted twice */
-                    if(btn){btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Saved';btn.style.background='#0D9B00';}
-                    form.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=true;});
-                    _saToast(j.message||'Updated.',true);
-                    /* Immediately refresh audit log */
-                    doPollAudit();
-                } else {
-                    if(btn){btn.disabled=false;btn.innerHTML=orig;}
-                    _saToast(j.message||'Error.',false);
-                }
-            })
-            .catch(function(){
-                if(btn){btn.disabled=false;btn.innerHTML=orig;}
-                _saToast('Could not save. Please try again.',false);
-            });
-        });
+/* Handle expertise_other field merging on form submit */
+document.querySelectorAll('form[data-no-loading="true"]').forEach(function(form){
+    form.addEventListener('submit',function(){
+        var specSel=form.querySelector('select.sa-expertise-select');
+        var specOther=form.querySelector('input[name="expertise_other"]');
+        if(specSel&&specOther&&specSel.value==='Other'&&specOther.value.trim()){
+            // Dynamically add the custom value as an option and select it
+            var opt=document.createElement('option');
+            opt.value=specOther.value.trim();
+            opt.textContent=opt.value;
+            specSel.appendChild(opt);
+            specSel.value=opt.value;
+        }
     });
-}
+});
+
 document.addEventListener('DOMContentLoaded',function(){
-    bindAjaxForms();
     document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeFilePreviewModal(); closeRejectModal(); }});
 });
-document.addEventListener('turbo:load', bindAjaxForms);
 
 /* ── Real-time Audit Log Polling ── */
 var _auditLastId = 0;
