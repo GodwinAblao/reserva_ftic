@@ -26,12 +26,8 @@ class UserRepository extends ServiceEntityRepository
     public function findAdmins(): array
     {
         // Use native SQL to avoid PostgreSQL JSON issues
-        $sql = "SELECT * FROM \"user\" u WHERE u.roles::text LIKE :superAdminRole OR u.roles::text LIKE :adminRole";
-        $stmt = $this->getEntityManager()->getConnection()->prepare($sql);
-        $result = $stmt->executeQuery([
-            'superAdminRole' => '%ROLE_SUPER_ADMIN%',
-            'adminRole' => '%ROLE_ADMIN%'
-        ]);
+        $sql = "SELECT id FROM \"user\" u WHERE u.roles::text LIKE ? OR u.roles::text LIKE ?";
+        $result = $this->getEntityManager()->getConnection()->executeQuery($sql, ['%ROLE_SUPER_ADMIN%', '%ROLE_ADMIN%']);
         
         $users = [];
         while ($row = $result->fetchAssociative()) {
