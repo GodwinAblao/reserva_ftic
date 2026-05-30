@@ -174,57 +174,42 @@
 
             {# ─ ALL list (merged, default) ─ #}
             <div id="sa-list-all">
-                {% if requests is empty and applications is empty %}
+                {% if allItems is empty %}
                     <div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No requests or applications yet.</div>
-                {% endif %}
-                {# Today group: both custom + apply mixed #}
-                <div class="sa-group-hd">Today</div>
-                {% if todayReqs is empty and todayApps is empty %}
-                    <div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new requests today.</div>
-                {% endif %}
-                {% for req in todayReqs %}
-                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('H:i') }}</span></div>
-                    <div class="sa-item-sub">Custom Request</div>
-                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}
-                {% for app in todayApps %}
-                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentor Application</div>
-                    <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}
-                {# This Week group #}
-                {% if weekReqs is not empty or weekApps is not empty %}
-                <div class="sa-group-hd">This Week</div>
-                {% for req in weekReqs %}
-                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
-                    <div class="sa-item-sub">Custom Request</div>
-                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}
-                {% for app in weekApps %}
-                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentor Application</div>
-                    <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}
-                {% endif %}
-                {# Older group #}
-                {% if olderReqs is not empty or olderApps is not empty %}
-                <div class="sa-group-hd older">Older</div>
-                {% for req in olderReqs %}
-                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
-                    <div class="sa-item-sub">Custom Request</div>
-                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}
-                {% for app in olderApps %}
-                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d') }}</span></div>
-                    <div class="sa-item-sub">Mentor Application</div>
-                    <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}
+                {% else %}
+                    {% set currentDate = '' %}
+                    {% for itemData in allItems %}
+                        {% set item = itemData.item %}
+                        {% set itemType = itemData.type %}
+                        {% set itemDate = item.createdAt|date('Y-m-d') %}
+                        
+                        {# Show date header when date changes #}
+                        {% if currentDate != itemDate %}
+                            {% set currentDate = itemDate %}
+                            {% if itemDate == "now"|date('Y-m-d') %}
+                                <div class="sa-group-hd">Today</div>
+                            {% elseif itemDate > "now"|date_modify('-7 days')|date('Y-m-d') %}
+                                <div class="sa-group-hd">This Week</div>
+                            {% else %}
+                                <div class="sa-group-hd older">Older</div>
+                            {% endif %}
+                        {% endif %}
+                        
+                        {# Display item based on type #}
+                        {% if itemType == 'request' %}
+                            <div class="sa-item" data-id="{{ item.id }}" data-type="custom" data-name="{{ (item.fullName ?: (item.student.firstName~' '~item.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ item.id }})">
+                                <div class="sa-item-top"><span class="sa-item-name">{{ item.fullName ?: (item.student.firstName~' '~item.student.lastName) }}</span><span class="sa-item-time">{{ item.createdAt|date('H:i') }}</span></div>
+                                <div class="sa-item-sub">Mentor Request</div>
+                                <div class="sa-item-msg">{{ item.message|default('')|slice(0,55) }}</div>
+                            </div>
+                        {% elseif itemType == 'application' %}
+                            <div class="sa-item" data-id="{{ item.id }}" data-type="apply" data-name="{{ ((item.firstName~' '~item.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ item.id }})">
+                                <div class="sa-item-top"><span class="sa-item-name">{{ item.firstName }} {{ item.lastName }}</span><span class="sa-item-time">{{ item.createdAt|date('H:i') }}</span></div>
+                                <div class="sa-item-sub">Mentor Application</div>
+                                <div class="sa-item-msg">{{ item.specialization }}</div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
                 {% endif %}
             </div>
 

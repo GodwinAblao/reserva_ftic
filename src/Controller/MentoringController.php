@@ -228,13 +228,43 @@ class MentoringController extends AbstractController
         
         $specializations = $specializationRepository->findAllOrderedByName();
         
+        // Create combined chronological array of all requests and applications
+        $allItems = [];
+        
+        // Add mentor requests
+        foreach ($allRequests as $request) {
+            $allItems[] = [
+                'type' => 'request',
+                'item' => $request,
+                'createdAt' => $request->getCreatedAt(),
+                'id' => $request->getId(),
+            ];
+        }
+        
+        // Add mentor applications
+        $applications = $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']);
+        foreach ($applications as $application) {
+            $allItems[] = [
+                'type' => 'application',
+                'item' => $application,
+                'createdAt' => $application->getCreatedAt(),
+                'id' => $application->getId(),
+            ];
+        }
+        
+        // Sort by creation date (newest first)
+        usort($allItems, function($a, $b) {
+            return $b['createdAt'] <=> $a['createdAt'];
+        });
+
         return $this->render('mentoring/superadmin-mentor-requests.html.twig', [
             'requests'           => $assistanceRequests,
             'directRequests'     => $directRequests,
+            'allItems'           => $allItems, // Combined chronological array
             'mentors'            => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'leaderboard'        => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
             'users'              => $em->getRepository(User::class)->findAll(),
-            'applications'       => $em->getRepository(MentorApplication::class)->findBy([], ['createdAt' => 'DESC']),
+            'applications'       => $applications,
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'is_super_admin'     => $this->isGranted('ROLE_SUPER_ADMIN'),
             'auditLogs'          => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
@@ -505,11 +535,21 @@ class MentoringController extends AbstractController
             $applicantName = trim($firstName . ' ' . $lastName);
             
             error_log('DEBUG: Found ' . count($admins) . ' admin users for mentor application notification');
+            error_log('DEBUG: Current user submitting application: ID=' . $user->getId() . ', Email=' . $user->getEmail() . ', Roles=' . implode(',', $user->getRoles()));
+            
             foreach ($admins as $admin) {
                 error_log('DEBUG: Processing admin user: ID=' . $admin->getId() . ', Email=' . $admin->getEmail() . ', Roles=' . implode(',', $admin->getRoles()));
                 try {
                     $notification = $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $applicantName);
                     error_log('DEBUG: Mentor application notification CREATED with ID ' . $notification->getId() . ' for admin ' . $admin->getId() . ' for application ' . $application->getId());
+                    
+                    // Immediately verify the notification was saved
+                    $savedNotification = $em->getRepository(\App\Entity\Notification::class)->find($notification->getId());
+                    if ($savedNotification) {
+                        error_log('DEBUG: Notification verified in database - ID: ' . $savedNotification->getId() . ', User: ' . $savedNotification->getUser()->getId() . ', Title: ' . $savedNotification->getTitle());
+                    } else {
+                        error_log('DEBUG: ERROR - Notification not found in database after creation!');
+                    }
                 } catch (\Exception $e) {
                     error_log('DEBUG: Failed to send mentor application notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
                     error_log('DEBUG: Notification error trace: ' . $e->getTraceAsString());
@@ -567,7 +607,19 @@ class MentoringController extends AbstractController
             );
             
             error_log('DEBUG: Test notification created with ID: ' . $notification->getId());
-            return new Response('Test notification created with ID: ' . $notification->getId());
+            
+            // Also test admin user detection
+            $admins = $em->getRepository(User::class)->findAdmins();
+            error_log('DEBUG: Found ' . count($admins) . ' admin users in system:');
+            foreach ($admins as $admin) {
+                error_log('DEBUG: Admin - ID: ' . $admin->getId() . ', Email: ' . $admin->getEmail() . ', Roles: ' . implode(',', $admin->getRoles()));
+            }
+            
+            // Test notification API for current user
+            $userNotifications = $em->getRepository(\App\Entity\Notification::class)->findBy(['user' => $user], ['createdAt' => 'DESC'], 5);
+            error_log('DEBUG: User ' . $userId . ' has ' . count($userNotifications) . ' recent notifications');
+            
+            return new Response('Test notification created with ID: ' . $notification->getId() . '. Found ' . count($admins) . ' admin users. User has ' . count($userNotifications) . ' notifications.');
         } catch (\Exception $e) {
             error_log('DEBUG: Failed to create test notification: ' . $e->getMessage());
             return new Response('Failed to create test notification: ' . $e->getMessage());
