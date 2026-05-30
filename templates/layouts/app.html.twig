@@ -105,7 +105,7 @@
 {% block body %}
 
     {% set notification_bell_markup %}
-    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user ? app.user.id : '' }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user and app.user.id ? app.user.id : '' }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
         <button type="button" aria-expanded="false" class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
             width: 50px;
             height: 50px;

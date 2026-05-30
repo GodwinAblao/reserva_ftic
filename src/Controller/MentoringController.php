@@ -597,16 +597,28 @@ class MentoringController extends AbstractController
         error_log('DEBUG: Creating test notification for user ' . $userId);
         
         try {
-            $notification = $this->notificationService->create(
-                $user,
-                'test',
-                'Test Notification',
-                'This is a test notification to verify the system is working.',
-                'Pending',
-                null
-            );
+            // FORCE CREATE NOTIFICATION - bypass all potential issues
+            $notification = new \App\Entity\Notification();
+            $notification->setUser($user);
+            $notification->setType('test');
+            $notification->setTitle('ADMIN TEST NOTIFICATION');
+            $notification->setMessage('This is a forced test notification for admin user.');
+            $notification->setStatus('Pending');
+            $notification->setIsRead(false);
+            $notification->setCreatedAt(new \DateTime());
             
-            error_log('DEBUG: Test notification created with ID: ' . $notification->getId());
+            $em->persist($notification);
+            $em->flush();
+            
+            error_log('DEBUG: FORCED test notification created with ID: ' . $notification->getId());
+            
+            // Verify it was saved
+            $savedNotification = $em->getRepository(\App\Entity\Notification::class)->find($notification->getId());
+            if ($savedNotification) {
+                error_log('DEBUG: FORCED notification verified in database!');
+            } else {
+                error_log('DEBUG: ERROR - FORCED notification not found in database!');
+            }
             
             // Also test admin user detection
             $admins = $em->getRepository(User::class)->findAdmins();
@@ -619,9 +631,29 @@ class MentoringController extends AbstractController
             $userNotifications = $em->getRepository(\App\Entity\Notification::class)->findBy(['user' => $user], ['createdAt' => 'DESC'], 5);
             error_log('DEBUG: User ' . $userId . ' has ' . count($userNotifications) . ' recent notifications');
             
-            return new Response('Test notification created with ID: ' . $notification->getId() . '. Found ' . count($admins) . ' admin users. User has ' . count($userNotifications) . ' notifications.');
+            // Test the notification API directly
+            $unreadCount = $em->getRepository(\App\Entity\Notification::class)->count(['user' => $user, 'isRead' => false]);
+            error_log('DEBUG: User ' . $userId . ' has ' . $unreadCount . ' UNREAD notifications');
+            
+            // Test the notification APIs directly
+            $notificationRepo = $em->getRepository(\App\Entity\Notification::class);
+            
+            // Test poll data
+            $pollData = $notificationRepo->getPollData($user);
+            error_log('DEBUG: Poll data result: ' . json_encode($pollData));
+            
+            // Test unread count
+            $unreadCount = $notificationRepo->getUnreadCount($user);
+            error_log('DEBUG: Unread count result: ' . $unreadCount);
+            
+            // Test findLatest
+            $latestNotifications = $notificationRepo->findLatest($user, 5);
+            error_log('DEBUG: Latest notifications count: ' . count($latestNotifications));
+            
+            return new Response('FORCED test notification created with ID: ' . $notification->getId() . '. Found ' . count($admins) . ' admin users. User has ' . count($userNotifications) . ' notifications, ' . $unreadCount . ' unread. Poll data: ' . json_encode($pollData) . '. Latest: ' . count($latestNotifications));
         } catch (\Exception $e) {
             error_log('DEBUG: Failed to create test notification: ' . $e->getMessage());
+            error_log('DEBUG: Error trace: ' . $e->getTraceAsString());
             return new Response('Failed to create test notification: ' . $e->getMessage());
         }
     }
@@ -1295,14 +1327,25 @@ $validUntil = $request->request->get('valid_until');
         try {
             $adminUrl = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
             $admins = $em->getRepository(User::class)->findAdmins();
+            error_log('MENTOR REQUEST: Found ' . count($admins) . ' admin users for assistance request notification');
             $firstAdmin = true;
             
             foreach ($admins as $admin) {
+                error_log('MENTOR REQUEST: Processing admin user: ID=' . $admin->getId() . ', Email=' . $admin->getEmail());
                 try {
                     $adminNotification = $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
-                    error_log('Admin notification created successfully for user ' . $admin->getId() . ' with ID: ' . $adminNotification->getId());
+                    error_log('MENTOR REQUEST: Admin notification created successfully for user ' . $admin->getId() . ' with ID: ' . $adminNotification->getId());
+                    
+                    // Verify notification was saved
+                    $savedNotification = $em->getRepository(\App\Entity\Notification::class)->find($adminNotification->getId());
+                    if ($savedNotification) {
+                        error_log('MENTOR REQUEST: Notification verified in database - ID: ' . $savedNotification->getId() . ', Title: ' . $savedNotification->getTitle());
+                    } else {
+                        error_log('MENTOR REQUEST: ERROR - Notification not found in database after creation!');
+                    }
                 } catch (\Exception $e) {
-                    error_log('Failed to create admin notification for user ' . $admin->getId() . ': ' . $e->getMessage());
+                    error_log('MENTOR REQUEST: Failed to create admin notification for user ' . $admin->getId() . ': ' . $e->getMessage());
+                    error_log('MENTOR REQUEST: Error trace: ' . $e->getTraceAsString());
                 }
                 
                 // Only email the first admin to prevent SMTP lag; others get in-app notification
