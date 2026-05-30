@@ -1127,26 +1127,48 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
         }
 
-        $adminUrl = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
-        $admins = $em->getRepository(User::class)->findAdmins();
-        $firstAdmin = true;
-        foreach ($admins as $admin) {
-            $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
-            // Only email the first admin to prevent SMTP lag; others get in-app notification
-            if ($firstAdmin) {
-                $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
-                $firstAdmin = false;
+        try {
+            $adminUrl = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
+            $admins = $em->getRepository(User::class)->findAdmins();
+            $firstAdmin = true;
+            
+            foreach ($admins as $admin) {
+                try {
+                    $adminNotification = $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
+                    error_log('Admin notification created successfully for user ' . $admin->getId() . ' with ID: ' . $adminNotification->getId());
+                } catch (\Exception $e) {
+                    error_log('Failed to create admin notification for user ' . $admin->getId() . ': ' . $e->getMessage());
+                }
+                
+                // Only email the first admin to prevent SMTP lag; others get in-app notification
+                if ($firstAdmin) {
+                    try {
+                        $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
+                    } catch (\Exception $e) {
+                        error_log('Failed to send admin email: ' . $e->getMessage());
+                    }
+                    $firstAdmin = false;
+                }
             }
+
+            try {
+                $userNotification = $this->notificationService->notifyMentorAssistanceStatus(
+                    $currentUser,
+                    $mentorRequest->getId(),
+                    'Pending',
+                    'Your mentor assistance request has been submitted and is now pending review.'
+                );
+                error_log('User notification created successfully with ID: ' . $userNotification->getId());
+            } catch (\Exception $e) {
+                error_log('Failed to create user notification: ' . $e->getMessage());
+                error_log('Notification creation error trace: ' . $e->getTraceAsString());
+            }
+
+            $this->addFlash('success', 'Your mentor request has been submitted. Admin will review it and send mentor details once a match is found.');
+        } catch (\Exception $e) {
+            error_log('Error in mentor assistance request processing: ' . $e->getMessage());
+            $this->addFlash('error', 'Your request was submitted but there was an issue sending notifications. Please contact support if needed.');
         }
-
-        $this->notificationService->notifyMentorAssistanceStatus(
-            $currentUser,
-            $mentorRequest->getId(),
-            'Pending',
-            'Your mentor assistance request has been submitted and is now pending review.'
-        );
-
-        $this->addFlash('success', 'Your mentor request has been submitted. Admin will review it and send mentor details once a match is found.');
 
         return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
     }

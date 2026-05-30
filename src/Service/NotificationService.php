@@ -247,9 +247,9 @@ class NotificationService
         );
     }
 
-    public function notifyAdminNewMentorAssistanceRequest(User $admin, int $requestId, string $requesterName): void
+    public function notifyAdminNewMentorAssistanceRequest(User $admin, int $requestId, string $requesterName): Notification
     {
-        $this->create(
+        return $this->create(
             $admin,
             'mentor_assistance',
             'New Mentor Assistance Request',
@@ -271,9 +271,9 @@ class NotificationService
         );
     }
 
-    public function notifyMentorAssistanceStatus(User $user, int $requestId, string $status, string $message): void
+    public function notifyMentorAssistanceStatus(User $user, int $requestId, string $status, string $message): Notification
     {
-        $this->create(
+        return $this->create(
             $user,
             'mentor_assistance',
             'Mentor Request ' . $status,
