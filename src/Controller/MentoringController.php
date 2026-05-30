@@ -494,8 +494,30 @@ class MentoringController extends AbstractController
         $em->persist($application);
         $em->flush();
 
-        // Defer file uploads and notifications to after response to prevent blocking
-        register_shutdown_function(function() use ($uploadedFiles, $em, $user, $application, $firstName, $lastName) {
+        // Send notifications immediately for better reliability
+        try {
+            // Notify the user
+            $this->notificationService->notifyMentorApplicationSubmitted($user, $application->getId());
+            error_log('User notification sent for mentor application ' . $application->getId());
+
+            // Notify all admins (both Admin and Super Admin)
+            $admins = $em->getRepository(User::class)->findAdmins();
+            $applicantName = trim($firstName . ' ' . $lastName);
+            
+            foreach ($admins as $admin) {
+                try {
+                    $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $applicantName);
+                    error_log('Mentor application notification sent to admin ' . $admin->getId() . ' for application ' . $application->getId());
+                } catch (\Exception $e) {
+                    error_log('Failed to send mentor application notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('Failed to send notifications for mentor application: ' . $e->getMessage());
+        }
+
+        // Defer only file uploads to after response to prevent blocking
+        register_shutdown_function(function() use ($uploadedFiles, $em, $application) {
             try {
                 // Move files and update application
                 $proofFiles = [];
@@ -508,29 +530,9 @@ class MentoringController extends AbstractController
                 
                 $application->setSupportingDocuments($proofFiles ?: null);
                 $em->flush();
-
-                // Notify the user
-                $this->notificationService->notifyMentorApplicationSubmitted($user, $application->getId());
-
-                // Notify only super admins
-                $superAdmins = $em->getRepository(User::class)->createQueryBuilder('u')
-                    ->where('u.roles LIKE :role')
-                    ->setParameter('role', '%ROLE_SUPER_ADMIN%')
-                    ->getQuery()
-                    ->getResult();
-                
-                foreach ($superAdmins as $admin) {
-                    $this->notificationService->create(
-                        $admin,
-                        'mentor',
-                        'New Mentor Application',
-                        'A new mentor application has been submitted by ' . $firstName . ' ' . $lastName . '.',
-                        'Pending',
-                        $application->getId()
-                    );
-                }
+                error_log('File uploads completed for mentor application ' . $application->getId());
             } catch (\Exception $e) {
-                error_log('Failed to process application (async): ' . $e->getMessage());
+                error_log('Failed to process file uploads (async): ' . $e->getMessage());
             }
         });
 
@@ -575,6 +577,33 @@ class MentoringController extends AbstractController
 
             // Notify the user
             $this->notificationService->notifyMentorApplicationRejected($application->getStudent(), $application->getId(), $request->request->get('admin_note'));
+
+            // Notify other admins about the rejection
+            try {
+                $admins = $em->getRepository(User::class)->findAdmins();
+                $actor = $this->getUser();
+                $applicantName = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $application->getEmail();
+                $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Super Admin';
+                
+                foreach ($admins as $admin) {
+                    if ($admin === $actor) continue; // Don't notify the actor
+                    try {
+                        $this->notificationService->create(
+                            $admin,
+                            'mentor',
+                            'Mentor Application Rejected',
+                            $actorName . ' rejected the mentor application from ' . $applicantName . '.',
+                            'Rejected',
+                            $application->getId()
+                        );
+                        error_log('Mentor application rejection notification sent to admin ' . $admin->getId());
+                    } catch (\Exception $e) {
+                        error_log('Failed to send mentor application rejection notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log('Failed to send admin notifications for mentor application rejection: ' . $e->getMessage());
+            }
 
             $this->addFlash('success', 'Mentor application rejected.');
 
@@ -622,6 +651,33 @@ $validUntil = $request->request->get('valid_until');
 
         // Notify the user
         $this->notificationService->notifyMentorApplicationApproved($student, $application->getId());
+
+        // Notify other admins about the approval
+        try {
+            $admins = $em->getRepository(User::class)->findAdmins();
+            $actor = $this->getUser();
+            $applicantName = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $application->getEmail();
+            $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Super Admin';
+            
+            foreach ($admins as $admin) {
+                if ($admin === $actor) continue; // Don't notify the actor
+                try {
+                    $this->notificationService->create(
+                        $admin,
+                        'mentor',
+                        'Mentor Application Approved',
+                        $actorName . ' approved the mentor application from ' . $applicantName . '.',
+                        'Approved',
+                        $application->getId()
+                    );
+                    error_log('Mentor application approval notification sent to admin ' . $admin->getId());
+                } catch (\Exception $e) {
+                    error_log('Failed to send mentor application approval notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('Failed to send admin notifications for mentor application approval: ' . $e->getMessage());
+        }
 
         $this->addFlash('success', 'Student approved as mentor.');
 
@@ -727,6 +783,30 @@ $validUntil = $request->request->get('valid_until');
 
         // Notify the user that a mentor profile was created for them
         $this->notificationService->notifyMentorProfileCreated($user);
+
+        // Notify all admins about the new mentor profile
+        try {
+            $admins = $em->getRepository(User::class)->findAdmins();
+            $mentorName = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
+            
+            foreach ($admins as $admin) {
+                try {
+                    $this->notificationService->create(
+                        $admin,
+                        'mentor',
+                        'New Mentor Profile Created',
+                        'A new mentor profile has been created for ' . $mentorName . '.',
+                        'Active',
+                        $profile->getId()
+                    );
+                    error_log('Mentor profile creation notification sent to admin ' . $admin->getId());
+                } catch (\Exception $e) {
+                    error_log('Failed to send mentor profile creation notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
+                }
+            }
+        } catch (\Exception $e) {
+            error_log('Failed to send admin notifications for mentor profile creation: ' . $e->getMessage());
+        }
 
         $this->addFlash('success', 'Mentor profile created.');
 
@@ -1261,7 +1341,13 @@ $validUntil = $request->request->get('valid_until');
 
         if (in_array($status, ['Assigned', 'Completed'], true) && ($mentorName === '' || $expertise === '' || $availableDates === '' || $availableTime === '' || $meetingMethod === '')) {
             $this->addFlash('error', 'Mentor name, expertise, dates, time, and meeting method are required before assigning a request.');
-            return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_SEE_OTHER);
+            
+            // Redirect to appropriate route based on user role
+            $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') 
+                ? 'mentoring_superadmin_requests' 
+                : 'admin_role_mentorship_coordination';
+            
+            return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
         }
 
         $prevStatus = $mentorRequest->getStatus();
@@ -1287,33 +1373,101 @@ $validUntil = $request->request->get('valid_until');
                 ? 'Your mentor assistance request has been cancelled.'
                 : 'A mentor match has been sent for your assistance request.';
 
-            $this->notificationService->notifyMentorAssistanceStatus($student, $mentorRequest->getId(), $status, $notificationMessage);
+            try {
+                $this->notificationService->notifyMentorAssistanceStatus($student, $mentorRequest->getId(), $status, $notificationMessage);
+                error_log('Student notification created successfully for request ' . $mentorRequest->getId());
+            } catch (\Exception $e) {
+                error_log('Failed to create student notification: ' . $e->getMessage());
+            }
 
             if (in_array($status, ['Assigned', 'Completed'], true)) {
-                $this->sendMentorAssistanceResponseEmail($mailer, $student, $mentorRequest);
+                try {
+                    $this->sendMentorAssistanceResponseEmail($mailer, $student, $mentorRequest);
+                    error_log('Student email sent successfully for request ' . $mentorRequest->getId());
+                } catch (\Exception $e) {
+                    error_log('Failed to send student email: ' . $e->getMessage());
+                }
             }
         }
 
         $noteText = $instructions !== '' ? $instructions : ($mentorName !== '' ? 'Assigned to: ' . $mentorName : null);
-        $this->auditLog($em, 'custom_request', $mentorRequest->getId(), $requesterLabel, 'update_status', $prevStatus, $status, $noteText);
-        $em->flush();
-
-        $actor = $this->getUser();
-        $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Super Admin';
-        $requesterName = $mentorRequest->getFullName() ?: ($student ? trim($student->getFirstName() . ' ' . $student->getLastName()) : 'Student');
-        foreach ($em->getRepository(User::class)->findAdmins() as $u) {
-            if ($u === $actor) continue;
-            $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, $status, $requesterName);
+        
+        try {
+            $this->auditLog($em, 'custom_request', $mentorRequest->getId(), $requesterLabel, 'update_status', $prevStatus, $status, $noteText);
+            error_log('Audit log created successfully for request ' . $mentorRequest->getId());
+        } catch (\Exception $e) {
+            error_log('Failed to create audit log: ' . $e->getMessage());
+        }
+        
+        try {
+            $em->flush();
+            error_log('Database flush completed successfully for request ' . $mentorRequest->getId());
+        } catch (\Exception $e) {
+            error_log('Failed to flush database: ' . $e->getMessage());
+            throw $e; // Re-throw database errors as they're critical
         }
 
-        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
-        if ($isAjax) {
-            return $this->json(['success' => true, 'message' => 'Mentor request updated and the requester has been notified.']);
+        try {
+            $actor = $this->getUser();
+            $actorName = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Super Admin';
+            $requesterName = $mentorRequest->getFullName() ?: ($student ? trim($student->getFirstName() . ' ' . $student->getLastName()) : 'Student');
+            
+            // Send admin notifications
+            foreach ($em->getRepository(User::class)->findAdmins() as $u) {
+                if ($u === $actor) continue;
+                try {
+                    $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, $status, $requesterName);
+                } catch (\Exception $e) {
+                    error_log('Failed to create admin notification for user ' . $u->getId() . ': ' . $e->getMessage());
+                }
+            }
+
+            $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+            if ($isAjax) {
+                try {
+                    return $this->json(['success' => true, 'message' => 'Mentor request updated and the requester has been notified.']);
+                } catch (\Exception $e) {
+                    error_log('Failed to create JSON response: ' . $e->getMessage());
+                    return $this->json(['success' => false, 'message' => 'Action completed but response failed.']);
+                }
+            }
+
+            try {
+                $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
+                error_log('Flash message added successfully for request ' . $mentorRequest->getId());
+            } catch (\Exception $e) {
+                error_log('Failed to add flash message: ' . $e->getMessage());
+            }
+
+            try {
+                // Redirect to appropriate route based on user role
+                $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') 
+                    ? 'mentoring_superadmin_requests' 
+                    : 'admin_role_mentorship_coordination';
+                
+                $redirectResponse = $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
+                error_log('Redirect response created successfully for request ' . $mentorRequest->getId() . ' to route: ' . $redirectRoute);
+                return $redirectResponse;
+            } catch (\Exception $e) {
+                error_log('Failed to create redirect response: ' . $e->getMessage());
+                error_log('Redirect error trace: ' . $e->getTraceAsString());
+                // Return a simple success response if redirect fails
+                return new Response('Action completed successfully. Please navigate back to the mentor requests page.', 200);
+            }
+        } catch (\Exception $e) {
+            error_log('Error in admin notification/response phase: ' . $e->getMessage());
+            error_log('Error trace: ' . $e->getTraceAsString());
+            
+            // Even if there's an error in notifications, the main action succeeded
+            $this->addFlash('success', 'Mentor request updated successfully. There was a minor issue with notifications, but the main action completed.');
+            
+            // Redirect to appropriate route based on user role
+            $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') 
+                ? 'mentoring_superadmin_requests' 
+                : 'admin_role_mentorship_coordination';
+            
+            return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
         }
-
-        $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
-
-        return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/custom-request/{id}/review', name: 'mentoring_custom_request_review', methods: ['POST'])]
