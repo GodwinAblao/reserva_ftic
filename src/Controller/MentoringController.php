@@ -586,7 +586,7 @@ class MentoringController extends AbstractController
 
     #[Route('/test-notification', name: 'test_notification', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function testNotification(EntityManagerInterface $em): Response
+    public function testNotification(EntityManagerInterface $em, MailerInterface $mailer): Response
     {
         $user = $this->getUser();
         if (!$user) {
@@ -650,11 +650,64 @@ class MentoringController extends AbstractController
             $latestNotifications = $notificationRepo->findLatest($user, 5);
             error_log('DEBUG: Latest notifications count: ' . count($latestNotifications));
             
-            return new Response('FORCED test notification created with ID: ' . $notification->getId() . '. Found ' . count($admins) . ' admin users. User has ' . count($userNotifications) . ' notifications, ' . $unreadCount . ' unread. Poll data: ' . json_encode($pollData) . '. Latest: ' . count($latestNotifications));
+            // Test email sending to admins
+            $emailTestResults = [];
+            foreach ($admins as $admin) {
+                try {
+                    error_log('EMAIL TEST: Attempting to send test email to admin: ' . $admin->getEmail());
+                    
+                    $testEmail = (new \Symfony\Component\Mime\Email())
+                        ->from('noreply@fticreserva.website')
+                        ->to($admin->getEmail())
+                        ->subject('TEST EMAIL - Admin Notification System')
+                        ->html('<h1>Test Email</h1><p>This is a test email to verify admin email notifications are working.</p><p>Admin: ' . $admin->getEmail() . '</p><p>Time: ' . date('Y-m-d H:i:s') . '</p>');
+                    
+                    // Use the mailer parameter
+                    $mailer->send($testEmail);
+                    error_log('EMAIL TEST: Successfully sent test email to admin: ' . $admin->getEmail());
+                    $emailTestResults[] = 'SUCCESS: ' . $admin->getEmail();
+                } catch (\Exception $e) {
+                    error_log('EMAIL TEST: FAILED to send test email to admin ' . $admin->getEmail() . ': ' . $e->getMessage());
+                    error_log('EMAIL TEST: Email error trace: ' . $e->getTraceAsString());
+                    $emailTestResults[] = 'FAILED: ' . $admin->getEmail() . ' - ' . $e->getMessage();
+                }
+            }
+            
+            return new Response('FORCED test notification created with ID: ' . $notification->getId() . '. Found ' . count($admins) . ' admin users. User has ' . count($userNotifications) . ' notifications, ' . $unreadCount . ' unread. Poll data: ' . json_encode($pollData) . '. Latest: ' . count($latestNotifications) . '. Email test results: ' . implode('; ', $emailTestResults));
         } catch (\Exception $e) {
             error_log('DEBUG: Failed to create test notification: ' . $e->getMessage());
             error_log('DEBUG: Error trace: ' . $e->getTraceAsString());
             return new Response('Failed to create test notification: ' . $e->getMessage());
+        }
+    }
+
+    #[Route('/test-email', name: 'test_email', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function testEmail(MailerInterface $mailer): Response
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return new Response('User not found');
+        }
+
+        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
+        error_log('EMAIL TEST: Simple email test for user: ' . $userEmail);
+        
+        try {
+            $testEmail = (new \Symfony\Component\Mime\Email())
+                ->from('noreply@fticreserva.website')
+                ->to($userEmail)
+                ->subject('SIMPLE EMAIL TEST - Admin Notification System')
+                ->html('<h1>Simple Email Test</h1><p>This is a basic test to verify email sending works.</p><p>User: ' . $userEmail . '</p><p>Time: ' . date('Y-m-d H:i:s') . '</p><p>If you receive this, email system is working!</p>');
+            
+            $mailer->send($testEmail);
+            error_log('EMAIL TEST: SUCCESS - Simple email sent to: ' . $userEmail);
+            return new Response('SUCCESS: Test email sent to ' . $userEmail . '. Check your inbox!');
+            
+        } catch (\Exception $e) {
+            error_log('EMAIL TEST: FAILED - Could not send email to ' . $userEmail . ': ' . $e->getMessage());
+            error_log('EMAIL TEST: Error details: ' . $e->getTraceAsString());
+            return new Response('FAILED: Could not send email - Error: ' . $e->getMessage());
         }
     }
 
@@ -1903,6 +1956,8 @@ $validUntil = $request->request->get('valid_until');
     private function sendMentorAssistanceRequestEmail(MailerInterface $mailer, User $admin, MentorCustomRequest $mentorRequest, string $adminUrl): void
     {
         try {
+            error_log('EMAIL: Attempting to send mentor assistance request email to admin: ' . $admin->getEmail());
+            
             $email = (new Email())
                 ->from('noreply@fticreserva.website')
                 ->to($admin->getEmail())
@@ -1913,8 +1968,10 @@ $validUntil = $request->request->get('valid_until');
                 ]));
 
             $mailer->send($email);
+            error_log('EMAIL: Successfully sent mentor assistance request email to admin: ' . $admin->getEmail());
         } catch (\Throwable $e) {
-            // Email delivery should not block the in-system workflow.
+            error_log('EMAIL: FAILED to send mentor assistance request email to admin ' . $admin->getEmail() . ': ' . $e->getMessage());
+            error_log('EMAIL: Email error trace: ' . $e->getTraceAsString());
         }
     }
 

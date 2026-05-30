@@ -139,6 +139,7 @@ class NotificationService
             'submitted' => 'Mentor Application Submitted - Reserva FTIC',
             'approved' => 'Mentor Application Approved - Reserva FTIC',
             'rejected' => 'Mentor Application Update - Reserva FTIC',
+            'admin_notification' => 'New Mentor Application - Reserva FTIC',
             default => 'Mentor Application Update - Reserva FTIC',
         };
 
@@ -246,7 +247,8 @@ class NotificationService
      */
     public function notifyAdminNewMentorApplication(User $admin, int $applicationId, string $applicantName): Notification
     {
-        return $this->create(
+        // Create in-app notification
+        $notification = $this->create(
             $admin,
             'mentor',
             'New Mentor Application',
@@ -254,6 +256,16 @@ class NotificationService
             'Pending',
             $applicationId
         );
+
+        // Send email notification to admin immediately
+        try {
+            $this->sendMentorApplicationEmail($admin, $applicationId, 'admin_notification', $applicantName);
+            error_log('EMAIL: Successfully sent mentor application email to admin: ' . $admin->getEmail());
+        } catch (\Exception $e) {
+            error_log('EMAIL: FAILED to send mentor application email to admin ' . $admin->getEmail() . ': ' . $e->getMessage());
+        }
+
+        return $notification;
     }
 
     public function notifyAdminNewMentorAssistanceRequest(User $admin, int $requestId, string $requesterName): Notification
