@@ -504,12 +504,15 @@ class MentoringController extends AbstractController
             $admins = $em->getRepository(User::class)->findAdmins();
             $applicantName = trim($firstName . ' ' . $lastName);
             
+            error_log('DEBUG: Found ' . count($admins) . ' admin users for mentor application notification');
             foreach ($admins as $admin) {
+                error_log('DEBUG: Processing admin user: ID=' . $admin->getId() . ', Email=' . $admin->getEmail() . ', Roles=' . implode(',', $admin->getRoles()));
                 try {
-                    $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $applicantName);
-                    error_log('Mentor application notification sent to admin ' . $admin->getId() . ' for application ' . $application->getId());
+                    $notification = $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $applicantName);
+                    error_log('DEBUG: Mentor application notification CREATED with ID ' . $notification->getId() . ' for admin ' . $admin->getId() . ' for application ' . $application->getId());
                 } catch (\Exception $e) {
-                    error_log('Failed to send mentor application notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
+                    error_log('DEBUG: Failed to send mentor application notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
+                    error_log('DEBUG: Notification error trace: ' . $e->getTraceAsString());
                 }
             }
         } catch (\Exception $e) {
@@ -539,6 +542,36 @@ class MentoringController extends AbstractController
         $this->addFlash('success', 'Your mentor application has been submitted and is pending Super Admin review.');
 
         return $this->redirectToRoute('mentoring_index');
+    }
+
+    #[Route('/test-notification', name: 'test_notification', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function testNotification(EntityManagerInterface $em): Response
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return new Response('User not found');
+        }
+
+        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
+        error_log('DEBUG: Creating test notification for user ' . $userId);
+        
+        try {
+            $notification = $this->notificationService->create(
+                $user,
+                'test',
+                'Test Notification',
+                'This is a test notification to verify the system is working.',
+                'Pending',
+                null
+            );
+            
+            error_log('DEBUG: Test notification created with ID: ' . $notification->getId());
+            return new Response('Test notification created with ID: ' . $notification->getId());
+        } catch (\Exception $e) {
+            error_log('DEBUG: Failed to create test notification: ' . $e->getMessage());
+            return new Response('Failed to create test notification: ' . $e->getMessage());
+        }
     }
 
 #[Route('/admin/application/{id}/{decision}', name: 'mentoring_review_application', methods: ['POST'])]

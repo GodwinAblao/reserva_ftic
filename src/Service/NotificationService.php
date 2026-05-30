@@ -33,6 +33,8 @@ class NotificationService
         ?int $referenceId = null,
         bool $flush = true
     ): Notification {
+        error_log('DEBUG: Creating notification for user ' . $user->getId() . ' (' . $user->getEmail() . ') - Type: ' . $type . ', Title: ' . $title);
+        
         $notification = new Notification();
         $notification->setUser($user);
         $notification->setType($type);
@@ -45,9 +47,16 @@ class NotificationService
 
         $this->em->persist($notification);
         if ($flush) {
-            $this->em->flush();
+            try {
+                $this->em->flush();
+                error_log('DEBUG: Notification flushed to database with ID: ' . $notification->getId());
+            } catch (\Exception $e) {
+                error_log('DEBUG: Failed to flush notification: ' . $e->getMessage());
+                throw $e;
+            }
         }
 
+        error_log('DEBUG: Notification created successfully with ID: ' . $notification->getId());
         return $notification;
     }
 
@@ -235,9 +244,9 @@ class NotificationService
     /**
      * Notify super admin about new mentor application
      */
-    public function notifyAdminNewMentorApplication(User $admin, int $applicationId, string $applicantName): void
+    public function notifyAdminNewMentorApplication(User $admin, int $applicationId, string $applicantName): Notification
     {
-        $this->create(
+        return $this->create(
             $admin,
             'mentor',
             'New Mentor Application',

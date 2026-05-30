@@ -22,10 +22,12 @@ class NotificationRepository extends ServiceEntityRepository
      */
     public function getUnreadCount(User $user): int
     {
-        return (int) $this->getEntityManager()->getConnection()->fetchOne(
+        $count = (int) $this->getEntityManager()->getConnection()->fetchOne(
             'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = false AND status != ?',
             [$user->getId(), 'Suggested']
         );
+        error_log('DEBUG: getUnreadCount for user ' . $user->getId() . ': ' . $count);
+        return $count;
     }
 
     /**
@@ -42,10 +44,13 @@ class NotificationRepository extends ServiceEntityRepository
             [$user->getId(), 'Suggested']
         );
 
-        return [
+        $result = [
             'unreadCount' => (int) ($row['unread_count'] ?? 0),
             'newestId'    => (int) ($row['newest_id']    ?? 0),
         ];
+        
+        error_log('DEBUG: getPollData for user ' . $user->getId() . ': ' . json_encode($result));
+        return $result;
     }
 
     /**

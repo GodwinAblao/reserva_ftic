@@ -23,10 +23,18 @@ class NotificationController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user) {
+            error_log('DEBUG: Notification API called by unauthenticated user');
             return $this->json(['error' => 'Unauthorized'], 401);
         }
 
+        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
+        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
+        $userRoles = $user instanceof \App\Entity\User ? implode(',', $user->getRoles()) : 'unknown';
+        
+        error_log('DEBUG: Notification API called by user ' . $userId . ' (' . $userEmail . ') with roles: ' . $userRoles);
+
         $notifications = $notificationRepo->findLatest($user, 20);
+        error_log('DEBUG: Found ' . count($notifications) . ' notifications for user ' . $userId);
 
         $data = [];
         foreach ($notifications as $n) {
@@ -43,9 +51,12 @@ class NotificationController extends AbstractController
             ];
         }
 
+        $unreadCount = $notificationRepo->getUnreadCount($user);
+        error_log('DEBUG: Unread count for user ' . $userId . ': ' . $unreadCount);
+
         $response = $this->json([
             'notifications' => $data,
-            'unreadCount' => $notificationRepo->getUnreadCount($user),
+            'unreadCount' => $unreadCount,
         ]);
         $response->headers->set('Cache-Control', 'private, max-age=60');
         return $response;
@@ -60,10 +71,20 @@ class NotificationController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user) {
+            error_log('DEBUG: Notification poll API called by unauthenticated user');
             return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        $response = $this->json($notificationRepo->getPollData($user));
+        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
+        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
+        $userRoles = $user instanceof \App\Entity\User ? implode(',', $user->getRoles()) : 'unknown';
+        
+        error_log('DEBUG: Notification poll API called by user ' . $userId . ' (' . $userEmail . ') with roles: ' . $userRoles);
+
+        $pollData = $notificationRepo->getPollData($user);
+        error_log('DEBUG: Poll data for user ' . $userId . ': ' . json_encode($pollData));
+
+        $response = $this->json($pollData);
         $response->headers->set('Cache-Control', 'private, no-store');
         return $response;
     }
