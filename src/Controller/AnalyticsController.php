@@ -79,7 +79,11 @@ class AnalyticsController extends AbstractController
                 return new Response($response->getContent(), 200, ['Content-Type' => 'application/json']);
             }
         } catch (\Throwable $e) {
-            // Fall through to 502
+            return $this->json([
+                'error' => 'FastAPI unavailable',
+                'targetUrl' => $targetUrl,
+                'message' => $e->getMessage(),
+            ], 502);
         }
 
         return $this->json(['error' => 'FastAPI unavailable'], 502);
@@ -170,7 +174,7 @@ class AnalyticsController extends AbstractController
 
     private function getFastApiUrl(): string
     {
-        $url = getenv('FASTAPI_URL') ?: ($_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? null);
+        $url = $_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? getenv('FASTAPI_URL');
         return $url ?: 'http://127.0.0.1:8002';
     }
 
