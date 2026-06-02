@@ -61,7 +61,7 @@ class AnalyticsController extends AbstractController
             'mae' => $this->mae($series),
             'rmse' => $this->rmse($series),
             'fastApiAvailable' => $this->isFastApiAvailable(),
-            'fastApiUrl' => 'http://127.0.0.1:8002',
+            'fastApiUrl' => $this->getFastApiUrl(),
             'localAnalytics' => $localAnalytics,
         ]);
     }
@@ -70,10 +70,19 @@ class AnalyticsController extends AbstractController
     public function proxy(string $endpoint, Request $request): Response
     {
         $queryParams = $request->query->all();
-        $facilityId = $queryParams['facility_id'] ?? null;
-        $dataSource = $queryParams['data_source'] ?? 'auto';
+        $queryString = http_build_query($queryParams);
+        $targetUrl = rtrim($this->getFastApiUrl(), '/') . '/api/analytics/' . $endpoint . ($queryString ? '?' . $queryString : '');
 
-        return $this->json($this->getDummyAnalytics($endpoint, $facilityId, $dataSource));
+        try {
+            $response = $this->httpClient->request('GET', $targetUrl, ['timeout' => 10]);
+            if ($response->getStatusCode() === 200) {
+                return new Response($response->getContent(), 200, ['Content-Type' => 'application/json']);
+            }
+        } catch (\Throwable $e) {
+            // Fall through to 502
+        }
+
+        return $this->json(['error' => 'FastAPI unavailable'], 502);
     }
 
     private function getDummyAnalytics(string $endpoint, ?string $facilityId, string $dataSource): array
@@ -148,7 +157,7 @@ class AnalyticsController extends AbstractController
     {
         try {
             // Test connection to FastAPI
-            $response = $this->httpClient->request('GET', 'http://127.0.0.1:8002/', [
+            $response = $this->httpClient->request('GET', rtrim($this->getFastApiUrl(), '/') . '/', [
                 'timeout' => 1
             ]);
 
@@ -157,6 +166,12 @@ class AnalyticsController extends AbstractController
             // FastAPI not available
             return false;
         }
+    }
+
+    private function getFastApiUrl(): string
+    {
+        $url = getenv('FASTAPI_URL') ?: ($_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? null);
+        return $url ?: 'http://127.0.0.1:8002';
     }
 
     private function monthlySeries(array $rows): array

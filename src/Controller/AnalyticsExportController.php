@@ -18,11 +18,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 #[IsGranted('ROLE_ADMIN')]
 class AnalyticsExportController extends AbstractController
 {
-    private const API_BASE = 'http://127.0.0.1:8002';
-
     public function __construct(
         private readonly HttpClientInterface $httpClient,
     ) {}
+
+    private function getFastApiUrl(): string
+    {
+        $url = getenv('FASTAPI_URL') ?: ($_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? null);
+        return $url ?: 'http://127.0.0.1:8002';
+    }
 
     #[Route('/export/this-week', name: 'admin_role_analytics_export_this_week', methods: ['GET'])]
     public function exportThisWeek(EntityManagerInterface $em): Response
@@ -57,7 +61,7 @@ class AnalyticsExportController extends AbstractController
     private function fetchAnalyticsCsv(string $path): ?string
     {
         try {
-            $response = $this->httpClient->request('GET', self::API_BASE . $path, [
+            $response = $this->httpClient->request('GET', rtrim($this->getFastApiUrl(), '/') . $path, [
                 'timeout' => 45,
             ]);
 
