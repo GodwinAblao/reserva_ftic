@@ -18,7 +18,7 @@ DEFAULT_FACILITIES = [
     {"id": 3, "name": "Discussion Room 4", "capacity": 8},
     {"id": 4, "name": "Presentation Room 1", "capacity": 40},
     {"id": 5, "name": "Presentation Room 2", "capacity": 60},
-    {"id": 6, "name": "COE Project Room", "capacity": 48},
+    {"id": 6, "name": "3D Printing Lab", "capacity": 48},
     {"id": 7, "name": "Lounge Area", "capacity": 150},
 ]
 RESERVATION_COLUMNS = [
