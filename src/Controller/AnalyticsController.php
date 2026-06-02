@@ -179,7 +179,7 @@ class AnalyticsController extends AbstractController
             $url = $_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? null;
         }
 
-        return $url ?: 'http://127.0.0.1:8002';
+        return $url ?: 'https://reserva-ftic-analytics-production.up.railway.app';
     }
 
     private function getFastApiUrlSource(): string
