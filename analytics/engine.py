@@ -199,9 +199,9 @@ def facility_list(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 def meta_payload(df: pd.DataFrame, source: str, live_count: int) -> dict[str, Any]:
     labels = {
-        "live": "Live database only",
-        "demo": "Demo dataset only",
-        "combined": "Combined dataset (demo + live)",
+        "live": "Live Database Only",
+        "demo": "Demo Dataset Only",
+        "combined": "Combined (Demo + Live)",
     }
     return {
         "source": source,
