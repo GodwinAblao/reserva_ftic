@@ -29,6 +29,7 @@ class AnalyticsController extends AbstractController
             ->select('f.id, f.name, COUNT(r.id) AS total, COALESCE(SUM(r.capacity), 0) AS attendees')
             ->from(Facility::class, 'f')
             ->leftJoin(Reservation::class, 'r', 'WITH', 'r.facility = f AND r.status = :approved')
+            ->where('f.availableForReservation = true')
             ->setParameter('approved', 'Approved')
             ->groupBy('f.id')
             ->orderBy('total', 'DESC')
@@ -78,15 +79,15 @@ class AnalyticsController extends AbstractController
     private function getDummyAnalytics(string $endpoint, ?string $facilityId, string $dataSource): array
     {
         $labels = [
-            'live' => 'Live database only',
-            'demo' => 'Demo dataset only',
-            'combined' => 'Combined dataset (demo + live)',
-            'auto' => 'Auto data source'
+            'live' => 'Live Database Only',
+            'demo' => 'Demo Dataset Only',
+            'combined' => 'Combined (Demo + Live)',
+            'auto' => 'Auto (Live if exists)'
         ];
 
         $base = [
             'source' => $dataSource,
-            'dataSourceLabel' => $labels[$dataSource] ?? 'Demo dataset',
+            'dataSourceLabel' => $labels[$dataSource] ?? 'Auto (Live if exists)',
             'reservationCount' => 150,
             'totalRows' => 150,
             'generatedAt' => date('c'),
