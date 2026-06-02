@@ -6,16 +6,14 @@ NIXPACKS_PHP_FALLBACK_PATH = "/index.php"
 RAILPACK_PHP_ROOT_DIR = "/app/public"
 
 [phases.setup]
-nixPkgs = ['python311', 'python311Packages.pip', 'php83', 'php83Packages.composer']
+nixPkgs = ['php83', 'php83Packages.composer']
 
 [phases.build]
 cmds = [
-  "pip install -r analytics/requirements.txt --break-system-packages",
   "php bin/console asset-map:compile --env=prod"
 ]
 
 [start]
 cmds = [
-  "cd analytics && python -m uvicorn app:app --host 0.0.0.0 --port 8002 &",
   "php -S 0.0.0.0:$PORT -t public"
 ]
