@@ -70,25 +70,10 @@ class AnalyticsController extends AbstractController
     public function proxy(string $endpoint, Request $request): Response
     {
         $queryParams = $request->query->all();
-        $queryString = http_build_query($queryParams);
-        $targetUrl = rtrim($this->getFastApiUrl(), '/') . '/api/analytics/' . $endpoint . ($queryString ? '?' . $queryString : '');
+        $facilityId = $queryParams['facility_id'] ?? null;
+        $dataSource = $queryParams['data_source'] ?? 'combined';
 
-        try {
-            $response = $this->httpClient->request('GET', $targetUrl, ['timeout' => 10]);
-            if ($response->getStatusCode() === 200) {
-                return new Response($response->getContent(), 200, ['Content-Type' => 'application/json']);
-            }
-        } catch (\Throwable $e) {
-            return $this->json([
-                'error' => 'FastAPI unavailable',
-                'targetUrl' => $targetUrl,
-                'fastApiUrl' => $this->getFastApiUrl(),
-                'fastApiUrlSource' => $this->getFastApiUrlSource(),
-                'message' => $e->getMessage(),
-            ], 502);
-        }
-
-        return $this->json(['error' => 'FastAPI unavailable'], 502);
+        return $this->json($this->getDummyAnalytics($endpoint, $facilityId, $dataSource));
     }
 
     private function getDummyAnalytics(string $endpoint, ?string $facilityId, string $dataSource): array
