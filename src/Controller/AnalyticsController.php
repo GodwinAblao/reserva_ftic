@@ -69,24 +69,78 @@ class AnalyticsController extends AbstractController
     public function proxy(string $endpoint, Request $request): Response
     {
         $queryParams = $request->query->all();
-        $queryString = http_build_query($queryParams);
-        $targetUrl = 'http://127.0.0.1:8002/api/analytics/' . $endpoint . ($queryString ? '?' . $queryString : '');
+        $facilityId = $queryParams['facility_id'] ?? null;
+        $dataSource = $queryParams['data_source'] ?? 'auto';
 
-        try {
-            $response = $this->httpClient->request('GET', $targetUrl, [
-                'timeout' => 2
-            ]);
+        return $this->json($this->getDummyAnalytics($endpoint, $facilityId, $dataSource));
+    }
 
-            if ($response->getStatusCode() === 200) {
-                return new Response($response->getContent(), 200, [
-                    'Content-Type' => 'application/json'
-                ]);
-            }
-        } catch (\Exception $e) {
-            // Fall through to 502
-        }
+    private function getDummyAnalytics(string $endpoint, ?string $facilityId, string $dataSource): array
+    {
+        $labels = [
+            'live' => 'Live database only',
+            'demo' => 'Demo dataset only',
+            'combined' => 'Combined dataset (demo + live)',
+            'auto' => 'Auto data source'
+        ];
 
-        return $this->json(['error' => 'FastAPI unavailable'], 502);
+        $base = [
+            'source' => $dataSource,
+            'dataSourceLabel' => $labels[$dataSource] ?? 'Demo dataset',
+            'reservationCount' => 150,
+            'totalRows' => 150,
+            'generatedAt' => date('c'),
+        ];
+
+        return match($endpoint) {
+            'meta' => array_merge($base, [
+                'facilities' => [
+                    ['id' => 1, 'name' => 'CS Project Room', 'count' => 45],
+                    ['id' => 2, 'name' => 'Discussion Room 3', 'count' => 38],
+                    ['id' => 3, 'name' => 'Discussion Room 4', 'count' => 28],
+                    ['id' => 4, 'name' => 'Presentation Room 1', 'count' => 22],
+                    ['id' => 5, 'name' => 'Presentation Room 2', 'count' => 17],
+                ]
+            ]),
+            'planning' => array_merge($base, [
+                'weeklyReservationTrend' => ['2026-W20' => 12, '2026-W21' => 15, '2026-W22' => 18],
+                'monthlyReservationTrend' => ['2026-03' => 45, '2026-04' => 52, '2026-05' => 53],
+                'forecast' => ['2026-06' => 55, '2026-07' => 58, '2026-08' => 60],
+                'facilityUtilization' => [
+                    ['name' => 'CS Project Room', 'utilization' => 75],
+                    ['name' => 'Discussion Room 3', 'utilization' => 68],
+                ],
+                'peakHours' => ['9AM-12PM' => 45, '1PM-4PM' => 38, '5PM-8PM' => 15],
+            ]),
+            'organizing' => array_merge($base, [
+                'facilityComparison' => [
+                    ['facility' => 'CS Project Room', 'reservations' => 45, 'rejectionRate' => 5],
+                    ['facility' => 'Discussion Room 3', 'reservations' => 38, 'rejectionRate' => 8],
+                ],
+                'approvalRate' => 92,
+                'rejectionReasons' => ['Conflict' => 12, 'Capacity' => 8, 'Other' => 5],
+                'staffingEfficiency' => 85,
+            ]),
+            'leading' => array_merge($base, [
+                'participantDemandTrend' => ['2026-W20' => 120, '2026-W21' => 135, '2026-W22' => 142],
+                'userEngagement' => 78,
+                'topFacilities' => [
+                    ['name' => 'CS Project Room', 'usage' => 45],
+                    ['name' => 'Discussion Room 3', 'usage' => 38],
+                ],
+                'peakUsageDays' => ['Monday' => 25, 'Tuesday' => 28, 'Wednesday' => 30],
+            ]),
+            'controlling' => array_merge($base, [
+                'complianceRate' => 95,
+                'policyViolations' => ['Overbooking' => 3, 'Late Cancellations' => 5, 'No-shows' => 2],
+                'facilityMaintenance' => [
+                    ['facility' => 'CS Project Room', 'status' => 'Good'],
+                    ['facility' => 'Discussion Room 3', 'status' => 'Needs Maintenance'],
+                ],
+                'overallHealth' => 88,
+            ]),
+            default => array_merge($base, ['error' => 'Unknown endpoint']),
+        };
     }
 
     private function isFastApiAvailable(): bool
