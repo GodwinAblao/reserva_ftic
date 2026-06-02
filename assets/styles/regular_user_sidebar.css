@@ -1,0 +1,333 @@
+.app-shell.regular-user-shell {
+    display: grid !important;
+    grid-template-columns: 260px minmax(0, 1fr) 220px;
+    gap: 0;
+    padding: 0;
+    position: fixed;
+    top: 88px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    align-items: stretch;
+    background: #ffffff;
+}
+
+/* Collapse to 2 columns when no user-right-col present (e.g. mentoring page) */
+.app-shell.regular-user-shell:not(:has(.user-right-col)) {
+    grid-template-columns: 260px minmax(0, 1fr) !important;
+}
+
+/* ── User right sidebar column ── */
+.user-right-col {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 10px 14px 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+    min-width: 0;
+    height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.1) transparent;
+}
+
+.user-right-col .user-right-panel {
+    margin: 0 !important;
+    height: auto !important;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 14px 12px 12px;
+}
+
+.user-right-col .admin-right-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#userResvList,
+#userMentorshipList,
+#userMentorReqList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 2px;
+    will-change: contents;
+    contain: layout style;
+}
+
+.user-rp-viewmore {
+    display: block;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: #006633;
+    text-decoration: none;
+    margin-top: 8px;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.user-rp-viewmore:hover { opacity: 1; }
+
+.sidebar.regular-user-sidebar {
+    position: static !important;
+    top: auto !important;
+    height: auto !important;
+    max-height: calc(100vh - 140px) !important;
+    overflow: visible !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    margin: 12px 0 12px 12px;
+    padding: 17px 12px 14px;
+    background: #0D9B00!important;
+    background-image: none !important;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.20);
+    box-shadow: 0 14px 24px rgba(26, 126, 0, 0.15);
+    color: inherit !important;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+.regular-user-mail {
+    padding: 6px 8px 1px;
+    color: #f3fdf1;
+    font-size: 15px;
+    line-height: 1.1;
+    font-weight: 500;
+    text-align: center;
+    letter-spacing: 0.01em;
+    word-break: break-word;
+}
+
+.sidebar.regular-user-sidebar .admin-sidebar-user {
+    display: block;
+    padding: 8px 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.sidebar.regular-user-sidebar .admin-sidebar-email {
+    display: block;
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 600;
+    text-align: center;
+    word-break: break-word;
+}
+
+.sidebar.regular-user-sidebar .admin-sidebar-role {
+    display: block;
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 600;
+    text-align: center;
+}
+
+.sidebar.regular-user-sidebar .nav-list {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 0 1 auto !important;
+    min-height: 0 !important;
+    gap: 3px;
+    margin-top: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.55) transparent;
+    padding-bottom: 6px;
+}
+
+.sidebar.regular-user-sidebar .nav-link,
+.sidebar.regular-user-sidebar .regular-user-logout {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background:#0D9B00;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    box-shadow: none;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+    will-change: background, color;
+    transform: none !important;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.sidebar.regular-user-sidebar .nav-link.active {
+    background: #ffffff;
+    border-color: #ffffff;
+    border-width: 1.5px;
+    color:#0D9B00;
+    font-weight: 700;
+    box-shadow: none;
+    transform: none !important;
+}
+
+.sidebar.regular-user-sidebar .nav-link:hover,
+.sidebar.regular-user-sidebar .regular-user-logout:hover {
+    background: #ffffff;
+    border-color: #ffffff;
+    color: #0D9B00;
+    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.35);
+    transform: none !important;
+}
+
+.sidebar.regular-user-sidebar .nav-link-icon {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    color: inherit;
+}
+
+.sidebar.regular-user-sidebar .nav-link-icon svg {
+    width: 15px;
+    height: 15px;
+    display: block;
+}
+
+.sidebar.regular-user-sidebar .regular-user-logout {
+    margin-top: auto;
+    justify-content: flex-start;
+    min-height: 40px;
+    box-sizing: border-box;
+}
+
+.content-area.regular-user-content {
+    min-width: 0;
+    padding: 24px 28px 32px 28px;
+    height: 100%;
+    overflow-y: auto;
+    background: transparent;
+}
+
+.regular-user-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: 88px;
+    box-sizing: border-box;
+    padding: 20px 10px 20px 12px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #eff1ea;
+    background: #ffffff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+}
+
+.regular-user-page-header-left {
+    display: flex;
+    align-items: center;
+    gap: 50px;
+    min-width: 0;
+}
+
+.regular-user-page-logo {
+    width: 150px;
+    height: auto;
+    display: block;
+    padding-left: 20px;
+
+}
+
+.regular-user-page-title {
+    padding-top: 30px;
+    padding-left: 80px;
+    color: #0D9B00;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: capitalize;
+}
+
+@media (max-width: 1100px) {
+    .app-shell.regular-user-shell {
+        grid-template-columns: 260px minmax(0, 1fr) !important;
+    }
+    .user-right-col {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .app-shell.regular-user-shell {
+        position: static !important;
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 88px 0 0 0;
+    }
+
+    .sidebar.regular-user-sidebar {
+        position: fixed !important;
+        top: 56px !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        margin: 0 !important;
+        width: min(320px, 86vw) !important;
+        border-radius: 0 12px 12px 0;
+        z-index: 1100;
+        transform: translateX(-104%);
+        transition: transform 0.2s ease;
+    }
+
+    .app-shell.regular-user-shell.sidebar-open .sidebar.regular-user-sidebar {
+        transform: translateX(0);
+    }
+
+    .sidebar.regular-user-sidebar .nav-list {
+        overflow-y: auto !important;
+        flex: none !important;
+        min-height: auto !important;
+    }
+
+    .sidebar.regular-user-sidebar .regular-user-logout {
+        margin-top: 10px;
+    }
+
+    .content-area.regular-user-content {
+        padding: 10px 10px 28px;
+        height: auto;
+        overflow: visible;
+    }
+
+    .regular-user-page-header {
+        height: 56px;
+        padding: 0 16px;
+    }
+
+    .regular-user-page-logo {
+        width: 110px;
+    }
+
+    .regular-user-page-title {
+        font-size: 18px;
+    }
+}
