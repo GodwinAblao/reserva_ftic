@@ -82,6 +82,8 @@ class AnalyticsController extends AbstractController
             return $this->json([
                 'error' => 'FastAPI unavailable',
                 'targetUrl' => $targetUrl,
+                'fastApiUrl' => $this->getFastApiUrl(),
+                'fastApiUrlSource' => $this->getFastApiUrlSource(),
                 'message' => $e->getMessage(),
             ], 502);
         }
@@ -160,22 +162,41 @@ class AnalyticsController extends AbstractController
     private function isFastApiAvailable(): bool
     {
         try {
-            // Test connection to FastAPI
             $response = $this->httpClient->request('GET', rtrim($this->getFastApiUrl(), '/') . '/', [
-                'timeout' => 1
+                'timeout' => 1,
             ]);
 
             return $response->getStatusCode() === 200;
         } catch (\Exception $e) {
-            // FastAPI not available
             return false;
         }
     }
 
     private function getFastApiUrl(): string
     {
-        $url = $_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? getenv('FASTAPI_URL');
+        $url = getenv('FASTAPI_URL');
+        if ($url === false) {
+            $url = $_ENV['FASTAPI_URL'] ?? $_SERVER['FASTAPI_URL'] ?? null;
+        }
+
         return $url ?: 'http://127.0.0.1:8002';
+    }
+
+    private function getFastApiUrlSource(): string
+    {
+        if (getenv('FASTAPI_URL') !== false) {
+            return 'getenv';
+        }
+
+        if (isset($_ENV['FASTAPI_URL'])) {
+            return '_ENV';
+        }
+
+        if (isset($_SERVER['FASTAPI_URL'])) {
+            return '_SERVER';
+        }
+
+        return 'default';
     }
 
     private function monthlySeries(array $rows): array
