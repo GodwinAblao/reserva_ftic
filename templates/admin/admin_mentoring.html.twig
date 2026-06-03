@@ -289,18 +289,18 @@
         <div class="sa-det" id="sa-det-custom-{{ req.id }}" style="display:none">
             <div class="sa-det-ts">Submitted {{ req.createdAt|date('M d, Y') }} at {{ req.createdAt|date('h:i a') }}</div>
             <div class="sa-det-hero">
-                <div class="sa-det-av">{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|slice(0,1)|upper }}</div>
+                <div class="sa-det-av">{{ (req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown'))|slice(0,1)|upper }}</div>
                 <div>
-                    <div class="sa-det-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</div>
-                    <div class="sa-det-sub">{{ req.student.email }}</div>
+                    <div class="sa-det-name">{{ req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown') }}</div>
+                    <div class="sa-det-sub">{{ req.student ? req.student.email : (req.email ?: '—') }}</div>
                 </div>
             </div>
             <div class="sa-sec">Mentor Request Details</div>
             <div class="sa-hr"></div>
             <div class="sa-sec">Requester Information</div>
             <div class="sa-grid4">
-                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: ((req.student.firstName~' '~req.student.lastName)|trim) }}</p></div>
-                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student.email }}</p></div>
+                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: (req.student ? ((req.student.firstName~' '~req.student.lastName)|trim) : '—') }}</p></div>
+                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student ? req.student.email : (req.email ?: '—') }}</p></div>
                 <div class="sa-field"><label>Degree / Course</label><p>{{ req.departmentCourse ?: '—' }}</p></div>
                 <div class="sa-field"><label>Status</label><p><span class="badge {{ req.status|lower }}">{{ req.status }}</span></p></div>
             </div>
