@@ -85,11 +85,12 @@ class AnalyticsController extends AbstractController
             'combined' => 'Combined (Demo + Live)',
         ];
 
-        // Get reservations based on data source filter
+        // Get reservations based on data source filter (only from enabled facilities)
         $qb = $this->entityManager->createQueryBuilder()
             ->select('r, f')
             ->from(Reservation::class, 'r')
-            ->leftJoin('r.facility', 'f');
+            ->innerJoin('r.facility', 'f')
+            ->where('f.availableForReservation = true');
 
         if ($dataSource === 'live') {
             $qb->andWhere('r.isSimulated = false OR r.isSimulated IS NULL');
@@ -137,11 +138,7 @@ class AnalyticsController extends AbstractController
 
             // Facility stats - use ID as key to prevent duplicates
             $facility = $res->getFacility();
-            // Skip if facility is disabled (not available for reservation)
-            if (!$facility || !$facility->isAvailableForReservation()) {
-                continue;
-            }
-            $facId = $facility->getId();
+            $facId = $facility?->getId() ?? 0;
             $facName = $facility->getName() ?? 'Unknown';
             if (!isset($facilityStats[$facId])) {
                 $facilityStats[$facId] = ['name' => $facName, 'count' => 0, 'capacity' => 0, 'id' => $facId];
