@@ -51,22 +51,13 @@
                 <p style="font-size: 12px; color: #666; margin: 5px 0;">
                     Current gallery images: <span id="currentImageCount">{{ facility.images|length }}</span> / 5
                 </p>
-                
-                <div style="position: relative;">
-                    <div id="galleryUploadArea" style="display: block; border: 2px dashed #d1d5db; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f9fafb;">
-                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
-                        <p style="margin: 0; color: #374151; font-weight: 500;">Click to add images</p>
-                        <p style="margin: 0.25rem 0 0 0; color: #6b7280; font-size: 0.875rem;">or drag and drop files here</p>
-                    </div>
-                    <input type="file" id="images" name="images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display: none;">
-                </div>
-                
-                <div id="selectedImagesPreview" style="display: none; margin-top: 1rem;">
-                    <p style="font-size: 0.875rem; color: #374151; font-weight: 500; margin-bottom: 0.5rem;">
-                        Selected images: <span id="selectedCount">0</span>
-                    </p>
-                    <div id="selectedImagesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem;"></div>
-                </div>
+                {% if facility.images|length >= 5 %}
+                    <p style="color: #dc2626; font-size: 12px;">Maximum gallery images reached. Delete some images first to add new ones.</p>
+                {% else %}
+                    <input type="file" id="images" name="images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple
+                           style="display: block; width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 6px; background: #f9fafb;">
+                    <small style="color:#6b7280;">Hold Ctrl/Cmd to select multiple images (Max: {{ 5 - facility.images|length }} more)</small>
+                {% endif %}
             </div>
 
             <style>
@@ -146,7 +137,6 @@
     <script>
         const maxImages = 5;
         const currentImageCount = {{ facility.images|length }};
-        let selectedFiles = [];
         let deleteImageCallback = null;
         let deleteGalleryImageCallback = null;
 
@@ -160,24 +150,33 @@
             if (galleryModal && galleryModal.parentElement !== document.body) {
                 document.body.appendChild(galleryModal);
             }
-        });
 
-        function showModal(message) {
-            // Simple alert for non-confirm messages
-            alert(message);
-        }
+            // Simple form validation for gallery image count
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const fileInput = document.getElementById('images');
+                if (fileInput && fileInput.files) {
+                    const newImagesCount = fileInput.files.length;
+                    const totalImages = currentImageCount + newImagesCount;
+                    if (totalImages > maxImages) {
+                        e.preventDefault();
+                        alert(`Gallery cannot exceed ${maxImages} images. You have ${currentImageCount} existing and ${newImagesCount} new images selected.`);
+                        return false;
+                    }
+                }
+            });
+        });
 
         function deleteMainImage(facilityId) {
             deleteImageCallback = function() {
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '{{ path('app_facility_delete_main_image', {id: 'PLACEHOLDER'}) }}'.replace('PLACEHOLDER', facilityId);
-                
+
                 const tokenInput = document.createElement('input');
                 tokenInput.type = 'hidden';
                 tokenInput.name = '_token';
                 tokenInput.value = '{{ csrf_token('delete_image' ~ facility.id) }}';
-                
+
                 form.appendChild(tokenInput);
                 document.body.appendChild(form);
                 form.submit();
@@ -190,12 +189,12 @@
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '{{ path('app_facility_image_delete', {id: 'PLACEHOLDER'}) }}'.replace('PLACEHOLDER', imageId);
-                
+
                 const tokenInput = document.createElement('input');
                 tokenInput.type = 'hidden';
                 tokenInput.name = '_token';
                 tokenInput.value = token;
-                
+
                 form.appendChild(tokenInput);
                 document.body.appendChild(form);
                 form.submit();
@@ -242,155 +241,6 @@
                 document.getElementById('deleteGalleryImageModal').classList.remove('is-open');
                 deleteGalleryImageCallback = null;
             }
-        });
-
-        function updatePreview() {
-            const previewContainer = document.getElementById('selectedImagesPreview');
-            const imagesList = document.getElementById('selectedImagesList');
-            const selectedCount = document.getElementById('selectedCount');
-            const currentImageCountDisplay = document.getElementById('currentImageCount');
-
-            if (selectedFiles.length === 0) {
-                previewContainer.style.display = 'none';
-                currentImageCountDisplay.textContent = currentImageCount;
-                return;
-            }
-
-            previewContainer.style.display = 'block';
-            selectedCount.textContent = selectedFiles.length;
-            currentImageCountDisplay.textContent = currentImageCount + selectedFiles.length;
-            imagesList.innerHTML = '';
-
-            selectedFiles.forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imageContainer = document.createElement('div');
-                    imageContainer.style.cssText = 'position: relative; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; aspect-ratio: 1;';
-                    
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-                    
-                    const removeBtn = document.createElement('button');
-                    removeBtn.type = 'button';
-                    removeBtn.textContent = '✕';
-                    removeBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: rgba(220, 38, 38, 0.9); color: white; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;';
-                    removeBtn.onmouseover = function() { this.style.background = '#dc2626'; };
-                    removeBtn.onmouseout = function() { this.style.background = 'rgba(220, 38, 38, 0.9)'; };
-                    removeBtn.onclick = function() {
-                        selectedFiles.splice(index, 1);
-                        updatePreview();
-                        syncFileInput();
-                    };
-                    
-                    imageContainer.appendChild(img);
-                    imageContainer.appendChild(removeBtn);
-                    imagesList.appendChild(imageContainer);
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        function syncFileInput() {
-            console.log('DEBUG: syncFileInput called, selectedFiles count:', selectedFiles.length);
-            const fileInput = document.getElementById('images');
-            const dataTransfer = new DataTransfer();
-            selectedFiles.forEach(file => {
-                console.log('DEBUG: Adding file to DataTransfer:', file.name);
-                dataTransfer.items.add(file);
-            });
-            fileInput.files = dataTransfer.files;
-            console.log('DEBUG: fileInput.files now has:', fileInput.files.length, 'files');
-        }
-
-        // Initialize drag and drop when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            const uploadArea = document.getElementById('galleryUploadArea');
-            const fileInput = document.getElementById('images');
-            
-            // Click handler for upload area
-            uploadArea.addEventListener('click', function() {
-                fileInput.click();
-            });
-
-            // Show preview when files are selected - ADD to existing selection
-            fileInput.addEventListener('change', function() {
-                const files = fileInput.files;
-                
-                if (files.length === 0) {
-                    return;
-                }
-
-                // Validate total count
-                const totalAfterAdd = currentImageCount + selectedFiles.length + files.length;
-                if (totalAfterAdd > maxImages) {
-                    showModal(`Maximum ${maxImages} images allowed. You already have ${currentImageCount} existing and ${selectedFiles.length} selected. You can only add ${maxImages - currentImageCount - selectedFiles.length} more.`);
-                    fileInput.value = '';
-                    return;
-                }
-
-                // Add new files to selection
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    if (file.type.startsWith('image/')) {
-                        selectedFiles.push(file);
-                    }
-                }
-
-                updatePreview();
-                syncFileInput();
-                fileInput.value = ''; // Clear input so same files can be selected again if needed
-            });
-
-            // Handle drag and drop
-            uploadArea.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#3b82f6';
-                uploadArea.style.backgroundColor = '#eff6ff';
-            });
-
-            uploadArea.addEventListener('dragleave', function(e) {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#d1d5db';
-                uploadArea.style.backgroundColor = '#f9fafb';
-            });
-
-            uploadArea.addEventListener('drop', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadArea.style.borderColor = '#d1d5db';
-                uploadArea.style.backgroundColor = '#f9fafb';
-                
-                const files = e.dataTransfer.files;
-                const totalAfterAdd = currentImageCount + selectedFiles.length + files.length;
-                
-                if (totalAfterAdd > maxImages) {
-                    showModal(`Maximum ${maxImages} images allowed. You already have ${currentImageCount} existing and ${selectedFiles.length} selected. You can only add ${maxImages - currentImageCount - selectedFiles.length} more.`);
-                    return;
-                }
-                
-                // Add dropped files to selection
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    if (file.type.startsWith('image/')) {
-                        selectedFiles.push(file);
-                    }
-                }
-                
-                updatePreview();
-                syncFileInput();
-            });
-
-            // Form submission validation
-            document.querySelector('form').addEventListener('submit', function(e) {
-                const totalImages = currentImageCount + selectedFiles.length;
-                if (totalImages > maxImages) {
-                    e.preventDefault();
-                    showModal(`Gallery cannot exceed ${maxImages} images. You have ${currentImageCount} existing and ${selectedFiles.length} new images.`);
-                    return false;
-                }
-                syncFileInput(); // Ensure file input is synced before submission
-            });
         });
     </script>
 
