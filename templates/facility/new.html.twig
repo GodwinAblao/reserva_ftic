@@ -16,7 +16,7 @@
     {% endfor %}
 
     <div class="card-panel">
-        <form method="POST" enctype="multipart/form-data" style="max-width: 600px;">
+        <form method="POST" enctype="multipart/form-data" style="max-width: 600px;" data-turbo="false">
             <div class="form-group">
                 <label for="name">Facility Name <span style="color: #dc2626;">*</span></label>
                 <input type="text" id="name" name="name" required placeholder="Facility name">
@@ -34,12 +34,18 @@
 
             <div class="form-group">
                 <label for="image">Facility Image</label>
-                <input type="file" id="image" name="image" accept="image/*">
+                <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+                <small style="color:#6b7280;">Accepted: JPEG, PNG, WebP (HEIC not supported by browsers)</small>
             </div>
 
             <div class="form-group">
-                <label for="images">Gallery Images</label>
-                <input type="file" id="images" name="images[]" accept="image/*" multiple>
+                <label for="images">Gallery Images <span style="color: #666; font-size: 12px;">(Maximum: 5 gallery images - main facility image is separate)</span></label>
+                <p style="font-size: 12px; color: #666; margin: 5px 0;">
+                    Gallery images: 0 / 5
+                </p>
+                <input type="file" id="images" name="images[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple
+                       style="display: block; width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 6px; background: #f9fafb;">
+                <small style="color:#6b7280;">Hold Ctrl/Cmd to select multiple images (Max: 5)</small>
             </div>
 
             <div style="display: flex; gap: 12px;">
@@ -48,5 +54,25 @@
             </div>
         </form>
     </div>
+
+    <script>
+        const maxImages = 5;
+        const currentImageCount = 0;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simple form validation for gallery image count
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const fileInput = document.getElementById('images');
+                if (fileInput && fileInput.files) {
+                    const newImagesCount = fileInput.files.length;
+                    if (newImagesCount > maxImages) {
+                        e.preventDefault();
+                        alert(`Maximum ${maxImages} gallery images allowed. You selected ${newImagesCount} images.`);
+                        return false;
+                    }
+                }
+            });
+        });
+    </script>
 
 {% endblock %}

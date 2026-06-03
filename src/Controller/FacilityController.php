@@ -55,28 +55,44 @@ class FacilityController extends AbstractController
         $facility = new Facility();
 
         if ($request->isMethod('POST')) {
+            error_log('NEW FACILITY: POST received');
             try {
-                $facility->setName((string) $request->request->get('name'));
-                $facility->setCapacity((int) $request->request->get('capacity'));
-                $facility->setDescription((string) $request->request->get('description'));
+                $name = (string) $request->request->get('name');
+                $capacity = (int) $request->request->get('capacity');
+                $description = (string) $request->request->get('description');
+                error_log('NEW FACILITY: Data received - name=' . $name . ', capacity=' . $capacity);
 
-                // Handle main image upload
+                $facility->setName($name);
+                $facility->setCapacity($capacity);
+                $facility->setDescription($description);
+
+                // Handle main image upload (before saving facility)
                 $uploadedFile = $request->files->get('image');
+                $mainImagePath = null;
                 if ($uploadedFile instanceof UploadedFile) {
-                    $imagePath = $this->handleImageUpload($uploadedFile);
-                    if ($imagePath) {
-                        $facility->setImage($imagePath);
+                    error_log('NEW FACILITY: Main image received - ' . $uploadedFile->getClientOriginalName());
+                    $mainImagePath = $this->handleImageUpload($uploadedFile);
+                    if ($mainImagePath) {
+                        $facility->setImage($mainImagePath);
                     }
                 }
 
-                $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+                // Save facility FIRST before adding gallery images
+                error_log('NEW FACILITY: Saving facility first...');
                 $facilityRepository->save($facility, true);
+                error_log('NEW FACILITY: Facility saved with ID=' . $facility->getId());
+
+                // Now handle gallery images after facility is persisted
+                error_log('NEW FACILITY: Processing gallery images...');
+                $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+                error_log('NEW FACILITY: Gallery processed - count=' . $galleryCount);
 
                 $this->addFlash('success', 'Facility created successfully!' . ($galleryCount > 0 ? ' (' . $galleryCount . ' gallery image(s) added)' : ''));
                 return $this->redirectToRoute('app_facility_management');
 
             } catch (\Exception $e) {
                 error_log('NEW ERROR - Exception: ' . $e->getMessage());
+                error_log('NEW ERROR - Stack: ' . $e->getTraceAsString());
                 $this->addFlash('error', 'Error creating facility: ' . $e->getMessage());
                 return $this->redirectToRoute('app_facility_new');
             }
