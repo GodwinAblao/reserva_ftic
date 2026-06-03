@@ -242,11 +242,22 @@ class AnalyticsController extends AbstractController
         $lower = [];
         $upper = [];
 
+        // Parse the last date properly
+        if ($period === 'M') {
+            $lastDate = \DateTime::createFromFormat('Y-m', $lastKey) ?: new \DateTime();
+        } else {
+            // Weekly format: 2024-W05
+            $lastDate = \DateTime::createFromFormat('o-\WW', $lastKey) ?: new \DateTime();
+        }
+
         for ($i = 1; $i <= ($period === 'W' ? 8 : 6); $i++) {
+            $nextDate = clone $lastDate;
             if ($period === 'M') {
-                $nextKey = date('Y-m', strtotime($lastKey . " +$i month"));
+                $nextDate->modify("+$i month");
+                $nextKey = $nextDate->format('Y-m');
             } else {
-                $nextKey = date('Y-\WW', strtotime($lastKey . " +$i week"));
+                $nextDate->modify("+$i week");
+                $nextKey = $nextDate->format('o-\WW');
             }
             $predicted = max(0, round($avg + $trend * $i));
             $forecast[$nextKey] = $predicted;
