@@ -129,8 +129,12 @@ class AnalyticsController extends AbstractController
 
             // Facility stats - use ID as key to prevent duplicates
             $facility = $res->getFacility();
-            $facId = $facility?->getId() ?? 0;
-            $facName = $facility?->getName() ?? 'Unknown';
+            // Skip if facility is disabled (not available for reservation)
+            if (!$facility || !$facility->isAvailableForReservation()) {
+                continue;
+            }
+            $facId = $facility->getId();
+            $facName = $facility->getName() ?? 'Unknown';
             if (!isset($facilityStats[$facId])) {
                 $facilityStats[$facId] = ['name' => $facName, 'count' => 0, 'capacity' => 0, 'id' => $facId];
             }
@@ -416,6 +420,7 @@ class AnalyticsController extends AbstractController
             ->select('r.reservationDate, r.reservationStartTime, r.capacity, r.purpose, r.status, r.rejectionReason, r.createdAt, f.name AS facilityName, f.capacity AS facilityCapacity')
             ->from(Reservation::class, 'r')
             ->join('r.facility', 'f')
+            ->where('f.availableForReservation = true')
             ->orderBy('r.reservationDate', 'ASC')
             ->getQuery()
             ->getArrayResult();
