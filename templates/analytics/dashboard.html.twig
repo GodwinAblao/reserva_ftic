@@ -31,7 +31,7 @@
 <div class="sa-analytics-nav">
     <button class="sa-analytics-btn active analytics-btn" type="button" data-fn="planning">Planning</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="organizing">Organizing</button>
-    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Leading</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Event Execution</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="controlling">Controlling</button>
 </div>
 
@@ -189,7 +189,6 @@ function kpiRow(fn, d) {
         cards.push(kpi('Reservations', d.totalRows ?? d.reservationCount ?? 0, 'In dataset'));
         cards.push(kpi('Facilities', (d.facilities || []).length, 'Tracked'));
     } else if (fn === 'organizing') {
-        cards.push(kpi('Overlaps', d.overlapping_reservations ?? 0, 'Same-day conflicts'));
         cards.push(kpi('Facilities', Object.keys(d.facility_load_distribution || {}).length, 'With bookings'));
     } else if (fn === 'controlling') {
         cards.push(kpi('Setup compliance', (d.setup_compliance_rate ?? 0) + '%', '≤ 3 days'));
