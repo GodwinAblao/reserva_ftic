@@ -318,15 +318,30 @@ class AnalyticsController extends AbstractController
         $weeklyForecast = $this->generateForecast($weeklyTrends, 'W');
         $monthlyForecast = $this->generateForecast($monthlyTrends, 'M');
 
-        // Calculate forecast accuracy (RMSE)
+        // Calculate forecast accuracy (RMSE) using cross-validation
+        // Compare last 4 actual weeks against naive forecast (4 weeks prior)
         $weeklyRmse = 0;
-        if (count($weeklyTrends) >= 2) {
-            $values = array_values($weeklyTrends);
+        $weeklyMape = 0;
+        if (count($weeklyTrends) >= 8) {
+            $weekKeys = array_keys($weeklyTrends);
+            $weekValues = array_values($weeklyTrends);
+            $n = count($weekValues);
+            
+            // Use last 4 weeks for validation against naive forecast
             $errors = [];
-            for ($i = 1; $i < count($values); $i++) {
-                $errors[] = ($values[$i] - $values[$i - 1]) ** 2;
+            $absPercentErrors = [];
+            for ($i = $n - 4; $i < $n; $i++) {
+                // Naive forecast: value from 4 weeks ago
+                $forecast = $weekValues[$i - 4] ?? $weekValues[$i - 1];
+                $actual = $weekValues[$i];
+                $errors[] = ($actual - $forecast) ** 2;
+                if ($actual > 0) {
+                    $absPercentErrors[] = abs(($actual - $forecast) / $actual) * 100;
+                }
             }
+            
             $weeklyRmse = count($errors) > 0 ? round(sqrt(array_sum($errors) / count($errors)), 2) : 0;
+            $weeklyMape = count($absPercentErrors) > 0 ? round(array_sum($absPercentErrors) / count($absPercentErrors), 1) : 0;
         }
 
         return match($endpoint) {
