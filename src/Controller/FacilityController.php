@@ -115,7 +115,13 @@ class FacilityController extends AbstractController
                 }
             }
 
-            $this->handleMultipleImageUploads($request, $facility, $entityManager);
+            error_log('DEBUG - Before handleMultipleImageUploads, checking request files...');
+            error_log('DEBUG - Request files count: ' . count($request->files->all()));
+            error_log('DEBUG - Files keys: ' . implode(', ', array_keys($request->files->all())));
+            
+            $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+            error_log('DEBUG - After handleMultipleImageUploads, gallery images added: ' . $galleryCount);
+            
             $facilityRepository->save($facility, true);
 
             return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
