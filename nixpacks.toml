@@ -10,10 +10,11 @@ nixPkgs = ['php83', 'php83Packages.composer']
 
 [phases.build]
 cmds = [
-  "php bin/console asset-map:compile --env=prod"
+  "php bin/console asset-map:compile --env=prod",
+  "chmod +x railway-start.sh"
 ]
 
 [start]
 cmds = [
-  "php -S 0.0.0.0:$PORT -t public"
+  "./railway-start.sh"
 ]
