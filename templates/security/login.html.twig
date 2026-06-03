@@ -269,7 +269,26 @@
         setButtonLoading(loginSubmitButton, true, 'Signing in...');
     });
 
-    function showForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='flex'; document.getElementById('otpModal').style.display='none'; }
+    function showForgotPassword(){ 
+        const loginEmail = document.getElementById('email').value;
+        const forgotPasswordEmail = document.getElementById('forgotPasswordEmail');
+        const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+        
+        // If email exists in login form, auto-fill and auto-submit
+        if (loginEmail && loginEmail.trim() !== '') {
+            forgotPasswordEmail.value = loginEmail;
+            // Hide forgot password modal, show loading via form submission
+            document.getElementById('forgotPasswordModal').style.display='none';
+            document.getElementById('otpModal').style.display='none';
+            // Auto-submit the form
+            forgotPasswordForm.dispatchEvent(new Event('submit'));
+        } else {
+            // No email in login form, show forgot password modal for manual entry
+            document.getElementById('forgotPasswordModal').style.display='flex';
+            document.getElementById('otpModal').style.display='none';
+            forgotPasswordEmail.focus();
+        }
+    }
     function hideForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='none' }
     function showOtpModal(token, csrfToken){ 
         document.getElementById('otpToken').value = token;
@@ -297,11 +316,9 @@
     
     window.addEventListener('click', function(e){ 
         const forgotModal = document.getElementById('forgotPasswordModal'); 
-        const otpModal = document.getElementById('otpModal');
-        const resetPasswordModal = document.getElementById('resetPasswordModal');
         if(e.target===forgotModal) hideForgotPassword();
-        if(e.target===otpModal) hideOtpModal();
-        if(e.target===resetPasswordModal) hideResetPasswordModal();
+        // OTP and Reset Password modals do NOT close on outside click
+        // User must use X button or complete the flow
     });
 
     // Handle Forgot Password Form Submission
