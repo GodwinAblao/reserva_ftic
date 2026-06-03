@@ -195,15 +195,14 @@ class AnalyticsController extends AbstractController
                 $setupGaps[] = $gap;
             }
 
-            // Overlap detection - same facility, same day
+            // Daily bookings tracking for utilization
             $facId = $facility?->getId() ?? 0;
             $dateKey = $resDate?->format('Y-m-d');
             if ($facId && $dateKey) {
                 $dayKey = $facId . '_' . $dateKey;
                 if (!isset($facilityDailyBookings[$dayKey])) {
-                    $facilityDailyBookings[$dayKey] = [];
+                    $facilityDailyBookings[$dayKey] = true;
                 }
-                $facilityDailyBookings[$dayKey][] = $res->getId();
             }
 
             // Per-facility weekly data
@@ -261,14 +260,6 @@ class AnalyticsController extends AbstractController
                     'historical' => $data['weekly'],
                     'chart_value' => $chartValue, // Required by frontend
                 ];
-            }
-        }
-
-        // Calculate overlaps (unique days with conflicts, not total excess)
-        $overlapping = 0;
-        foreach ($facilityDailyBookings as $dayKey => $reservationIds) {
-            if (count($reservationIds) > 1) {
-                $overlapping++; // Count each conflict day once
             }
         }
 
@@ -365,7 +356,6 @@ class AnalyticsController extends AbstractController
                 'per_facility_weekly' => $perFacilityWeekly,
             ]),
             'organizing' => array_merge($base, [
-                'overlapping_reservations' => $overlapping,
                 'facility_load_distribution' => array_column(array_slice($facilities, 0, 10), 'count', 'name'),
                 'peak_usage_times' => $hourlyPeak,
                 'room_utilization' => $roomUtilization,
