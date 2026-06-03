@@ -388,7 +388,12 @@ class AnalyticsController extends AbstractController
                 'participant_demand_trend' => $monthlyTrends,
             ]),
             'controlling' => array_merge($base, [
-                'target_achievement' => $statusCounts,
+                'target_achievement' => [
+                    'Approved' => $statusCounts['Approved'] ?? 0,
+                    'Pending' => $statusCounts['Pending'] ?? 0,
+                    'Rejected' => $statusCounts['Rejected'] ?? 0,
+                    'Cancelled' => $statusCounts['Cancelled'] ?? 0,
+                ],
                 'facility_utilization_rate' => $roomUtilization,
                 'setup_compliance_rate' => $setupComplianceRate,
                 'no_show_rate' => $noShowRate,
