@@ -19,7 +19,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class AnalyticsController extends AbstractController
 {
     public function __construct(
-        private HttpClientInterface $httpClient
+        private HttpClientInterface $httpClient,
+        private EntityManagerInterface $entityManager
     ) {}
 
     #[Route('', name: 'analytics_dashboard', methods: ['GET'])]
@@ -73,75 +74,163 @@ class AnalyticsController extends AbstractController
         $facilityId = $queryParams['facility_id'] ?? null;
         $dataSource = $queryParams['data_source'] ?? 'combined';
 
-        return $this->json($this->getDummyAnalytics($endpoint, $facilityId, $dataSource));
+        return $this->json($this->getAnalyticsData($endpoint, $facilityId, $dataSource));
     }
 
-    private function getDummyAnalytics(string $endpoint, ?string $facilityId, string $dataSource): array
+    private function getAnalyticsData(string $endpoint, ?string $facilityId, string $dataSource): array
     {
         $labels = [
             'live' => 'Live Database Only',
             'demo' => 'Demo Dataset Only',
             'combined' => 'Combined (Demo + Live)',
-            'auto' => 'Auto (Live if exists)'
         ];
+
+        // Get reservations based on data source filter
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(Reservation::class, 'r');
+
+        if ($dataSource === 'live') {
+            $qb->andWhere('r.isSimulated = false');
+        } elseif ($dataSource === 'demo') {
+            $qb->andWhere('r.isSimulated = true');
+        }
+        // For 'combined', no filter needed - get all
+
+        if ($facilityId) {
+            $qb->andWhere('r.facility = :facilityId')
+               ->setParameter('facilityId', $facilityId);
+        }
+
+        $reservations = $qb->getQuery()->getResult();
+        $totalCount = count($reservations);
 
         $base = [
             'source' => $dataSource,
-            'dataSourceLabel' => $labels[$dataSource] ?? 'Auto (Live if exists)',
-            'reservationCount' => 150,
-            'totalRows' => 150,
+            'dataSourceLabel' => $labels[$dataSource] ?? 'Combined (Demo + Live)',
+            'reservationCount' => $totalCount,
+            'totalRows' => $totalCount,
             'generatedAt' => date('c'),
         ];
 
+        // Calculate facility stats
+        $facilityStats = [];
+        $statusCounts = ['Approved' => 0, 'Pending' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Completed' => 0];
+        $monthlyTrends = [];
+        $weeklyTrends = [];
+        $hourlyPeak = [];
+        $capacityCounts = [];
+        $purposeCounts = [];
+
+        foreach ($reservations as $res) {
+            $status = $res->getStatus();
+            $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
+
+            // Facility stats
+            $facName = $res->getFacility()?->getName() ?? 'Unknown';
+            if (!isset($facilityStats[$facName])) {
+                $facilityStats[$facName] = ['count' => 0, 'capacity' => 0];
+            }
+            $facilityStats[$facName]['count']++;
+            $facilityStats[$facName]['capacity'] += $res->getCapacity() ?? 0;
+
+            // Monthly trends
+            $month = $res->getReservationDate()?->format('Y-m');
+            if ($month) {
+                $monthlyTrends[$month] = ($monthlyTrends[$month] ?? 0) + 1;
+            }
+
+            // Weekly trends
+            $week = $res->getReservationDate()?->format('Y-W');
+            if ($week) {
+                $weeklyTrends[$week] = ($weeklyTrends[$week] ?? 0) + 1;
+            }
+
+            // Hourly peaks
+            $hour = (int) $res->getReservationStartTime()?->format('G');
+            if ($hour !== null) {
+                $timeSlot = $hour >= 5 && $hour < 12 ? 'Morning (5AM-12PM)' :
+                           ($hour >= 12 && $hour < 17 ? 'Afternoon (12PM-5PM)' :
+                           ($hour >= 17 && $hour < 21 ? 'Evening (5PM-9PM)' : 'Night (9PM-5AM)'));
+                $hourlyPeak[$timeSlot] = ($hourlyPeak[$timeSlot] ?? 0) + 1;
+            }
+
+            // Purpose counts
+            $purpose = $res->getPurpose() ?? 'General';
+            $purposeCounts[$purpose] = ($purposeCounts[$purpose] ?? 0) + 1;
+        }
+
+        // Format facilities for response
+        $facilities = [];
+        foreach ($facilityStats as $name => $stats) {
+            $facilities[] = [
+                'name' => $name,
+                'count' => $stats['count'],
+                'capacity' => $stats['capacity'],
+            ];
+        }
+        usort($facilities, fn($a, $b) => $b['count'] <=> $a['count']);
+
+        // Calculate approval rate
+        $totalProcessed = $statusCounts['Approved'] + $statusCounts['Rejected'] + $statusCounts['Completed'];
+        $approvalRate = $totalProcessed > 0 ? round(($statusCounts['Approved'] + $statusCounts['Completed']) / $totalProcessed * 100) : 0;
+
         return match($endpoint) {
             'meta' => array_merge($base, [
-                'facilities' => [
-                    ['id' => 1, 'name' => 'CS Project Room', 'count' => 45],
-                    ['id' => 2, 'name' => 'Discussion Room 3', 'count' => 38],
-                    ['id' => 3, 'name' => 'Discussion Room 4', 'count' => 28],
-                    ['id' => 4, 'name' => 'Presentation Room 1', 'count' => 22],
-                    ['id' => 5, 'name' => 'Presentation Room 2', 'count' => 17],
-                ]
+                'facilities' => array_slice($facilities, 0, 20),
             ]),
             'planning' => array_merge($base, [
-                'weeklyReservationTrend' => ['2026-W20' => 12, '2026-W21' => 15, '2026-W22' => 18],
-                'monthlyReservationTrend' => ['2026-03' => 45, '2026-04' => 52, '2026-05' => 53],
-                'forecast' => ['2026-06' => 55, '2026-07' => 58, '2026-08' => 60],
-                'facilityUtilization' => [
-                    ['name' => 'CS Project Room', 'utilization' => 75],
-                    ['name' => 'Discussion Room 3', 'utilization' => 68],
-                ],
-                'peakHours' => ['9AM-12PM' => 45, '1PM-4PM' => 38, '5PM-8PM' => 15],
+                'weeklyReservationTrend' => $weeklyTrends,
+                'monthlyReservationTrend' => $monthlyTrends,
+                'forecast' => $this->generateForecast($monthlyTrends),
+                'facilityUtilization' => array_slice($facilities, 0, 10),
+                'peakHours' => $hourlyPeak,
             ]),
             'organizing' => array_merge($base, [
-                'facilityComparison' => [
-                    ['facility' => 'CS Project Room', 'reservations' => 45, 'rejectionRate' => 5],
-                    ['facility' => 'Discussion Room 3', 'reservations' => 38, 'rejectionRate' => 8],
-                ],
-                'approvalRate' => 92,
-                'rejectionReasons' => ['Conflict' => 12, 'Capacity' => 8, 'Other' => 5],
-                'staffingEfficiency' => 85,
+                'facilityComparison' => array_slice($facilities, 0, 10),
+                'approvalRate' => $approvalRate,
+                'rejectionReasons' => $statusCounts,
+                'purposeBreakdown' => $purposeCounts,
             ]),
             'leading' => array_merge($base, [
-                'participantDemandTrend' => ['2026-W20' => 120, '2026-W21' => 135, '2026-W22' => 142],
-                'userEngagement' => 78,
-                'topFacilities' => [
-                    ['name' => 'CS Project Room', 'usage' => 45],
-                    ['name' => 'Discussion Room 3', 'usage' => 38],
-                ],
-                'peakUsageDays' => ['Monday' => 25, 'Tuesday' => 28, 'Wednesday' => 30],
+                'participantDemandTrend' => $weeklyTrends,
+                'userEngagement' => $totalCount > 0 ? min(100, $totalCount / 10) : 0,
+                'topFacilities' => array_slice($facilities, 0, 5),
+                'peakUsageDays' => $hourlyPeak,
             ]),
             'controlling' => array_merge($base, [
-                'complianceRate' => 95,
-                'policyViolations' => ['Overbooking' => 3, 'Late Cancellations' => 5, 'No-shows' => 2],
-                'facilityMaintenance' => [
-                    ['facility' => 'CS Project Room', 'status' => 'Good'],
-                    ['facility' => 'Discussion Room 3', 'status' => 'Needs Maintenance'],
-                ],
-                'overallHealth' => 88,
+                'complianceRate' => $approvalRate,
+                'policyViolations' => ['Cancelled' => $statusCounts['Cancelled'], 'Rejected' => $statusCounts['Rejected']],
+                'facilityMaintenance' => array_slice($facilities, 0, 10),
+                'overallHealth' => $approvalRate > 80 ? 'Good' : ($approvalRate > 60 ? 'Fair' : 'Needs Attention'),
             ]),
             default => array_merge($base, ['error' => 'Unknown endpoint']),
         };
+    }
+
+    private function generateForecast(array $monthlyTrends): array
+    {
+        if (count($monthlyTrends) < 2) {
+            return [];
+        }
+
+        ksort($monthlyTrends);
+        $values = array_values($monthlyTrends);
+        $count = count($values);
+
+        // Simple moving average forecast
+        $avg = array_sum($values) / $count;
+        $trend = ($values[$count - 1] - $values[0]) / max(1, $count - 1);
+
+        $lastMonth = array_key_last($monthlyTrends);
+        $forecast = [];
+
+        for ($i = 1; $i <= 3; $i++) {
+            $nextMonth = date('Y-m', strtotime($lastMonth . "-$i +1 month"));
+            $forecast[$nextMonth] = max(0, round($avg + $trend * $i));
+        }
+
+        return $forecast;
     }
 
     private function isFastApiAvailable(): bool
