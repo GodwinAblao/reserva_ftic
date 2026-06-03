@@ -109,7 +109,7 @@ class ImportDummyReservationsCommand extends Command
             if ($imported % 20 === 0) {
                 $this->entityManager->flush();
                 $this->entityManager->clear();
-                $io->progressAdvance(20);
+                $io->writeln("Imported $imported records...");
             }
         }
 
