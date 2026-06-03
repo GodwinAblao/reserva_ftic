@@ -91,7 +91,7 @@ class AnalyticsController extends AbstractController
             ->from(Reservation::class, 'r');
 
         if ($dataSource === 'live') {
-            $qb->andWhere('r.isSimulated = false');
+            $qb->andWhere('r.isSimulated = false OR r.isSimulated IS NULL');
         } elseif ($dataSource === 'demo') {
             $qb->andWhere('r.isSimulated = true');
         }
