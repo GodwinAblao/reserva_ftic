@@ -242,6 +242,10 @@ class AnalyticsController extends AbstractController
             $eventSuccessByType[$purpose] = $data['total'] > 0 ? round(($data['approved'] / $data['total']) * 100, 1) : 0;
         }
         arsort($eventSuccessByType);
+        
+        // Debug: Log calculation for troubleshooting
+        error_log('DEBUG purposeSuccess: ' . json_encode($purposeSuccess));
+        error_log('DEBUG eventSuccessByType: ' . json_encode($eventSuccessByType));
 
         // Top events by volume
         $topEvents = array_slice($purposeCounts, 0, 5, true);
