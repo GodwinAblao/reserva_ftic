@@ -150,9 +150,9 @@ async function loadAnalytics(fn) {
         updateBadge(data);
         renderTab(fn, data);
     } catch (e) {
-        console.warn('FastAPI unavailable, using Symfony fallback', e);
+        console.warn('Analytics API error, using local fallback', e);
         const local = {{ localAnalytics|json_encode|raw }};
-        updateBadge({ source: 'demo', dataSourceLabel: 'Symfony fallback (start analytics server on port 8002)' });
+        updateBadge({ source: 'demo', dataSourceLabel: 'Local Fallback (Database unavailable)' });
         renderTab(fn, local[fn] || {}, true);
     }
 }
