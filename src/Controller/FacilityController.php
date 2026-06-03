@@ -106,6 +106,12 @@ class FacilityController extends AbstractController
                     // Delete old image file if it exists
                     $this->deleteImageFile($facility->getImage());
                     $facility->setImage($imagePath);
+                } else {
+                    // Upload failed - error message already added by handleImageUpload
+                    // Continue saving other data but redirect with error
+                    $entityManager->persist($facility);
+                    $entityManager->flush();
+                    return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId(), 'error' => 'image_upload_failed']);
                 }
             }
 

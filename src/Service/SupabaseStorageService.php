@@ -25,11 +25,20 @@ class SupabaseStorageService
         $this->projectRef = $_ENV['SUPABASE_PROJECT_REF'] ?? '';
         $this->bucketName = $_ENV['SUPABASE_STORAGE_BUCKET'] ?? 'facility-images';
         
+        // Log for debugging (will appear in Railway logs)
+        if (empty($this->apiKey)) {
+            error_log('ERROR: SUPABASE_STORAGE_KEY is not set');
+        }
+        if (empty($this->projectRef)) {
+            error_log('ERROR: SUPABASE_PROJECT_REF is not set');
+        }
+        
         if (empty($this->apiKey) || empty($this->projectRef)) {
-            throw new \RuntimeException('Supabase storage credentials not configured. Check SUPABASE_STORAGE_KEY and SUPABASE_PROJECT_REF in .env');
+            throw new \RuntimeException('Supabase storage credentials not configured. Check SUPABASE_STORAGE_KEY and SUPABASE_PROJECT_REF environment variables');
         }
         
         $this->projectUrl = "https://{$this->projectRef}.supabase.co";
+        error_log('SupabaseStorageService initialized for project: ' . $this->projectRef);
     }
 
     /**
@@ -71,6 +80,7 @@ class SupabaseStorageService
             curl_close($ch);
             
             if ($error) {
+                error_log('Supabase upload cURL error: ' . $error);
                 return [
                     'success' => false,
                     'error' => 'Upload failed: ' . $error,
@@ -78,6 +88,8 @@ class SupabaseStorageService
                     'url' => null
                 ];
             }
+            
+            error_log('Supabase upload HTTP code: ' . $httpCode . ', Response: ' . $response);
             
             if ($httpCode >= 200 && $httpCode < 300) {
                 return [
@@ -87,6 +99,7 @@ class SupabaseStorageService
                     'data' => json_decode($response, true)
                 ];
             } else {
+                error_log('Supabase upload failed: HTTP ' . $httpCode . ' - ' . $response);
                 return [
                     'success' => false,
                     'error' => 'Upload failed with HTTP ' . $httpCode . ': ' . $response,
