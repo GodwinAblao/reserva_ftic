@@ -8,6 +8,14 @@
         <h2>Edit Facility</h2>
     </div>
 
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }}" style="padding: 10px; margin: 10px 0; border-radius: 4px; background-color: {{ label == 'error' ? '#fee2e2' : '#dcfce7' }}; color: {{ label == 'error' ? '#dc2626' : '#16a34a' }};">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
     <div class="card-panel">
         <form method="POST" enctype="multipart/form-data" style="max-width: 600px;">
             <div class="form-group">
@@ -284,12 +292,15 @@
         }
 
         function syncFileInput() {
+            console.log('DEBUG: syncFileInput called, selectedFiles count:', selectedFiles.length);
             const fileInput = document.getElementById('images');
             const dataTransfer = new DataTransfer();
             selectedFiles.forEach(file => {
+                console.log('DEBUG: Adding file to DataTransfer:', file.name);
                 dataTransfer.items.add(file);
             });
             fileInput.files = dataTransfer.files;
+            console.log('DEBUG: fileInput.files now has:', fileInput.files.length, 'files');
         }
 
         // Initialize drag and drop when DOM is loaded
