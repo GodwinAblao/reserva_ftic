@@ -254,10 +254,14 @@ class AnalyticsController extends AbstractController
         foreach ($facilityReservations as $facId => $data) {
             if (count($data['weekly']) >= 2) {
                 $forecast = $this->generateForecast($data['weekly'], 'W');
+                $forecastValues = array_slice($forecast['forecast'] ?? [], 0, 4, true);
+                // Calculate chart_value as average of forecast for frontend
+                $chartValue = count($forecastValues) > 0 ? round(array_sum($forecastValues) / count($forecastValues), 1) : 0;
                 $perFacilityWeekly[] = [
                     'facility' => $data['name'],
-                    'forecast' => array_slice($forecast['forecast'] ?? [], 0, 4, true),
+                    'forecast' => $forecastValues,
                     'historical' => $data['weekly'],
+                    'chart_value' => $chartValue, // Required by frontend
                 ];
             }
         }
