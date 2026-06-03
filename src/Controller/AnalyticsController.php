@@ -129,7 +129,6 @@ class AnalyticsController extends AbstractController
         $setupGaps = [];
         $rsoCount = 0;
         $rsoCompleted = 0;
-        $overlapping = 0;
         $facilityDailyBookings = []; // For overlap detection
 
         foreach ($reservations as $res) {
@@ -202,12 +201,9 @@ class AnalyticsController extends AbstractController
             if ($facId && $dateKey) {
                 $dayKey = $facId . '_' . $dateKey;
                 if (!isset($facilityDailyBookings[$dayKey])) {
-                    $facilityDailyBookings[$dayKey] = 0;
+                    $facilityDailyBookings[$dayKey] = [];
                 }
-                $facilityDailyBookings[$dayKey]++;
-                if ($facilityDailyBookings[$dayKey] > 1) {
-                    $overlapping++;
-                }
+                $facilityDailyBookings[$dayKey][] = $res->getId();
             }
 
             // Per-facility weekly data
@@ -268,14 +264,34 @@ class AnalyticsController extends AbstractController
             }
         }
 
-        // Room utilization calculation
+        // Calculate overlaps (unique days with conflicts, not total excess)
+        $overlapping = 0;
+        foreach ($facilityDailyBookings as $dayKey => $reservationIds) {
+            if (count($reservationIds) > 1) {
+                $overlapping++; // Count each conflict day once
+            }
+        }
+
+        // Room utilization calculation - use actual date range
         $roomUtilization = [];
-        $totalDays = count($facilityDailyBookings) > 0 ? max(1, count(array_unique(array_map(fn($k) => explode('_', $k)[1], array_keys($facilityDailyBookings))))) : 1;
+        $allDates = [];
+        foreach (array_keys($facilityDailyBookings) as $dayKey) {
+            $parts = explode('_', $dayKey);
+            if (isset($parts[1])) {
+                $allDates[] = $parts[1];
+            }
+        }
+        $uniqueDates = array_unique($allDates);
+        sort($uniqueDates);
+        $actualTotalDays = count($uniqueDates) > 0 
+            ? (new \DateTime($uniqueDates[0]))->diff(new \DateTime(end($uniqueDates)))->days + 1 
+            : 1;
+
         foreach ($facilityStats as $id => $stats) {
             $facilityBookings = array_filter($facilityDailyBookings, fn($k) => str_starts_with($k, $id . '_'), ARRAY_FILTER_USE_KEY);
             $busyDays = count($facilityBookings);
             $roomUtilization[$stats['name']] = [
-                'utilization_rate' => round($busyDays / max(1, $totalDays * 10), 2), // Assuming 10 days window
+                'utilization_rate' => round($busyDays / max(1, $actualTotalDays), 2),
                 'total_bookings' => $stats['count'],
             ];
         }
