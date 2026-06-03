@@ -7,6 +7,14 @@
         <h2>Add New Facility</h2>
     </div>
 
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ label }}" style="padding: 10px; margin: 10px 0; border-radius: 4px; background-color: {{ label == 'error' ? '#fee2e2' : '#dcfce7' }}; color: {{ label == 'error' ? '#dc2626' : '#16a34a' }};">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
     <div class="card-panel">
         <form method="POST" enctype="multipart/form-data" style="max-width: 600px;">
             <div class="form-group">

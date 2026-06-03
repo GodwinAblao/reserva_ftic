@@ -73,7 +73,11 @@ class SupabaseStorageService
                 'Content-Type: ' . $file->getMimeType(),
                 'x-upsert: true'
             ]);
-            
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
+
+            error_log('Supabase: Uploading file ' . $fullPath . ' (' . strlen($fileContent) . ' bytes)');
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);

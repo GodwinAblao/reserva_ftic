@@ -1,10 +1,11 @@
 #!/bin/bash
 # Create PHP configuration for file uploads
 cat > /tmp/php-uploads.ini << 'EOF'
-upload_max_filesize = 10M
-post_max_size = 10M
+upload_max_filesize = 20M
+post_max_size = 50M
 max_file_uploads = 20
-memory_limit = 256M
+memory_limit = 512M
+max_execution_time = 120
 EOF
 
 # Run migrations and import dummy data on startup

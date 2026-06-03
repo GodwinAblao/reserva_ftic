@@ -55,27 +55,31 @@ class FacilityController extends AbstractController
         $facility = new Facility();
 
         if ($request->isMethod('POST')) {
-            $facility->setName((string) $request->request->get('name'));
-            $facility->setCapacity((int) $request->request->get('capacity'));
-            $facility->setDescription((string) $request->request->get('description'));
+            try {
+                $facility->setName((string) $request->request->get('name'));
+                $facility->setCapacity((int) $request->request->get('capacity'));
+                $facility->setDescription((string) $request->request->get('description'));
 
-            // Handle image upload
-            $uploadedFile = $request->files->get('image');
-            if ($uploadedFile instanceof UploadedFile) {
-                $imagePath = $this->handleImageUpload($uploadedFile);
-                if ($imagePath) {
-                    // Delete old image file if it exists
-                    $this->deleteImageFile($facility->getImage());
-                    $facility->setImage($imagePath);
+                // Handle main image upload
+                $uploadedFile = $request->files->get('image');
+                if ($uploadedFile instanceof UploadedFile) {
+                    $imagePath = $this->handleImageUpload($uploadedFile);
+                    if ($imagePath) {
+                        $facility->setImage($imagePath);
+                    }
                 }
+
+                $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+                $facilityRepository->save($facility, true);
+
+                $this->addFlash('success', 'Facility created successfully!' . ($galleryCount > 0 ? ' (' . $galleryCount . ' gallery image(s) added)' : ''));
+                return $this->redirectToRoute('app_facility_management');
+
+            } catch (\Exception $e) {
+                error_log('NEW ERROR - Exception: ' . $e->getMessage());
+                $this->addFlash('error', 'Error creating facility: ' . $e->getMessage());
+                return $this->redirectToRoute('app_facility_new');
             }
-
-            $this->handleMultipleImageUploads($request, $facility, $entityManager);
-            $facilityRepository->save($facility, true);
-
-            $this->addFlash('success', 'Facility created successfully!');
-
-            return $this->redirectToRoute('app_facility_management');
         }
 
         return $this->render('facility/new.html.twig', [
@@ -88,43 +92,45 @@ class FacilityController extends AbstractController
     public function edit(Request $request, Facility $facility, FacilityRepository $facilityRepository, EntityManagerInterface $entityManager): Response
     {
         if ($request->isMethod('POST')) {
-            $facility->setName((string) $request->request->get('name'));
-            $facility->setCapacity((int) $request->request->get('capacity'));
-            $facility->setDescription((string) $request->request->get('description'));
+            try {
+                $facility->setName((string) $request->request->get('name'));
+                $facility->setCapacity((int) $request->request->get('capacity'));
+                $facility->setDescription((string) $request->request->get('description'));
 
-            // Debug: Check what files are received
-            $allFiles = $request->files->all();
-            $galleryFiles = $request->files->get('images');
-            error_log('DEBUG - All files: ' . json_encode($allFiles));
-            error_log('DEBUG - Gallery files: ' . json_encode($galleryFiles));
+                // Debug: Check what files are received
+                $allFiles = $request->files->all();
+                error_log('EDIT DEBUG - All files keys: ' . implode(', ', array_keys($allFiles)));
+                error_log('EDIT DEBUG - POST size: ' . ($request->server->get('CONTENT_LENGTH') ?? 'unknown') . ' bytes');
 
-            // Handle image upload
-            $uploadedFile = $request->files->get('image');
-            if ($uploadedFile instanceof UploadedFile) {
-                $imagePath = $this->handleImageUpload($uploadedFile);
-                if ($imagePath) {
-                    // Delete old image file if it exists
-                    $this->deleteImageFile($facility->getImage());
-                    $facility->setImage($imagePath);
-                } else {
-                    // Upload failed - error message already added by handleImageUpload
-                    // Continue saving other data but redirect with error
-                    $entityManager->persist($facility);
-                    $entityManager->flush();
-                    return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId(), 'error' => 'image_upload_failed']);
+                // Handle main image upload
+                $uploadedFile = $request->files->get('image');
+                if ($uploadedFile instanceof UploadedFile) {
+                    $imagePath = $this->handleImageUpload($uploadedFile);
+                    if ($imagePath) {
+                        $this->deleteImageFile($facility->getImage());
+                        $facility->setImage($imagePath);
+                    } else {
+                        $entityManager->persist($facility);
+                        $entityManager->flush();
+                        return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
+                    }
                 }
+
+                // Handle gallery images
+                $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+                error_log('EDIT DEBUG - Gallery images processed: ' . $galleryCount);
+
+                $facilityRepository->save($facility, true);
+
+                $this->addFlash('success', 'Facility updated successfully!' . ($galleryCount > 0 ? ' (' . $galleryCount . ' gallery image(s) added)' : ''));
+                return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
+
+            } catch (\Exception $e) {
+                error_log('EDIT ERROR - Exception: ' . $e->getMessage());
+                error_log('EDIT ERROR - Trace: ' . $e->getTraceAsString());
+                $this->addFlash('error', 'Error updating facility: ' . $e->getMessage());
+                return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
             }
-
-            error_log('DEBUG - Before handleMultipleImageUploads, checking request files...');
-            error_log('DEBUG - Request files count: ' . count($request->files->all()));
-            error_log('DEBUG - Files keys: ' . implode(', ', array_keys($request->files->all())));
-            
-            $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
-            error_log('DEBUG - After handleMultipleImageUploads, gallery images added: ' . $galleryCount);
-            
-            $facilityRepository->save($facility, true);
-
-            return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
         }
 
         return $this->render('facility/edit.html.twig', [
