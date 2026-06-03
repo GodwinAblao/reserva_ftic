@@ -175,62 +175,95 @@ class AnalyticsController extends AbstractController
         $totalProcessed = $statusCounts['Approved'] + $statusCounts['Rejected'] + $statusCounts['Completed'];
         $approvalRate = $totalProcessed > 0 ? round(($statusCounts['Approved'] + $statusCounts['Completed']) / $totalProcessed * 100) : 0;
 
+        // Build forecast series structure
+        $weeklyForecast = $this->generateForecast($weeklyTrends, 'W');
+        $monthlyForecast = $this->generateForecast($monthlyTrends, 'M');
+
         return match($endpoint) {
             'meta' => array_merge($base, [
                 'facilities' => array_slice($facilities, 0, 20),
             ]),
             'planning' => array_merge($base, [
-                'weeklyReservationTrend' => $weeklyTrends,
-                'monthlyReservationTrend' => $monthlyTrends,
-                'forecast' => $this->generateForecast($monthlyTrends),
-                'facilityUtilization' => array_slice($facilities, 0, 10),
-                'peakHours' => $hourlyPeak,
+                'forecast_series' => [
+                    'weekly' => [
+                        'historical' => $weeklyTrends,
+                        'forecast' => $weeklyForecast['forecast'] ?? [],
+                        'lower' => $weeklyForecast['lower'] ?? [],
+                        'upper' => $weeklyForecast['upper'] ?? [],
+                    ],
+                    'monthly' => [
+                        'historical' => $monthlyTrends,
+                        'forecast' => $monthlyForecast['forecast'] ?? [],
+                        'lower' => $monthlyForecast['lower'] ?? [],
+                        'upper' => $monthlyForecast['upper'] ?? [],
+                    ],
+                ],
+                'peak_demand_hours' => $hourlyPeak,
+                'event_type_distribution' => $purposeCounts,
+                'per_facility_weekly' => [],
             ]),
             'organizing' => array_merge($base, [
-                'facilityComparison' => array_slice($facilities, 0, 10),
-                'approvalRate' => $approvalRate,
-                'rejectionReasons' => $statusCounts,
-                'purposeBreakdown' => $purposeCounts,
+                'facility_load_distribution' => array_column(array_slice($facilities, 0, 10), 'count', 'name'),
+                'peak_usage_times' => $hourlyPeak,
+                'room_utilization' => [],
+                'peak_usage_heatmap' => [],
             ]),
             'leading' => array_merge($base, [
-                'participantDemandTrend' => $weeklyTrends,
-                'userEngagement' => $totalCount > 0 ? min(100, $totalCount / 10) : 0,
-                'topFacilities' => array_slice($facilities, 0, 5),
-                'peakUsageDays' => $hourlyPeak,
+                'event_success_by_type' => [],
+                'top_events' => [],
+                'participant_demand_trend' => $monthlyTrends,
             ]),
             'controlling' => array_merge($base, [
-                'complianceRate' => $approvalRate,
-                'policyViolations' => ['Cancelled' => $statusCounts['Cancelled'], 'Rejected' => $statusCounts['Rejected']],
-                'facilityMaintenance' => array_slice($facilities, 0, 10),
-                'overallHealth' => $approvalRate > 80 ? 'Good' : ($approvalRate > 60 ? 'Fair' : 'Needs Attention'),
+                'target_achievement' => $statusCounts,
+                'facility_utilization_rate' => [],
+                'rejection_analysis' => ['Rejected' => $statusCounts['Rejected'] ?? 0, 'Cancelled' => $statusCounts['Cancelled'] ?? 0],
             ]),
             default => array_merge($base, ['error' => 'Unknown endpoint']),
         };
     }
 
-    private function generateForecast(array $monthlyTrends): array
+    private function generateForecast(array $trends, string $period = 'M'): array
     {
-        if (count($monthlyTrends) < 2) {
-            return [];
+        if (count($trends) < 2) {
+            return ['forecast' => [], 'lower' => [], 'upper' => []];
         }
 
-        ksort($monthlyTrends);
-        $values = array_values($monthlyTrends);
+        ksort($trends);
+        $values = array_values($trends);
         $count = count($values);
 
         // Simple moving average forecast
         $avg = array_sum($values) / $count;
         $trend = ($values[$count - 1] - $values[0]) / max(1, $count - 1);
+        $stdDev = $this->calculateStdDev($values);
 
-        $lastMonth = array_key_last($monthlyTrends);
+        $lastKey = array_key_last($trends);
         $forecast = [];
+        $lower = [];
+        $upper = [];
 
-        for ($i = 1; $i <= 3; $i++) {
-            $nextMonth = date('Y-m', strtotime($lastMonth . "-$i +1 month"));
-            $forecast[$nextMonth] = max(0, round($avg + $trend * $i));
+        for ($i = 1; $i <= ($period === 'W' ? 8 : 6); $i++) {
+            if ($period === 'M') {
+                $nextKey = date('Y-m', strtotime($lastKey . " +$i month"));
+            } else {
+                $nextKey = date('Y-\WW', strtotime($lastKey . " +$i week"));
+            }
+            $predicted = max(0, round($avg + $trend * $i));
+            $forecast[$nextKey] = $predicted;
+            $lower[$nextKey] = max(0, round($predicted - 1.28 * $stdDev)); // 80% confidence
+            $upper[$nextKey] = round($predicted + 1.28 * $stdDev);
         }
 
-        return $forecast;
+        return ['forecast' => $forecast, 'lower' => $lower, 'upper' => $upper];
+    }
+
+    private function calculateStdDev(array $values): float
+    {
+        $count = count($values);
+        if ($count < 2) return 0;
+        $mean = array_sum($values) / $count;
+        $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $values)) / $count;
+        return sqrt($variance);
     }
 
     private function isFastApiAvailable(): bool
