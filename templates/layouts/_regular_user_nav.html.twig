@@ -34,11 +34,11 @@
     </span>
     <span>Innovation Hub</span>
 </a>
-<a class="nav-link {{ route in ['user_reservations', 'cancel_reservation', 'accept_suggestion', 'decline_suggestion', 'user_suggest_facility', 'user_select_alternative', 'user_keep_original_facility'] ? 'active' : '' }}" href="{{ path('user_reservations') }}">
+<a class="nav-link {{ route in ['user_reservations', 'cancel_reservation', 'accept_suggestion', 'decline_suggestion', 'user_suggest_facility', 'user_select_alternative', 'user_keep_original_facility'] ? 'active' : '' }}" href="{{ path('user_reservations') }}" data-turbo="false">
     <span class="nav-link-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>
     </span>
-    <span>My Reservation</span>
+    <span>My Reservations</span>
 </a>
 <a class="nav-link {{ route == 'app_leaderboard' ? 'active' : '' }}" href="{{ path('app_leaderboard') }}">
     <span class="nav-link-icon">

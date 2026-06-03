@@ -65,6 +65,7 @@
             <table class="rm-table">
                 <thead>
                     <tr>
+                        <th>Event Name</th>
                         <th>Reservation Holder</th>
                         <th>Email</th>
                         <th>Role</th>
@@ -75,6 +76,7 @@
                 <tbody id="rmTableBody">
                     {% for reservation in reservations %}
                     <tr>
+                        <td>{{ reservation.eventName ?: 'N/A' }}</td>
                         <td>{{ reservation.name }}</td>
                         <td>{{ reservation.email }}</td>
                         <td>
@@ -87,7 +89,7 @@
                         <td>{{ reservation.reservationStartTime|date('H:i') }} – {{ reservation.reservationEndTime|date('H:i') }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:24px;">No reservations yet.</td></tr>
+                    <tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:24px;">No reservations yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

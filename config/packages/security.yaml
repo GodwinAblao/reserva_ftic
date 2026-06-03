@@ -25,6 +25,7 @@ security:
                 login_path: app_login
                 check_path: app_login
                 default_target_path: app_dashboard
+                use_referer: true
                 failure_path: app_login
                 enable_csrf: true
                 username_parameter: email
@@ -41,6 +42,11 @@ security:
         - { path: ^/verify-registration, roles: PUBLIC_ACCESS }
         - { path: ^/verify-registration/resend, roles: PUBLIC_ACCESS }
         - { path: ^/logout, roles: PUBLIC_ACCESS }
+        - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/otp-reset, roles: PUBLIC_ACCESS }
+        - { path: ^/facility, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/notifications, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/account-manager, roles: ROLE_SUPER_ADMIN }
         - { path: ^/account-management, roles: ROLE_ADMIN }
         - { path: ^/superadmin, roles: ROLE_ADMIN }
