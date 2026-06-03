@@ -29,7 +29,7 @@
                 <label for="image">Facility Image</label>
                 {% if facility.image %}
                     <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 6px; text-align: center;">
-                        <img src="{{ facility.image }}" alt="{{ facility.name }}" style="max-width: 200px; max-height: 200px; margin-bottom: 10px; border-radius: 6px; display: block; margin-left: auto; margin-right: auto;">
+                        <img src="{{ facility.image ~ '?v=' ~ facility.updatedAt|date('U') }}" alt="{{ facility.name }}" style="max-width: 200px; max-height: 200px; margin-bottom: 10px; border-radius: 6px; display: block; margin-left: auto; margin-right: auto;">
                         <p style="margin: 0; color: #666; font-size: 12px; margin-bottom: 8px;">Current Image</p>
                         <button type="button" onclick="deleteMainImage({{ facility.id }})" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">Delete Image</button>
                     </div>
@@ -86,7 +86,7 @@
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:12px;">
                     {% for image in facility.images %}
                         <div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px;">
-                            <img src="{{ image.path }}" alt="{{ facility.name }}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;">
+                            <img src="{{ image.path ~ '?v=' ~ image.createdAt|date('U') }}" alt="{{ facility.name }}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;" loading="lazy">
                             <button type="button" onclick="deleteGalleryImage({{ image.id }}, '{{ csrf_token('delete_image' ~ image.id) }}')" class="btn-secondary" style="width:100%; margin-top:8px;">Remove</button>
                         </div>
                     {% endfor %}

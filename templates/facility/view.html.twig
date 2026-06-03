@@ -23,10 +23,10 @@
             {% set allImages = [] %}
             {% if facility.images|length > 0 %}
                 {% for image in facility.images %}
-                    {% set allImages = allImages|merge([image.path]) %}
+                    {% set allImages = allImages|merge([image.path ~ '?v=' ~ image.createdAt|date('U')]) %}
                 {% endfor %}
             {% elseif facility.image %}
-                {% set allImages = allImages|merge([facility.image]) %}
+                {% set allImages = allImages|merge([facility.image ~ '?v=' ~ facility.updatedAt|date('U')]) %}
             {% endif %}
 
             <div class="fv-media-viewer" id="mediaViewer" data-image-count="{{ allImages|length }}">
@@ -62,7 +62,7 @@
                     <div class="fv-thumb {% if loop.first %}fv-thumb-active{% endif %}"
                          data-index="{{ loop.index0 }}"
                          onclick="fvGoToImage({{ loop.index0 }}, this)">
-                        <img src="{{ image.path }}" alt="{{ facility.name }} - {{ loop.index }}">
+                        <img src="{{ image.path ~ '?v=' ~ image.createdAt|date('U') }}" alt="{{ facility.name }} - {{ loop.index }}" loading="lazy">
                     </div>
                 {% endfor %}
             </div>

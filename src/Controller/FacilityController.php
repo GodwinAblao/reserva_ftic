@@ -8,6 +8,7 @@ use App\Entity\Facility;
 use App\Entity\FacilityImage;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityImageRepository;
+use App\Service\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -19,6 +20,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/facility')]
 class FacilityController extends AbstractController
 {
+    private SupabaseStorageService $storageService;
+
+    public function __construct(SupabaseStorageService $storageService)
+    {
+        $this->storageService = $storageService;
+    }
     #[Route('', name: 'app_facility_index', methods: ['GET'])]
     public function index(FacilityRepository $facilityRepository): Response
     {
@@ -203,27 +210,38 @@ class FacilityController extends AbstractController
     private function handleImageUpload(UploadedFile $file): ?string
     {
         try {
-            $ext = $file->guessExtension() ?? strtolower($file->getClientOriginalExtension()) ?: 'jpg';
-            $filename = uniqid() . '.' . $ext;
-            $file->move($this->getParameter('kernel.project_dir') . '/public/uploads', $filename);
+            $result = $this->storageService->uploadFile($file, 'facilities');
 
-            return '/uploads/' . $filename;
+            if (!$result['success']) {
+                $this->addFlash('error', 'Failed to upload image: ' . ($result['error'] ?? 'Unknown error'));
+                return null;
+            }
+
+            return $result['url'];
         } catch (\Exception $e) {
             $this->addFlash('error', 'Failed to upload image: ' . $e->getMessage());
-
             return null;
         }
     }
 
-    private function deleteImageFile(?string $imagePath): void
+    private function deleteImageFile(?string $imageUrl): void
     {
-        if (!$imagePath) {
+        if (!$imageUrl) {
             return;
         }
 
-        $filePath = $this->getParameter('kernel.project_dir') . '/public' . $imagePath;
-        if (file_exists($filePath)) {
-            unlink($filePath);
+        // Extract path from Supabase URL
+        // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
+        $parsedUrl = parse_url($imageUrl);
+        if (!isset($parsedUrl['path'])) {
+            return;
+        }
+
+        $path = $parsedUrl['path'];
+        $pattern = '/storage\/v1\/object\/public\/[^\/]+\//';
+        if (preg_match($pattern, $path, $matches)) {
+            $storagePath = preg_replace($pattern, '', $path);
+            $this->storageService->deleteFile($storagePath);
         }
     }
 

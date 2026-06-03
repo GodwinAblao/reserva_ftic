@@ -73,10 +73,10 @@
                             <article class="alt-card">
                                 <div class="alt-image">
                                     {% if facility.image %}
-                                        <img src="{{ asset('uploads/facilities/' ~ facility.image) }}" alt="{{ facility.name }}">
+                                        <img src="{{ facility.image ~ '?v=' ~ facility.updatedAt|date('U') }}" alt="{{ facility.name }}" loading="lazy">
                                     {% elseif facility.images|length > 0 %}
                                         {% set mainImage = facility.images.first %}
-                                        <img src="{{ asset('uploads/facility_images/' ~ mainImage.filename) }}" alt="{{ facility.name }}">
+                                        <img src="{{ mainImage.path ~ '?v=' ~ mainImage.createdAt|date('U') }}" alt="{{ facility.name }}" loading="lazy">
                                     {% else %}
                                         <div class="alt-image-placeholder">
                                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
