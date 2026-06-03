@@ -77,6 +77,9 @@ class Reservation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $rejectionReason = null;
 
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $isSimulated = false;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -276,6 +279,18 @@ class Reservation
     public function setRejectionReason(?string $rejectionReason): static
     {
         $this->rejectionReason = $rejectionReason;
+
+        return $this;
+    }
+
+    public function getIsSimulated(): bool
+    {
+        return $this->isSimulated;
+    }
+
+    public function setIsSimulated(bool $isSimulated): static
+    {
+        $this->isSimulated = $isSimulated;
 
         return $this;
     }
