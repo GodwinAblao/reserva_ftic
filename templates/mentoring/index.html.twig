@@ -155,6 +155,12 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% if request.fullName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ request.fullName }}</span>
+                                        </div>
+                                        {% endif %}
                                         {% if request.status == 'accepted' %}
                                         <div class="info-item wide">
                                             <span class="view-details-btn">
@@ -279,7 +285,17 @@
                             </div>
                             {% for request in pendingMentorRequests %}
                                 <div class="reservation-card-new">
-                                    <div class="card-title">{{ request.preferredExpertise ?: 'Mentor Request' }}</div>
+                                    <div class="card-title">
+                                        {% if request.mentorProfile %}
+                                            {{ request.mentorProfile.displayName }}
+                                        {% elseif request.assignedMentorName %}
+                                            {{ request.assignedMentorName }}
+                                        {% elseif request.preferredExpertise %}
+                                            {{ request.preferredExpertise }}
+                                        {% else %}
+                                            Mentor Assistance Request
+                                        {% endif %}
+                                    </div>
                                     <div class="card-divider"></div>
                                     <div class="card-info-grid">
                                         <div class="info-item">
@@ -294,10 +310,78 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
                                         </div>
-                                        {% if request.assignedMentorName %}
+                                        {% if request.fullName %}
                                         <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ request.fullName }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredExpertise %}
+                                        <div class="info-item">
+                                            <span class="info-label">Specialization Needed</span>
+                                            <span class="info-value">{{ request.preferredExpertise }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.departmentCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Degree / Course</span>
+                                            <span class="info-value">{{ request.departmentCourse }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableDates %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Day</span>
+                                            <span class="info-value">{{ request.availableDates }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredSchedule %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Time</span>
+                                            <span class="info-value">{{ request.preferredSchedule }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod %}
+                                        <div class="info-item">
+                                            <span class="info-label">Meeting Method</span>
+                                            <span class="info-value">{{ request.meetingMethod }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-info-footer">
+                                        {% if request.message and request.message != 'No additional notes provided.' %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Message</span>
+                                            <span class="info-value">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.assignedMentorName %}
+                                        <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
                                             <span class="info-label">Assigned Mentor</span>
-                                            <span class="info-value">{{ request.assignedMentorName }}</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} — {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableTime %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Confirmed Time</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' · ' : '' }}{{ request.availableTime }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod == 'Online' and request.meetingLink %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Meeting Link</span>
+                                            <span class="info-value"><a href="{{ request.meetingLink }}" target="_blank" rel="noopener noreferrer" style="color:#0D9B00;font-weight:600;">Join Meeting</a></span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod == 'In Person' and request.meetingLocation %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Location</span>
+                                            <span class="info-value">{{ request.meetingLocation }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.adminInstructions %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Admin Instructions</span>
+                                            <span class="info-value">{{ request.adminInstructions }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -340,10 +424,61 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ application.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% set applicantName = (application.firstName ~ ' ' ~ (application.lastName|default('')))|trim %}
+                                        {% if applicantName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ applicantName }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.email %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Email</span>
+                                            <span class="info-value">{{ application.email }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.programCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Program/Course</span>
+                                            <span class="info-value">{{ application.programCourse }}</span>
+                                        </div>
+                                        {% endif %}
                                         {% if application.currentProfession %}
                                         <div class="info-item">
                                             <span class="info-label">Profession</span>
                                             <span class="info-value">{{ application.currentProfession }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.highestEducation %}
+                                        <div class="info-item">
+                                            <span class="info-label">Education</span>
+                                            <span class="info-value">{{ application.highestEducation }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.availabilityTime %}
+                                        <div class="info-item">
+                                            <span class="info-label">Availability</span>
+                                            <span class="info-value">{{ application.availabilityTime }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-info-footer">
+                                        {% if application.mentoringPublicBio %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Public Bio</span>
+                                            <span class="info-value">{{ application.mentoringPublicBio|slice(0, 160) ~ (application.mentoringPublicBio|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.reason %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Reason for Applying</span>
+                                            <span class="info-value">{{ application.reason|slice(0, 160) ~ (application.reason|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.adminNote %}
+                                        <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
+                                            <span class="info-label">Admin Note</span>
+                                            <span class="info-value" style="color:#666;font-style:italic;">{{ application.adminNote }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -378,7 +513,42 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ application.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% set applicantNameHistory = (application.firstName ~ ' ' ~ (application.lastName|default('')))|trim %}
+                                        {% if applicantNameHistory %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ applicantNameHistory }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.email %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Email</span>
+                                            <span class="info-value">{{ application.email }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.programCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Program/Course</span>
+                                            <span class="info-value">{{ application.programCourse }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.currentProfession %}
+                                        <div class="info-item">
+                                            <span class="info-label">Profession</span>
+                                            <span class="info-value">{{ application.currentProfession }}</span>
+                                        </div>
+                                        {% endif %}
                                     </div>
+                                    {% if application.mentoringPublicBio or application.reason %}
+                                    <div class="card-info-footer" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                                        {% if application.mentoringPublicBio %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Public Bio</span>
+                                            <span class="info-value">{{ application.mentoringPublicBio|slice(0, 100) ~ (application.mentoringPublicBio|length > 100 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         {% else %}
