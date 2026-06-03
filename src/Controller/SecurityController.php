@@ -497,11 +497,24 @@ public function register(Request $request, EntityManagerInterface $entityManager
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Valid email required.';
             } else {
-                $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                $resetToken = bin2hex(random_bytes(32));
+                // Validate email domain - only allow @fit.edu.ph and @feutech.edu.ph
+                $allowedDomains = ['fit.edu.ph', 'feutech.edu.ph'];
+                $emailDomain = substr(strrchr($email, '@'), 1);
+                
+                if (!in_array($emailDomain, $allowedDomains, true)) {
+                    $errors[] = 'Only @fit.edu.ph and @feutech.edu.ph email addresses are allowed.';
+                } else {
+                    // Check if email exists in database
+                    $user = $entityManager->getRepository(User::class)->findOneByEmailCaseInsensitive($email);
+                    
+                    if (!$user) {
+                        $errors[] = 'No account is associated with this email address.';
+                    } else {
+                        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                        $resetToken = bin2hex(random_bytes(32));
 
-                // Log without DB update (since no columns)
-                $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $resetToken]);
+                        // Log without DB update (since no columns)
+                        $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $resetToken]);
 
                 $session = $request->getSession();
                 $session->set('reset_email', $email);
@@ -533,6 +546,8 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 }
 
                 return $this->redirectToRoute('app_otp_reset', ['token' => $resetToken]);
+                    }
+                }
             }
         }
 

@@ -104,8 +104,9 @@
             <button type="button" onclick="hideForgotPassword()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
             <h3 style="margin-bottom: 1.5rem; color: #0D9B00;">Forgot Password</h3>
             <form method="post" action="{{ path('app_forgot_password') }}" class="form" id="forgotPasswordForm">
+                <div id="forgotPasswordError" class="alert alert-danger" style="display: none; margin-bottom: 1rem; background-color: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem;"></div>
                 <div class="form-group">
-                    <input type="email" name="email" class="form-input" placeholder="Enter your email" id="forgotPasswordEmail" required>
+                    <input type="email" name="email" class="form-input" placeholder="Enter your email" id="forgotPasswordEmail" required style="transition: border-color 0.2s;">
                 </div>
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('forgot_password') }}">
                 <button class="submit-button" type="submit" id="sendOtpButton">Send OTP</button>
@@ -273,6 +274,12 @@
         const loginEmail = document.getElementById('email').value;
         const forgotPasswordEmail = document.getElementById('forgotPasswordEmail');
         const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+        const errorDiv = document.getElementById('forgotPasswordError');
+        
+        // Clear any previous errors
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+        forgotPasswordEmail.style.borderColor = '';
         
         // If email exists in login form, auto-fill and auto-submit
         if (loginEmail && loginEmail.trim() !== '') {
@@ -289,7 +296,15 @@
             forgotPasswordEmail.focus();
         }
     }
-    function hideForgotPassword(){ document.getElementById('forgotPasswordModal').style.display='none' }
+    function hideForgotPassword(){ 
+        document.getElementById('forgotPasswordModal').style.display='none';
+        // Clear errors when closing modal
+        const errorDiv = document.getElementById('forgotPasswordError');
+        const emailInput = document.getElementById('forgotPasswordEmail');
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+        emailInput.style.borderColor = '';
+    }
     function showOtpModal(token, csrfToken){ 
         document.getElementById('otpToken').value = token;
         document.getElementById('otpCsrfToken').value = csrfToken;
@@ -342,21 +357,32 @@
         })
         .then(async response => {
             const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
+            const errorDiv = document.getElementById('forgotPasswordError');
+            const emailInput = document.getElementById('forgotPasswordEmail');
+            
+            if (!response.ok || !data.success) {
+                // Show inline error
+                errorDiv.textContent = data.error || 'Failed to send OTP';
+                errorDiv.style.display = 'block';
+                emailInput.style.borderColor = '#ef4444';
                 throw new Error(data.error || 'Failed to send OTP');
             }
+            
+            // Clear any previous errors
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            emailInput.style.borderColor = '';
+            
             return data;
         })
         .then(data => {
             if (data.success && data.token) {
                 showOtpModal(data.token, csrfToken);
-            } else {
-                alert(data.error || 'Failed to send OTP');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            // Error already displayed inline, no alert needed
         })
         .finally(() => {
             finishButtonLoading(sendOtpButton, 'Sending OTP...', loadingStartAt);
