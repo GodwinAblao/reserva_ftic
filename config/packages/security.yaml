@@ -6,9 +6,7 @@ security:
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
         app_user_provider:
-            entity:
-                class: App\Entity\User
-                property: email
+            id: App\Security\CaseInsensitiveUserProvider
 
     role_hierarchy:
         ROLE_SUPER_ADMIN: ROLE_ADMIN

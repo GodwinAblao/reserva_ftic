@@ -520,8 +520,9 @@ public function register(Request $request, EntityManagerInterface $entityManager
                         ]));
 
                     $mailer->send($emailMessage);
+                    $logger->info('OTP email sent successfully', ['to' => $email]);
                 } catch (\Exception $e) {
-                    $logger->error('Failed to send OTP email', ['error' => $e->getMessage()]);
+                    $logger->error('Failed to send OTP email', ['error' => $e->getMessage(), 'to' => $email]);
                 }
 
                 if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
