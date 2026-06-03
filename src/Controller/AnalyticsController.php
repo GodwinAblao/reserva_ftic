@@ -114,14 +114,22 @@ class AnalyticsController extends AbstractController
             'generatedAt' => date('c'),
         ];
 
-        // Calculate facility stats
+        // Calculate facility stats and metrics
         $facilityStats = [];
+        $facilityReservations = []; // For per-facility data
         $statusCounts = ['Approved' => 0, 'Pending' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Completed' => 0];
         $monthlyTrends = [];
         $weeklyTrends = [];
         $hourlyPeak = [];
+        $hourlyHeatmap = []; // hour x day heatmap
         $capacityCounts = [];
         $purposeCounts = [];
+        $purposeSuccess = []; // For event success rate
+        $setupGaps = [];
+        $rsoCount = 0;
+        $rsoCompleted = 0;
+        $overlapping = 0;
+        $facilityDailyBookings = []; // For overlap detection
 
         foreach ($reservations as $res) {
             $status = $res->getStatus();
@@ -162,9 +170,122 @@ class AnalyticsController extends AbstractController
                 $hourlyPeak[$timeSlot] = ($hourlyPeak[$timeSlot] ?? 0) + 1;
             }
 
-            // Purpose counts
+            // Purpose counts and success tracking
             $purpose = $res->getPurpose() ?? 'General';
             $purposeCounts[$purpose] = ($purposeCounts[$purpose] ?? 0) + 1;
+            if (!isset($purposeSuccess[$purpose])) {
+                $purposeSuccess[$purpose] = ['total' => 0, 'approved' => 0];
+            }
+            $purposeSuccess[$purpose]['total']++;
+            if (in_array($status, ['Approved', 'Completed'])) {
+                $purposeSuccess[$purpose]['approved']++;
+            }
+
+            // RSO tracking
+            if (str_contains(strtolower($purpose), 'rso')) {
+                $rsoCount++;
+                if ($status === 'Completed') {
+                    $rsoCompleted++;
+                }
+            }
+
+            // Setup gap calculation
+            $createdAt = $res->getCreatedAt();
+            $resDate = $res->getReservationDate();
+            if ($createdAt && $resDate) {
+                $gap = $createdAt->diff($resDate)->days;
+                $setupGaps[] = $gap;
+            }
+
+            // Overlap detection - same facility, same day
+            $facId = $facility?->getId() ?? 0;
+            $dateKey = $resDate?->format('Y-m-d');
+            if ($facId && $dateKey) {
+                $dayKey = $facId . '_' . $dateKey;
+                if (!isset($facilityDailyBookings[$dayKey])) {
+                    $facilityDailyBookings[$dayKey] = 0;
+                }
+                $facilityDailyBookings[$dayKey]++;
+                if ($facilityDailyBookings[$dayKey] > 1) {
+                    $overlapping++;
+                }
+            }
+
+            // Per-facility weekly data
+            $week = $resDate?->format('Y-\WW');
+            if ($facId && $week) {
+                if (!isset($facilityReservations[$facId])) {
+                    $facilityReservations[$facId] = ['name' => $facility->getName(), 'weekly' => []];
+                }
+                $facilityReservations[$facId]['weekly'][$week] = ($facilityReservations[$facId]['weekly'][$week] ?? 0) + 1;
+            }
+
+            // Hourly heatmap (hour x day of week)
+            $hour = (int) $res->getReservationStartTime()?->format('G');
+            $dayOfWeek = $resDate?->format('N'); // 1=Mon, 7=Sun
+            if ($hour !== null && $dayOfWeek) {
+                $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                $dayName = $dayNames[(int)$dayOfWeek - 1];
+                if (!isset($hourlyHeatmap[$hour])) {
+                    $hourlyHeatmap[$hour] = [];
+                }
+                $hourlyHeatmap[$hour][$dayName] = ($hourlyHeatmap[$hour][$dayName] ?? 0) + 1;
+            }
+        }
+
+        // Calculate derived metrics
+        $totalReservations = count($reservations);
+        $approvedCompleted = $statusCounts['Approved'] + $statusCounts['Completed'];
+        $overallCompletionRate = $totalReservations > 0 ? round(($approvedCompleted / $totalReservations) * 100, 1) : 0;
+        $rsoCompletionRate = $rsoCount > 0 ? round(($rsoCompleted / $rsoCount) * 100, 1) : 0;
+        $averageSetupGap = count($setupGaps) > 0 ? round(array_sum($setupGaps) / count($setupGaps), 1) : 0;
+        $setupComplianceRate = count($setupGaps) > 0 ? round((count(array_filter($setupGaps, fn($g) => $g <= 3)) / count($setupGaps)) * 100, 1) : 0;
+        $noShowRate = $totalReservations > 0 ? round((($statusCounts['Cancelled'] + $statusCounts['Rejected']) / $totalReservations) * 100, 1) : 0;
+
+        // Event success by type
+        $eventSuccessByType = [];
+        foreach ($purposeSuccess as $purpose => $data) {
+            $eventSuccessByType[$purpose] = $data['total'] > 0 ? round(($data['approved'] / $data['total']) * 100, 1) : 0;
+        }
+        arsort($eventSuccessByType);
+
+        // Top events by volume
+        $topEvents = array_slice($purposeCounts, 0, 5, true);
+
+        // Per-facility weekly forecast (next 4 weeks)
+        $perFacilityWeekly = [];
+        foreach ($facilityReservations as $facId => $data) {
+            if (count($data['weekly']) >= 2) {
+                $forecast = $this->generateForecast($data['weekly'], 'W');
+                $perFacilityWeekly[] = [
+                    'facility' => $data['name'],
+                    'forecast' => array_slice($forecast['forecast'] ?? [], 0, 4, true),
+                    'historical' => $data['weekly'],
+                ];
+            }
+        }
+
+        // Room utilization calculation
+        $roomUtilization = [];
+        $totalDays = count($facilityDailyBookings) > 0 ? max(1, count(array_unique(array_map(fn($k) => explode('_', $k)[1], array_keys($facilityDailyBookings))))) : 1;
+        foreach ($facilityStats as $id => $stats) {
+            $facilityBookings = array_filter($facilityDailyBookings, fn($k) => str_starts_with($k, $id . '_'), ARRAY_FILTER_USE_KEY);
+            $busyDays = count($facilityBookings);
+            $roomUtilization[$stats['name']] = [
+                'utilization_rate' => round($busyDays / max(1, $totalDays * 10), 2), // Assuming 10 days window
+                'total_bookings' => $stats['count'],
+            ];
+        }
+
+        // Format heatmap for frontend
+        $heatmapData = ['hours' => [], 'days' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], 'values' => []];
+        for ($h = 0; $h < 24; $h++) {
+            $heatmapData['hours'][] = $h;
+            $row = [];
+            foreach ($heatmapData['days'] as $day) {
+                $row[] = $hourlyHeatmap[$h][$day] ?? 0;
+            }
+            $heatmapData['values'][] = $row;
         }
 
         // Format facilities for response
@@ -187,6 +308,17 @@ class AnalyticsController extends AbstractController
         $weeklyForecast = $this->generateForecast($weeklyTrends, 'W');
         $monthlyForecast = $this->generateForecast($monthlyTrends, 'M');
 
+        // Calculate forecast accuracy (RMSE)
+        $weeklyRmse = 0;
+        if (count($weeklyTrends) >= 2) {
+            $values = array_values($weeklyTrends);
+            $errors = [];
+            for ($i = 1; $i < count($values); $i++) {
+                $errors[] = ($values[$i] - $values[$i - 1]) ** 2;
+            }
+            $weeklyRmse = count($errors) > 0 ? round(sqrt(array_sum($errors) / count($errors)), 2) : 0;
+        }
+
         return match($endpoint) {
             'meta' => array_merge($base, [
                 'facilities' => array_slice($facilities, 0, 20),
@@ -206,24 +338,33 @@ class AnalyticsController extends AbstractController
                         'upper' => $monthlyForecast['upper'] ?? [],
                     ],
                 ],
+                'forecast_accuracy' => [
+                    'weekly_rmse' => $weeklyRmse,
+                ],
                 'peak_demand_hours' => $hourlyPeak,
                 'event_type_distribution' => $purposeCounts,
-                'per_facility_weekly' => [],
+                'per_facility_weekly' => $perFacilityWeekly,
             ]),
             'organizing' => array_merge($base, [
+                'overlapping_reservations' => $overlapping,
                 'facility_load_distribution' => array_column(array_slice($facilities, 0, 10), 'count', 'name'),
                 'peak_usage_times' => $hourlyPeak,
-                'room_utilization' => [],
-                'peak_usage_heatmap' => [],
+                'room_utilization' => $roomUtilization,
+                'peak_usage_heatmap' => $heatmapData,
             ]),
             'leading' => array_merge($base, [
-                'event_success_by_type' => [],
-                'top_events' => [],
+                'overall_completion_rate' => $overallCompletionRate,
+                'rso_completion_rate' => $rsoCompletionRate,
+                'event_success_by_type' => $eventSuccessByType,
+                'top_events' => $topEvents,
                 'participant_demand_trend' => $monthlyTrends,
             ]),
             'controlling' => array_merge($base, [
                 'target_achievement' => $statusCounts,
-                'facility_utilization_rate' => [],
+                'facility_utilization_rate' => $roomUtilization,
+                'setup_compliance_rate' => $setupComplianceRate,
+                'no_show_rate' => $noShowRate,
+                'average_setup_gap' => $averageSetupGap,
                 'rejection_analysis' => ['Rejected' => $statusCounts['Rejected'] ?? 0, 'Cancelled' => $statusCounts['Cancelled'] ?? 0],
             ]),
             default => array_merge($base, ['error' => 'Unknown endpoint']),
