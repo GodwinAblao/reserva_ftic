@@ -254,6 +254,7 @@ class FacilityController extends AbstractController
     private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): void
     {
         $uploadedFiles = $request->files->get('images');
+        error_log('DEBUG - Gallery upload started. Files count: ' . (is_array($uploadedFiles) ? count($uploadedFiles) : ($uploadedFiles instanceof UploadedFile ? 1 : 0)));
         
         // Handle single file case
         if ($uploadedFiles instanceof UploadedFile) {
@@ -262,6 +263,7 @@ class FacilityController extends AbstractController
         
         // Must be an array with files
         if (!is_array($uploadedFiles) || empty($uploadedFiles)) {
+            error_log('DEBUG - No gallery files to upload');
             return;
         }
         
@@ -271,14 +273,19 @@ class FacilityController extends AbstractController
         foreach ($uploadedFiles as $uploadedFile) {
             // Skip if not a valid uploaded file
             if (!$uploadedFile instanceof UploadedFile) {
+                error_log('DEBUG - Skipping invalid uploaded file');
                 continue;
             }
+            
+            error_log('DEBUG - Processing gallery file: ' . $uploadedFile->getClientOriginalName());
             
             // Upload the file
             $imagePath = $this->handleImageUpload($uploadedFile);
             if (!$imagePath) {
+                error_log('DEBUG - Gallery upload failed for: ' . $uploadedFile->getClientOriginalName());
                 continue;
             }
+            error_log('DEBUG - Gallery upload success, URL: ' . $imagePath);
             
             // Create and configure the image entity
             $image = new FacilityImage();
