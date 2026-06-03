@@ -257,21 +257,44 @@ class FacilityController extends AbstractController
         }
     }
 
-    private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): void
+    private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): int
     {
         $uploadedFiles = $request->files->get('images');
-        error_log('DEBUG - Gallery upload started. Files count: ' . (is_array($uploadedFiles) ? count($uploadedFiles) : ($uploadedFiles instanceof UploadedFile ? 1 : 0)));
-        
-        // Handle single file case
+        error_log('DEBUG - Gallery upload started. Raw files: ' . json_encode($uploadedFiles ? 'present' : 'null'));
+
+        // Handle single file case (not in array)
         if ($uploadedFiles instanceof UploadedFile) {
             $uploadedFiles = [$uploadedFiles];
         }
-        
-        // Must be an array with files
+
+        // Handle the array structure from images[] input
+        if (is_array($uploadedFiles)) {
+            // Flatten in case of nested array structure
+            $flatFiles = [];
+            foreach ($uploadedFiles as $key => $file) {
+                if ($file instanceof UploadedFile) {
+                    $flatFiles[] = $file;
+                    error_log('DEBUG - Found valid file at key ' . $key . ': ' . $file->getClientOriginalName());
+                } elseif (is_array($file)) {
+                    // Handle nested array case
+                    foreach ($file as $nestedFile) {
+                        if ($nestedFile instanceof UploadedFile) {
+                            $flatFiles[] = $nestedFile;
+                            error_log('DEBUG - Found nested file: ' . $nestedFile->getClientOriginalName());
+                        }
+                    }
+                }
+            }
+            $uploadedFiles = $flatFiles;
+        }
+
+        // Must be a non-empty array
         if (!is_array($uploadedFiles) || empty($uploadedFiles)) {
             error_log('DEBUG - No gallery files to upload');
-            return;
+            return 0;
         }
+
+        error_log('DEBUG - Processing ' . count($uploadedFiles) . ' gallery files');
         
         $position = $facility->getImages()->count();
         $uploadedCount = 0;
@@ -315,10 +338,12 @@ class FacilityController extends AbstractController
         
         // Flush immediately to ensure images are saved
         $entityManager->flush();
-        
+
         if ($uploadedCount > 0) {
             $this->addFlash('success', $uploadedCount . ' gallery image(s) uploaded successfully!');
         }
+
+        return $uploadedCount;
     }
 
     #[Route('/{id}/toggle-reservation', name: 'app_facility_toggle_reservation', methods: ['POST'])]
