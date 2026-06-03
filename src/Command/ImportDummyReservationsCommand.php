@@ -11,7 +11,9 @@ use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -27,9 +29,23 @@ class ImportDummyReservationsCommand extends Command
         parent::__construct();
     }
 
+    protected function configure(): void
+    {
+        $this
+            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Delete existing dummy data and re-import all 100 rows');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $force = $input->getOption('force');
+
+        // Clear existing dummy data if force option is set
+        if ($force) {
+            $io->writeln('Clearing existing dummy reservations...');
+            $this->entityManager->createQuery('DELETE FROM App\Entity\Reservation r WHERE r.isSimulated = true')->execute();
+            $io->writeln('Existing dummy data cleared.');
+        }
 
         $csvPath = __DIR__ . '/../../data/dummy_reservations.csv';
         if (!file_exists($csvPath)) {
