@@ -87,8 +87,9 @@ class AnalyticsController extends AbstractController
 
         // Get reservations based on data source filter
         $qb = $this->entityManager->createQueryBuilder()
-            ->select('r')
-            ->from(Reservation::class, 'r');
+            ->select('r, f')
+            ->from(Reservation::class, 'r')
+            ->leftJoin('r.facility', 'f');
 
         if ($dataSource === 'live') {
             $qb->andWhere('r.isSimulated = false OR r.isSimulated IS NULL');
@@ -98,8 +99,8 @@ class AnalyticsController extends AbstractController
         // For 'combined', no filter needed - get all
 
         if ($facilityId) {
-            $qb->andWhere('r.facility = :facilityId')
-               ->setParameter('facilityId', $facilityId);
+            $qb->andWhere('f.id = :facilityId')
+               ->setParameter('facilityId', (int) $facilityId);
         }
 
         $reservations = $qb->getQuery()->getResult();
@@ -126,13 +127,15 @@ class AnalyticsController extends AbstractController
             $status = $res->getStatus();
             $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
 
-            // Facility stats
-            $facName = $res->getFacility()?->getName() ?? 'Unknown';
-            if (!isset($facilityStats[$facName])) {
-                $facilityStats[$facName] = ['count' => 0, 'capacity' => 0];
+            // Facility stats - use ID as key to prevent duplicates
+            $facility = $res->getFacility();
+            $facId = $facility?->getId() ?? 0;
+            $facName = $facility?->getName() ?? 'Unknown';
+            if (!isset($facilityStats[$facId])) {
+                $facilityStats[$facId] = ['name' => $facName, 'count' => 0, 'capacity' => 0, 'id' => $facId];
             }
-            $facilityStats[$facName]['count']++;
-            $facilityStats[$facName]['capacity'] += $res->getCapacity() ?? 0;
+            $facilityStats[$facId]['count']++;
+            $facilityStats[$facId]['capacity'] += $res->getCapacity() ?? 0;
 
             // Monthly trends
             $month = $res->getReservationDate()?->format('Y-m');
@@ -162,9 +165,10 @@ class AnalyticsController extends AbstractController
 
         // Format facilities for response
         $facilities = [];
-        foreach ($facilityStats as $name => $stats) {
+        foreach ($facilityStats as $id => $stats) {
             $facilities[] = [
-                'name' => $name,
+                'id' => $stats['id'],
+                'name' => $stats['name'],
                 'count' => $stats['count'],
                 'capacity' => $stats['capacity'],
             ];
