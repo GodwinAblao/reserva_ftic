@@ -81,7 +81,7 @@
         </div>
     </div>
 
-    <!-- Custom Request Section -->
+    <!-- Mentor Request Section -->
     <div class="custom-request-section">
         <div class="request-header">
             <h2>Schedule a Mentoring Session</h2>
@@ -204,7 +204,7 @@
             </form>
         {% else %}
             <div class="custom-request-disabled">
-                <p class="alert alert-info" style="margin:0;">You cannot send a custom request to your own mentor profile.</p>
+                <p class="alert alert-info" style="margin:0;">You cannot send a mentor request to your own mentor profile.</p>
             </div>
         {% endif %}
     </div>
@@ -243,7 +243,7 @@
         
         {% if hasSessions %}
             <div class="sessions-list">
-                {# Show Custom Requests First #}
+                {# Show Mentor Requests First #}
                 {% for request in myCustomRequests %}
                     <div class="session-item session-custom">
                         <div class="session-datetime">
@@ -258,7 +258,7 @@
                         </div>
                         <div class="session-details">
                             <strong>{{ request.message|slice(0, 50) ~ (request.message|length > 50 ? '...' : '') }}</strong>
-                            <small class="session-type">Custom Request</small>
+                            <small class="session-type">Mentor Request</small>
                             {% if request.meetingType %}
                                 <small class="session-meeting">
                                     📍 {{ request.meetingType }}
@@ -294,7 +294,7 @@
             <div class="empty-sessions">
                 <p class="empty-icon">📅</p>
                 <p class="empty-text">You haven't booked any sessions with this mentor yet.</p>
-                <p class="empty-subtext">Send a custom request above to schedule your first mentoring session!</p>
+                <p class="empty-subtext">Send a mentor request above to schedule your first mentoring session!</p>
             </div>
         {% endif %}
     </div>

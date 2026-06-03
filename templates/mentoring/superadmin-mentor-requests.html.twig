@@ -148,7 +148,7 @@
         <div class="sa-left-head">
             <select class="sa-type-sel" id="saTypeSelect" onchange="saOnTypeChange()">
                 <option value="all">All Requests</option>
-                <option value="custom">Custom Request</option>
+                <option value="custom">Mentor Request</option>
                 <option value="apply">Apply as Mentor</option>
             </select>
         </div>
@@ -213,27 +213,27 @@
                 {% endif %}
             </div>
 
-            {# ─ Custom Requests only ─ #}
+            {# ─ Mentor Requests only ─ #}
             <div id="sa-list-custom" style="display:none">
-                {% if requests is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No custom requests yet.</div>{% endif %}
+                {% if requests is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No mentor requests yet.</div>{% endif %}
                 <div class="sa-group-hd">Today</div>
                 {% if todayReqs is empty %}<div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new requests today.</div>{% endif %}
                 {% for req in todayReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentoring Custom Request</div>
+                    <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                 </div>{% endfor %}
                 {% if weekReqs is not empty %}<div class="sa-group-hd">This Week</div>{% for req in weekReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentoring Custom Request</div>
+                    <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                 </div>{% endfor %}{% endif %}
                 {% if olderReqs is not empty %}<div class="sa-group-hd older">Older</div>{% for req in olderReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
-                    <div class="sa-item-sub">Mentoring Custom Request</div>
+                    <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                 </div>{% endfor %}{% endif %}
             </div>
@@ -275,7 +275,7 @@
             <span>Select an item from the left panel to view details</span>
         </div>
 
-        {# ── Custom Request detail panes ── #}
+        {# ── Mentor Request detail panes ── #}
         {% for req in requests %}
         {% set hasChosen = req.mentorProfile is not null %}
         {% set displayDept = req.departmentCourse ?: (hasChosen and req.mentorProfile.user ? (req.mentorProfile.user.degreeName ?: req.mentorProfile.user.degree) : '') %}
@@ -535,7 +535,7 @@
             </div>
             <div>
                 <div style="font-size:14px;font-weight:800;color:#111827;">Activity Audit Log</div>
-                <div style="font-size:11px;color:#9ca3af;">All admin &amp; super admin actions on mentor applications &amp; custom requests</div>
+                <div style="font-size:11px;color:#9ca3af;">All admin &amp; super admin actions on mentor applications &amp; mentor requests</div>
             </div>
         </div>
         <div class="sa-audit-search-wrap">
@@ -573,7 +573,7 @@
                 'assign':        {'label': 'Assigned',        'cls': 'audit-action-assign'}
             } %}
             {% set meta = actionMeta[log.action] ?? {'label': log.action|capitalize, 'cls': 'audit-action-default'} %}
-            {% set typeLabel = log.subjectType == 'application' ? 'Application' : 'Custom Request' %}
+            {% set typeLabel = log.subjectType == 'application' ? 'Application' : 'Mentor Request' %}
             <tr class="sa-audit-row" data-log-id="{{ log.id }}" data-search="{{ (log.subjectLabel ~ ' ' ~ meta.label ~ ' ' ~ (log.performedByName ?? '') ~ ' ' ~ typeLabel)|lower }}">
                 <td class="sa-audit-time">
                     <span class="sa-audit-date">{{ log.loggedAt|date('M d, Y') }}</span>
@@ -987,7 +987,7 @@ function saFilterList(){
             /* patch request panes & list items */
             (data.requests||[]).forEach(function(r){
                 patchRequestPane(r);
-                patchListItem('custom', r.id, r.status, r.preferredExpertise || 'Custom Request');
+                patchListItem('custom', r.id, r.status, r.preferredExpertise || 'Mentor Request');
             });
             /* patch application panes & list items */
             (data.applications||[]).forEach(function(a){
@@ -1052,7 +1052,7 @@ function doPollAudit(){
         }
         function buildRow(log){
             var meta = actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
-            var typeLabel = log.subjectType==='application'?'Application':'Custom Request';
+            var typeLabel = log.subjectType==='application'?'Application':'Mentor Request';
             var typeCls = log.subjectType==='application'?'type-app':'type-req';
             var search = (log.subjectLabel+' '+meta.label+' '+(log.performedByName||'')+' '+typeLabel).toLowerCase();
             var statusFlow = '';
