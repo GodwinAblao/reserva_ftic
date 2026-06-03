@@ -134,7 +134,9 @@ class AnalyticsController extends AbstractController
 
         foreach ($reservations as $res) {
             $status = $res->getStatus();
-            $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
+            // Treat Completed as Approved for analytics
+            $effectiveStatus = $status === 'Completed' ? 'Approved' : $status;
+            $statusCounts[$effectiveStatus] = ($statusCounts[$effectiveStatus] ?? 0) + 1;
 
             // Facility stats - use ID as key to prevent duplicates
             $facility = $res->getFacility();
@@ -174,14 +176,14 @@ class AnalyticsController extends AbstractController
                 $purposeSuccess[$purpose] = ['total' => 0, 'approved' => 0];
             }
             $purposeSuccess[$purpose]['total']++;
-            if (in_array($status, ['Approved', 'Completed'])) {
+            if ($effectiveStatus === 'Approved') {
                 $purposeSuccess[$purpose]['approved']++;
             }
 
             // RSO tracking
             if (str_contains(strtolower($purpose), 'rso')) {
                 $rsoCount++;
-                if ($status === 'Completed') {
+                if ($effectiveStatus === 'Approved') {
                     $rsoCompleted++;
                 }
             }
