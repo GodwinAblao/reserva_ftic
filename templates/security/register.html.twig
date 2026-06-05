@@ -545,7 +545,7 @@
 
         document.getElementById('resendVerificationForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            if (resendCooldownSeconds > 0) {
+            if (registerState.resendCooldownSeconds > 0) {
                 return;
             }
 
@@ -585,7 +585,7 @@
                 startResendCooldown(Number(error.cooldownRemaining || 0));
             })
             .finally(() => {
-                if (resendCooldownSeconds > 0) {
+                if (registerState.resendCooldownSeconds > 0) {
                     updateResendButtonState();
                 } else {
                     finishButtonLoading(resendButton, 'Sending...', loadingStartAt);

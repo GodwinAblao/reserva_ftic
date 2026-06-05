@@ -65,16 +65,16 @@
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token('verify_registration') }}">
 
                     <button type="submit" class="submit-button">Verify Account</button>
-
-                    <div class="login-link-container" style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 1rem;">
-                        <p class="login-text" style="margin-bottom: 0.75rem;">Didn't receive the code?</p>
-                        <form method="post" action="{{ path('app_resend_verification_code') }}" style="display: inline-block;">
-                            <input type="hidden" name="email" value="{{ data.email }}">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
-                            <button type="submit" class="login-link" style="background: none; border: none; cursor: pointer; color: #0D9B00; font-weight: 600; text-decoration: none; padding: 0;">Resend code</button>
-                        </form>
-                    </div>
                 </form>
+
+                <div class="login-link-container" style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 1rem;">
+                    <p class="login-text" style="margin-bottom: 0.75rem;">Didn't receive the code?</p>
+                    <form method="post" action="{{ path('app_resend_verification_code') }}" style="display: inline-block;">
+                        <input type="hidden" name="email" value="{{ data.email }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('resend_verification') }}">
+                        <button type="submit" class="login-link" style="background: none; border: none; cursor: pointer; color: #0D9B00; font-weight: 600; text-decoration: none; padding: 0;">Resend code</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

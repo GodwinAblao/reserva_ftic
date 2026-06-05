@@ -185,6 +185,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                         ->text(sprintf('Hi %s %s, your Reserva FTIC verification code is %s. Enter it on the site to complete registration.', $data['firstName'], $data['lastName'], $verificationCode))
                         ->html($this->renderView('email/registration_verification.html.twig', [
                             'user' => null,
+                            'email' => $pendingData['email'],
                             'verificationCode' => $verificationCode,
                             'name' => $data['firstName'] . ' ' . $data['lastName'],
                         ]));
@@ -376,6 +377,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                         ->text(sprintf('Hi %s %s, your new Reserva FTIC verification code is %s.', $pendingData['firstName'], $pendingData['lastName'], $verificationCode))
                         ->html($this->renderView('email/registration_verification.html.twig', [
                             'user' => null,
+                            'email' => $pendingData['email'],
                             'verificationCode' => $verificationCode,
                             'name' => $pendingData['firstName'] . ' ' . $pendingData['lastName'],
                         ]));
@@ -426,14 +428,10 @@ public function register(Request $request, EntityManagerInterface $entityManager
                             ->text(sprintf('Hi %s, your new Reserva FTIC verification code is %s.', $user->getFirstName() ?: $user->getEmail(), $verificationCode))
                             ->html($this->renderView('email/registration_verification.html.twig', [
                                 'user' => $user,
+                                'email' => $user->getEmail(),
                                 'verificationCode' => $verificationCode,
+                                'name' => trim(($user->getFirstName() ?: '') . ' ' . ($user->getLastName() ?: '')),
                             ]));
-
-                        // $this->logger->info('Resending verification email', ['to' => $email]);
-
-                        $mailer->send($verificationEmail);
-
-                        // $this->logger->info('Resend verification email sent', ['to' => $email]); 
 
                         $session->set('verification_resend_available_at', time() + 120);
 
