@@ -96,6 +96,9 @@ class MentorCustomRequest
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $facilityReservedBy = null; // 'mentor', 'student', 'outside'
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $cancellationReason = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -247,5 +250,8 @@ class MentorCustomRequest
 
     public function getFacilityReservedBy(): ?string { return $this->facilityReservedBy; }
     public function setFacilityReservedBy(?string $facilityReservedBy): self { $this->facilityReservedBy = $facilityReservedBy; $this->touch(); return $this; }
+
+    public function getCancellationReason(): ?string { return $this->cancellationReason; }
+    public function setCancellationReason(?string $cancellationReason): self { $this->cancellationReason = $cancellationReason; $this->touch(); return $this; }
 }
 

@@ -131,6 +131,13 @@
 
             <h3 style="color: #006633; margin-top: 20px;">Reservation Information</h3>
 
+            {% if reservation.eventName %}
+            <div class="detail-row">
+                <span class="label">Event Name:</span>
+                <span class="value">{{ reservation.eventName }}</span>
+            </div>
+            {% endif %}
+
             <div class="detail-row">
                 <span class="label">Date:</span>
                 <span class="value">{{ reservation.reservationDate|date('F d, Y') }}</span>

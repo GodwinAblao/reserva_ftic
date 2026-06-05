@@ -1107,7 +1107,7 @@ $validUntil = $request->request->get('valid_until');
     }
 
     #[Route('/{id}', name: 'mentoring_show', methods: ['GET'])]
-    public function show(MentorProfile $profile, EntityManagerInterface $em): Response
+    public function show(MentorProfile $profile, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
     {
         $this->ensureFacultyMentorProfiles($em);
 
@@ -1121,7 +1121,7 @@ $validUntil = $request->request->get('valid_until');
             'mentor' => $profile
         ], ['scheduledAt' => 'DESC']);
 
-        // Fetch custom requests (scheduled mentoring sessions)
+        // Fetch mentor requests (scheduled mentoring sessions)
         $customRequestsWithThisMentor = $em->getRepository(\App\Entity\MentorCustomRequest::class)->findBy([
             'student' => $this->getUser(),
             'mentorProfile' => $profile
@@ -1132,12 +1132,16 @@ $validUntil = $request->request->get('valid_until');
             && $profile->getUser() !== null
             && $profile->getUser()->getId() !== $currentUser->getId();
 
+        // Get all specializations for the request form
+        $specializations = $specializationRepository->findAllOrderedByName();
+
         return $this->render('mentoring/show.html.twig', [
             'mentor' => $profile,
             'availabilities' => $availabilities,
             'myAppointments' => $appointmentsWithThisMentor,
             'myCustomRequests' => $customRequestsWithThisMentor,
             'canSendCustomRequest' => $canSendCustomRequest,
+            'allSpecializations' => $specializations,
         ]);
     }
 
@@ -1186,9 +1190,9 @@ $validUntil = $request->request->get('valid_until');
         if ($profile->getUser()->getId() === $currentUser->getId()) {
             $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
             if ($isAjax) {
-                return new JsonResponse(['error' => 'You cannot send a custom request to your own mentor profile.'], Response::HTTP_FORBIDDEN);
+                return new JsonResponse(['error' => 'You cannot send a mentor request to your own mentor profile.'], Response::HTTP_FORBIDDEN);
             }
-            $this->addFlash('error', 'You cannot send a custom request to your own mentor profile.');
+            $this->addFlash('error', 'You cannot send a mentor request to your own mentor profile.');
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
 
@@ -1314,12 +1318,12 @@ $validUntil = $request->request->get('valid_until');
         if ($isAjax) {
             return new JsonResponse([
                 'success' => true,
-                'message' => 'Custom request sent successfully!',
+                'message' => 'Mentor request sent successfully!',
                 'mentorName' => $profile->getDisplayName()
             ]);
         }
 
-        $this->addFlash('success', 'Custom request sent! ' . $profile->getDisplayName() . ' will receive an email with your message and can respond within 24-48 hours.');
+        $this->addFlash('success', 'Mentor request sent! ' . $profile->getDisplayName() . ' will receive an email with your message and can respond within 24-48 hours.');
 
         return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
     }
@@ -1452,7 +1456,16 @@ $validUntil = $request->request->get('valid_until');
                 $this->addFlash('error', 'This request has already been ' . strtolower($mentorRequest->getStatus()) . '.');
                 return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
             }
+            
+            // Get and validate cancellation reason
+            $cancellationReason = trim((string) $request->request->get('cancellation_reason', ''));
+            if (strlen($cancellationReason) < 10) {
+                $this->addFlash('error', 'Please provide a cancellation reason with at least 10 characters.');
+                return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
+            }
+            
             $mentorRequest->setStatus('Cancelled');
+            $mentorRequest->setCancellationReason($cancellationReason);
             $em->flush();
             $this->addFlash('success', 'Your mentor request has been cancelled.');
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
@@ -1691,8 +1704,8 @@ $validUntil = $request->request->get('valid_until');
         $studentName = $studentName !== '' ? $studentName : $student->getEmail();
 
         $status = $decision === 'accept' ? 'accepted' : 'declined';
-        $title = $decision === 'accept' ? 'Custom Mentoring Request Accepted' : 'Custom Mentoring Request Declined';
-        $flashMessage = $decision === 'accept' ? 'Custom request accepted! Meeting details have been sent to the student.' : 'Custom request declined.';
+        $title = $decision === 'accept' ? 'Mentor Request Accepted' : 'Mentor Request Declined';
+        $flashMessage = $decision === 'accept' ? 'Mentor request accepted! Meeting details have been sent to the student.' : 'Mentor request declined.';
         
         // Handle meeting details when accepting
         $facilityReservedBy = null;

@@ -69,24 +69,31 @@ class NotificationController extends AbstractController
     #[Route('/poll', name: 'api_notifications_poll', methods: ['GET'])]
     public function poll(NotificationRepository $notificationRepo): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            error_log('DEBUG: Notification poll API called by unauthenticated user');
-            return $this->json(['error' => 'Unauthorized'], 401);
+        try {
+            $user = $this->getUser();
+            if (!$user) {
+                error_log('DEBUG: Notification poll API called by unauthenticated user');
+                return $this->json(['error' => 'Unauthorized', 'unreadCount' => 0, 'newestId' => 0], 401);
+            }
+
+            $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
+            $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
+            
+            // Ensure user has an ID before querying
+            if ($userId === 'unknown' || $userId === null) {
+                error_log('DEBUG: Notification poll - user has no ID');
+                return $this->json(['error' => 'Invalid user', 'unreadCount' => 0, 'newestId' => 0], 400);
+            }
+
+            $pollData = $notificationRepo->getPollData($user);
+
+            $response = $this->json($pollData);
+            $response->headers->set('Cache-Control', 'private, no-store');
+            return $response;
+        } catch (\Exception $e) {
+            error_log('ERROR in NotificationController::poll: ' . $e->getMessage());
+            return $this->json(['error' => 'Server error', 'unreadCount' => 0, 'newestId' => 0], 500);
         }
-
-        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
-        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
-        $userRoles = $user instanceof \App\Entity\User ? implode(',', $user->getRoles()) : 'unknown';
-        
-        error_log('DEBUG: Notification poll API called by user ' . $userId . ' (' . $userEmail . ') with roles: ' . $userRoles);
-
-        $pollData = $notificationRepo->getPollData($user);
-        error_log('DEBUG: Poll data for user ' . $userId . ': ' . json_encode($pollData));
-
-        $response = $this->json($pollData);
-        $response->headers->set('Cache-Control', 'private, no-store');
-        return $response;
     }
 
     /**

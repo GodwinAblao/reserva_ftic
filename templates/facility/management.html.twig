@@ -44,7 +44,7 @@
             <div class="management-card">
                 <div class="card-image">
                     {% if facility.image %}
-                        <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                        <img src="{{ facility.image ~ '?v=' ~ facility.updatedAt|date('U') }}" alt="{{ facility.name }}" loading="lazy">
                     {% else %}
                         <div class="placeholder">{{ facility.name | first }}</div>
                     {% endif %}

@@ -69,17 +69,18 @@
         <!-- Reservation Form Section -->
         <div class="form-section card-panel">
             <h3>Reservation Details</h3>
-            <form id="reservationForm" class="form-group">
+            <form id="reservationForm" class="form-group" data-turbo="false">
                 <div class="form-row">
                     <div class="form-group-item">
                         <label for="eventName">Event Name</label>
                         <input type="text" id="eventName" name="event_name" class="form-input"
-                               placeholder="Enter the event name or title" required>
+                               placeholder="Enter the event name or title" required
+                               value="{{ existingReservation ? existingReservation.eventName : '' }}">
                     </div>
                     <div class="form-group-item">
                         <label for="name">Full Name</label>
                         <input type="text" id="name" name="name" class="form-input" 
-                               value="{{ userName }}" required>
+                               value="{{ userName }}" required readonly style="background-color: #f5f5f5; cursor: not-allowed;">
                     </div>
                 </div>
 
@@ -94,7 +95,8 @@
                         <input type="tel" id="contact" name="contact" class="form-input"
                                placeholder="09XX XXX XXXX" maxlength="13"
                                pattern="^(\+?63|0)9\d{9}$"
-                               title="Enter a valid PH mobile number (e.g. 09123456789 or +639123456789)">
+                               title="Enter a valid PH mobile number (e.g. 09123456789 or +639123456789)"
+                               value="{{ existingReservation ? existingReservation.contact : '' }}">
                         <small class="help-text">Philippine mobile only — 09XX or +639XX format.</small>
                     </div>
                 </div>
@@ -103,7 +105,8 @@
                     <div class="form-group-item">
                         <label for="capacity">Number of Attendees</label>
                         <input type="number" id="capacity" name="capacity" class="form-input" 
-                               min="1" max="{{ facility.capacity }}" required>
+                               min="1" max="{{ facility.capacity }}" required
+                               value="{{ existingReservation ? existingReservation.capacity : '' }}">
                         <small class="help-text">Maximum: {{ facility.capacity }} people</small>
                     </div>
                 </div>
@@ -111,13 +114,16 @@
                 <div class="form-group-item">
                     <label for="purpose">Event Objective</label>
                     <textarea id="purpose" name="purpose" class="form-input" rows="4" 
-                              placeholder="Describe the objective of your event..."></textarea>
+                              placeholder="Describe the objective of your event...">{{ existingReservation ? existingReservation.purpose : '' }}</textarea>
                 </div>
 
                 <!-- Hidden fields for date and time -->
-                <input type="hidden" id="reservation_date" name="reservation_date" required>
-                <input type="hidden" id="reservation_start_time" name="reservation_start_time" required>
-                <input type="hidden" id="reservation_end_time" name="reservation_end_time" required>
+                <input type="hidden" id="reservation_date" name="reservation_date" required 
+                       value="{{ existingReservation ? existingReservation.reservationDate|date('Y-m-d') : '' }}">
+                <input type="hidden" id="reservation_start_time" name="reservation_start_time" required
+                       value="{{ existingReservation ? existingReservation.reservationStartTime|date('H:i') : '' }}">
+                <input type="hidden" id="reservation_end_time" name="reservation_end_time" required
+                       value="{{ existingReservation ? existingReservation.reservationEndTime|date('H:i') : '' }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token('reservation') }}">
 
                 <!-- Selected date and time display -->
@@ -846,6 +852,46 @@
         }
     };
 
+    // Helper function to format time (HH:mm to readable format)
+    function formatTime(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    }
+
+    // Restore existing selection when coming back from suggest-alternatives page
+    function restoreExistingSelection() {
+        const dateInput = document.getElementById('reservation_date');
+        const startTimeInput = document.getElementById('reservation_start_time');
+        const endTimeInput = document.getElementById('reservation_end_time');
+        const selectedDateEl = document.getElementById('selectedDate');
+        const selectedTimeEl = document.getElementById('selectedTime');
+
+        if (dateInput && dateInput.value) {
+            selectedDate = new Date(dateInput.value + 'T00:00:00');
+            currentMonth = new Date(selectedDate);
+            if (selectedDateEl) {
+                selectedDateEl.textContent = selectedDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+        }
+
+        if (startTimeInput && startTimeInput.value && endTimeInput && endTimeInput.value) {
+            selectedStartTime = startTimeInput.value;
+            selectedEndTime = endTimeInput.value;
+            if (selectedTimeEl) {
+                selectedTimeEl.textContent = formatTime(selectedStartTime) + ' - ' + formatTime(selectedEndTime);
+            }
+            // Re-render calendar to highlight the selected date and time slots
+            renderCalendar();
+        }
+    }
+
     function initReservationCalendar() {
         const container = document.querySelector('.reservation-container');
         if (!container || container.dataset.calendarInit === '1') {
@@ -885,6 +931,9 @@
         renderCalendar();
         refreshAvailabilityData();
 
+        // Restore selected date/time display if form has existing values (from suggest-alternatives page)
+        restoreExistingSelection();
+
         // Month navigation
         addManagedEvent(prevButton, 'click', () => {
             currentMonth.setMonth(currentMonth.getMonth() - 1);
@@ -903,7 +952,7 @@
 
         // Sync with admin Import & Sync (poll + same-browser event)
         pollScheduleRevision();
-        addManagedInterval(pollScheduleRevision, 4000);
+        addManagedInterval(pollScheduleRevision, 30000);  // Reduced from 4s to 30s to prevent slowness
         addManagedEvent(window, 'classScheduleUpdated', () => refreshAvailabilityData(false));
         addManagedEvent(window, 'storage', (event) => {
             if (event.key === 'classScheduleRevision' && event.newValue && event.newValue !== knownScheduleRevision) {
@@ -912,12 +961,12 @@
             }
         });
 
-        // Also refresh availability every 20 seconds (reservations / manual blocks)
+        // Also refresh availability every 60 seconds (reservations / manual blocks) - reduced frequency to prevent slowness
         addManagedInterval(() => {
             if (!document.hidden) {
                 refreshAvailabilityData(false);
             }
-        }, 20000);
+        }, 60000);
 
         addManagedEvent(document, 'visibilitychange', () => {
             if (!document.hidden) {
@@ -1064,13 +1113,28 @@
         const maintenanceRanges = maintenanceTimesData[dateStr] || [];
         const slots = buildSelectableTimeSlots();
 
+        // Check if selected date is today and calculate current time in minutes
+        const today = new Date();
+        const isToday = date.getFullYear() === today.getFullYear() &&
+                       date.getMonth() === today.getMonth() &&
+                       date.getDate() === today.getDate();
+        const currentTimeMinutes = isToday ? (today.getHours() * 60 + today.getMinutes()) : -1;
+
         slots.forEach(timeStr => {
             const slot = document.createElement('button');
             slot.type = 'button';
             slot.className = 'time-slot';
             slot.textContent = minutesToTimeAMPM(timeToMinutes(timeStr));
+            const slotMinutes = timeToMinutes(timeStr);
 
-            if (isTimeBooked(timeStr, classRanges)) {
+            // Check if this time slot is in the past (for today only)
+            const isPastTime = isToday && slotMinutes <= currentTimeMinutes;
+
+            if (isPastTime) {
+                slot.classList.add('disabled');
+                slot.disabled = true;
+                slot.title = 'This time has already passed';
+            } else if (isTimeBooked(timeStr, classRanges)) {
                 slot.classList.add('class');
                 slot.disabled = true;
                 slot.title = 'Scheduled class (same as admin calendar)';
@@ -1100,6 +1164,12 @@
 
             timeGrid.appendChild(slot);
         });
+
+        // Re-apply selected highlight if there's a selection for this date
+        if (selectedStartTime && selectedDate) {
+            const slots = buildSelectableTimeSlots();
+            highlightSelectedRange(slots);
+        }
     }
 
     function selectTimeRange(timeStr, element, slots) {
@@ -1166,6 +1236,21 @@
             return;
         }
 
+        // Validate that reservation is not in the past
+        const today = new Date();
+        const isToday = selectedDate.getFullYear() === today.getFullYear() &&
+                       selectedDate.getMonth() === today.getMonth() &&
+                       selectedDate.getDate() === today.getDate();
+        if (isToday) {
+            const currentTimeMinutes = today.getHours() * 60 + today.getMinutes();
+            if (startMinutes <= currentTimeMinutes) {
+                showError('Cannot create reservations for past time slots. Please select a future time.');
+                isSubmitting = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Reservation'; }
+                return;
+            }
+        }
+
         if (isSelectedRangeUnavailable()) {
             showError('This time range is unavailable because it overlaps with a reservation, pending request, class schedule, or manual block.');
             renderTimeSlots(selectedDate);
@@ -1185,29 +1270,42 @@
         }
 
         // Submit form
-        const formData = new FormData(document.getElementById('reservationForm'));
+        const form = document.getElementById('reservationForm');
+        const formData = new FormData(form);
+        
+        // Debug: Log CSRF token
+        const csrfToken = formData.get('csrf_token');
+        console.log('DEBUG: Submitting reservation with CSRF token:', csrfToken ? 'Present' : 'MISSING');
+        
         fetch('{{ path('facility_reserve', {'id': facility.id}) }}', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
             body: formData,
             credentials: 'same-origin',
         })
         .then(async response => {
+            console.log('DEBUG: Response status:', response.status);
             const text = await response.text();
+            console.log('DEBUG: Response text length:', text.length);
+            
             const contentType = response.headers.get('content-type') || '';
             const isJson = contentType.includes('application/json') || contentType.includes('application/problem+json');
 
             if (!isJson) {
+                console.error('DEBUG: Non-JSON response:', text.substring(0, 500));
                 const message = text.replace(/<[^>]+>/g, '').trim().slice(0, 240) || 'Server returned an unexpected response.';
                 throw new Error(message);
             }
 
             const data = text ? JSON.parse(text) : {};
+            console.log('DEBUG: Parsed response:', data);
             const errorMessage = data.error || data.message || data.title || 'Submission failed';
 
-            if (!response.ok) {
+            // Handle error responses (including our custom 200 with error)
+            if (data.error) {
                 if (Array.isArray(data.alternatives) && data.alternatives.length > 0) {
                     showAlternatives(data.alternatives, errorMessage);
                     return null;

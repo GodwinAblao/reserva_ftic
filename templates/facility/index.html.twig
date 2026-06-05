@@ -32,7 +32,7 @@
                         <div class="facility-card facility-feature-card">
                             <div class="facility-image-holder">
                                 {% if facility.image %}
-                                    <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                                    <img src="{{ facility.image ~ '?v=' ~ facility.updatedAt|date('U') }}" alt="{{ facility.name }}" loading="lazy">
                                 {% else %}
                                     <div class="placeholder-image">
                                         <span>{{ facility.name | first }}</span>

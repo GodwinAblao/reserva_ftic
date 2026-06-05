@@ -105,7 +105,7 @@
                      onclick="selectRequest({{ req.id }})">
                     <span class="mc-list-item-time">{{ req.createdAt|date('H:i') }}</span>
                     <div class="mc-list-item-name">{{ req.fullName ?: (req.student.firstName ~ ' ' ~ req.student.lastName) }}</div>
-                    <div class="mc-list-item-msg">{{ req.preferredExpertise ?: 'Mentoring Custom Request' }}</div>
+                    <div class="mc-list-item-msg">{{ req.preferredExpertise ?: 'Mentor Request' }}</div>
                 </div>
                 {% endfor %}
                 {% endif %}

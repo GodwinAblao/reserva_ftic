@@ -47,9 +47,16 @@ public function reserve(
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        if (!$this->getUser()) {
+        $user = $this->getUser();
+        if (!$user) {
+            error_log('RESERVE DEBUG: No user - redirecting to login');
             return $this->redirectToRoute('app_login');
         }
+        
+        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
+        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
+        $isVerified = $user instanceof \App\Entity\User ? ($user->isVerified() ? 'yes' : 'no') : 'unknown';
+        error_log('RESERVE DEBUG: User ' . $userId . ' (' . $userEmail . ') - verified: ' . $isVerified . ', method: ' . $request->getMethod());
 
         // Check if facility is available for reservations
         if (!$facility->isAvailableForReservation()) {
@@ -58,6 +65,23 @@ public function reserve(
         }
 
         if ($request->isMethod('POST')) {
+            // Validate CSRF token first to prevent session issues
+            $submittedToken = $request->request->get('csrf_token');
+            $sessionToken = $request->getSession()->get('_csrf/reservation');
+            
+            error_log('RESERVE DEBUG: CSRF validation - submitted: ' . ($submittedToken ? 'present' : 'missing') . ', session: ' . ($sessionToken ? 'present' : 'missing'));
+            
+            if (!$this->isCsrfTokenValid('reservation', $submittedToken)) {
+                error_log('RESERVE DEBUG: CSRF validation FAILED for facility ' . $facility->getId());
+                // Return 200 with error message so client can handle it gracefully without logout
+                return $this->json(
+                    ['error' => 'Invalid security token. Please refresh the page and try again.', 'message' => 'Invalid security token. Please refresh the page and try again.'],
+                    Response::HTTP_OK
+                );
+            }
+
+            error_log('RESERVE DEBUG: CSRF validation PASSED for facility ' . $facility->getId());
+
             try {
                 $name = $request->request->get('name');
                 $email = $request->request->get('email');
@@ -113,6 +137,21 @@ public function reserve(
                     );
                 }
 
+                // Validate that reservation is not in the past
+                $now = new \DateTime();
+                $reservationDateTime = clone $date;
+                $reservationDateTime->setTime(
+                    (int)$startTime->format('H'),
+                    (int)$startTime->format('i')
+                );
+
+                if ($reservationDateTime < $now) {
+                    return $this->json(
+                        ['error' => 'Cannot create reservations for past time slots. Please select a future time.', 'message' => 'Cannot create reservations for past time slots. Please select a future time.'],
+                        Response::HTTP_BAD_REQUEST
+                    );
+                }
+
                 if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending'])) {
                     // Find alternative facilities
                     $alternatives = $reservationRepo->findAvailableAlternatives(
@@ -155,6 +194,8 @@ public function reserve(
 
                 $em->persist($reservation);
                 $em->flush();
+                
+                error_log('RESERVE DEBUG: Reservation created successfully - ID: ' . $reservation->getId());
 
                 // Always redirect to suggest alternatives to let user confirm facility choice
                 $alternatives = $reservationRepo->findAvailableAlternatives(
@@ -165,12 +206,16 @@ public function reserve(
                     $facility
                 );
 
+                error_log('RESERVE DEBUG: Found ' . count($alternatives) . ' alternatives, redirecting to suggest page');
+
                 // Redirect to suggest alternatives page
                 return $this->json([
                     'success' => true,
                     'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
                 ]);
             } catch (\Throwable $exception) {
+                error_log('RESERVE DEBUG: EXCEPTION - ' . $exception->getMessage());
+                error_log('RESERVE DEBUG: Stack trace - ' . $exception->getTraceAsString());
                 // Do not expose internal errors to the user, but return a JSON-friendly message for AJAX requests.
                 return $this->json(
                     ['error' => 'An unexpected error occurred while submitting the reservation. Please try again later.', 'message' => 'An unexpected error occurred while submitting the reservation. Please try again later.'],
@@ -193,6 +238,21 @@ public function reserve(
             ]))) ?: $user->getEmail();
         }
 
+        // Check if we have an existing reservation to restore (from query parameter when coming back from suggest-alternatives)
+        $existingReservation = null;
+        $restoreReservationId = $request->query->get('restore');
+        if ($restoreReservationId) {
+            $existingReservation = $reservationRepo->find($restoreReservationId);
+            // Verify the reservation belongs to current user and matches this facility
+            if ($existingReservation && 
+                $existingReservation->getUser() === $user && 
+                $existingReservation->getFacility() === $facility) {
+                error_log('RESERVE DEBUG: Restoring reservation data for ID: ' . $restoreReservationId);
+            } else {
+                $existingReservation = null;
+            }
+        }
+
         return $this->render('reservation/reserve.html.twig', [
             'facility' => $facility,
             'bookedTimes' => json_encode($availability['bookedTimes']),
@@ -203,6 +263,7 @@ public function reserve(
             'scheduleRevision' => $scheduleRevision->getRevision(),
             'userEmail' => $userEmail,
             'userName' => $userName,
+            'existingReservation' => $existingReservation,
         ]);
     }
 
@@ -328,8 +389,24 @@ public function reserve(
             }
         }
 
+        // Get most recent reservation for the modal (if any)
+        $recentReservation = null;
+        $allReservations = array_merge(
+            $categorized['Approved'],
+            $categorized['Pending'],
+            $categorized['Suggested']
+        );
+        if (!empty($allReservations)) {
+            // Sort by createdAt descending to get the most recent
+            usort($allReservations, function($a, $b) {
+                return $b->getCreatedAt() <=> $a->getCreatedAt();
+            });
+            $recentReservation = $allReservations[0];
+        }
+
         return $this->render('reservation/user_reservations.html.twig', [
             'reservations' => $categorized,
+            'recentReservation' => $recentReservation,
         ]);
     }
 
@@ -482,13 +559,22 @@ public function reserve(
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        if (!$this->isCsrfTokenValid('select_alternative_' . $reservation->getId(), (string) $request->request->get('_token'))) {
-            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        $submittedToken = (string) $request->request->get('_token');
+        $expectedTokenId = 'select_alternative_' . $reservation->getId();
+        
+        if (!$this->isCsrfTokenValid($expectedTokenId, $submittedToken)) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            $currentUser = $this->getUser();
+            $userId = ($currentUser instanceof \App\Entity\User) ? $currentUser->getId() : 'none';
+            error_log('CSRF validation failed for select_alternative. Reservation: ' . $reservation->getId() . ', User: ' . $userId);
+            return $this->redirectToRoute('user_suggest_facility', ['id' => $reservation->getId()]);
         }
 
         // Verify user owns this reservation
-        if ($reservation->getUser() !== $this->getUser()) {
-            throw $this->createAccessDeniedException();
+        $currentUser = $this->getUser();
+        if (!$currentUser || $reservation->getUser() !== $currentUser) {
+            $this->addFlash('error', 'You do not have permission to modify this reservation.');
+            return $this->redirectToRoute('user_reservations');
         }
 
         $facility = $em->getRepository(Facility::class)->find($facilityId);
@@ -523,13 +609,22 @@ public function reserve(
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        if (!$this->isCsrfTokenValid('keep_original_' . $reservation->getId(), (string) $request->request->get('_token'))) {
-            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        $submittedToken = (string) $request->request->get('_token');
+        $expectedTokenId = 'keep_original_' . $reservation->getId();
+        
+        if (!$this->isCsrfTokenValid($expectedTokenId, $submittedToken)) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            $currentUser = $this->getUser();
+            $userId = ($currentUser instanceof \App\Entity\User) ? $currentUser->getId() : 'none';
+            error_log('CSRF validation failed for keep_original_facility. Reservation: ' . $reservation->getId() . ', User: ' . $userId);
+            return $this->redirectToRoute('user_suggest_facility', ['id' => $reservation->getId()]);
         }
 
         // Verify user owns this reservation
-        if ($reservation->getUser() !== $this->getUser()) {
-            throw $this->createAccessDeniedException();
+        $currentUser = $this->getUser();
+        if (!$currentUser || $reservation->getUser() !== $currentUser) {
+            $this->addFlash('error', 'You do not have permission to modify this reservation.');
+            return $this->redirectToRoute('user_reservations');
         }
 
         // Set status to Pending after user chooses to keep original facility

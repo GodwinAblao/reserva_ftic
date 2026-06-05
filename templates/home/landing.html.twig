@@ -236,7 +236,7 @@
                         <article class="facility-card-new facility-feature-card">
                             <div class="facility-image-new">
                                 {% if facility.image %}
-                                    <img src="{{ facility.image }}" alt="{{ facility.name }}">
+                                    <img src="{{ facility.image ~ '?v=' ~ facility.updatedAt|date('U') }}" alt="{{ facility.name }}" loading="lazy">
                                 {% else %}
                                     <div class="facility-placeholder">
                                         <span>{{ facility.name | first }}</span>

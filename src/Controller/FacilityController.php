@@ -8,6 +8,7 @@ use App\Entity\Facility;
 use App\Entity\FacilityImage;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityImageRepository;
+use App\Service\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -19,6 +20,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/facility')]
 class FacilityController extends AbstractController
 {
+    private SupabaseStorageService $storageService;
+
+    public function __construct(SupabaseStorageService $storageService)
+    {
+        $this->storageService = $storageService;
+    }
     #[Route('', name: 'app_facility_index', methods: ['GET'])]
     public function index(FacilityRepository $facilityRepository): Response
     {
@@ -48,27 +55,47 @@ class FacilityController extends AbstractController
         $facility = new Facility();
 
         if ($request->isMethod('POST')) {
-            $facility->setName((string) $request->request->get('name'));
-            $facility->setCapacity((int) $request->request->get('capacity'));
-            $facility->setDescription((string) $request->request->get('description'));
+            error_log('NEW FACILITY: POST received');
+            try {
+                $name = (string) $request->request->get('name');
+                $capacity = (int) $request->request->get('capacity');
+                $description = (string) $request->request->get('description');
+                error_log('NEW FACILITY: Data received - name=' . $name . ', capacity=' . $capacity);
 
-            // Handle image upload
-            $uploadedFile = $request->files->get('image');
-            if ($uploadedFile instanceof UploadedFile) {
-                $imagePath = $this->handleImageUpload($uploadedFile);
-                if ($imagePath) {
-                    // Delete old image file if it exists
-                    $this->deleteImageFile($facility->getImage());
-                    $facility->setImage($imagePath);
+                $facility->setName($name);
+                $facility->setCapacity($capacity);
+                $facility->setDescription($description);
+
+                // Handle main image upload (before saving facility)
+                $uploadedFile = $request->files->get('image');
+                $mainImagePath = null;
+                if ($uploadedFile instanceof UploadedFile) {
+                    error_log('NEW FACILITY: Main image received - ' . $uploadedFile->getClientOriginalName());
+                    $mainImagePath = $this->handleImageUpload($uploadedFile);
+                    if ($mainImagePath) {
+                        $facility->setImage($mainImagePath);
+                    }
                 }
+
+                // Save facility FIRST before adding gallery images
+                error_log('NEW FACILITY: Saving facility first...');
+                $facilityRepository->save($facility, true);
+                error_log('NEW FACILITY: Facility saved with ID=' . $facility->getId());
+
+                // Now handle gallery images after facility is persisted
+                error_log('NEW FACILITY: Processing gallery images...');
+                $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+                error_log('NEW FACILITY: Gallery processed - count=' . $galleryCount);
+
+                $this->addFlash('success', 'Facility created successfully!' . ($galleryCount > 0 ? ' (' . $galleryCount . ' gallery image(s) added)' : ''));
+                return $this->redirectToRoute('app_facility_management');
+
+            } catch (\Exception $e) {
+                error_log('NEW ERROR - Exception: ' . $e->getMessage());
+                error_log('NEW ERROR - Stack: ' . $e->getTraceAsString());
+                $this->addFlash('error', 'Error creating facility: ' . $e->getMessage());
+                return $this->redirectToRoute('app_facility_new');
             }
-
-            $this->handleMultipleImageUploads($request, $facility, $entityManager);
-            $facilityRepository->save($facility, true);
-
-            $this->addFlash('success', 'Facility created successfully!');
-
-            return $this->redirectToRoute('app_facility_management');
         }
 
         return $this->render('facility/new.html.twig', [
@@ -81,31 +108,45 @@ class FacilityController extends AbstractController
     public function edit(Request $request, Facility $facility, FacilityRepository $facilityRepository, EntityManagerInterface $entityManager): Response
     {
         if ($request->isMethod('POST')) {
-            $facility->setName((string) $request->request->get('name'));
-            $facility->setCapacity((int) $request->request->get('capacity'));
-            $facility->setDescription((string) $request->request->get('description'));
+            try {
+                $facility->setName((string) $request->request->get('name'));
+                $facility->setCapacity((int) $request->request->get('capacity'));
+                $facility->setDescription((string) $request->request->get('description'));
 
-            // Debug: Check what files are received
-            $allFiles = $request->files->all();
-            $galleryFiles = $request->files->get('images');
-            error_log('DEBUG - All files: ' . json_encode($allFiles));
-            error_log('DEBUG - Gallery files: ' . json_encode($galleryFiles));
+                // Debug: Check what files are received
+                $allFiles = $request->files->all();
+                error_log('EDIT DEBUG - All files keys: ' . implode(', ', array_keys($allFiles)));
+                error_log('EDIT DEBUG - POST size: ' . ($request->server->get('CONTENT_LENGTH') ?? 'unknown') . ' bytes');
 
-            // Handle image upload
-            $uploadedFile = $request->files->get('image');
-            if ($uploadedFile instanceof UploadedFile) {
-                $imagePath = $this->handleImageUpload($uploadedFile);
-                if ($imagePath) {
-                    // Delete old image file if it exists
-                    $this->deleteImageFile($facility->getImage());
-                    $facility->setImage($imagePath);
+                // Handle main image upload
+                $uploadedFile = $request->files->get('image');
+                if ($uploadedFile instanceof UploadedFile) {
+                    $imagePath = $this->handleImageUpload($uploadedFile);
+                    if ($imagePath) {
+                        $this->deleteImageFile($facility->getImage());
+                        $facility->setImage($imagePath);
+                    } else {
+                        $entityManager->persist($facility);
+                        $entityManager->flush();
+                        return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
+                    }
                 }
+
+                // Handle gallery images
+                $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
+                error_log('EDIT DEBUG - Gallery images processed: ' . $galleryCount);
+
+                $facilityRepository->save($facility, true);
+
+                $this->addFlash('success', 'Facility updated successfully!' . ($galleryCount > 0 ? ' (' . $galleryCount . ' gallery image(s) added)' : ''));
+                return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
+
+            } catch (\Exception $e) {
+                error_log('EDIT ERROR - Exception: ' . $e->getMessage());
+                error_log('EDIT ERROR - Trace: ' . $e->getTraceAsString());
+                $this->addFlash('error', 'Error updating facility: ' . $e->getMessage());
+                return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
             }
-
-            $this->handleMultipleImageUploads($request, $facility, $entityManager);
-            $facilityRepository->save($facility, true);
-
-            return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
         }
 
         return $this->render('facility/edit.html.twig', [
@@ -203,43 +244,79 @@ class FacilityController extends AbstractController
     private function handleImageUpload(UploadedFile $file): ?string
     {
         try {
-            $ext = $file->guessExtension() ?? strtolower($file->getClientOriginalExtension()) ?: 'jpg';
-            $filename = uniqid() . '.' . $ext;
-            $file->move($this->getParameter('kernel.project_dir') . '/public/uploads', $filename);
+            $result = $this->storageService->uploadFile($file, 'facilities');
 
-            return '/uploads/' . $filename;
+            if (!$result['success']) {
+                $this->addFlash('error', 'Failed to upload image: ' . ($result['error'] ?? 'Unknown error'));
+                return null;
+            }
+
+            return $result['url'];
         } catch (\Exception $e) {
             $this->addFlash('error', 'Failed to upload image: ' . $e->getMessage());
-
             return null;
         }
     }
 
-    private function deleteImageFile(?string $imagePath): void
+    private function deleteImageFile(?string $imageUrl): void
     {
-        if (!$imagePath) {
+        if (!$imageUrl) {
             return;
         }
 
-        $filePath = $this->getParameter('kernel.project_dir') . '/public' . $imagePath;
-        if (file_exists($filePath)) {
-            unlink($filePath);
+        // Extract path from Supabase URL
+        // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
+        $parsedUrl = parse_url($imageUrl);
+        if (!isset($parsedUrl['path'])) {
+            return;
+        }
+
+        $path = $parsedUrl['path'];
+        $pattern = '/storage\/v1\/object\/public\/[^\/]+\//';
+        if (preg_match($pattern, $path, $matches)) {
+            $storagePath = preg_replace($pattern, '', $path);
+            $this->storageService->deleteFile($storagePath);
         }
     }
 
-    private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): void
+    private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): int
     {
         $uploadedFiles = $request->files->get('images');
-        
-        // Handle single file case
+        error_log('DEBUG - Gallery upload started. Raw files: ' . json_encode($uploadedFiles ? 'present' : 'null'));
+
+        // Handle single file case (not in array)
         if ($uploadedFiles instanceof UploadedFile) {
             $uploadedFiles = [$uploadedFiles];
         }
-        
-        // Must be an array with files
-        if (!is_array($uploadedFiles) || empty($uploadedFiles)) {
-            return;
+
+        // Handle the array structure from images[] input
+        if (is_array($uploadedFiles)) {
+            // Flatten in case of nested array structure
+            $flatFiles = [];
+            foreach ($uploadedFiles as $key => $file) {
+                if ($file instanceof UploadedFile) {
+                    $flatFiles[] = $file;
+                    error_log('DEBUG - Found valid file at key ' . $key . ': ' . $file->getClientOriginalName());
+                } elseif (is_array($file)) {
+                    // Handle nested array case
+                    foreach ($file as $nestedFile) {
+                        if ($nestedFile instanceof UploadedFile) {
+                            $flatFiles[] = $nestedFile;
+                            error_log('DEBUG - Found nested file: ' . $nestedFile->getClientOriginalName());
+                        }
+                    }
+                }
+            }
+            $uploadedFiles = $flatFiles;
         }
+
+        // Must be a non-empty array
+        if (!is_array($uploadedFiles) || empty($uploadedFiles)) {
+            error_log('DEBUG - No gallery files to upload');
+            return 0;
+        }
+
+        error_log('DEBUG - Processing ' . count($uploadedFiles) . ' gallery files');
         
         $position = $facility->getImages()->count();
         $uploadedCount = 0;
@@ -247,14 +324,19 @@ class FacilityController extends AbstractController
         foreach ($uploadedFiles as $uploadedFile) {
             // Skip if not a valid uploaded file
             if (!$uploadedFile instanceof UploadedFile) {
+                error_log('DEBUG - Skipping invalid uploaded file');
                 continue;
             }
+            
+            error_log('DEBUG - Processing gallery file: ' . $uploadedFile->getClientOriginalName());
             
             // Upload the file
             $imagePath = $this->handleImageUpload($uploadedFile);
             if (!$imagePath) {
+                error_log('DEBUG - Gallery upload failed for: ' . $uploadedFile->getClientOriginalName());
                 continue;
             }
+            error_log('DEBUG - Gallery upload success, URL: ' . $imagePath);
             
             // Create and configure the image entity
             $image = new FacilityImage();
@@ -278,10 +360,12 @@ class FacilityController extends AbstractController
         
         // Flush immediately to ensure images are saved
         $entityManager->flush();
-        
+
         if ($uploadedCount > 0) {
             $this->addFlash('success', $uploadedCount . ' gallery image(s) uploaded successfully!');
         }
+
+        return $uploadedCount;
     }
 
     #[Route('/{id}/toggle-reservation', name: 'app_facility_toggle_reservation', methods: ['POST'])]

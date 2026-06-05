@@ -92,27 +92,41 @@
             <!-- Filter Tabs -->
             <div class="filter-tabs-container">
                 <button class="filter-tab active" onclick="switchMentoringTab('custom-requests', this); return false;">
-                    <span class="tab-text">My Custom Request</span>
+                    <span class="tab-text">My Mentor Requests</span>
                 </button>
-                <button class="filter-tab pending-tab" onclick="switchMentoringTab('applications', this); return false;">
+                {% set pendingApplicationsCount = applications|filter(application => application.status in ['Pending', 'Pending Review'])|length %}
+                {% set pendingMentorRequestsCount = sentCustomRequests|filter(request => request.status in ['Pending'])|length %}
+                {% set totalPendingAll = pendingApplicationsCount + pendingMentorRequestsCount %}
+                <button class="filter-tab pending-tab" onclick="switchMentoringTab('applications', this); return false;" data-pending-count="{{ totalPendingAll }}">
                     <span class="tab-text">My Pending Submission</span>
+                    {% if totalPendingAll > 0 %}
+                        <span class="pending-badge" style="margin-left: 8px; background: #dc2626; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; min-width: 20px; text-align: center;">{{ totalPendingAll }}</span>
+                    {% endif %}
                 </button>
                 <button class="filter-tab" onclick="switchMentoringTab('mentor-application', this); return false;">
                     <span class="tab-text">My Mentor Application</span>
                 </button>
                 <button class="filter-tab cancelled-tab" onclick="switchMentoringTab('incoming', this); return false;">
-                    <span class="tab-text">Incoming Custom Request</span>
+                    <span class="tab-text">Incoming Mentoring Requests</span>
+                </button>
+                {% set cancelledRequestsCount = sentCustomRequests|filter(request => request.status == 'Cancelled')|length %}
+                <button class="filter-tab" onclick="switchMentoringTab('cancelled', this); return false;" style="{% if cancelledRequestsCount > 0 %}border-bottom-color: #dc2626;{% endif %}">
+                    <span class="tab-text">Cancelled Requests</span>
+                    {% if cancelledRequestsCount > 0 %}
+                        <span class="pending-badge" style="margin-left: 8px; background: #dc2626; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; min-width: 20px; text-align: center;">{{ cancelledRequestsCount }}</span>
+                    {% endif %}
                 </button>
             </div>
 
             <!-- Content Section -->
             <div class="mentoring-content-section">
 
-                <!-- Custom Requests Cards -->
+                <!-- Custom Requests Cards - Only show accepted, completed, rejected requests (cancelled has its own tab) -->
                 <div class="mentoring-content" id="custom-requests-content">
                     <div class="reservations-grid">
-                        {% if sentCustomRequests|length > 0 %}
-                            {% for request in sentCustomRequests %}
+                        {% set nonPendingRequests = sentCustomRequests|filter(request => request.status not in ['Pending', 'Pending Review', 'Cancelled']) %}
+                        {% if nonPendingRequests|length > 0 %}
+                            {% for request in nonPendingRequests %}
                                 <div class="reservation-card-new {{ request.status == 'accepted' ? 'session-item-clickable' : '' }}" data-req-id="{{ request.id }}"
                                     {% if request.status == 'accepted' %}
                                     onclick="openSessionDetailsModal({
@@ -148,6 +162,12 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% if request.fullName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ request.fullName }}</span>
+                                        </div>
+                                        {% endif %}
                                         {% if request.status == 'accepted' %}
                                         <div class="info-item wide">
                                             <span class="view-details-btn">
@@ -227,6 +247,12 @@
                                             <span class="info-value">{{ request.adminInstructions }}</span>
                                         </div>
                                         {% endif %}
+                                        {% if request.status == 'Cancelled' and request.cancellationReason %}
+                                        <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #fecaca;background:#fef2f2;padding:12px;border-radius:6px;">
+                                            <span class="info-label" style="color:#dc2626;">Cancellation Reason</span>
+                                            <span class="info-value" style="color:#991b1b;">{{ request.cancellationReason }}</span>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                     {% if request.status not in ['Cancelled', 'Completed'] %}
                                     <div class="card-actions" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e7eb;">
@@ -243,7 +269,8 @@
                             {% endfor %}
                         {% else %}
                             <div class="empty-mini-state">
-                                <p>You have not sent a custom request yet.</p>
+                                <p>No processed mentor requests yet.</p>
+                                <p style="font-size: 13px; color: #6b7280; margin-top: 8px;">Pending requests appear in "My Pending Submission" tab.<br>Cancelled requests appear in "Cancelled Requests" tab.</p>
                             </div>
                         {% endif %}
                     </div>
@@ -252,13 +279,151 @@
                 <!-- Applications Cards -->
                 <div class="mentoring-content hidden" id="applications-content">
                     <div class="reservations-grid">
+                        {# Get all pending items - only truly pending statuses #}
                         {% set pendingApplications = applications|filter(application => application.status in ['Pending', 'Pending Review']) %}
+                        {% set pendingMentorRequests = sentCustomRequests|filter(request => request.status in ['Pending']) %}
+                        {% set totalPendingCount = pendingApplications|length + pendingMentorRequests|length %}
+                        
+                        {# Display Pending Mentor Requests #}
+                        {% if pendingMentorRequests|length > 0 %}
+                            <div class="pending-section-header" style="width: 100%; margin-bottom: 16px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #16a34a;">
+                                <h4 style="margin: 0; color: #166534; font-size: 14px; font-weight: 600;">
+                                    📝 Pending Mentor Requests ({{ pendingMentorRequests|length }})
+                                </h4>
+                            </div>
+                            {% for request in pendingMentorRequests %}
+                                <div class="reservation-card-new">
+                                    <div class="card-title">
+                                        {% if request.mentorProfile %}
+                                            {{ request.mentorProfile.displayName }}
+                                        {% elseif request.assignedMentorName %}
+                                            {{ request.assignedMentorName }}
+                                        {% elseif request.preferredExpertise %}
+                                            {{ request.preferredExpertise }}
+                                        {% else %}
+                                            Mentor Assistance Request
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-divider"></div>
+                                    <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Type</span>
+                                            <span class="info-value">Mentor Request</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Status</span>
+                                            <span class="info-value status-{{ request.status|lower|replace({' ': '-'}) }}">{{ request.status }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Submitted</span>
+                                            <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
+                                        </div>
+                                        {% if request.fullName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ request.fullName }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredExpertise %}
+                                        <div class="info-item">
+                                            <span class="info-label">Specialization Needed</span>
+                                            <span class="info-value">{{ request.preferredExpertise }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.departmentCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Degree / Course</span>
+                                            <span class="info-value">{{ request.departmentCourse }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableDates %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Day</span>
+                                            <span class="info-value">{{ request.availableDates }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredSchedule %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Time</span>
+                                            <span class="info-value">{{ request.preferredSchedule }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod %}
+                                        <div class="info-item">
+                                            <span class="info-label">Meeting Method</span>
+                                            <span class="info-value">{{ request.meetingMethod }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-info-footer">
+                                        {% if request.message and request.message != 'No additional notes provided.' %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Message</span>
+                                            <span class="info-value">{{ request.message|slice(0, 160) ~ (request.message|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.assignedMentorName %}
+                                        <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
+                                            <span class="info-label">Assigned Mentor</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} — {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableTime %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Confirmed Time</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' · ' : '' }}{{ request.availableTime }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod == 'Online' and request.meetingLink %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Meeting Link</span>
+                                            <span class="info-value"><a href="{{ request.meetingLink }}" target="_blank" rel="noopener noreferrer" style="color:#0D9B00;font-weight:600;">Join Meeting</a></span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod == 'In Person' and request.meetingLocation %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Location</span>
+                                            <span class="info-value">{{ request.meetingLocation }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.adminInstructions %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Admin Instructions</span>
+                                            <span class="info-value">{{ request.adminInstructions }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% if request.status not in ['Cancelled', 'Completed'] %}
+                                    <div class="card-actions" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                                        <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" onsubmit="event.preventDefault(); event.stopPropagation(); openCancelModal(this);" style="display: inline;">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
+                                            <input type="hidden" name="action" value="cancel">
+                                            <button type="submit" class="btn btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;" onclick="event.stopPropagation();">
+                                                Cancel Request
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        {# Display Pending Applications #}
                         {% if pendingApplications|length > 0 %}
+                            <div class="pending-section-header" style="width: 100%; margin: 24px 0 16px 0; padding: 12px 16px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #2563eb;">
+                                <h4 style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 600;">
+                                    🎓 Pending Mentor Applications ({{ pendingApplications|length }})
+                                </h4>
+                            </div>
                             {% for application in pendingApplications %}
                                 <div class="reservation-card-new">
                                     <div class="card-title">{{ application.specialization }}</div>
                                     <div class="card-divider"></div>
                                     <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Type</span>
+                                            <span class="info-value">Mentor Application</span>
+                                        </div>
                                         <div class="info-item">
                                             <span class="info-label">Status</span>
                                             <span class="info-value status-pending">{{ application.status }}</span>
@@ -267,10 +432,61 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ application.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% set applicantName = (application.firstName ~ ' ' ~ (application.lastName|default('')))|trim %}
+                                        {% if applicantName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ applicantName }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.email %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Email</span>
+                                            <span class="info-value">{{ application.email }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.programCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Program/Course</span>
+                                            <span class="info-value">{{ application.programCourse }}</span>
+                                        </div>
+                                        {% endif %}
                                         {% if application.currentProfession %}
                                         <div class="info-item">
                                             <span class="info-label">Profession</span>
                                             <span class="info-value">{{ application.currentProfession }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.highestEducation %}
+                                        <div class="info-item">
+                                            <span class="info-label">Education</span>
+                                            <span class="info-value">{{ application.highestEducation }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.availabilityTime %}
+                                        <div class="info-item">
+                                            <span class="info-label">Availability</span>
+                                            <span class="info-value">{{ application.availabilityTime }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-info-footer">
+                                        {% if application.mentoringPublicBio %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Public Bio</span>
+                                            <span class="info-value">{{ application.mentoringPublicBio|slice(0, 160) ~ (application.mentoringPublicBio|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.reason %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Reason for Applying</span>
+                                            <span class="info-value">{{ application.reason|slice(0, 160) ~ (application.reason|length > 160 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.adminNote %}
+                                        <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
+                                            <span class="info-label">Admin Note</span>
+                                            <span class="info-value" style="color:#666;font-style:italic;">{{ application.adminNote }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -286,12 +502,17 @@
                             {% endfor %}
                         {% endif %}
 
+                        {# Display Non-Pending Applications (historical) #}
                         {% for application in applications %}
                             {% if application.status not in ['Pending', 'Pending Review'] %}
-                                <div class="reservation-card-new">
+                                <div class="reservation-card-new" style="opacity: 0.8;">
                                     <div class="card-title">{{ application.specialization }}</div>
                                     <div class="card-divider"></div>
                                     <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Type</span>
+                                            <span class="info-value">Mentor Application</span>
+                                        </div>
                                         <div class="info-item">
                                             <span class="info-label">Status</span>
                                             <span class="info-value status-{{ application.status|lower|replace({' ': '-'}) }}">{{ application.status }}</span>
@@ -300,13 +521,48 @@
                                             <span class="info-label">Submitted</span>
                                             <span class="info-value">{{ application.createdAt|date('M d, Y') }}</span>
                                         </div>
+                                        {% set applicantNameHistory = (application.firstName ~ ' ' ~ (application.lastName|default('')))|trim %}
+                                        {% if applicantNameHistory %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ applicantNameHistory }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.email %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Email</span>
+                                            <span class="info-value">{{ application.email }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.programCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Program/Course</span>
+                                            <span class="info-value">{{ application.programCourse }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if application.currentProfession %}
+                                        <div class="info-item">
+                                            <span class="info-label">Profession</span>
+                                            <span class="info-value">{{ application.currentProfession }}</span>
+                                        </div>
+                                        {% endif %}
                                     </div>
+                                    {% if application.mentoringPublicBio or application.reason %}
+                                    <div class="card-info-footer" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                                        {% if application.mentoringPublicBio %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Public Bio</span>
+                                            <span class="info-value">{{ application.mentoringPublicBio|slice(0, 100) ~ (application.mentoringPublicBio|length > 100 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         {% else %}
-                            {% if pendingApplications|length == 0 %}
+                            {% if totalPendingCount == 0 %}
                                 <div class="empty-mini-state">
-                                    <p>You have not submitted a mentor application yet.</p>
+                                    <p>You have no pending submissions. All your applications and requests have been processed.</p>
                                 </div>
                             {% endif %}
                         {% endfor %}
@@ -444,7 +700,7 @@
                                 {% endfor %}
                             {% else %}
                                 <div class="empty-mini-state">
-                                    <p>No incoming custom requests yet.</p>
+                                    <p>No incoming mentoring requests yet.</p>
                                 </div>
                             {% endif %}
                         {% else %}
@@ -455,6 +711,124 @@
                                 {% elseif applications|length > 0 %}
                                     <p class="text-yellow-mt"><strong>Your application is pending review.</strong></p>
                                 {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Cancelled Requests Cards -->
+                <div class="mentoring-content hidden" id="cancelled-content">
+                    <div class="reservations-grid">
+                        {% set cancelledRequests = sentCustomRequests|filter(request => request.status == 'Cancelled') %}
+                        {% if cancelledRequests|length > 0 %}
+                            <div class="pending-section-header" style="width: 100%; margin-bottom: 16px; padding: 12px 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
+                                <h4 style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">
+                                    🚫 Cancelled Requests ({{ cancelledRequests|length }})
+                                </h4>
+                            </div>
+                            {% for request in cancelledRequests %}
+                                <div class="reservation-card-new" style="border-left: 4px solid #dc2626;">
+                                    <div class="card-title" style="color: #dc2626;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                                        </svg>
+                                        {% if request.mentorProfile %}
+                                            {{ request.mentorProfile.displayName }}
+                                        {% elseif request.assignedMentorName %}
+                                            {{ request.assignedMentorName }}
+                                        {% elseif request.preferredExpertise %}
+                                            {{ request.preferredExpertise }}
+                                        {% else %}
+                                            Mentor Request
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-divider"></div>
+                                    <div class="card-info-grid">
+                                        <div class="info-item">
+                                            <span class="info-label">Type</span>
+                                            <span class="info-value">Mentor Request</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Status</span>
+                                            <span class="info-value" style="color: #dc2626; font-weight: 600;">{{ request.status }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Submitted</span>
+                                            <span class="info-value">{{ request.createdAt|date('M d, Y') }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="info-label">Cancelled On</span>
+                                            <span class="info-value">{{ request.updatedAt|date('M d, Y') }}</span>
+                                        </div>
+                                        {% if request.fullName %}
+                                        <div class="info-item wide">
+                                            <span class="info-label">Your Name</span>
+                                            <span class="info-value">{{ request.fullName }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredExpertise %}
+                                        <div class="info-item">
+                                            <span class="info-label">Specialization Needed</span>
+                                            <span class="info-value">{{ request.preferredExpertise }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.departmentCourse %}
+                                        <div class="info-item">
+                                            <span class="info-label">Degree / Course</span>
+                                            <span class="info-value">{{ request.departmentCourse }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.availableDates %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Day</span>
+                                            <span class="info-value">{{ request.availableDates }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.preferredSchedule %}
+                                        <div class="info-item">
+                                            <span class="info-label">Preferred Time</span>
+                                            <span class="info-value">{{ request.preferredSchedule }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.meetingMethod %}
+                                        <div class="info-item">
+                                            <span class="info-label">Meeting Method</span>
+                                            <span class="info-value">{{ request.meetingMethod }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-info-footer" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; padding: 12px;">
+                                        {% if request.cancellationReason %}
+                                        <div class="info-item wide">
+                                            <span class="info-label" style="color: #dc2626;">📝 Cancellation Reason</span>
+                                            <span class="info-value" style="color: #7f1d1d; font-style: italic;">{{ request.cancellationReason }}</span>
+                                        </div>
+                                        {% else %}
+                                        <div class="info-item wide">
+                                            <span class="info-label" style="color: #dc2626;">📝 Cancellation Reason</span>
+                                            <span class="info-value" style="color: #9ca3af; font-style: italic;">No reason provided</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if request.message and request.message != 'No additional notes provided.' %}
+                                        <div class="info-item wide" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #fecaca;">
+                                            <span class="info-label">Original Message</span>
+                                            <span class="info-value" style="color: #6b7280;">{{ request.message|slice(0, 100) ~ (request.message|length > 100 ? '...' : '') }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-mini-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" style="margin-bottom: 16px;">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                                </svg>
+                                <p>No cancelled requests.</p>
+                                <p style="font-size: 13px; color: #9ca3af; margin-top: 8px;">Cancelled requests will appear here for your records.</p>
                             </div>
                         {% endif %}
                     </div>
@@ -1775,7 +2149,7 @@
 
     {# ── Cancel Request Modal ── #}
     <div class="cancel-modal-overlay" id="cancelRequestModal">
-        <div class="cancel-modal-dialog">
+        <div class="cancel-modal-dialog" style="width: min(520px, 100%);">
             <div class="cancel-modal-icon">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -1785,6 +2159,25 @@
             </div>
             <h3>Cancel Mentor Request?</h3>
             <p>Are you sure you want to cancel this mentor request? This action cannot be undone.</p>
+            
+            <div class="cancel-reason-section" style="margin: 20px 0; text-align: left;">
+                <label for="cancelReason" style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151; font-size: 14px;">
+                    Cancellation Reason <span style="color: #dc2626;">*</span>
+                </label>
+                <textarea 
+                    id="cancelReason" 
+                    name="cancellation_reason" 
+                    rows="4" 
+                    style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; resize: vertical; font-family: inherit;"
+                    placeholder="Please provide a reason for cancelling this request (minimum 10 characters)..."
+                    minlength="10"
+                    required
+                ></textarea>
+                <div id="cancelReasonError" style="color: #dc2626; font-size: 13px; margin-top: 6px; display: none;">
+                    Please provide a reason with at least 10 characters.
+                </div>
+            </div>
+            
             <div class="cancel-modal-actions">
                 <button type="button" class="cancel-modal-cancel" onclick="closeCancelModal()">No, Keep Request</button>
                 <button type="button" class="cancel-modal-confirm" onclick="confirmCancelRequest()">Yes, Cancel Request</button>
@@ -2070,6 +2463,10 @@
         function openCancelModal(form) {
             cancelFormToSubmit = form;
             document.getElementById('cancelRequestModal').classList.add('is-open');
+            // Clear previous reason
+            document.getElementById('cancelReason').value = '';
+            document.getElementById('cancelReasonError').style.display = 'none';
+            document.getElementById('cancelReason').style.borderColor = '#d1d5db';
         }
 
         function closeCancelModal() {
@@ -2078,7 +2475,31 @@
         }
 
         function confirmCancelRequest() {
+            const reasonInput = document.getElementById('cancelReason');
+            const reason = reasonInput.value.trim();
+            const errorDiv = document.getElementById('cancelReasonError');
+            
+            // Validate reason
+            if (!reason || reason.length < 10) {
+                errorDiv.style.display = 'block';
+                reasonInput.style.borderColor = '#dc2626';
+                reasonInput.focus();
+                return;
+            }
+            
+            errorDiv.style.display = 'none';
+            reasonInput.style.borderColor = '#d1d5db';
+            
             if (cancelFormToSubmit) {
+                // Add cancellation reason to form
+                let reasonField = cancelFormToSubmit.querySelector('input[name="cancellation_reason"]');
+                if (!reasonField) {
+                    reasonField = document.createElement('input');
+                    reasonField.type = 'hidden';
+                    reasonField.name = 'cancellation_reason';
+                    cancelFormToSubmit.appendChild(reasonField);
+                }
+                reasonField.value = reason;
                 cancelFormToSubmit.submit();
             }
             closeCancelModal();
