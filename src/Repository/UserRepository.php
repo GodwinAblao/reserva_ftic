@@ -6,6 +6,8 @@ namespace App\Repository;
 
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -13,9 +15,70 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class UserRepository extends ServiceEntityRepository
 {
+    private const ACCOUNT_ROLE_MAP = [
+        'superadmin' => 'ROLE_SUPER_ADMIN',
+        'admin' => 'ROLE_ADMIN',
+        'faculty' => 'ROLE_FACULTY',
+        'mentor' => 'ROLE_MENTOR',
+        'student' => 'ROLE_STUDENT',
+    ];
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, User::class);
+    }
+
+    /**
+     * @return array{items: User[], total: int}
+     */
+    public function findPaginatedForAccountManagement(int $page, int $limit, ?string $search = null, ?string $role = null): array
+    {
+        $page = max(1, $page);
+        $limit = max(1, min(100, $limit));
+        $offset = ($page - 1) * $limit;
+        $conn = $this->getEntityManager()->getConnection();
+        $platform = $conn->getDatabasePlatform();
+        $table = $conn->quoteIdentifier('user');
+        $roleColumn = $platform instanceof PostgreSQLPlatform ? 'u.roles::text' : 'CAST(u.roles AS CHAR)';
+
+        $where = [];
+        $params = [];
+
+        $search = trim((string) $search);
+        if ($search !== '') {
+            $where[] = '(LOWER(COALESCE(u.first_name, \'\')) LIKE :search OR LOWER(COALESCE(u.last_name, \'\')) LIKE :search OR LOWER(u.email) LIKE :search)';
+            $params['search'] = '%' . strtolower($search) . '%';
+        }
+
+        $roleValue = self::ACCOUNT_ROLE_MAP[$role ?? ''] ?? null;
+        if ($roleValue !== null) {
+            $where[] = $roleColumn . ' LIKE :role';
+            $params['role'] = '%' . $roleValue . '%';
+        }
+
+        $whereSql = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
+        $total = (int) $conn->executeQuery('SELECT COUNT(*) FROM ' . $table . ' u' . $whereSql, $params)->fetchOne();
+
+        $idRows = $conn->executeQuery(
+            'SELECT u.id FROM ' . $table . ' u' . $whereSql . ' ORDER BY u.last_name ASC, u.first_name ASC, u.email ASC LIMIT :limit OFFSET :offset',
+            $params + ['limit' => $limit, 'offset' => $offset],
+            ['limit' => ParameterType::INTEGER, 'offset' => ParameterType::INTEGER]
+        )->fetchFirstColumn();
+
+        if ($idRows === []) {
+            return ['items' => [], 'total' => $total];
+        }
+
+        $users = $this->createQueryBuilder('u')
+            ->andWhere('u.id IN (:ids)')
+            ->setParameter('ids', array_map('intval', $idRows))
+            ->orderBy('u.lastName', 'ASC')
+            ->addOrderBy('u.firstName', 'ASC')
+            ->addOrderBy('u.email', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return ['items' => $users, 'total' => $total];
     }
 
     /**

@@ -15,7 +15,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
     static targets = ['badge', 'dropdown', 'list', 'empty'];
 
-    static POLL_INTERVAL = 20000;  // 20 s (was 5 s)
+    static POLL_INTERVAL = 60000;
 
     initialize() {
         this._pollTimer    = null;
@@ -36,12 +36,6 @@ export default class extends Controller {
         this.element.dataset.notificationConnected = '1';
         this._initialized = false;
         
-        // IMMEDIATE DEBUGGING
-        console.log('NOTIFICATION CONTROLLER CONNECTED!');
-        console.log('User ID from dataset:', this.element.dataset.userId);
-        console.log('Current URL:', window.location.href);
-        console.log('User agent:', navigator.userAgent);
-
         // Clear sound sessionStorage key when user logs out
         document.querySelectorAll('[data-clear-notification-session]')
             .forEach(link => {
@@ -53,7 +47,6 @@ export default class extends Controller {
             });
 
         // Immediate poll on connect, then at interval
-        console.log('Starting first poll...');
         this._poll();
         this._pollTimer = setInterval(() => {
             // Skip poll when tab is hidden — saves CPU/network
@@ -61,10 +54,7 @@ export default class extends Controller {
             this._poll();
         }, this.constructor.POLL_INTERVAL);
 
-        // Resume immediately when tab becomes visible again
-        this._visHandler = () => {
-            if (!document.hidden) this._poll();
-        };
+        this._visHandler = () => {};
         document.addEventListener('visibilitychange', this._visHandler);
     }
 
@@ -92,23 +82,18 @@ export default class extends Controller {
         if (this._abortCtrl) this._abortCtrl.abort();
         this._abortCtrl = new AbortController();
         try {
-            console.log('POLL: Making request to /api/notifications/poll');
             const r = await fetch('/api/notifications/poll', {
                 credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 signal: this._abortCtrl.signal,
             });
-            console.log('POLL: Response status:', r.status);
             if (!r.ok) {
-                console.log('POLL: Response not OK, status:', r.status);
                 return;
             }
             const { unreadCount, newestId } = await r.json();
-            console.log('POLL: Got response - unreadCount:', unreadCount, 'newestId:', newestId);
 
             // Badge always reflects latest count
             this._setBadge(unreadCount);
-            console.log('POLL: Badge set to:', unreadCount);
 
             // Only do expensive full load if something actually changed
             // On first poll (_initialized=false), never treat items as "new" arrivals
@@ -221,17 +206,12 @@ export default class extends Controller {
 
     /* ── Badge update ── */
     _setBadge(count) {
-        console.log('BADGE: _setBadge called with count:', count);
-        console.log('BADGE: hasBadgeTarget:', this.hasBadgeTarget);
         if (!this.hasBadgeTarget) {
-            console.log('BADGE: No badge target found!');
             return;
         }
         const badge = this.badgeTarget;
-        console.log('BADGE: Badge element:', badge);
         if (count > 0) {
             const label = count > 99 ? '99+' : String(count);
-            console.log('BADGE: Setting badge to:', label, 'current text:', badge.textContent);
             if (badge.textContent !== label) {
                 badge.textContent = label;
                 badge.classList.add('notif-badge-bump');
@@ -239,10 +219,8 @@ export default class extends Controller {
                     badge.classList.remove('notif-badge-bump'), { once: true });
             }
             badge.style.display = 'inline-flex';
-            console.log('BADGE: Badge displayed with count:', count);
         } else {
             badge.style.display = 'none';
-            console.log('BADGE: Badge hidden (count is 0)');
         }
     }
 

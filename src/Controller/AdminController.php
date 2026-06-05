@@ -23,6 +23,8 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/superadmin')]
 #[IsGranted('ROLE_ADMIN')]
@@ -58,18 +60,28 @@ class AdminController extends AbstractController
     }
 
     #[Route('/api/stats', name: 'admin_api_stats', methods: ['GET'])]
-    public function apiStats(EntityManagerInterface $em): JsonResponse
+    public function apiStats(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $response = $this->json($this->getDashboardData($em));
-        $response->headers->set('Cache-Control', 'private, max-age=15');
+        $data = $cache->get('admin.dashboard.stats.superadmin.v2', function (ItemInterface $item) use ($em): array {
+            $item->expiresAfter(10);
+            return $this->getDashboardData($em);
+        });
+
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=10');
         return $response;
     }
 
     #[Route('/api/recent-reservations', name: 'admin_api_recent_reservations', methods: ['GET'])]
-    public function apiRecentReservations(EntityManagerInterface $em): JsonResponse
+    public function apiRecentReservations(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $response = $this->json($this->getRecentReservationsData($em));
-        $response->headers->set('Cache-Control', 'private, no-store');
+        $data = $cache->get('admin.dashboard.recent_reservations.v2', function (ItemInterface $item) use ($em): array {
+            $item->expiresAfter(10);
+            return $this->getRecentReservationsData($em);
+        });
+
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=10');
         return $response;
     }
 
@@ -187,49 +199,54 @@ class AdminController extends AbstractController
     }
 
     #[Route('/api/analytics', name: 'admin_api_analytics', methods: ['GET'])]
-    public function apiAnalytics(EntityManagerInterface $em): JsonResponse
+    public function apiAnalytics(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $conn = $em->getConnection();
-        $today = new \DateTime();
-        
-        // Build date range for last 30 days
-        $dates = [];
-        for ($i = 29; $i >= 0; $i--) {
-            $dates[] = (clone $today)->modify("-$i days")->format('Y-m-d');
-        }
-        
-        // Single query for all reservation counts by date
-        $resByDate = $conn->executeQuery(
-            "SELECT reservation_date as dt, COUNT(*) as cnt 
-             FROM reservation 
-             WHERE reservation_date >= ? AND reservation_date <= ?
-             GROUP BY reservation_date",
-            [$dates[0], $dates[count($dates)-1]]
-        )->fetchAllKeyValue();
-        
-        // Single query for all mentoring counts by date
-        $mentByDate = $conn->executeQuery(
-            "SELECT DATE(scheduled_at) as dt, COUNT(*) as cnt 
-             FROM mentoring_appointment 
-             WHERE DATE(scheduled_at) >= ? AND DATE(scheduled_at) <= ?
-             GROUP BY DATE(scheduled_at)",
-            [$dates[0], $dates[count($dates)-1]]
-        )->fetchAllKeyValue();
-        
-        $dailyStats = [];
-        foreach ($dates as $date) {
-            $dailyStats[] = [
-                'date' => $date,
-                'reservations' => (int) ($resByDate[$date] ?? 0),
-                'mentoring' => (int) ($mentByDate[$date] ?? 0),
-            ];
-        }
+        $data = $cache->get('admin.dashboard.analytics.superadmin.v2', function (ItemInterface $item) use ($em): array {
+            $item->expiresAfter(60);
+            $conn = $em->getConnection();
+            $today = new \DateTime();
+            $dates = [];
+            for ($i = 29; $i >= 0; $i--) {
+                $dates[] = (clone $today)->modify("-$i days")->format('Y-m-d');
+            }
 
-        return $this->json([
-            'dailyStats' => $dailyStats,
-            'reservationTrends' => $this->getReservationTrends($em),
-            'mentoringTrends' => $this->getMentoringTrends($em),
-        ]);
+            $rangeEnd = (new \DateTimeImmutable($dates[count($dates)-1]))->modify('+1 day')->format('Y-m-d 00:00:00');
+
+            $resByDate = $conn->executeQuery(
+                "SELECT CAST(reservation_date AS DATE) as dt, COUNT(*) as cnt 
+                 FROM reservation 
+                 WHERE reservation_date >= ? AND reservation_date < ?
+                 GROUP BY CAST(reservation_date AS DATE)",
+                [$dates[0] . ' 00:00:00', $rangeEnd]
+            )->fetchAllKeyValue();
+
+            $mentByDate = $conn->executeQuery(
+                "SELECT CAST(scheduled_at AS DATE) as dt, COUNT(*) as cnt 
+                 FROM mentoring_appointment 
+                 WHERE scheduled_at >= ? AND scheduled_at < ?
+                 GROUP BY CAST(scheduled_at AS DATE)",
+                [$dates[0] . ' 00:00:00', $rangeEnd]
+            )->fetchAllKeyValue();
+
+            $dailyStats = [];
+            foreach ($dates as $date) {
+                $dailyStats[] = [
+                    'date' => $date,
+                    'reservations' => (int) ($resByDate[$date] ?? 0),
+                    'mentoring' => (int) ($mentByDate[$date] ?? 0),
+                ];
+            }
+
+            return [
+                'dailyStats' => $dailyStats,
+                'reservationTrends' => $this->getReservationTrends($em),
+                'mentoringTrends' => $this->getMentoringTrends($em),
+            ];
+        });
+
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=60');
+        return $response;
     }
 
     #[Route('/sse/events', name: 'admin_sse_events', methods: ['GET'])]
@@ -326,7 +343,8 @@ class AdminController extends AbstractController
     public function apiReservationMonitoring(EntityManagerInterface $em): JsonResponse
     {
         $conn  = $em->getConnection();
-        $today = (new \DateTime('today'))->format('Y-m-d');
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+        $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d H:i:s');
 
         // All today's reservations with facility name + user roles in one query
         $rows = $conn->fetchAllAssociative(
@@ -337,9 +355,9 @@ class AdminController extends AbstractController
              FROM reservation r
              LEFT JOIN facility f ON f.id = r.facility_id
              LEFT JOIN "user" u   ON u.id = r.user_id
-             WHERE DATE(r.reservation_date) = :today
+             WHERE r.reservation_date >= :today AND r.reservation_date < :tomorrow
              ORDER BY r.created_at DESC',
-            ['today' => $today]
+            ['today' => $today, 'tomorrow' => $tomorrow]
         );
 
         $reservations = array_map(static function (array $r): array {
@@ -360,8 +378,8 @@ class AdminController extends AbstractController
         // Status counts — one query
         $statusRows = $conn->fetchAllAssociative(
             'SELECT status, COUNT(*) AS cnt FROM reservation
-             WHERE DATE(reservation_date) = :today GROUP BY status',
-            ['today' => $today]
+             WHERE reservation_date >= :today AND reservation_date < :tomorrow GROUP BY status',
+            ['today' => $today, 'tomorrow' => $tomorrow]
         );
         $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0];
         foreach ($statusRows as $sr) {
@@ -372,9 +390,9 @@ class AdminController extends AbstractController
         $facRows = $conn->fetchAllAssociative(
             'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
              FROM facility f
-             LEFT JOIN reservation r ON r.facility_id = f.id AND DATE(r.reservation_date) = :today
+             LEFT JOIN reservation r ON r.facility_id = f.id AND r.reservation_date >= :today AND r.reservation_date < :tomorrow
              GROUP BY f.id, f.name',
-            ['today' => $today]
+            ['today' => $today, 'tomorrow' => $tomorrow]
         );
         $facilityCounts = [];
         foreach ($facRows as $fr) {
@@ -703,7 +721,8 @@ class AdminController extends AbstractController
     private function getDashboardData(EntityManagerInterface $em): array
     {
         $conn = $em->getConnection();
-        $today = (new \DateTime())->format('Y-m-d');
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+        $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d H:i:s');
 
         // Single batch query: counts across all four tables in one round-trip
         $batch = $conn->executeQuery(
@@ -719,10 +738,10 @@ class AdminController extends AbstractController
              UNION ALL
              SELECT 'meta', 'users',      COUNT(*) FROM \"user\"
              UNION ALL
-             SELECT 'meta', 'today_res',  COUNT(*) FROM reservation WHERE reservation_date = ? AND status != 'Suggested'
+             SELECT 'meta', 'today_res',  COUNT(*) FROM reservation WHERE reservation_date >= ? AND reservation_date < ? AND status != 'Suggested'
              UNION ALL
              SELECT 'meta', 'active_res', COUNT(*) FROM reservation WHERE reservation_date >= ? AND status = 'Approved'",
-            [$today, $today]
+            [$today, $tomorrow, $today]
         )->fetchAllAssociative();
 
         $resCounts = []; $aptCounts = []; $reqCounts = [];
@@ -748,14 +767,6 @@ class AdminController extends AbstractController
         }
 
         $resTotal = (int) array_sum($resCounts);
-
-        $recentRaw = $conn->executeQuery(
-            "SELECT r.name AS userName, f.name AS facilityName,
-                    r.reservation_date AS date, r.reservation_start_time AS time, r.status
-             FROM reservation r INNER JOIN facility f ON r.facility_id = f.id
-             WHERE r.status != 'Suggested'
-             ORDER BY r.created_at DESC LIMIT 8"
-        )->fetchAllAssociative();
 
         return [
             'reservations' => [
@@ -784,17 +795,6 @@ class AdminController extends AbstractController
             'users' => [
                 'total' => $users,
             ],
-            'recentReservations' => array_map(static function ($r) {
-                $d = $r['date'] ?? '';
-                $t = $r['time'] ?? '';
-                return [
-                    'facilityName' => $r['facilityName'] ?? 'Unknown',
-                    'userName'     => $r['userName'] ?? '',
-                    'date'         => $d ? date('M j, Y', strtotime($d)) : '',
-                    'time'         => $t ? substr($t, 0, 5) : '',
-                    'status'       => $r['status'] ?? '',
-                ];
-            }, $recentRaw),
             'timestamp' => (new \DateTime())->format('c'),
         ];
     }
@@ -863,14 +863,16 @@ class AdminController extends AbstractController
         
         $dateKeys = array_keys($dates);
         
+        $rangeEnd = (new \DateTimeImmutable($dateKeys[count($dateKeys)-1]))->modify('+1 day')->format('Y-m-d 00:00:00');
+
         // Single query for all reservation trends
         $rows = $conn->executeQuery(
-            "SELECT reservation_date as dt, status, COUNT(*) as cnt 
+            "SELECT CAST(reservation_date AS DATE) as dt, status, COUNT(*) as cnt 
              FROM reservation 
-             WHERE reservation_date >= ? AND reservation_date <= ?
+             WHERE reservation_date >= ? AND reservation_date < ?
              AND status IN ('Approved', 'Pending')
-             GROUP BY reservation_date, status",
-            [$dateKeys[0], $dateKeys[count($dateKeys)-1]]
+             GROUP BY CAST(reservation_date AS DATE), status",
+            [$dateKeys[0] . ' 00:00:00', $rangeEnd]
         )->fetchAllAssociative();
         
         // Organize by date
@@ -906,20 +908,20 @@ class AdminController extends AbstractController
         
         // Single query for appointment trends
         $aptRows = $conn->executeQuery(
-            "SELECT DATE(scheduled_at) as dt, COUNT(*) as cnt 
+            "SELECT CAST(scheduled_at AS DATE) as dt, COUNT(*) as cnt 
              FROM mentoring_appointment 
-             WHERE DATE(scheduled_at) >= ? AND DATE(scheduled_at) <= ?
-             GROUP BY DATE(scheduled_at)",
-            [$dateKeys[0], $dateKeys[count($dateKeys)-1]]
+             WHERE scheduled_at >= ? AND scheduled_at < ?
+             GROUP BY CAST(scheduled_at AS DATE)",
+            [$dateKeys[0] . ' 00:00:00', (new \DateTimeImmutable($dateKeys[count($dateKeys)-1]))->modify('+1 day')->format('Y-m-d 00:00:00')]
         )->fetchAllKeyValue();
         
         // Single query for request trends
         $reqRows = $conn->executeQuery(
-            "SELECT DATE(created_at) as dt, COUNT(*) as cnt 
+            "SELECT CAST(created_at AS DATE) as dt, COUNT(*) as cnt 
              FROM mentor_custom_request 
-             WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
-             GROUP BY DATE(created_at)",
-            [$dateKeys[0], $dateKeys[count($dateKeys)-1]]
+             WHERE created_at >= ? AND created_at < ?
+             GROUP BY CAST(created_at AS DATE)",
+            [$dateKeys[0] . ' 00:00:00', (new \DateTimeImmutable($dateKeys[count($dateKeys)-1]))->modify('+1 day')->format('Y-m-d 00:00:00')]
         )->fetchAllKeyValue();
         
         $trends = [];

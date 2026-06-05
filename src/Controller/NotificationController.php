@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Notification;
+use App\Entity\User;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,36 +24,29 @@ class NotificationController extends AbstractController
     {
         $user = $this->getUser();
         if (!$user) {
-            error_log('DEBUG: Notification API called by unauthenticated user');
             return $this->json(['error' => 'Unauthorized'], 401);
         }
 
-        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
-        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
-        $userRoles = $user instanceof \App\Entity\User ? implode(',', $user->getRoles()) : 'unknown';
-        
-        error_log('DEBUG: Notification API called by user ' . $userId . ' (' . $userEmail . ') with roles: ' . $userRoles);
-
-        $notifications = $notificationRepo->findLatest($user, 20);
-        error_log('DEBUG: Found ' . count($notifications) . ' notifications for user ' . $userId);
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Invalid user'], 400);
+        }
 
         $data = [];
-        foreach ($notifications as $n) {
+        foreach ($notificationRepo->findLatestRows($user, 20) as $n) {
             $data[] = [
-                'id' => $n->getId(),
-                'type' => $n->getType(),
-                'title' => $n->getTitle(),
-                'message' => $n->getMessage(),
-                'status' => $n->getStatus(),
-                'isRead' => $n->isIsRead(),
-                'referenceId' => $n->getReferenceId(),
-                'createdAt' => $n->getCreatedAt()->format('c'),
-                'link' => $this->resolveNotificationLink($n),
+                'id' => (int) $n['id'],
+                'type' => $n['type'],
+                'title' => $n['title'],
+                'message' => $n['message'],
+                'status' => $n['status'],
+                'isRead' => filter_var($n['is_read'], FILTER_VALIDATE_BOOLEAN),
+                'referenceId' => $n['reference_id'] !== null ? (int) $n['reference_id'] : null,
+                'createdAt' => (new \DateTimeImmutable((string) $n['created_at']))->format('c'),
+                'link' => $this->resolveNotificationLinkByType((string) $n['type']),
             ];
         }
 
         $unreadCount = $notificationRepo->getUnreadCount($user);
-        error_log('DEBUG: Unread count for user ' . $userId . ': ' . $unreadCount);
 
         $response = $this->json([
             'notifications' => $data,
@@ -72,23 +66,17 @@ class NotificationController extends AbstractController
         try {
             $user = $this->getUser();
             if (!$user) {
-                error_log('DEBUG: Notification poll API called by unauthenticated user');
                 return $this->json(['error' => 'Unauthorized', 'unreadCount' => 0, 'newestId' => 0], 401);
             }
 
-            $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
-            $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
-            
-            // Ensure user has an ID before querying
-            if ($userId === 'unknown' || $userId === null) {
-                error_log('DEBUG: Notification poll - user has no ID');
+            if (!$user instanceof User || $user->getId() === null) {
                 return $this->json(['error' => 'Invalid user', 'unreadCount' => 0, 'newestId' => 0], 400);
             }
 
             $pollData = $notificationRepo->getPollData($user);
 
             $response = $this->json($pollData);
-            $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->set('Cache-Control', 'private, max-age=5');
             return $response;
         } catch (\Exception $e) {
             error_log('ERROR in NotificationController::poll: ' . $e->getMessage());
@@ -200,7 +188,12 @@ class NotificationController extends AbstractController
      */
     private function resolveNotificationLink(Notification $n): string
     {
-        if (in_array($n->getType(), ['mentor_assistance', 'mentor_request_updated'], true) && $this->isGranted('ROLE_ADMIN')) {
+        return $this->resolveNotificationLinkByType($n->getType());
+    }
+
+    private function resolveNotificationLinkByType(string $type): string
+    {
+        if (in_array($type, ['mentor_assistance', 'mentor_request_updated'], true) && $this->isGranted('ROLE_ADMIN')) {
             if ($this->isGranted('ROLE_SUPER_ADMIN')) {
                 return $this->generateUrl('mentoring_superadmin_requests');
             }
@@ -208,7 +201,7 @@ class NotificationController extends AbstractController
             return $this->generateUrl('admin_role_mentorship_coordination');
         }
 
-        if (str_starts_with($n->getType(), 'mentor')) {
+        if (str_starts_with($type, 'mentor')) {
             if ($this->isGranted('ROLE_SUPER_ADMIN')) {
                 return $this->generateUrl('mentoring_super-admin');
             }
@@ -219,7 +212,7 @@ class NotificationController extends AbstractController
             return $this->generateUrl('mentoring_index');
         }
 
-        if ($n->getType() === 'reservation') {
+        if ($type === 'reservation') {
             if ($this->isGranted('ROLE_SUPER_ADMIN')) {
                 return $this->generateUrl('admin_reservations');
             }
@@ -230,7 +223,7 @@ class NotificationController extends AbstractController
             return $this->generateUrl('user_reservations');
         }
 
-        if ($n->getType() === 'class_schedule') {
+        if ($type === 'class_schedule') {
             if ($this->isGranted('ROLE_SUPER_ADMIN')) {
                 return $this->generateUrl('admin_calendar');
             }

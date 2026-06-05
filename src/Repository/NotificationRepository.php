@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Notification;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -22,12 +23,10 @@ class NotificationRepository extends ServiceEntityRepository
      */
     public function getUnreadCount(User $user): int
     {
-        $count = (int) $this->getEntityManager()->getConnection()->fetchOne(
+        return (int) $this->getEntityManager()->getConnection()->fetchOne(
             'SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = false AND status != ?',
             [$user->getId(), 'Suggested']
         );
-        error_log('DEBUG: getUnreadCount for user ' . $user->getId() . ': ' . $count);
-        return $count;
     }
 
     /**
@@ -44,13 +43,25 @@ class NotificationRepository extends ServiceEntityRepository
             [$user->getId(), 'Suggested']
         );
 
-        $result = [
+        return [
             'unreadCount' => (int) ($row['unread_count'] ?? 0),
             'newestId'    => (int) ($row['newest_id']    ?? 0),
         ];
-        
-        error_log('DEBUG: getPollData for user ' . $user->getId() . ': ' . json_encode($result));
-        return $result;
+    }
+
+    public function findLatestRows(User $user, int $limit = 20): array
+    {
+        return $this->getEntityManager()->getConnection()->executeQuery(
+            'SELECT n.id, n.type, n.title, n.message, n.status, n.is_read, n.reference_id, n.created_at
+             FROM notifications n
+             LEFT JOIN reservation r ON n.reference_id = r.id AND n.type = ?
+             WHERE n.user_id = ?
+               AND (n.type != ? OR r.status IS NULL OR r.status != ?)
+             ORDER BY n.created_at DESC
+             LIMIT ?',
+            ['reservation', $user->getId(), 'reservation', 'Suggested', $limit],
+            [ParameterType::STRING, ParameterType::INTEGER, ParameterType::STRING, ParameterType::STRING, ParameterType::INTEGER]
+        )->fetchAllAssociative();
     }
 
     /**

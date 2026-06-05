@@ -4,47 +4,28 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\ResearchContent;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use App\Repository\FacilityRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Response;
 
 class HomeController extends AbstractController
 {
     #[Route('/', name: 'app_home')]
-    public function index(FacilityRepository $facilityRepository, EntityManagerInterface $em): Response
+    public function index(FacilityRepository $facilityRepository): Response
     {
-        $response = new Response();
-        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', '0');
-
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
         }
 
-        $facilities = $facilityRepository->findBy([
-            'availableForReservation' => true,
-        ], ['name' => 'ASC']);
+        $facilities = $facilityRepository->findEnabledWithImages();
 
-        $researchItems = $em->createQueryBuilder()
-            ->select('r')
-            ->from(ResearchContent::class, 'r')
-            ->where('r.visibility = :public')
-            ->andWhere('r.type IN (:types)')
-            ->setParameter('public', 'Public')
-            ->setParameter('types', ['Article', 'Research'])
-            ->orderBy('r.createdAt', 'DESC')
-            ->setMaxResults(5)
-            ->getQuery()
-            ->getResult();
-
-        $response->setContent($this->renderView('home/landing.html.twig', [
+        $response = $this->render('home/landing.html.twig', [
             'facilities' => $facilities,
-            'researchItems' => $researchItems,
-        ]));
+        ]);
+        $response->setPublic();
+        $response->setMaxAge(300);
+        $response->setSharedMaxAge(300);
 
         return $response;
     }

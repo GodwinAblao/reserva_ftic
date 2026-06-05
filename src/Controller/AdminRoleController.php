@@ -32,6 +32,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/admin')]
 #[IsGranted('ROLE_ADMIN')]
@@ -65,93 +67,80 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/api/stats', name: 'admin_role_api_stats', methods: ['GET'])]
-    public function apiStats(EntityManagerInterface $em): JsonResponse
+    public function apiStats(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $response = $this->json($this->getDashboardData($em));
-        $response->headers->set('Cache-Control', 'private, max-age=15');
+        $data = $cache->get('admin.dashboard.stats.admin.v2', function (ItemInterface $item) use ($em): array {
+            $item->expiresAfter(10);
+            return $this->getDashboardData($em);
+        });
+
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=10');
         return $response;
     }
 
     #[Route('/api/analytics', name: 'admin_role_api_analytics', methods: ['GET'])]
-    public function apiAnalytics(EntityManagerInterface $em): JsonResponse
+    public function apiAnalytics(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $conn = $em->getConnection();
-        $dates = [];
-        for ($i = 29; $i >= 0; $i--) {
-            $dates[] = (new \DateTime())->modify("-$i days")->format('Y-m-d');
-        }
+        $data = $cache->get('admin.dashboard.analytics.admin.v2', function (ItemInterface $item) use ($em): array {
+            $item->expiresAfter(60);
+            $conn = $em->getConnection();
+            $dates = [];
+            for ($i = 29; $i >= 0; $i--) {
+                $dates[] = (new \DateTime())->modify("-$i days")->format('Y-m-d');
+            }
+            $rangeEnd = (new \DateTimeImmutable($dates[\count($dates) - 1]))->modify('+1 day')->format('Y-m-d 00:00:00');
 
-        $resByDate = $conn->executeQuery(
-            'SELECT DATE(reservation_date) AS dt, COUNT(*) AS cnt
-             FROM reservation
-             WHERE status IN (\'Approved\', \'Pending\')
-               AND DATE(reservation_date) >= ? AND DATE(reservation_date) <= ?
-             GROUP BY DATE(reservation_date)',
-            [$dates[0], $dates[\count($dates) - 1]]
-        )->fetchAllKeyValue();
+            $resByDate = $conn->executeQuery(
+                'SELECT CAST(reservation_date AS DATE) AS dt, COUNT(*) AS cnt
+                 FROM reservation
+                 WHERE status IN (\'Approved\', \'Pending\')
+                   AND reservation_date >= ? AND reservation_date < ?
+                 GROUP BY CAST(reservation_date AS DATE)',
+                [$dates[0] . ' 00:00:00', $rangeEnd]
+            )->fetchAllKeyValue();
 
-        $mentByDate = $conn->executeQuery(
-            'SELECT DATE(scheduled_at) AS dt, COUNT(*) AS cnt
-             FROM mentoring_appointment
-             WHERE DATE(scheduled_at) >= ? AND DATE(scheduled_at) <= ?
-             GROUP BY DATE(scheduled_at)',
-            [$dates[0], $dates[\count($dates) - 1]]
-        )->fetchAllKeyValue();
+            $mentByDate = $conn->executeQuery(
+                'SELECT CAST(scheduled_at AS DATE) AS dt, COUNT(*) AS cnt
+                 FROM mentoring_appointment
+                 WHERE scheduled_at >= ? AND scheduled_at < ?
+                 GROUP BY CAST(scheduled_at AS DATE)',
+                [$dates[0] . ' 00:00:00', $rangeEnd]
+            )->fetchAllKeyValue();
 
-        $dailyStats = [];
-        foreach ($dates as $date) {
-            $dailyStats[] = [
-                'date' => $date,
-                'reservations' => (int) ($resByDate[$date] ?? 0),
-                'mentoring' => (int) ($mentByDate[$date] ?? 0),
+            $dailyStats = [];
+            foreach ($dates as $date) {
+                $dailyStats[] = [
+                    'date' => $date,
+                    'reservations' => (int) ($resByDate[$date] ?? 0),
+                    'mentoring' => (int) ($mentByDate[$date] ?? 0),
+                ];
+            }
+
+            $liveTotal = array_sum(array_column($dailyStats, 'reservations'));
+
+            return [
+                'source' => $liveTotal > 0 ? 'live' : 'demo',
+                'dataSourceLabel' => $liveTotal > 0 ? 'Live reservation data' : 'No live data - start analytics service for demo charts',
+                'dailyStats' => $dailyStats,
             ];
-        }
+        });
 
-        $liveTotal = array_sum(array_column($dailyStats, 'reservations'));
-
-        return $this->json([
-            'source' => $liveTotal > 0 ? 'live' : 'demo',
-            'dataSourceLabel' => $liveTotal > 0 ? 'Live reservation data' : 'No live data — start analytics service for demo charts',
-            'dailyStats' => $dailyStats,
-        ]);
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=60');
+        return $response;
     }
 
     #[Route('/api/recent-reservations', name: 'admin_role_api_recent_reservations', methods: ['GET'])]
-    public function apiRecentReservations(EntityManagerInterface $em): JsonResponse
+    public function apiRecentReservations(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $conn = $em->getConnection();
-        $rows = $conn->executeQuery(
-            "SELECT r.name AS \"userName\", f.name AS \"facilityName\",
-                    r.reservation_date AS \"date\",
-                    r.reservation_start_time AS \"time\",
-                    r.reservation_end_time AS \"endTime\",
-                    r.event_name AS \"eventName\",
-                    r.email, r.contact, r.capacity, r.purpose, r.status
-             FROM reservation r
-             INNER JOIN facility f ON r.facility_id = f.id
-             WHERE r.status != 'Suggested'
-             ORDER BY r.created_at DESC LIMIT 8"
-        )->fetchAllAssociative();
+        $data = $cache->get('admin.dashboard.recent_reservations.v2', function (ItemInterface $item) use ($em): array {
+            $item->expiresAfter(10);
+            return $this->getRecentReservationsData($em);
+        });
 
-        $response = $this->json([
-            'recentReservations' => array_map(static function ($r) {
-                return [
-                    'facilityName' => $r['facilityName'] ?? ($r['facilityname'] ?? 'Unknown'),
-                    'userName'     => $r['userName'] ?? ($r['username'] ?? ''),
-                    'date'         => $r['date'] ? date('M j, Y', strtotime($r['date'])) : '',
-                    'time'         => $r['time'] ? date('g:i A', strtotime($r['time'])) : '',
-                    'endTime'      => !empty($r['endTime']) ? date('g:i A', strtotime($r['endTime'])) : '',
-                    'eventName'    => $r['eventName'] ?? ($r['eventname'] ?? ''),
-                    'email'        => $r['email'] ?? '',
-                    'contact'      => $r['contact'] ?? '',
-                    'capacity'     => $r['capacity'] ?? '',
-                    'purpose'      => $r['purpose'] ?? '',
-                    'status'       => $r['status'] ?? '',
-                ];
-            }, $rows),
-            'ts' => time(),
-        ]);
-        $response->headers->set('Cache-Control', 'private, no-store');
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=10');
         return $response;
     }
 
@@ -479,7 +468,8 @@ class AdminRoleController extends AbstractController
     public function apiReservationMonitoring(EntityManagerInterface $em): JsonResponse
     {
         $conn  = $em->getConnection();
-        $today = (new \DateTime('today'))->format('Y-m-d');
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+        $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d H:i:s');
 
         $rows = $conn->fetchAllAssociative(
             'SELECT r.id, r.name, r.email, r.status,
@@ -489,9 +479,9 @@ class AdminRoleController extends AbstractController
              FROM reservation r
              LEFT JOIN facility f ON f.id = r.facility_id
              LEFT JOIN "user" u   ON u.id = r.user_id
-             WHERE DATE(r.reservation_date) = :today
+             WHERE r.reservation_date >= :today AND r.reservation_date < :tomorrow
              ORDER BY r.created_at DESC',
-            ['today' => $today]
+            ['today' => $today, 'tomorrow' => $tomorrow]
         );
 
         $reservations = array_map(static function (array $r): array {
@@ -511,8 +501,8 @@ class AdminRoleController extends AbstractController
 
         $statusRows = $conn->fetchAllAssociative(
             'SELECT status, COUNT(*) AS cnt FROM reservation
-             WHERE DATE(reservation_date) = :today GROUP BY status',
-            ['today' => $today]
+             WHERE reservation_date >= :today AND reservation_date < :tomorrow GROUP BY status',
+            ['today' => $today, 'tomorrow' => $tomorrow]
         );
         $statusCounts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0];
         foreach ($statusRows as $sr) {
@@ -522,9 +512,9 @@ class AdminRoleController extends AbstractController
         $facRows = $conn->fetchAllAssociative(
             'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
              FROM facility f
-             LEFT JOIN reservation r ON r.facility_id = f.id AND DATE(r.reservation_date) = :today
+             LEFT JOIN reservation r ON r.facility_id = f.id AND r.reservation_date >= :today AND r.reservation_date < :tomorrow
              GROUP BY f.id, f.name',
-            ['today' => $today]
+            ['today' => $today, 'tomorrow' => $tomorrow]
         );
         $facilityCounts = [];
         foreach ($facRows as $fr) {
@@ -691,60 +681,101 @@ class AdminRoleController extends AbstractController
 
     private function getDashboardData(EntityManagerInterface $em): array
     {
-        $reservationRepo = $em->getRepository(Reservation::class);
-        $mentorProfileRepo = $em->getRepository(MentorProfile::class);
-        $appointmentRepo = $em->getRepository(MentoringAppointment::class);
+        $conn = $em->getConnection();
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+        $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d H:i:s');
 
-        $recentRaw = $reservationRepo->createQueryBuilder('r')
-            ->innerJoin('r.facility', 'f')
-            ->addSelect('f')
-            ->where('r.status != :suggestedStatus')
-            ->setParameter('suggestedStatus', 'Suggested')
-            ->orderBy('r.createdAt', 'DESC')
-            ->setMaxResults(8)
-            ->getQuery()
-            ->getResult();
+        $batch = $conn->executeQuery(
+            "SELECT 'res_status' AS grp, status AS lbl, COUNT(*) AS cnt FROM reservation WHERE status != 'Suggested' GROUP BY status
+             UNION ALL
+             SELECT 'apt_status', status, COUNT(*) FROM mentoring_appointment GROUP BY status
+             UNION ALL
+             SELECT 'req_status', status, COUNT(*) FROM mentor_custom_request GROUP BY status
+             UNION ALL
+             SELECT 'meta', 'mentors', COUNT(*) FROM mentor_profile
+             UNION ALL
+             SELECT 'meta', 'today_res', COUNT(*) FROM reservation WHERE reservation_date >= ? AND reservation_date < ? AND status != 'Suggested'
+             UNION ALL
+             SELECT 'meta', 'upcoming_apt', COUNT(*) FROM mentoring_appointment WHERE scheduled_at >= ?",
+            [$today, $tomorrow, (new \DateTimeImmutable())->format('Y-m-d H:i:s')]
+        )->fetchAllAssociative();
 
-        $recentReservations = array_map(function ($r) {
-            return [
-                'facilityName' => $r->getFacility() ? $r->getFacility()->getName() : 'Unknown',
-                'userName' => $r->getName(),
-                'date' => $r->getReservationDate() ? $r->getReservationDate()->format('M j, Y') : '',
-                'time' => $r->getReservationStartTime() ? $r->getReservationStartTime()->format('H:i') : '',
-                'status' => $r->getStatus(),
-            ];
-        }, $recentRaw);
+        $resCounts = [];
+        $aptCounts = [];
+        $mentors = 0;
+        $todayReservations = 0;
+        $upcomingAppointments = 0;
 
-        $excludeSuggested = fn($qb) => $qb->where('r.status != :s')->setParameter('s', 'Suggested')->getQuery()->getSingleScalarResult();
+        foreach ($batch as $row) {
+            $count = (int) $row['cnt'];
+            if ($row['grp'] === 'res_status') {
+                $resCounts[$row['lbl']] = $count;
+                continue;
+            }
+            if ($row['grp'] === 'apt_status') {
+                $aptCounts[$row['lbl']] = $count;
+                continue;
+            }
+            if ($row['grp'] === 'meta') {
+                match ($row['lbl']) {
+                    'mentors' => $mentors = $count,
+                    'today_res' => $todayReservations = $count,
+                    'upcoming_apt' => $upcomingAppointments = $count,
+                    default => null,
+                };
+            }
+        }
 
         return [
             'reservations' => [
-                'total' => (int) $excludeSuggested($reservationRepo->createQueryBuilder('r')->select('COUNT(r.id)')),
-                'approved' => $reservationRepo->count(['status' => 'Approved']),
-                'pending' => $reservationRepo->count(['status' => 'Pending']),
-                'rejected' => $reservationRepo->count(['status' => 'Rejected']),
-                'today' => $reservationRepo->createQueryBuilder('r')
-                    ->select('COUNT(r.id)')
-                    ->where('r.reservationDate >= :today')
-                    ->andWhere('r.status != :sug')
-                    ->setParameter('today', new \DateTime('today'))
-                    ->setParameter('sug', 'Suggested')
-                    ->getQuery()
-                    ->getSingleScalarResult(),
+                'total' => (int) array_sum($resCounts),
+                'approved' => (int) ($resCounts['Approved'] ?? 0),
+                'pending' => (int) ($resCounts['Pending'] ?? 0),
+                'rejected' => (int) ($resCounts['Rejected'] ?? 0),
+                'today' => $todayReservations,
             ],
             'mentoring' => [
-                'totalMentors' => $mentorProfileRepo->count([]),
+                'totalMentors' => $mentors,
                 'appointments' => [
-                    'total' => $appointmentRepo->count([]),
-                    'upcoming' => $appointmentRepo->createQueryBuilder('a')
-                        ->select('COUNT(a.id)')
-                        ->where('a.scheduledAt >= :now')
-                        ->setParameter('now', new \DateTime())
-                        ->getQuery()
-                        ->getSingleScalarResult(),
+                    'total' => (int) array_sum($aptCounts),
+                    'upcoming' => $upcomingAppointments,
                 ],
             ],
-            'recentReservations' => $recentReservations,
+        ];
+    }
+
+    private function getRecentReservationsData(EntityManagerInterface $em): array
+    {
+        $rows = $em->getConnection()->executeQuery(
+            "SELECT r.name AS \"userName\", f.name AS \"facilityName\",
+                    r.reservation_date AS \"date\",
+                    r.reservation_start_time AS \"time\",
+                    r.reservation_end_time AS \"endTime\",
+                    r.event_name AS \"eventName\",
+                    r.email, r.contact, r.capacity, r.purpose, r.status
+             FROM reservation r
+             INNER JOIN facility f ON r.facility_id = f.id
+             WHERE r.status != 'Suggested'
+             ORDER BY r.created_at DESC LIMIT 8"
+        )->fetchAllAssociative();
+
+        return [
+            'recentReservations' => array_map(static function ($r) {
+                return [
+                    'facilityName' => $r['facilityName'] ?? ($r['facilityname'] ?? 'Unknown'),
+                    'userName'     => $r['userName'] ?? ($r['username'] ?? ''),
+                    'date'         => $r['date'] ? date('M j, Y', strtotime($r['date'])) : '',
+                    'time'         => $r['time'] ? date('g:i A', strtotime($r['time'])) : '',
+                    'endTime'      => !empty($r['endTime']) ? date('g:i A', strtotime($r['endTime'])) : '',
+                    'eventName'    => $r['eventName'] ?? ($r['eventname'] ?? ''),
+                    'email'        => $r['email'] ?? '',
+                    'contact'      => $r['contact'] ?? '',
+                    'capacity'     => $r['capacity'] ?? '',
+                    'purpose'      => $r['purpose'] ?? '',
+                    'status'       => $r['status'] ?? '',
+                ];
+            }, $rows),
+            'ts' => time(),
         ];
     }
 

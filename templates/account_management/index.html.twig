@@ -110,6 +110,42 @@
         .search-clear.show {
             display: flex;
         }
+        .account-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .account-page-link {
+            min-width: 34px;
+            height: 34px;
+            padding: 0 10px;
+            border: 1px solid rgba(0, 102, 51, 0.18);
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f5132;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            background: #fff;
+        }
+        .account-page-link:hover {
+            background: #f0fdf4;
+        }
+        .account-page-link.active {
+            background: var(--feu-green, #006633);
+            color: #fff;
+            border-color: var(--feu-green, #006633);
+        }
+        .account-page-link.disabled {
+            color: #94a3b8;
+            pointer-events: none;
+            background: #f8fafc;
+        }
         .pill-role--superadmin {
             background: rgba(220, 38, 38, 0.15);
             color: #991b1b;
@@ -360,23 +396,26 @@
     {% endfor %}
 
     <div class="card-panel">
-        <div class="filter-bar">
+        <form class="filter-bar" method="get" action="{{ path('app_account_management') }}">
             <div class="search-wrap">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <input type="text" id="accountSearch" placeholder="Search by name or email..." autocomplete="off">
-                <button type="button" class="search-clear" id="searchClear" title="Clear search">&times;</button>
+                <input type="text" id="accountSearch" name="q" value="{{ filters.q }}" placeholder="Search by name or email..." autocomplete="off">
+                {% if filters.q %}
+                    <a class="search-clear show" id="searchClear" title="Clear search" href="{{ path('app_account_management', filters.role ? {role: filters.role} : {}) }}">&times;</a>
+                {% endif %}
             </div>
-            <select id="roleFilter">
-                <option value="">All Roles</option>
-                <option value="superadmin">Superadmin</option>
-                <option value="admin">Admin</option>
-                <option value="faculty">Faculty</option>
-                <option value="mentor">Mentor</option>
-                <option value="student">Student</option>
+            <select id="roleFilter" name="role" onchange="this.form.submit()">
+                <option value="" {{ filters.role == '' ? 'selected' : '' }}>All Roles</option>
+                <option value="superadmin" {{ filters.role == 'superadmin' ? 'selected' : '' }}>Superadmin</option>
+                <option value="admin" {{ filters.role == 'admin' ? 'selected' : '' }}>Admin</option>
+                <option value="faculty" {{ filters.role == 'faculty' ? 'selected' : '' }}>Faculty</option>
+                <option value="mentor" {{ filters.role == 'mentor' ? 'selected' : '' }}>Mentor</option>
+                <option value="student" {{ filters.role == 'student' ? 'selected' : '' }}>Student</option>
             </select>
-        </div>
+            <button type="submit" class="btn-primary">Search</button>
+        </form>
 
         <table class="accounts-table">
             <thead>
@@ -441,15 +480,34 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% set pageStart = pagination.total > 0 ? ((pagination.page - 1) * pagination.limit + 1) : 0 %}
+        {% set computedPageEnd = pagination.page * pagination.limit %}
+        {% set pageEnd = computedPageEnd < pagination.total ? computedPageEnd : pagination.total %}
         <div class="results-counter">
-            Showing <strong id="visibleCount">0</strong> of <strong id="totalCount">0</strong> accounts
+            Showing <strong>{{ pageStart }}-{{ pageEnd }}</strong> of <strong>{{ pagination.total }}</strong> accounts
         </div>
-        <div id="noResults" class="no-results">
+        <div id="noResults" class="no-results {{ users is empty ? 'visible' : '' }}">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 12px;">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <div>No accounts found matching your search.</div>
         </div>
+        {% if pagination.pages > 1 %}
+            <div class="account-pagination">
+                {% set baseParams = {} %}
+                {% if filters.q %}{% set baseParams = baseParams|merge({q: filters.q}) %}{% endif %}
+                {% if filters.role %}{% set baseParams = baseParams|merge({role: filters.role}) %}{% endif %}
+                <a class="account-page-link {{ pagination.page == 1 ? 'disabled' : '' }}" href="{{ path('app_account_management', baseParams|merge({page: pagination.page - 1})) }}">Prev</a>
+                {% set firstPageCandidate = pagination.page - 2 %}
+                {% set lastPageCandidate = pagination.page + 2 %}
+                {% set firstPage = firstPageCandidate > 1 ? firstPageCandidate : 1 %}
+                {% set lastPage = lastPageCandidate < pagination.pages ? lastPageCandidate : pagination.pages %}
+                {% for p in firstPage..lastPage %}
+                    <a class="account-page-link {{ p == pagination.page ? 'active' : '' }}" href="{{ path('app_account_management', baseParams|merge({page: p})) }}">{{ p }}</a>
+                {% endfor %}
+                <a class="account-page-link {{ pagination.page == pagination.pages ? 'disabled' : '' }}" href="{{ path('app_account_management', baseParams|merge({page: pagination.page + 1})) }}">Next</a>
+            </div>
+        {% endif %}
     </div>
 
     <!-- Account View Modal -->
@@ -471,75 +529,6 @@
 
     <script>
     (function() {
-        const searchInput = document.getElementById('accountSearch');
-        const roleFilter = document.getElementById('roleFilter');
-        const searchClear = document.getElementById('searchClear');
-        const tbody = document.getElementById('accountsTableBody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        const noResults = document.getElementById('noResults');
-        const visibleCountEl = document.getElementById('visibleCount');
-        const totalCountEl = document.getElementById('totalCount');
-        let debounceTimer;
-
-        totalCountEl.textContent = rows.length;
-
-        function updateClearButton() {
-            if (searchInput.value.length > 0) {
-                searchClear.classList.add('show');
-            } else {
-                searchClear.classList.remove('show');
-            }
-        }
-
-        function filterRows() {
-            const query = searchInput.value.trim().toLowerCase();
-            const role = roleFilter.value;
-            let visibleIndex = 0;
-
-            rows.forEach(function(row) {
-                const searchText = row.getAttribute('data-search-text');
-                const userRole = row.getAttribute('data-role');
-                const matchesSearch = !query || searchText.indexOf(query) !== -1;
-                const matchesRole = !role || userRole === role;
-
-                if (matchesSearch && matchesRole) {
-                    row.style.animationDelay = (visibleIndex * 0.03) + 's';
-                    row.classList.remove('row-hidden');
-                    row.classList.add('row-shown');
-                    visibleIndex++;
-                } else {
-                    row.classList.remove('row-shown');
-                    row.classList.add('row-hidden');
-                    row.style.animationDelay = '0s';
-                }
-            });
-
-            visibleCountEl.textContent = visibleIndex;
-
-            if (visibleIndex === 0) {
-                noResults.classList.add('visible');
-            } else {
-                noResults.classList.remove('visible');
-            }
-        }
-
-        searchInput.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            updateClearButton();
-            debounceTimer = setTimeout(filterRows, 60);
-        });
-
-        roleFilter.addEventListener('change', filterRows);
-
-        searchClear.addEventListener('click', function() {
-            searchInput.value = '';
-            updateClearButton();
-            filterRows();
-            searchInput.focus();
-        });
-
-        filterRows();
-
         // Account View Modal Functions
         window.viewAccount = function(userId) {
             const modal = document.getElementById('accountViewModal');

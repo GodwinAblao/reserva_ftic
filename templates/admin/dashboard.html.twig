@@ -318,8 +318,7 @@
         // Initialize chart
         initChart();
         
-        // Periodic refresh every 30 seconds
-        setInterval(refreshStats, 30000);
+        // Stats refresh is handled by the global app layer to avoid duplicate polling.
     }
 
     // Run initialization
@@ -445,19 +444,22 @@
             tab.classList.toggle('active', tab.dataset.chart === type);
         });
 
-        const FASTAPI_BASE = '/analytics/proxy';
-        const SYMFONY_FALLBACK = '{{ path('admin_role_api_analytics') }}';
+        const SYMFONY_FALLBACK = '{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_analytics') : path('admin_role_api_analytics') }}';
         let data = null;
 
         try {
-            const response = await fetch(FASTAPI_BASE + '/overview');
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            data = await response.json();
+            if (window.ReservaApiCache) {
+                data = await window.ReservaApiCache.fetchCached(SYMFONY_FALLBACK, 60000);
+            } else {
+                const response = await fetch(SYMFONY_FALLBACK, {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                data = await response.json();
+            }
         } catch (e) {
-            try {
-                const fb = await fetch(SYMFONY_FALLBACK);
-                if (fb.ok) data = await fb.json();
-            } catch (_) {}
+            data = null;
         }
 
         const badge = document.getElementById('chart-source-badge');

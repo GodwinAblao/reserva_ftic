@@ -10,29 +10,7 @@
     <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260522-1">
 {% endblock %}
 
-{% block javascripts %}
-    {{ parent() }}
-    <script>
-        // Check if user is logged in and redirect to dashboard
-        (function() {
-            fetch('{{ path('app_dashboard') }}', {
-                method: 'HEAD',
-                credentials: 'same-origin',
-                redirect: 'manual'
-            })
-            .then(response => {
-                // Only redirect if we get a 200 OK (authenticated)
-                // 302 redirect means not authenticated
-                if (response.status === 200) {
-                    window.location.href = '{{ path('app_dashboard') }}';
-                }
-            })
-            .catch(() => {
-                // If check fails, stay on landing page
-            });
-        })();
-    </script>
-{% endblock %}
+{% block javascripts %}{% endblock %}
 
 {% block body %}
     <header class="header">

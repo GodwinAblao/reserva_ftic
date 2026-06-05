@@ -71,7 +71,7 @@ function esc(s) {
 }
 
 /** apiFetch — fetch with abort timeout. Returns JSON or null. */
-function apiFetch(url, timeoutMs = 10000) {
+function apiFetch(url, timeoutMs = 8000) {
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), timeoutMs);
     return fetch(url, {
@@ -82,6 +82,38 @@ function apiFetch(url, timeoutMs = 10000) {
     .then(r => r.ok ? r.json() : null)
     .catch(() => null)
     .finally(() => clearTimeout(tid));
+}
+
+const ApiMemoryCache = (() => {
+    const store = new Map();
+
+    function get(url, ttlMs) {
+        const hit = store.get(url);
+        if (!hit || Date.now() - hit.ts > ttlMs) return null;
+        return hit.data;
+    }
+
+    function set(url, data) {
+        if (data != null) store.set(url, { data, ts: Date.now() });
+        return data;
+    }
+
+    function fetchCached(url, ttlMs = 30000, timeoutMs = 8000) {
+        const hit = get(url, ttlMs);
+        if (hit) return Promise.resolve(hit);
+        return apiFetch(url, timeoutMs).then(data => set(url, data));
+    }
+
+    function hasFresh(url, ttlMs = 30000) {
+        return get(url, ttlMs) !== null;
+    }
+
+    return { get, set, fetchCached, hasFresh };
+})();
+window.ReservaApiCache = ApiMemoryCache;
+
+if (window.Turbo?.setProgressBarDelay) {
+    window.Turbo.setProgressBarDelay(60000);
 }
 
 /** Swap el.innerHTML only when content actually changed (hash diff) */
@@ -155,7 +187,8 @@ const NavProgress = (() => {
         if (!a) return;
         const href = a.getAttribute('href') || '';
         if (!href || href.startsWith('#') || href.startsWith('javascript:') ||
-            a.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            a.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey ||
+            a.dataset.noLoading === 'true' || a.dataset.turbo === 'false') return;
         try {
             if (new URL(href, location.href).origin !== location.origin) return;
         } catch (_) { return; }
@@ -170,7 +203,6 @@ const NavProgress = (() => {
 
     return { start, finish };
 })();
-
 
 /* ─────────────────────────────────────────────────────────────
    2. Content area fade-in (GPU composited — no layout thrash)
@@ -265,7 +297,7 @@ const NavProgress = (() => {
    · 8 s skeleton timeout: if first fetch fails, shows error msg
 ───────────────────────────────────────────────────────────── */
 (() => {
-    const POLL_MS   = 15000;
+    const POLL_MS   = 60000;
     const MAX_ITEMS = 8;
 
     const SC = {
@@ -341,7 +373,7 @@ const NavProgress = (() => {
         if (!panel || fetching) return;
         fetching = true;
 
-        apiFetch(url).then(data => {
+        ApiMemoryCache.fetchCached(url, 30000).then(data => {
             fetching = false;
             if (!data) {
                 // Only show error if panel still shows skeletons (first load failed)
@@ -372,7 +404,7 @@ const NavProgress = (() => {
         const lbPanel = document.getElementById('adminLeaderboardList');
         if (!lbPanel) return;
 
-        apiFetch(url).then(data => {
+        ApiMemoryCache.fetchCached(url, 30000).then(data => {
             if (!data) {
                 lbPanel.innerHTML = EMPTY('Could not load — retrying…');
                 setTimeout(() => loadMentoringPanel(url), 5000);
@@ -407,8 +439,6 @@ const NavProgress = (() => {
 
         if (recentMeta) {
             const url = recentMeta.content;
-
-            // Immediate first fetch
             pollReservations(url);
 
             // Safety: replace stuck skeletons after 9 s
@@ -443,11 +473,11 @@ const NavProgress = (() => {
        sidebar click. This is the single entry point for boot(). ── */
     document.addEventListener('turbo:load', boot);
 
-    // Resume poll immediately when tab becomes visible
+    // Resume only when cached data is stale to avoid visual reloading on quick tab switches.
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _pollTimer) {
             const url = document.querySelector('meta[name="admin-recent-api"]')?.content;
-            if (url) pollReservations(url);
+            if (url && !ApiMemoryCache.hasFresh(url, 30000)) pollReservations(url);
         }
     });
 
@@ -473,7 +503,7 @@ const NavProgress = (() => {
    · No full-page reload ever needed
 ───────────────────────────────────────────────────────────── */
 (() => {
-    const POLL_MS = 15000;
+    const POLL_MS = 60000;
 
     let _timer    = null;
     let _fetching = false;
@@ -517,7 +547,7 @@ const NavProgress = (() => {
         if (!tbody || _fetching) return;
         _fetching = true;
 
-        apiFetch(url).then(data => {
+        ApiMemoryCache.fetchCached(url, 30000).then(data => {
             _fetching = false;
             if (!data) return;
 
@@ -560,7 +590,7 @@ const NavProgress = (() => {
         if (!meta) return;   // not on the reservation monitoring page
 
         const url = meta.content;
-        poll(url);                                        // immediate first fetch
+        poll(url);
         _timer = setInterval(() => {                      // then every 15 s — skip when hidden
             if (!document.hidden) poll(url);
         }, POLL_MS);
@@ -569,11 +599,11 @@ const NavProgress = (() => {
     // turbo:load fires on every Turbo navigation (and initial visit)
     document.addEventListener('turbo:load', boot);
 
-    // Resume immediately when tab becomes visible
+    // Resume only when cached data is stale to avoid redundant lifecycle fetches.
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _timer) {
             const meta = document.querySelector('meta[name="rm-api"]');
-            if (meta) poll(meta.content);
+            if (meta && !ApiMemoryCache.hasFresh(meta.content, 30000)) poll(meta.content);
         }
     });
 
@@ -604,7 +634,7 @@ const NavProgress = (() => {
     };
 
     function tick(url) {
-        apiFetch(url).then(data => {
+        ApiMemoryCache.fetchCached(url, 30000).then(data => {
             if (!data) return;
             for (const [id, path] of Object.entries(STAT_MAP)) {
                 const el = document.getElementById(id);
@@ -631,11 +661,11 @@ const NavProgress = (() => {
         const meta = document.querySelector('meta[name="stats-api"]');
         if (!meta || !document.getElementById('stat-total-reservations')) return;
 
-        // Immediate first tick, then every 30 s — skip when tab is hidden
+        // Immediate first tick resolves from memory on quick Turbo return visits.
         tick(meta.content);
         _statsTimer = setInterval(() => {
             if (!document.hidden) tick(meta.content);
-        }, 30000);
+        }, 60000);
     }
 
     document.addEventListener('turbo:load', initStats);
@@ -656,7 +686,7 @@ const NavProgress = (() => {
    · Turbo-safe: resets state on every navigation
 ───────────────────────────────────────────────────────────── */
 (() => {
-    const POLL_MS = 15000;
+    const POLL_MS = 60000;
 
     const SC = {
         Pending:   ['#fef3c7','#92400e'],
@@ -719,7 +749,7 @@ const NavProgress = (() => {
         if (_fetching) return;
         _fetching = true;
 
-        apiFetch(url).then(data => {
+        ApiMemoryCache.fetchCached(url, 30000).then(data => {
             _fetching = false;
             if (!data) return;
 
@@ -788,7 +818,7 @@ const NavProgress = (() => {
 
         const url = meta.content;
 
-        // Immediate first fetch
+        // Immediate first fetch resolves from memory on quick Turbo return visits.
         pollUserSidebar(url);
 
         // Safety: replace stuck skeletons after 9 s if first fetch failed
@@ -812,7 +842,7 @@ const NavProgress = (() => {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _timer) {
             const meta = document.querySelector('meta[name="user-sidebar-api"]');
-            if (meta) pollUserSidebar(meta.content);
+            if (meta && !ApiMemoryCache.hasFresh(meta.content, 30000)) pollUserSidebar(meta.content);
         }
     });
 

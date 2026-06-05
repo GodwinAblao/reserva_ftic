@@ -18,14 +18,7 @@ use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
-use App\Repository\ResearchContentRepository;
-use App\Repository\MentorProfileRepository;
-use App\Repository\MentorApplicationRepository;
-use App\Repository\MentoringAppointmentRepository;
-use App\Repository\ReservationRepository;
 use App\Repository\SpecializationRepository;
-use App\Entity\MentorAvailability;
-use App\Entity\MentorCustomRequest;
 use App\Entity\Specialization;
 use Psr\Log\LoggerInterface;
 
@@ -34,14 +27,37 @@ use Psr\Log\LoggerInterface;
 class AccountManagementController extends AbstractController
 {
     #[Route('', name: 'app_account_management')]
-    public function index(UserRepository $userRepository): Response
+    public function index(Request $request, UserRepository $userRepository): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
-        $users = $userRepository->findAll();
+        $page = max(1, (int) $request->query->get('page', 1));
+        $limit = 25;
+        $search = trim((string) $request->query->get('q', ''));
+        $role = trim((string) $request->query->get('role', ''));
+        $result = $userRepository->findPaginatedForAccountManagement($page, $limit, $search, $role);
+        $total = $result['total'];
+        $pages = max(1, (int) ceil($total / $limit));
+        if ($page > $pages) {
+            return $this->redirectToRoute('app_account_management', [
+                'page' => $pages,
+                'q' => $search,
+                'role' => $role,
+            ]);
+        }
 
         return $this->render('account_management/index.html.twig', [
-            'users' => $users,
+            'users' => $result['items'],
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => $pages,
+            ],
+            'filters' => [
+                'q' => $search,
+                'role' => $role,
+            ],
         ]);
     }
 
@@ -334,12 +350,7 @@ class AccountManagementController extends AbstractController
         User $user, 
         Request $request, 
         EntityManagerInterface $em, 
-        CsrfTokenManagerInterface $csrfTokenManager,
-        ResearchContentRepository $researchContentRepository,
-        ReservationRepository $reservationRepository, 
-        MentorApplicationRepository $mentorApplicationRepository,
-        MentoringAppointmentRepository $mentoringAppointmentRepository,
-        MentorProfileRepository $mentorProfileRepository
+        CsrfTokenManagerInterface $csrfTokenManager
     ): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
@@ -355,54 +366,7 @@ class AccountManagementController extends AbstractController
             return $this->redirectToRoute('app_account_management');
         }
 
-        // Cleanup dependent entities to avoid FK constraints
-        // Mentor custom requests
-        $mentorCustomRequests = $em->getRepository(MentorCustomRequest::class)->findBy(['student' => $user]);
-        foreach ($mentorCustomRequests as $customRequest) {
-            $em->remove($customRequest);
-        }
-
-        // Research contents
-        $researchContents = $researchContentRepository->findByAuthor($user);
-        foreach ($researchContents as $content) {
-            $em->remove($content);
-        }
-
-        // Reservations
-        $reservations = $reservationRepository->findBy(['user' => $user]);
-        foreach ($reservations as $reservation) {
-            $em->remove($reservation);
-        }
-
-        // Mentor applications as student
-        $applications = $mentorApplicationRepository->findByStudent($user);
-        foreach ($applications as $application) {
-            $em->remove($application);
-        }
-
-        // Appointments as student
-        $studentAppointments = $mentoringAppointmentRepository->findByStudent($user);
-        foreach ($studentAppointments as $appointment) {
-            $em->remove($appointment);
-        }
-
-        // Check for mentor profile
-        $mentorProfile = $mentorProfileRepository->findByUser($user);
-        if ($mentorProfile) {
-            // Appointments as mentor
-            $mentorAppointments = $mentoringAppointmentRepository->findByMentorUser($user);
-            foreach ($mentorAppointments as $appointment) {
-                $em->remove($appointment);
-            }
-
-            // Availabilities
-            $availabilities = $em->getRepository(MentorAvailability::class)->findBy(['mentor' => $mentorProfile]);
-            foreach ($availabilities as $availability) {
-                $em->remove($availability);
-            }
-
-            $em->remove($mentorProfile);
-        }
+        $userId = (int) $user->getId();
 
         // Profile picture file
         if ($user->getProfilePicture()) {
@@ -412,14 +376,35 @@ class AccountManagementController extends AbstractController
             }
         }
 
-        // Delete user's notifications
-        $notifications = $em->getRepository(\App\Entity\Notification::class)->findBy(['user' => $user]);
-        foreach ($notifications as $notification) {
-            $em->remove($notification);
-        }
+        $conn = $em->getConnection();
+        $quotedUserTable = $conn->quoteIdentifier('user');
+        $conn->beginTransaction();
 
-        $em->remove($user);
-        $em->flush();
+        try {
+            $mentorProfileId = $conn->fetchOne('SELECT id FROM mentor_profile WHERE user_id = ?', [$userId]);
+
+            if ($mentorProfileId !== false && $mentorProfileId !== null) {
+                $mentorProfileId = (int) $mentorProfileId;
+                $conn->executeStatement('DELETE FROM mentoring_appointment WHERE mentor_id = ?', [$mentorProfileId]);
+                $conn->executeStatement('DELETE FROM mentor_availability WHERE mentor_id = ?', [$mentorProfileId]);
+                $conn->executeStatement('DELETE FROM mentor_custom_request WHERE mentor_profile_id = ?', [$mentorProfileId]);
+                $conn->executeStatement('DELETE FROM mentor_profile WHERE id = ?', [$mentorProfileId]);
+            }
+
+            $conn->executeStatement('DELETE FROM mentor_custom_request WHERE student_id = ?', [$userId]);
+            $conn->executeStatement('DELETE FROM mentoring_appointment WHERE student_id = ?', [$userId]);
+            $conn->executeStatement('DELETE FROM mentor_application WHERE student_id = ?', [$userId]);
+            $conn->executeStatement('DELETE FROM research_content WHERE author_id = ?', [$userId]);
+            $conn->executeStatement('DELETE FROM notifications WHERE user_id = ?', [$userId]);
+            $conn->executeStatement('DELETE FROM reservation WHERE user_id = ?', [$userId]);
+            $conn->executeStatement('DELETE FROM ' . $quotedUserTable . ' WHERE id = ?', [$userId]);
+
+            $conn->commit();
+            $em->clear();
+        } catch (\Throwable $e) {
+            $conn->rollBack();
+            throw $e;
+        }
 
         $this->addFlash('success', 'Account and all related data deleted successfully.');
 

@@ -12,6 +12,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 #[Route('/analytics')]
@@ -68,13 +70,21 @@ class AnalyticsController extends AbstractController
     }
 
     #[Route('/proxy/{endpoint}', name: 'analytics_proxy', methods: ['GET'])]
-    public function proxy(string $endpoint, Request $request): Response
+    public function proxy(string $endpoint, Request $request, CacheInterface $cache): Response
     {
         $queryParams = $request->query->all();
         $facilityId = $queryParams['facility_id'] ?? null;
         $dataSource = $queryParams['data_source'] ?? 'combined';
 
-        return $this->json($this->getAnalyticsData($endpoint, $facilityId, $dataSource));
+        $cacheKey = 'analytics.proxy.' . md5($endpoint . '|' . (string) $facilityId . '|' . $dataSource);
+        $data = $cache->get($cacheKey, function (ItemInterface $item) use ($endpoint, $facilityId, $dataSource): array {
+            $item->expiresAfter(60);
+            return $this->getAnalyticsData($endpoint, $facilityId, $dataSource);
+        });
+
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', 'private, max-age=60');
+        return $response;
     }
 
     private function getAnalyticsData(string $endpoint, ?string $facilityId, string $dataSource): array
