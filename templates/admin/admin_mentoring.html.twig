@@ -21,8 +21,13 @@
 .sa-left-head{padding:12px 12px 0;}
 .sa-type-sel{width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:9px;font-size:13px;font-weight:700;color:#374151;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none;cursor:pointer;margin-bottom:10px;}
 .sa-left-scroll{flex:1;overflow-y:auto;}
-.sa-group-hd{padding:6px 14px 5px;font-size:11px;font-weight:800;color:#fff;background:#0D9B00;letter-spacing:.3px;}
+.sa-group-hd{padding:6px 14px 5px;font-size:11px;font-weight:800;color:#fff;background:#0D9B00;letter-spacing:.3px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
 .sa-group-hd.older{background:#9ca3af;}
+.sa-group-hd-chevron{transition:transform .2s;flex-shrink:0;}
+.sa-group-hd.collapsed .sa-group-hd-chevron{transform:rotate(-90deg);}
+.sa-group-body{overflow:hidden;transition:max-height .22s ease,opacity .18s ease;}
+.sa-group-body.collapsed{max-height:0!important;opacity:0;pointer-events:none;}
+.sa-group-count{font-size:10px;font-weight:700;background:rgba(255,255,255,.25);border-radius:10px;padding:1px 7px;margin-left:6px;}
 .sa-item{padding:11px 14px;border-bottom:1px solid #f9fafb;cursor:pointer;transition:background .15s;}
 .sa-item:hover{background:#fafafa;}
 .sa-item.active{background:#f0fdf4;border-left:3px solid #0D9B00;}
@@ -124,12 +129,6 @@
 </div>
 
 {# ── Admin Read-Only Notice ── #}
-{% if not is_super_admin %}
-<div class="admin-readonly-notice">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/></svg>
-    <span><strong>View-Only Mode:</strong> As an Admin, you can view mentors, requests, and applications but cannot create, edit, or delete mentors. Contact a Super Admin for mentor management.</span>
-</div>
-{% endif %}
 
 {# ── 2-col dashboard ── #}
 <div class="sa-dashboard">
@@ -147,6 +146,7 @@
 
             {# ── pre-compute buckets once for reuse ── #}
             {% set today = "now"|date("Y-m-d") %}
+            {% set weekCutoff = "now - 7 days"|date("Y-m-d") %}
             {% set weekTs = "now - 7 days"|date("U") %}
 
             {% set todayReqs = [] %}{% set weekReqs = [] %}{% set olderReqs = [] %}
@@ -163,66 +163,110 @@
                 {% else %}{% set olderApps = olderApps|merge([app]) %}{% endif %}
             {% endfor %}
 
+            {# ── Build combined chronological buckets for the All list ── #}
+            {% set todayAll = [] %}
+            {% for req in todayReqs %}{% set todayAll = todayAll|merge([{item: req, type: 'request', ts: req.createdAt|date('U')}]) %}{% endfor %}
+            {% for app in todayApps %}{% set todayAll = todayAll|merge([{item: app, type: 'application', ts: app.createdAt|date('U')}]) %}{% endfor %}
+            {% set todayAll = todayAll|sort((a, b) => b.ts <=> a.ts) %}
+
+            {% set weekAll = [] %}
+            {% for req in weekReqs %}{% set weekAll = weekAll|merge([{item: req, type: 'request', ts: req.createdAt|date('U')}]) %}{% endfor %}
+            {% for app in weekApps %}{% set weekAll = weekAll|merge([{item: app, type: 'application', ts: app.createdAt|date('U')}]) %}{% endfor %}
+            {% set weekAll = weekAll|sort((a, b) => b.ts <=> a.ts) %}
+
+            {% set olderAll = [] %}
+            {% for req in olderReqs %}{% set olderAll = olderAll|merge([{item: req, type: 'request', ts: req.createdAt|date('U')}]) %}{% endfor %}
+            {% for app in olderApps %}{% set olderAll = olderAll|merge([{item: app, type: 'application', ts: app.createdAt|date('U')}]) %}{% endfor %}
+            {% set olderAll = olderAll|sort((a, b) => b.ts <=> a.ts) %}
+
             {# ─ ALL list (merged, default) ─ #}
             <div id="sa-list-all">
                 {% if requests is empty and applications is empty %}
                     <div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No requests or applications yet.</div>
                 {% endif %}
-                {# Today group: both custom + apply mixed #}
-                <div class="sa-group-hd">Today</div>
-                {% if todayReqs is empty and todayApps is empty %}
+                {# Today group #}
+                <div class="sa-group-hd" data-group="all-today" onclick="saToggleGroup(this)">
+                    <span>Today{% if todayAll is not empty %}<span class="sa-group-count">{{ todayAll|length }}</span>{% endif %}</span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="all-today">
+                {% if todayAll is empty %}
                     <div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new requests today.</div>
                 {% endif %}
-                {% for req in todayReqs %}
-                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentor Request</div>
-                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}
-                {% for app in todayApps %}
-                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentor Application</div>
-                    <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}
+                {% for entry in todayAll %}
+                    {% if entry.type == 'request' %}{% set req = entry.item %}
+                    <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                        <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('H:i') }}</span></div>
+                        <div class="sa-item-sub">Mentor Request</div>
+                        <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                    </div>
+                    {% else %}{% set app = entry.item %}
+                    <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                        <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('H:i') }}</span></div>
+                        <div class="sa-item-sub">Mentor Application</div>
+                        <div class="sa-item-msg">{{ app.specialization }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                </div>
                 {# This Week group #}
-                {% if weekReqs is not empty or weekApps is not empty %}
-                <div class="sa-group-hd">This Week</div>
-                {% for req in weekReqs %}
-                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentor Request</div>
-                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}
-                {% for app in weekApps %}
-                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
-                    <div class="sa-item-sub">Mentor Application</div>
-                    <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}
+                {% if weekAll is not empty %}
+                <div class="sa-group-hd" data-group="all-week" onclick="saToggleGroup(this)">
+                    <span>This Week<span class="sa-group-count">{{ weekAll|length }}</span></span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="all-week">
+                {% for entry in weekAll %}
+                    {% if entry.type == 'request' %}{% set req = entry.item %}
+                    <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                        <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
+                        <div class="sa-item-sub">Mentor Request</div>
+                        <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                    </div>
+                    {% else %}{% set app = entry.item %}
+                    <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                        <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
+                        <div class="sa-item-sub">Mentor Application</div>
+                        <div class="sa-item-msg">{{ app.specialization }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                </div>
                 {% endif %}
                 {# Older group #}
-                {% if olderReqs is not empty or olderApps is not empty %}
-                <div class="sa-group-hd older">Older</div>
-                {% for req in olderReqs %}
-                <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
-                    <div class="sa-item-sub">Mentor Request</div>
-                    <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}
-                {% for app in olderApps %}
-                <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d') }}</span></div>
-                    <div class="sa-item-sub">Mentor Application</div>
-                    <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}
+                {% if olderAll is not empty %}
+                <div class="sa-group-hd older" data-group="all-older" onclick="saToggleGroup(this)">
+                    <span>Older<span class="sa-group-count">{{ olderAll|length }}</span></span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="all-older">
+                {% for entry in olderAll %}
+                    {% if entry.type == 'request' %}{% set req = entry.item %}
+                    <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
+                        <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
+                        <div class="sa-item-sub">Mentor Request</div>
+                        <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
+                    </div>
+                    {% else %}{% set app = entry.item %}
+                    <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
+                        <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d') }}</span></div>
+                        <div class="sa-item-sub">Mentor Application</div>
+                        <div class="sa-item-msg">{{ app.specialization }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                </div>
                 {% endif %}
             </div>
 
             {# ─ Mentor Requests only ─ #}
             <div id="sa-list-custom" style="display:none">
                 {% if requests is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No mentor requests yet.</div>{% endif %}
-                <div class="sa-group-hd">Today</div>
+                <div class="sa-group-hd" data-group="custom-today" onclick="saToggleGroup(this)">
+                    <span>Today{% if todayReqs is not empty %}<span class="sa-group-count">{{ todayReqs|length }}</span>{% endif %}</span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="custom-today">
                 {% if todayReqs is empty %}<div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new requests today.</div>{% endif %}
                 {% for req in todayReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
@@ -230,24 +274,45 @@
                     <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                 </div>{% endfor %}
-                {% if weekReqs is not empty %}<div class="sa-group-hd">This Week</div>{% for req in weekReqs %}
+                </div>
+                {% if weekReqs is not empty %}
+                <div class="sa-group-hd" data-group="custom-week" onclick="saToggleGroup(this)">
+                    <span>This Week<span class="sa-group-count">{{ weekReqs|length }}</span></span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="custom-week">
+                {% for req in weekReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
                     <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}{% endif %}
-                {% if olderReqs is not empty %}<div class="sa-group-hd older">Older</div>{% for req in olderReqs %}
+                </div>{% endfor %}
+                </div>
+                {% endif %}
+                {% if olderReqs is not empty %}
+                <div class="sa-group-hd older" data-group="custom-older" onclick="saToggleGroup(this)">
+                    <span>Older<span class="sa-group-count">{{ olderReqs|length }}</span></span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="custom-older">
+                {% for req in olderReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d') }}</span></div>
                     <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
-                </div>{% endfor %}{% endif %}
+                </div>{% endfor %}
+                </div>
+                {% endif %}
             </div>
 
             {# ─ Applications only ─ #}
             <div id="sa-list-apply" style="display:none">
                 {% if applications is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No applications yet.</div>{% endif %}
-                <div class="sa-group-hd">Today</div>
+                <div class="sa-group-hd" data-group="apply-today" onclick="saToggleGroup(this)">
+                    <span>Today{% if todayApps is not empty %}<span class="sa-group-count">{{ todayApps|length }}</span>{% endif %}</span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="apply-today">
                 {% if todayApps is empty %}<div style="padding:10px 14px;font-size:11.5px;color:#9ca3af;font-style:italic;">No new applications today.</div>{% endif %}
                 {% for app in todayApps %}
                 <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
@@ -255,18 +320,35 @@
                     <div class="sa-item-sub">Mentoring Application</div>
                     <div class="sa-item-msg">{{ app.specialization }}</div>
                 </div>{% endfor %}
-                {% if weekApps is not empty %}<div class="sa-group-hd">This Week</div>{% for app in weekApps %}
+                </div>
+                {% if weekApps is not empty %}
+                <div class="sa-group-hd" data-group="apply-week" onclick="saToggleGroup(this)">
+                    <span>This Week<span class="sa-group-count">{{ weekApps|length }}</span></span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="apply-week">
+                {% for app in weekApps %}
                 <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
                     <div class="sa-item-sub">Mentoring Application</div>
                     <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}{% endif %}
-                {% if olderApps is not empty %}<div class="sa-group-hd older">Older</div>{% for app in olderApps %}
+                </div>{% endfor %}
+                </div>
+                {% endif %}
+                {% if olderApps is not empty %}
+                <div class="sa-group-hd older" data-group="apply-older" onclick="saToggleGroup(this)">
+                    <span>Older<span class="sa-group-count">{{ olderApps|length }}</span></span>
+                    <svg class="sa-group-hd-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="sa-group-body" data-body="apply-older">
+                {% for app in olderApps %}
                 <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
                     <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d') }}</span></div>
                     <div class="sa-item-sub">Mentoring Application</div>
                     <div class="sa-item-msg">{{ app.specialization }}</div>
-                </div>{% endfor %}{% endif %}
+                </div>{% endfor %}
+                </div>
+                {% endif %}
             </div>
 
         </div>
@@ -348,10 +430,10 @@
                 <input type="hidden" name="available_time" value="{{ req.availableTime }}">
                 <input type="hidden" name="meeting_method" value="{{ req.meetingMethod ?: 'Online' }}">
                 <div class="sa-grid2">
-                    <div class="sa-assign-field"><label>Status</label>
-                        <select name="status" class="sa-inp" required>
-                            {% for s in ['Pending','Reviewing','Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
-                        </select>
+                    <div class="sa-assign-field">
+                        <label>Status</label>
+                        <input type="hidden" name="status" value="Assigned">
+                        <input type="text" class="sa-inp" value="Assigned" readonly style="background:#f0fdf4;color:#0D9B00;font-weight:700;cursor:not-allowed;">
                     </div>
                     <div class="sa-assign-field"><label>Meeting Method</label>
                         <select name="meeting_method_override" class="sa-inp">
@@ -413,10 +495,10 @@
                     </div>
                 </div>
                 <div class="sa-grid2">
-                    <div class="sa-assign-field"><label>Status</label>
-                        <select name="status" class="sa-inp" required>
-                            {% for s in ['Pending','Reviewing','Assigned','Completed','Cancelled'] %}<option value="{{ s }}" {{ req.status==s?'selected':'' }}>{{ s }}</option>{% endfor %}
-                        </select>
+                    <div class="sa-assign-field">
+                        <label>Status</label>
+                        <input type="hidden" name="status" value="Assigned">
+                        <input type="text" class="sa-inp" value="Assigned" readonly style="background:#f0fdf4;color:#0D9B00;font-weight:700;cursor:not-allowed;">
                     </div>
                 </div>
                 <div class="sa-assign-field" style="margin-bottom:0;"><label>Notes</label>
@@ -474,10 +556,10 @@
             <div class="sa-sec">Supporting Description</div>
             <div class="sa-notes">{{ app.supportingDescription }}</div>
             {% endif %}
-            {% if app.proofOfExpertise %}
+            {% if app.supportingDocuments %}
             <div class="sa-sec">Proof of Expertise</div>
             <div class="sa-proof-row">
-                {% for file in app.proofOfExpertise %}
+                {% for file in app.supportingDocuments %}
                     {% if file ends with '.pdf' %}
                     <a href="{{ asset('uploads/profiles/' ~ file) }}" target="_blank" class="sa-proof-pdf">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
@@ -538,82 +620,31 @@
                 <div style="font-size:11px;color:#9ca3af;">All admin &amp; super admin actions on mentor applications &amp; mentor requests</div>
             </div>
         </div>
-        <div class="sa-audit-search-wrap">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="auditSearchInput" placeholder="Search by name, action, admin…" oninput="auditFilter()" autocomplete="off">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span id="auditPaginationInfo" style="font-size:11px;color:#9ca3af;"></span>
+            <div class="sa-audit-search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="auditSearchInput" placeholder="Search by name, action, admin…" oninput="auditSearchDebounce()" autocomplete="off">
+            </div>
         </div>
     </div>
-
-    {% if auditLogs is not defined or auditLogs is empty %}
-    <div class="sa-audit-empty">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span>No activity recorded yet. Actions on applications and requests will appear here.</span>
+    <div id="auditTableArea">
+        <div class="sa-audit-table-wrap">
+            <table class="sa-audit-table" id="auditTable">
+                <thead><tr>
+                    <th>Date &amp; Time</th><th>Subject</th><th>Type</th>
+                    <th>Action</th><th>Status Change</th><th>Performed By</th><th>Note</th>
+                </tr></thead>
+                <tbody id="auditTbody"></tbody>
+            </table>
+        </div>
+        <div id="auditEmpty" class="sa-audit-empty" style="display:none;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>No activity recorded yet.</span>
+        </div>
+        <div id="auditLoading" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">Loading…</div>
     </div>
-    {% else %}
-    <div class="sa-audit-table-wrap">
-        <table class="sa-audit-table" id="auditTable">
-            <thead>
-                <tr>
-                    <th>Date &amp; Time</th>
-                    <th>Subject</th>
-                    <th>Type</th>
-                    <th>Action</th>
-                    <th>Status Change</th>
-                    <th>Performed By</th>
-                    <th>Note</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for log in auditLogs %}
-            {% set actionMeta = {
-                'approve':       {'label': 'Approved',        'cls': 'audit-action-approve'},
-                'reject':        {'label': 'Rejected',        'cls': 'audit-action-reject'},
-                'update_status': {'label': 'Status Updated',  'cls': 'audit-action-update'},
-                'create_mentor': {'label': 'Mentor Created',  'cls': 'audit-action-create'},
-                'assign':        {'label': 'Assigned',        'cls': 'audit-action-assign'}
-            } %}
-            {% set meta = actionMeta[log.action] ?? {'label': log.action|capitalize, 'cls': 'audit-action-default'} %}
-            {% set typeLabel = log.subjectType == 'application' ? 'Application' : 'Mentor Request' %}
-            <tr class="sa-audit-row" data-log-id="{{ log.id }}" data-search="{{ (log.subjectLabel ~ ' ' ~ meta.label ~ ' ' ~ (log.performedByName ?? '') ~ ' ' ~ typeLabel)|lower }}">
-                <td class="sa-audit-time">
-                    <span class="sa-audit-date">{{ log.loggedAt|date('M d, Y') }}</span>
-                    <span class="sa-audit-clock">{{ log.loggedAt|date('h:i A') }}</span>
-                </td>
-                <td>
-                    <span class="sa-audit-subject">{{ log.subjectLabel }}</span>
-                    {% if log.subjectId %}<span class="sa-audit-id">#{{ log.subjectId }}</span>{% endif %}
-                </td>
-                <td>
-                    <span class="sa-audit-type-badge {{ log.subjectType == 'application' ? 'type-app' : 'type-req' }}">{{ typeLabel }}</span>
-                </td>
-                <td><span class="sa-audit-action-badge {{ meta.cls }}">{{ meta.label }}</span></td>
-                <td>
-                    {% if log.previousStatus or log.newStatus %}
-                    <span class="sa-audit-status-flow">
-                        {% if log.previousStatus %}<span class="sa-audit-prev-status">{{ log.previousStatus }}</span>{% endif %}
-                        {% if log.previousStatus and log.newStatus %}
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                        {% endif %}
-                        {% if log.newStatus %}<span class="badge {{ log.newStatus|lower|replace({' ': '-'}) }} sa-audit-new-status">{{ log.newStatus }}</span>{% endif %}
-                    </span>
-                    {% else %}<span style="color:#d1d5db;">—</span>{% endif %}
-                </td>
-                <td>
-                    <div class="sa-audit-actor">
-                        <div class="sa-audit-actor-av">{{ (log.performedByName ?? 'S')|slice(0,1)|upper }}</div>
-                        <div>
-                            <div class="sa-audit-actor-name">{{ log.performedByName ?? 'System' }}</div>
-                            {% if log.performedByRole %}<div class="sa-audit-actor-role">{{ log.performedByRole }}</div>{% endif %}
-                        </div>
-                    </div>
-                </td>
-                <td class="sa-audit-note">{{ log.note ? (log.note|length > 60 ? log.note|slice(0,60) ~ '…' : log.note) : '—' }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+    <div id="auditPagination" class="sa-audit-pagination"></div>
 </div>
 
 <style>
@@ -651,16 +682,130 @@
 .sa-audit-actor-name{font-size:12px;font-weight:600;color:#111827;}
 .sa-audit-actor-role{font-size:10.5px;color:#9ca3af;}
 .sa-audit-note{color:#6b7280;max-width:180px;font-size:12px;}
-.sa-audit-hidden{display:none;}
+.sa-audit-pagination{display:flex;align-items:center;justify-content:center;gap:4px;padding:12px 20px;border-top:1px solid #f3f4f6;flex-wrap:wrap;}
+.sa-audit-pg-btn{padding:5px 11px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;font-weight:600;color:#374151;background:#fff;cursor:pointer;transition:background .12s;}
+.sa-audit-pg-btn:hover{background:#f9fafb;}
+.sa-audit-pg-btn.active{background:#0D9B00;color:#fff;border-color:#0D9B00;}
+.sa-audit-pg-btn:disabled{opacity:.4;cursor:default;}
 </style>
 
 <script>
-function auditFilter(){
-    var q=document.getElementById('auditSearchInput').value.toLowerCase();
-    document.querySelectorAll('.sa-audit-row').forEach(function(row){
-        row.classList.toggle('sa-audit-hidden', q!=='' && !row.dataset.search.includes(q));
-    });
-}
+(function(){
+    var AUDIT_URL = '{{ path("mentoring_audit_log_data") }}';
+    var PER_PAGE  = 15;
+    var _page    = 1;
+    var _pages   = 1;
+    var _total   = 0;
+    var _search  = '';
+    var _topId   = 0;
+    var _debounce= null;
+    var _loading = false;
+
+    function auditBuildRow(log){
+        var actionMeta={
+            'approve'      :{label:'Approved',      cls:'audit-action-approve'},
+            'reject'       :{label:'Rejected',       cls:'audit-action-reject'},
+            'update_status':{label:'Status Updated', cls:'audit-action-update'},
+            'create_mentor':{label:'Mentor Created', cls:'audit-action-create'},
+            'assign'       :{label:'Assigned',       cls:'audit-action-assign'}
+        };
+        var meta=actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
+        var typeLabel=log.subjectType==='application'?'Application':'Mentor Request';
+        var typeCls  =log.subjectType==='application'?'type-app':'type-req';
+        var note=log.note?(log.note.length>60?log.note.slice(0,60)+'…':log.note):'—';
+        var statusFlow='';
+        if(log.previousStatus||log.newStatus){
+            statusFlow='<span class="sa-audit-status-flow">';
+            if(log.previousStatus) statusFlow+='<span class="sa-audit-prev-status">'+log.previousStatus+'</span>';
+            if(log.previousStatus&&log.newStatus) statusFlow+='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+            if(log.newStatus) statusFlow+='<span class="badge '+log.newStatus.toLowerCase().replace(/ /g,'-')+' sa-audit-new-status">'+log.newStatus+'</span>';
+            statusFlow+='</span>';
+        } else { statusFlow='<span style="color:#d1d5db;">—</span>'; }
+        return '<tr class="sa-audit-row" data-log-id="'+log.id+'">'
+            +'<td class="sa-audit-time"><span class="sa-audit-date">'+log.loggedAt+'</span><span class="sa-audit-clock">'+log.loggedAtTime+'</span></td>'
+            +'<td><span class="sa-audit-subject">'+log.subjectLabel+'</span>'+(log.subjectId?'<span class="sa-audit-id">#'+log.subjectId+'</span>':'')+'</td>'
+            +'<td><span class="sa-audit-type-badge '+typeCls+'">'+typeLabel+'</span></td>'
+            +'<td><span class="sa-audit-action-badge '+meta.cls+'">'+meta.label+'</span></td>'
+            +'<td>'+statusFlow+'</td>'
+            +'<td><div class="sa-audit-actor"><div class="sa-audit-actor-av">'+log.performedByName.slice(0,1).toUpperCase()+'</div><div><div class="sa-audit-actor-name">'+log.performedByName+'</div>'+(log.performedByRole?'<div class="sa-audit-actor-role">'+log.performedByRole+'</div>':'')+'</div></div></td>'
+            +'<td class="sa-audit-note">'+note+'</td>'
+            +'</tr>';
+    }
+
+    function auditRenderPagination(){
+        var pg = document.getElementById('auditPagination');
+        if(!pg) return;
+        if(_pages<=1){ pg.innerHTML=''; return; }
+        var html='';
+        html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page-1)+')" '+(_page<=1?'disabled':'')+'>&lsaquo; Prev</button>';
+        var start=Math.max(1,_page-2), end=Math.min(_pages,_page+2);
+        if(start>1) html+='<button class="sa-audit-pg-btn" onclick="auditGoPage(1)">1</button>'+(start>2?'<span style="padding:0 4px;color:#9ca3af;">…</span>':'');
+        for(var i=start;i<=end;i++) html+='<button class="sa-audit-pg-btn'+(_page===i?' active':'')+' " onclick="auditGoPage('+i+')">'+i+'</button>';
+        if(end<_pages) html+=(end<_pages-1?'<span style="padding:0 4px;color:#9ca3af;">…</span>':'')+'<button class="sa-audit-pg-btn" onclick="auditGoPage('+_pages+')">'+_pages+'</button>';
+        html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page+1)+')" '+(_page>=_pages?'disabled':'')+'> Next &rsaquo;</button>';
+        pg.innerHTML=html;
+        var info=document.getElementById('auditPaginationInfo');
+        if(info) info.textContent=_total+' total · page '+_page+' of '+_pages;
+    }
+
+    function auditLoadPage(page){
+        if(_loading) return;
+        _loading=true;
+        var loading=document.getElementById('auditLoading');
+        var tbody=document.getElementById('auditTbody');
+        var empty=document.getElementById('auditEmpty');
+        if(loading) loading.style.display='block';
+        if(tbody) tbody.innerHTML='';
+        if(empty) empty.style.display='none';
+        var url=AUDIT_URL+'?page='+page+'&per_page='+PER_PAGE+(s_search?'&search='+encodeURIComponent(_search):'');
+        fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
+        .then(function(r){return r.ok?r.json():null;})
+        .then(function(data){
+            _loading=false;
+            if(loading) loading.style.display='none';
+            if(!data||!data.logs){ if(empty) empty.style.display=''; return; }
+            _page=data.page; _pages=data.pages; _total=data.total;
+            if(data.logs.length>0){
+                if(_page===1) _topId=data.logs[0].id;
+                if(tbody) tbody.innerHTML=data.logs.map(auditBuildRow).join('');
+                if(empty) empty.style.display='none';
+            } else {
+                if(tbody) tbody.innerHTML='';
+                if(empty) empty.style.display='';
+            }
+            auditRenderPagination();
+        })
+        .catch(function(){_loading=false;if(loading)loading.style.display='none';if(empty)empty.style.display='';});
+    }
+    var s_search=false;
+    window.auditGoPage=function(p){ _page=p; auditLoadPage(p); };
+    window.auditSearchDebounce=function(){
+        clearTimeout(_debounce);
+        _debounce=setTimeout(function(){
+            _search=document.getElementById('auditSearchInput').value.trim();
+            s_search=_search!=='';
+            _page=1;
+            auditLoadPage(1);
+        },400);
+    };
+
+    /* poll: only checks page 1 for new top entry, no full rebuild */
+    function auditPoll(){
+        fetch(AUDIT_URL+'?page=1&per_page=1',{headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
+        .then(function(r){return r.ok?r.json():null;})
+        .then(function(data){
+            if(!data||!data.logs||!data.logs.length) return;
+            var newTop=data.logs[0].id;
+            if(_topId>0&&newTop>_topId){
+                _topId=newTop;
+                auditLoadPage(1);
+                _saToast&&_saToast('New activity recorded.',true);
+            }
+        }).catch(function(){});
+    }
+
+    document.addEventListener('DOMContentLoaded',function(){ auditLoadPage(1); setInterval(auditPoll,20000); });
+})();
 </script>
 
 {# ── Create Mentor Modal - Only for Super Admin ── #}
@@ -801,6 +946,40 @@ function saDeclineApp(id){
     document.getElementById('decline-note-'+id).value=note;
     document.getElementById('decline-form-'+id).submit();
 }
+/* ── collapsible group headers ── */
+var SA_STORE = 'sa_groups_admin';
+function saGroupsLoad(){ try{ return JSON.parse(localStorage.getItem(SA_STORE)||'{}'); }catch(e){ return {}; } }
+function saGroupsSave(s){ try{ localStorage.setItem(SA_STORE, JSON.stringify(s)); }catch(e){} }
+function saInitGroups(){
+    var state = saGroupsLoad();
+    document.querySelectorAll('.sa-group-hd[data-group]').forEach(function(hd){
+        var key = hd.dataset.group;
+        var body = document.querySelector('.sa-group-body[data-body="'+key+'"]');
+        if(!body) return;
+        var collapsed = Object.prototype.hasOwnProperty.call(state, key) ? state[key] : (key.endsWith('-week') || key.endsWith('-older'));
+        body.style.maxHeight = collapsed ? '0px' : body.scrollHeight + 'px';
+        if(collapsed){ hd.classList.add('collapsed'); body.classList.add('collapsed'); }
+        else { hd.classList.remove('collapsed'); body.classList.remove('collapsed'); }
+    });
+}
+function saToggleGroup(hd){
+    var key = hd.dataset.group;
+    var body = document.querySelector('.sa-group-body[data-body="'+key+'"]');
+    if(!body) return;
+    var isCollapsed = hd.classList.contains('collapsed');
+    var state = saGroupsLoad();
+    if(isCollapsed){
+        hd.classList.remove('collapsed'); body.classList.remove('collapsed');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        state[key] = false;
+    } else {
+        hd.classList.add('collapsed'); body.classList.add('collapsed');
+        body.style.maxHeight = '0px';
+        state[key] = true;
+    }
+    saGroupsSave(state);
+}
+document.addEventListener('DOMContentLoaded', saInitGroups);
 /* ── search filter ── */
 function saFilterList(){
     var q=document.getElementById('saSearch').value.toLowerCase();

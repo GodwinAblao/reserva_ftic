@@ -267,7 +267,7 @@ class MentoringController extends AbstractController
             'applications'       => $applications,
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'is_super_admin'     => $this->isGranted('ROLE_SUPER_ADMIN'),
-            'auditLogs'          => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
+            'auditLogs'          => [],
             'allSpecializations' => $specializations,
         ]);
     }
@@ -324,10 +324,17 @@ class MentoringController extends AbstractController
 
     #[Route('/super-admin/audit-log/data', name: 'mentoring_audit_log_data', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function auditLogData(EntityManagerInterface $em): JsonResponse
+    public function auditLogData(Request $request, EntityManagerInterface $em): JsonResponse
     {
-        $logs = $em->getRepository(MentoringAuditLog::class)->findRecent(60);
-        $data = array_map(static function (MentoringAuditLog $log): array {
+        $page    = max(1, (int) $request->query->get('page', 1));
+        $perPage = max(5, min(50, (int) $request->query->get('per_page', 15)));
+        $search  = trim((string) $request->query->get('search', ''));
+
+        /** @var \App\Repository\MentoringAuditLogRepository $repo */
+        $repo   = $em->getRepository(MentoringAuditLog::class);
+        $result = $repo->findPaginated($page, $perPage, $search);
+
+        $serialize = static function (MentoringAuditLog $log): array {
             return [
                 'id'              => $log->getId(),
                 'loggedAt'        => $log->getLoggedAt()->format('M d, Y'),
@@ -342,8 +349,16 @@ class MentoringController extends AbstractController
                 'performedByRole' => $log->getPerformedByRole() ?? '',
                 'note'            => $log->getNote() ?? '',
             ];
-        }, $logs);
-        $response = $this->json(['logs' => $data, 'ts' => time()]);
+        };
+
+        $response = $this->json([
+            'logs'     => array_map($serialize, $result['logs']),
+            'total'    => $result['total'],
+            'pages'    => $result['pages'],
+            'page'     => $result['page'],
+            'per_page' => $perPage,
+            'ts'       => time(),
+        ]);
         $response->setMaxAge(0)->headers->addCacheControlDirective('no-store');
         return $response;
     }

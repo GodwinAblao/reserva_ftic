@@ -68,4 +68,37 @@ class MentoringAuditLogRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return array{logs: MentoringAuditLog[], total: int, pages: int}
+     */
+    public function findPaginated(int $page = 1, int $perPage = 15, string $search = ''): array
+    {
+        $s = '%' . mb_strtolower($search) . '%';
+
+        $countQb = $this->createQueryBuilder('a')->select('COUNT(a.id)');
+        $dataQb  = $this->createQueryBuilder('a')
+            ->select('a')
+            ->leftJoin('a.performedBy', 'u')
+            ->addSelect('u')
+            ->orderBy('a.id', 'DESC');
+
+        if ($search !== '') {
+            $expr = 'a.subjectLabel LIKE :s OR a.performedByName LIKE :s OR a.action LIKE :s OR a.subjectType LIKE :s';
+            $countQb->andWhere($expr)->setParameter('s', $s);
+            $dataQb->andWhere($expr)->setParameter('s', $s);
+        }
+
+        $total = (int) $countQb->getQuery()->getSingleScalarResult();
+        $pages = max(1, (int) ceil($total / $perPage));
+        $page  = max(1, min($page, $pages));
+
+        $logs = $dataQb
+            ->setFirstResult(($page - 1) * $perPage)
+            ->setMaxResults($perPage)
+            ->getQuery()
+            ->getResult();
+
+        return ['logs' => $logs, 'total' => $total, 'pages' => $pages, 'page' => $page];
+    }
 }

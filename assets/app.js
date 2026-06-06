@@ -298,6 +298,7 @@ const NavProgress = (() => {
 ───────────────────────────────────────────────────────────── */
 (() => {
     const POLL_MS   = 60000;
+    const CACHE_TTL = 120000;
     const MAX_ITEMS = 8;
 
     const SC = {
@@ -373,7 +374,7 @@ const NavProgress = (() => {
         if (!panel || fetching) return;
         fetching = true;
 
-        ApiMemoryCache.fetchCached(url, 30000).then(data => {
+        ApiMemoryCache.fetchCached(url, CACHE_TTL).then(data => {
             fetching = false;
             if (!data) {
                 // Only show error if panel still shows skeletons (first load failed)
@@ -404,7 +405,7 @@ const NavProgress = (() => {
         const lbPanel = document.getElementById('adminLeaderboardList');
         if (!lbPanel) return;
 
-        ApiMemoryCache.fetchCached(url, 30000).then(data => {
+        ApiMemoryCache.fetchCached(url, CACHE_TTL).then(data => {
             if (!data) {
                 lbPanel.innerHTML = EMPTY('Could not load — retrying…');
                 setTimeout(() => loadMentoringPanel(url), 5000);
@@ -415,7 +416,8 @@ const NavProgress = (() => {
         });
     }
 
-    /* ── Panel state — reset on every navigation ── */
+    /* ── Panel state — reset timers on navigation but keep hash/count
+       so cached content renders instantly without a DOM wipe ── */
     let _pollTimer    = null;
     let _guardTimer   = null;
     let _clearGuard   = null;
@@ -425,9 +427,8 @@ const NavProgress = (() => {
         clearTimeout(_guardTimer);
         clearInterval(_clearGuard);
         _pollTimer = _guardTimer = _clearGuard = null;
-        lastHash  = null;
-        lastCount = -1;
         fetching  = false;
+        /* keep lastHash/lastCount — prevents wiping cached panel content on navigation */
     }
 
     /* ── Boot — runs on every page (initial + Turbo navigations) ── */
@@ -439,6 +440,19 @@ const NavProgress = (() => {
 
         if (recentMeta) {
             const url = recentMeta.content;
+
+            /* Render cached data instantly before the network fetch completes */
+            const cached = ApiMemoryCache.get(url, CACHE_TTL);
+            if (cached) {
+                const panel = document.getElementById('adminNotifList');
+                if (panel) {
+                    const list = (cached.recentReservations ?? []).slice(0, MAX_ITEMS);
+                    const html = list.length ? list.map(buildResvCard).join('') : EMPTY('No recent reservations');
+                    const h = hashStr(html);
+                    if (h !== lastHash) { lastHash = h; lastCount = list.length; panel.innerHTML = html; }
+                }
+            }
+
             pollReservations(url);
 
             // Safety: replace stuck skeletons after 9 s
@@ -477,7 +491,7 @@ const NavProgress = (() => {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _pollTimer) {
             const url = document.querySelector('meta[name="admin-recent-api"]')?.content;
-            if (url && !ApiMemoryCache.hasFresh(url, 30000)) pollReservations(url);
+            if (url && !ApiMemoryCache.hasFresh(url, CACHE_TTL)) pollReservations(url);
         }
     });
 
@@ -686,7 +700,8 @@ const NavProgress = (() => {
    · Turbo-safe: resets state on every navigation
 ───────────────────────────────────────────────────────────── */
 (() => {
-    const POLL_MS = 60000;
+    const POLL_MS   = 60000;
+    const CACHE_TTL = 120000;
 
     const SC = {
         Pending:   ['#fef3c7','#92400e'],
@@ -749,7 +764,7 @@ const NavProgress = (() => {
         if (_fetching) return;
         _fetching = true;
 
-        ApiMemoryCache.fetchCached(url, 30000).then(data => {
+        ApiMemoryCache.fetchCached(url, CACHE_TTL).then(data => {
             _fetching = false;
             if (!data) return;
 
@@ -807,7 +822,7 @@ const NavProgress = (() => {
         clearTimeout(_guardTimer);
         _timer = _guardTimer = null;
         _fetching = false;
-        _hashes = { resv: null, ment: null, req: null };
+        /* keep _hashes — prevents wiping cached panel content on navigation */
     }
 
     function boot() {
@@ -818,7 +833,33 @@ const NavProgress = (() => {
 
         const url = meta.content;
 
-        // Immediate first fetch resolves from memory on quick Turbo return visits.
+        /* Render cached data instantly before network fetch completes */
+        const cached = ApiMemoryCache.get(url, CACHE_TTL);
+        if (cached) {
+            const resvEl = document.getElementById('userResvList');
+            const mentEl = document.getElementById('userMentorshipList');
+            const reqEl  = document.getElementById('userMentorReqList');
+            const reqPnl = document.getElementById('userMentorReqPanel');
+            const EMPTY_  = msg => `<div style="text-align:center;color:#9ca3af;font-size:12.5px;padding:20px 12px;line-height:1.5">${msg}</div>`;
+            if (resvEl) {
+                const list = (cached.recentReservations ?? []).slice(0, 8);
+                const html = list.length ? list.map(buildResvCard).join('') : EMPTY_('You have no upcoming reservations yet.<br>Book a facility to get started!');
+                const h = hashStr(html); if (h !== _hashes.resv) { _hashes.resv = h; resvEl.innerHTML = html; }
+            }
+            if (mentEl) {
+                const list = (cached.mentorships ?? []).slice(0, 8);
+                const html = list.length ? list.map(buildMentorshipCard).join('') : EMPTY_("You don't have any scheduled mentor sessions at the moment.<br>Request one now to get started!");
+                const h = hashStr(html); if (h !== _hashes.ment) { _hashes.ment = h; mentEl.innerHTML = html; }
+            }
+            if (reqEl) {
+                const list = (cached.mentorRequests ?? []).slice(0, 8);
+                const hasApps = (cached.mentorApplications ?? []).length > 0;
+                if (reqPnl) reqPnl.style.display = (list.length > 0 || hasApps) ? '' : 'none';
+                const html = list.length ? list.map(buildMentorReqCard).join('') : EMPTY_('No mentor requests yet.');
+                const h = hashStr(html); if (h !== _hashes.req) { _hashes.req = h; reqEl.innerHTML = html; }
+            }
+        }
+
         pollUserSidebar(url);
 
         // Safety: replace stuck skeletons after 9 s if first fetch failed
@@ -842,7 +883,7 @@ const NavProgress = (() => {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && _timer) {
             const meta = document.querySelector('meta[name="user-sidebar-api"]');
-            if (meta && !ApiMemoryCache.hasFresh(meta.content, 30000)) pollUserSidebar(meta.content);
+            if (meta && !ApiMemoryCache.hasFresh(meta.content, CACHE_TTL)) pollUserSidebar(meta.content);
         }
     });
 

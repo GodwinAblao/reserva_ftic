@@ -195,11 +195,11 @@
                     <span>{{ application.supportingDescription }}</span>
                 </div>
                 {% endif %}
-{% if application.proofOfExpertise %}
+{% if application.supportingDocuments %}
                 <div class="detail-row">
                     <span class="label">Files:</span>
                     <div class="file-list">
-                        {% for file in application.proofOfExpertise %}
+                        {% for file in application.supportingDocuments %}
                             {% if file %}
                                 <a href="{{ asset('uploads/profiles/' ~ file) }}" target="_blank" class="file-thumbnail">
                                     <img src="{{ asset('uploads/profiles/' ~ file) }}" alt="Proof of expertise" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">

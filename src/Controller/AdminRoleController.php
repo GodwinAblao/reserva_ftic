@@ -626,7 +626,7 @@ class AdminRoleController extends AbstractController
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
             'is_super_admin' => false,
-            'auditLogs' => $em->getRepository(MentoringAuditLog::class)->findRecent(60),
+            'auditLogs' => [],
             'allSpecializations' => $specializations,
         ]);
     }

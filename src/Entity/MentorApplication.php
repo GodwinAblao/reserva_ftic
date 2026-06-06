@@ -49,6 +49,18 @@ class MentorApplication
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $mentoringPublicBio = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $contactNumber = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $yearsOfExperience = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $experienceUnit = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $supportingDescription = null;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $availabilityTime = null;
 
@@ -107,6 +119,18 @@ class MentorApplication
 
     public function getMentoringPublicBio(): ?string { return $this->mentoringPublicBio; }
     public function setMentoringPublicBio(?string $mentoringPublicBio): self { $this->mentoringPublicBio = $mentoringPublicBio; $this->touch(); return $this; }
+
+    public function getContactNumber(): ?string { return $this->contactNumber; }
+    public function setContactNumber(?string $contactNumber): self { $this->contactNumber = $contactNumber; $this->touch(); return $this; }
+
+    public function getYearsOfExperience(): ?int { return $this->yearsOfExperience; }
+    public function setYearsOfExperience(?int $yearsOfExperience): self { $this->yearsOfExperience = $yearsOfExperience; $this->touch(); return $this; }
+
+    public function getExperienceUnit(): ?string { return $this->experienceUnit; }
+    public function setExperienceUnit(?string $experienceUnit): self { $this->experienceUnit = $experienceUnit; $this->touch(); return $this; }
+
+    public function getSupportingDescription(): ?string { return $this->supportingDescription; }
+    public function setSupportingDescription(?string $supportingDescription): self { $this->supportingDescription = $supportingDescription; $this->touch(); return $this; }
 
     public function getAvailabilityTime(): ?string { return $this->availabilityTime; }
     public function setAvailabilityTime(?string $availabilityTime): self { $this->availabilityTime = $availabilityTime; $this->touch(); return $this; }
