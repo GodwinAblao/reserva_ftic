@@ -15,7 +15,7 @@ import { Controller } from '@hotwired/stimulus';
 export default class extends Controller {
     static targets = ['badge', 'dropdown', 'list', 'empty'];
 
-    static POLL_INTERVAL = 60000;
+    static POLL_INTERVAL = 120000;
 
     initialize() {
         this._pollTimer    = null;

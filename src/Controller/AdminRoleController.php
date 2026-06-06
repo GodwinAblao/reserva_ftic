@@ -75,7 +75,7 @@ class AdminRoleController extends AbstractController
         });
 
         $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=10');
+        $response->headers->set('Cache-Control', 'private, max-age=120');
         return $response;
     }
 
@@ -140,7 +140,7 @@ class AdminRoleController extends AbstractController
         });
 
         $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=10');
+        $response->headers->set('Cache-Control', 'private, max-age=120');
         return $response;
     }
 

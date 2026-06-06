@@ -105,7 +105,7 @@
 {% block body %}
 
     {% set notification_bell_markup %}
-    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-user-id="{{ app.user and app.user.id ? app.user.id : '' }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+    <div id="floatingNotificationBell" class="floating-notification-bell" data-controller="notification" data-turbo-permanent data-user-id="{{ app.user and app.user.id ? app.user.id : '' }}" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
         <button type="button" aria-expanded="false" class="notification-bell-btn" data-action="click->notification#toggleDropdown" style="
             width: 50px;
             height: 50px;
@@ -311,91 +311,16 @@
         </main>
 
         {% if not is_regular_user %}
-        {# API meta tags — read by app.js to drive right-panel polling #}
-        <meta name="admin-stats-api"    content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_stats') : path('admin_role_api_stats') }}">
-        <meta name="admin-recent-api"   content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_recent_reservations') : path('admin_role_api_recent_reservations') }}">
-        {% set is_mentoring_page = route == 'admin_role_mentorship_coordination' or route == 'admin_mentorship_coordination' or route starts with 'mentoring_' %}
-        {% if is_mentoring_page %}
-        <meta name="admin-mentoring-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_mentoring', {'type': 'requests'}) : path('admin_role_api_mentoring_panel') }}">
-        {% endif %}
-        {% if is_mentoring_page %}
-                <div class="admin-right-col">
-                    <aside class="admin-right-panel" id="adminRightPanel">
-                        <div class="admin-right-panel-title rp-title-green" id="rp-title-reservations">Recent Reservation Request</div>
-                        <div id="adminNotifList">
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                        </div>
-                    </aside>
-                    <aside class="admin-right-panel">
-                        <div class="admin-right-panel-title rp-title-green">LeaderBoard</div>
-                        <div id="adminLeaderboardList">
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
-                            <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div></div>
-                        </div>
-                    </aside>
-                </div>
-        {% else %}
-                <aside class="admin-right-panel" id="adminRightPanel">
-                    <div class="admin-right-panel-title rp-title-green" id="rp-title-reservations">Recent Reservation Request</div>
-                    <div id="adminNotifList">
-                        <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                        <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                        <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                    </div>
-                </aside>
-        {% endif %}
+        <meta name="admin-recent-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_recent_reservations') : path('admin_role_api_recent_reservations') }}">
+        <aside class="admin-right-panel" id="adminRightPanel">
+            <div class="admin-right-panel-title rp-title-green" id="rp-title-reservations">Recent Reservation Request</div>
+            <div id="adminNotifList"></div>
+        </aside>
         {% endif %}
 
-        {% set hide_user_right_col = route starts with 'mentoring_' %}
-        {% if is_regular_user and is_granted('IS_AUTHENTICATED_FULLY') and not hide_user_right_col %}
-        {# User sidebar meta tag — read by app.js section 7 #}
-        <meta name="user-sidebar-api" content="{{ path('api_user_sidebar') }}">
-        <div class="user-right-col">
-            {# Panel 1: Recent Reservation Requests #}
-            <aside class="admin-right-panel user-right-panel">
-                <div class="admin-right-panel-title rp-title-green">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="opacity:.8;flex-shrink:0"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z"/></svg>
-                    Recent Reservations
-                </div>
-                <div id="userResvList">
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                </div>
-                <a href="{{ path('user_reservations') }}" class="user-rp-viewmore">View more →</a>
-            </aside>
-            {# Panel 2: My Mentorships #}
-            <aside class="admin-right-panel user-right-panel">
-                <div class="admin-right-panel-title rp-title-green">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="opacity:.8;flex-shrink:0"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Z"/></svg>
-                    My Mentorships
-                </div>
-                <div id="userMentorshipList">
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                </div>
-                <a href="{{ path('mentoring_index') }}" class="user-rp-viewmore">View more →</a>
-            </aside>
-            {# Panel 3: Mentor Requests (only shown when user has submitted any) #}
-            <aside class="admin-right-panel user-right-panel" id="userMentorReqPanel">
-                <div class="admin-right-panel-title rp-title-green">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="opacity:.8;flex-shrink:0"><path d="M12 12.5c2.485 0 4.5-2.015 4.5-4.5S14.485 3.5 12 3.5 7.5 5.515 7.5 8s2.015 4.5 4.5 4.5Zm0 2c-4.418 0-8 2.239-8 5v1.25h16V19.5c0-2.761-3.582-5-8-5Z"/></svg>
-                    Mentor Requests
-                </div>
-                <div id="userMentorReqList">
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                    <div class="admin-notif-card rp-skeleton"><div class="rp-skel-line rp-skel-title"></div><div class="rp-skel-line rp-skel-desc"></div><div class="rp-skel-line rp-skel-time"></div></div>
-                </div>
-                <a href="{{ path('mentoring_index') }}" class="user-rp-viewmore">View more →</a>
-            </aside>
-        </div>
-        {% endif %}
+
     </div>
     
-    {# Right-panel live updates are handled by app.js (section 4) — no inline script needed #}
 
     <script>
     (() => {

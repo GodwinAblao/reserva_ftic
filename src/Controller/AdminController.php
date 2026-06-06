@@ -63,12 +63,12 @@ class AdminController extends AbstractController
     public function apiStats(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
         $data = $cache->get('admin.dashboard.stats.superadmin.v2', function (ItemInterface $item) use ($em): array {
-            $item->expiresAfter(10);
+            $item->expiresAfter(120);
             return $this->getDashboardData($em);
         });
 
         $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=10');
+        $response->headers->set('Cache-Control', 'private, max-age=120');
         return $response;
     }
 
@@ -76,12 +76,12 @@ class AdminController extends AbstractController
     public function apiRecentReservations(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
         $data = $cache->get('admin.dashboard.recent_reservations.v2', function (ItemInterface $item) use ($em): array {
-            $item->expiresAfter(10);
+            $item->expiresAfter(120);
             return $this->getRecentReservationsData($em);
         });
 
         $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=10');
+        $response->headers->set('Cache-Control', 'private, max-age=120');
         return $response;
     }
 

@@ -1,11 +1,11 @@
-{% extends 'layouts/app.html.twig' %}
+﻿{% extends 'layouts/app.html.twig' %}
 
 {% block title %}Mentoring Dashboard | Admin | Reserva FTIC{% endblock %}
 
 {% block stylesheets %}
 {{ parent() }}
 <style>
-/* ── toolbar ── */
+/* â”€â”€ toolbar â”€â”€ */
 .sa-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
 .sa-toolbar-search{flex:1;display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:9px;padding:0 14px;background:#fff;height:40px;}
 .sa-toolbar-search input{flex:1;border:none;outline:none;font-size:13px;color:#374151;background:transparent;}
@@ -14,9 +14,9 @@
 .sa-create-btn:hover{background:#0a7d00;}
 .sa-mentors-btn{display:flex;align-items:center;gap:7px;padding:10px 16px;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;text-decoration:none;transition:background .15s;}
 .sa-mentors-btn:hover{background:#f9fafb;}
-/* ── 2-col layout ── */
+/* â”€â”€ 2-col layout â”€â”€ */
 .sa-dashboard{display:grid;grid-template-columns:268px 1fr;gap:14px;align-items:start;}
-/* ── left panel ── */
+/* â”€â”€ left panel â”€â”€ */
 .sa-left{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;height:680px;}
 .sa-left-head{padding:12px 12px 0;}
 .sa-type-sel{width:100%;padding:9px 12px;border:1px solid #e5e7eb;border-radius:9px;font-size:13px;font-weight:700;color:#374151;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none;cursor:pointer;margin-bottom:10px;}
@@ -36,7 +36,7 @@
 .sa-item-time{font-size:10.5px;color:#9ca3af;}
 .sa-item-sub{font-size:11px;color:#6b7280;}
 .sa-item-msg{font-size:11px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
-/* ── center panel ── */
+/* â”€â”€ center panel â”€â”€ */
 .sa-center{background:#fff;border:1px solid #e5e7eb;border-radius:14px;min-height:680px;display:flex;flex-direction:column;}
 .sa-center-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:#9ca3af;font-size:13px;min-height:680px;}
 .sa-det{padding:28px 32px 28px;overflow-y:auto;flex:1;}
@@ -108,11 +108,11 @@
 
 {% block content %}
 
-{# ── Toolbar ── #}
+{# â”€â”€ Toolbar â”€â”€ #}
 <div class="sa-toolbar">
     <div class="sa-toolbar-search">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="saSearch" placeholder="Search by name…" oninput="saFilterList()">
+        <input type="text" id="saSearch" placeholder="Search by nameâ€¦" oninput="saFilterList()">
     </div>
     {# Only Super Admin can create mentors #}
     {% if is_super_admin %}
@@ -128,12 +128,12 @@
     <span class="sa-refresh-indicator" style="font-size:12px;color:#9ca3af;margin-left:auto;"></span>
 </div>
 
-{# ── Admin Read-Only Notice ── #}
+{# â”€â”€ Admin Read-Only Notice â”€â”€ #}
 
-{# ── 2-col dashboard ── #}
+{# â”€â”€ 2-col dashboard â”€â”€ #}
 <div class="sa-dashboard">
 
-    {# ── LEFT PANEL ── #}
+    {# â”€â”€ LEFT PANEL â”€â”€ #}
     <div class="sa-left">
         <div class="sa-left-head">
             <select class="sa-type-sel" id="saTypeSelect" onchange="saOnTypeChange()">
@@ -144,7 +144,7 @@
         </div>
         <div class="sa-left-scroll">
 
-            {# ── pre-compute buckets once for reuse ── #}
+            {# â”€â”€ pre-compute buckets once for reuse â”€â”€ #}
             {% set today = "now"|date("Y-m-d") %}
             {% set weekCutoff = "now - 7 days"|date("Y-m-d") %}
             {% set weekTs = "now - 7 days"|date("U") %}
@@ -163,7 +163,7 @@
                 {% else %}{% set olderApps = olderApps|merge([app]) %}{% endif %}
             {% endfor %}
 
-            {# ── Build combined chronological buckets for the All list ── #}
+            {# â”€â”€ Build combined chronological buckets for the All list â”€â”€ #}
             {% set todayAll = [] %}
             {% for req in todayReqs %}{% set todayAll = todayAll|merge([{item: req, type: 'request', ts: req.createdAt|date('U')}]) %}{% endfor %}
             {% for app in todayApps %}{% set todayAll = todayAll|merge([{item: app, type: 'application', ts: app.createdAt|date('U')}]) %}{% endfor %}
@@ -179,7 +179,7 @@
             {% for app in olderApps %}{% set olderAll = olderAll|merge([{item: app, type: 'application', ts: app.createdAt|date('U')}]) %}{% endfor %}
             {% set olderAll = olderAll|sort((a, b) => b.ts <=> a.ts) %}
 
-            {# ─ ALL list (merged, default) ─ #}
+            {# â”€ ALL list (merged, default) â”€ #}
             <div id="sa-list-all">
                 {% if requests is empty and applications is empty %}
                     <div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No requests or applications yet.</div>
@@ -219,13 +219,13 @@
                 {% for entry in weekAll %}
                     {% if entry.type == 'request' %}{% set req = entry.item %}
                     <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                        <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
+                        <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d Â· H:i') }}</span></div>
                         <div class="sa-item-sub">Mentor Request</div>
                         <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                     </div>
                     {% else %}{% set app = entry.item %}
                     <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                        <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
+                        <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d Â· H:i') }}</span></div>
                         <div class="sa-item-sub">Mentor Application</div>
                         <div class="sa-item-msg">{{ app.specialization }}</div>
                     </div>
@@ -259,7 +259,7 @@
                 {% endif %}
             </div>
 
-            {# ─ Mentor Requests only ─ #}
+            {# â”€ Mentor Requests only â”€ #}
             <div id="sa-list-custom" style="display:none">
                 {% if requests is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No mentor requests yet.</div>{% endif %}
                 <div class="sa-group-hd" data-group="custom-today" onclick="saToggleGroup(this)">
@@ -283,7 +283,7 @@
                 <div class="sa-group-body" data-body="custom-week">
                 {% for req in weekReqs %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ (req.fullName ?: (req.student.firstName~' '~req.student.lastName))|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d · H:i') }}</span></div>
+                    <div class="sa-item-top"><span class="sa-item-name">{{ req.fullName ?: (req.student.firstName~' '~req.student.lastName) }}</span><span class="sa-item-time">{{ req.createdAt|date('M d Â· H:i') }}</span></div>
                     <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                 </div>{% endfor %}
@@ -305,7 +305,7 @@
                 {% endif %}
             </div>
 
-            {# ─ Applications only ─ #}
+            {# â”€ Applications only â”€ #}
             <div id="sa-list-apply" style="display:none">
                 {% if applications is empty %}<div style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">No applications yet.</div>{% endif %}
                 <div class="sa-group-hd" data-group="apply-today" onclick="saToggleGroup(this)">
@@ -329,7 +329,7 @@
                 <div class="sa-group-body" data-body="apply-week">
                 {% for app in weekApps %}
                 <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d · H:i') }}</span></div>
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d Â· H:i') }}</span></div>
                     <div class="sa-item-sub">Mentoring Application</div>
                     <div class="sa-item-msg">{{ app.specialization }}</div>
                 </div>{% endfor %}
@@ -354,7 +354,7 @@
         </div>
     </div>{# end left #}
 
-    {# ── CENTER PANEL ── #}
+    {# â”€â”€ CENTER PANEL â”€â”€ #}
     <div class="sa-center" id="saCenterPanel">
 
         {# Empty state #}
@@ -363,7 +363,7 @@
             <span>Select an item from the left panel to view details</span>
         </div>
 
-        {# ── Mentor Request detail panes ── #}
+        {# â”€â”€ Mentor Request detail panes â”€â”€ #}
         {% for req in requests %}
         {% set hasChosen = req.mentorProfile is not null %}
         {% set displayDept = req.departmentCourse ?: (hasChosen and req.mentorProfile.user ? (req.mentorProfile.user.degreeName ?: req.mentorProfile.user.degree) : '') %}
@@ -374,23 +374,23 @@
                 <div class="sa-det-av">{{ (req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown'))|slice(0,1)|upper }}</div>
                 <div>
                     <div class="sa-det-name">{{ req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown') }}</div>
-                    <div class="sa-det-sub">{{ req.student ? req.student.email : (req.email ?: '—') }}</div>
+                    <div class="sa-det-sub">{{ req.student ? req.student.email : (req.email ?: 'â€”') }}</div>
                 </div>
             </div>
             <div class="sa-sec">Mentor Request Details</div>
             <div class="sa-hr"></div>
             <div class="sa-sec">Requester Information</div>
             <div class="sa-grid4">
-                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: (req.student ? ((req.student.firstName~' '~req.student.lastName)|trim) : '—') }}</p></div>
-                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student ? req.student.email : (req.email ?: '—') }}</p></div>
-                <div class="sa-field"><label>Degree / Course</label><p>{{ req.departmentCourse ?: '—' }}</p></div>
+                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: (req.student ? ((req.student.firstName~' '~req.student.lastName)|trim) : 'â€”') }}</p></div>
+                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student ? req.student.email : (req.email ?: 'â€”') }}</p></div>
+                <div class="sa-field"><label>Degree / Course</label><p>{{ req.departmentCourse ?: 'â€”' }}</p></div>
                 <div class="sa-field"><label>Status</label><p><span class="badge {{ req.status|lower }}">{{ req.status }}</span></p></div>
             </div>
             <div class="sa-sec">Request Preferences</div>
             <div class="sa-grid3">
-                <div class="sa-field"><label>Specialization Needed</label><p>{{ req.preferredExpertise ?: (req.mentorProfile ? req.mentorProfile.specialization : '—') }}</p></div>
-                <div class="sa-field"><label>Preferred Day</label><p>{{ req.availableDates ?: '—' }}</p></div>
-                <div class="sa-field"><label>Preferred Time</label><p>{{ req.preferredSchedule ?: (req.availableTime ?: '—') }}</p></div>
+                <div class="sa-field"><label>Specialization Needed</label><p>{{ req.preferredExpertise ?: (req.mentorProfile ? req.mentorProfile.specialization : 'â€”') }}</p></div>
+                <div class="sa-field"><label>Preferred Day</label><p>{{ req.availableDates ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Preferred Time</label><p>{{ req.preferredSchedule ?: (req.availableTime ?: 'â€”') }}</p></div>
             </div>
             {% if req.message %}
             <div class="sa-sec">Message / Notes</div>
@@ -400,9 +400,9 @@
             <div class="sa-sec">Current Assignment</div>
             <div class="sa-chosen">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-                Assigned to: <strong>{{ req.assignedMentorName }}</strong>{% if req.assignedMentorExpertise %} · {{ req.assignedMentorExpertise }}{% endif %}
-                {% if req.availableTime %} · {{ req.availableTime }}{% endif %}
-                {% if req.meetingMethod %} · {{ req.meetingMethod }}{% endif %}
+                Assigned to: <strong>{{ req.assignedMentorName }}</strong>{% if req.assignedMentorExpertise %} Â· {{ req.assignedMentorExpertise }}{% endif %}
+                {% if req.availableTime %} Â· {{ req.availableTime }}{% endif %}
+                {% if req.meetingMethod %} Â· {{ req.meetingMethod }}{% endif %}
             </div>
             {% endif %}
             {% if req.adminInstructions %}
@@ -437,7 +437,7 @@
                     </div>
                     <div class="sa-assign-field"><label>Meeting Method</label>
                         <select name="meeting_method_override" class="sa-inp">
-                            <option value="">— keep current —</option>
+                            <option value="">â€” keep current â€”</option>
                             <option value="In Person" {{ req.meetingMethod=='In Person'?'selected':'' }}>In Person</option>
                             <option value="Online" {{ req.meetingMethod=='Online'?'selected':'' }}>Online</option>
                             <option value="Hybrid" {{ req.meetingMethod=='Hybrid'?'selected':'' }}>Hybrid</option>
@@ -460,14 +460,14 @@
                             <span style="font-size:10px;font-weight:600;color:#0D9B00;cursor:pointer;" onclick="rqToggle({{ req.id }})" id="rq-tlbl-{{ req.id }}">Type manually</span>
                         </label>
                         <select name="mentor_id" class="sa-inp" id="rq-sel-{{ req.id }}" onchange="rqFill({{ req.id }})">
-                            <option value="">— Pick from system —</option>
+                            <option value="">â€” Pick from system â€”</option>
                             {% for mentor in mentors %}<option value="{{ mentor.id }}" data-name="{{ mentor.displayName }}" data-spec="{{ mentor.specialization }}" {{ req.assignedMentorName==mentor.displayName?'selected':'' }}>{{ mentor.displayName }} ({{ mentor.specialization }})</option>{% endfor %}
                         </select>
-                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter mentor name…" value="{{ req.assignedMentorName ?? '' }}" style="display:none;margin-top:6px;">
+                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter mentor nameâ€¦" value="{{ req.assignedMentorName ?? '' }}" style="display:none;margin-top:6px;">
                     </div>
                     <div class="sa-assign-field"><label>Specialization</label>
                         <select name="expertise" class="sa-inp" id="rq-spec-{{ req.id }}">
-                            <option value="">Select…</option>
+                            <option value="">Selectâ€¦</option>
                             {% for specialization in allSpecializations %}<option value="{{ specialization.name }}" {{ req.assignedMentorExpertise==specialization.name?'selected':'' }}>{{ specialization.name }}</option>{% endfor %}
                         </select>
                     </div>
@@ -488,10 +488,10 @@
                 </div>
                 <div class="sa-grid2">
                     <div class="sa-assign-field"><label>Start Time</label>
-                        <input type="time" name="available_time_start" class="sa-inp" value="{{ req.availableTime ? req.availableTime|split(' – ')|first|trim : '' }}">
+                        <input type="time" name="available_time_start" class="sa-inp" value="{{ req.availableTime ? req.availableTime|split(' â€“ ')|first|trim : '' }}">
                     </div>
                     <div class="sa-assign-field"><label>End Time</label>
-                        <input type="time" name="available_time_end" class="sa-inp" value="{{ req.availableTime and '–' in req.availableTime ? req.availableTime|split('–')|last|trim : '' }}">
+                        <input type="time" name="available_time_end" class="sa-inp" value="{{ req.availableTime and 'â€“' in req.availableTime ? req.availableTime|split('â€“')|last|trim : '' }}">
                     </div>
                 </div>
                 <div class="sa-grid2">
@@ -513,7 +513,7 @@
         </div>
         {% endfor %}
 
-        {# ── Application detail panes ── #}
+        {# â”€â”€ Application detail panes â”€â”€ #}
         {% for app in applications %}
         <div class="sa-det" id="sa-det-apply-{{ app.id }}" style="display:none">
             <div class="sa-det-ts">{{ app.createdAt|date('h:i a') }}</div>
@@ -528,25 +528,25 @@
             <div class="sa-hr"></div>
             <div class="sa-sec">Personal Information</div>
             <div class="sa-grid4">
-                <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: '—' }}</p></div>
-                <div class="sa-field"><label>Middle Name</label><p>{{ app.middleName ?: '—' }}</p></div>
-                <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: '—' }}</p></div>
-                <div class="sa-field"><label>Contact Number</label><p>{{ app.contactNumber ?: '—' }}</p></div>
+                <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Middle Name</label><p>{{ app.middleName ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Contact Number</label><p>{{ app.contactNumber ?: 'â€”' }}</p></div>
             </div>
             <div class="sa-grid4">
                 <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ app.email }}</p></div>
-                <div class="sa-field"><label>Program / Course</label><p>{{ app.programCourse ?: '—' }}</p></div>
+                <div class="sa-field"><label>Program / Course</label><p>{{ app.programCourse ?: 'â€”' }}</p></div>
                 <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
             </div>
             <div class="sa-sec">Academic Background &amp; Mentoring</div>
             <div class="sa-grid4">
                 <div class="sa-field"><label>Specialization</label><p>{{ app.specialization }}</p></div>
-                <div class="sa-field"><label>Experience</label><p>{% if app.yearsOfExperience %}{{ app.yearsOfExperience }} {{ app.experienceUnit|default('Years') }}{% else %}—{% endif %}</p></div>
-                <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: '—' }}</p></div>
+                <div class="sa-field"><label>Experience</label><p>{% if app.yearsOfExperience %}{{ app.yearsOfExperience }} {{ app.experienceUnit|default('Years') }}{% else %}â€”{% endif %}</p></div>
+                <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: 'â€”' }}</p></div>
             </div>
             <div class="sa-grid2">
-                <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: '—' }}</p></div>
-                <div class="sa-field"><label>Highest Education</label><p>{{ app.highestEducation ?: '—' }}</p></div>
+                <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Highest Education</label><p>{{ app.highestEducation ?: 'â€”' }}</p></div>
             </div>
             {% if app.reason %}
             <div class="sa-sec">Reason / Message</div>
@@ -608,7 +608,7 @@
 
 </div>{# end sa-dashboard #}
 
-{# ── Audit Log ── #}
+{# â”€â”€ Audit Log â”€â”€ #}
 <div class="sa-audit-wrap" style="margin-top:24px;">
     <div class="sa-audit-header">
         <div style="display:flex;align-items:center;gap:10px;">
@@ -624,7 +624,7 @@
             <span id="auditPaginationInfo" style="font-size:11px;color:#9ca3af;"></span>
             <div class="sa-audit-search-wrap">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="auditSearchInput" placeholder="Search by name, action, admin…" oninput="auditSearchDebounce()" autocomplete="off">
+                <input type="text" id="auditSearchInput" placeholder="Search by name, action, adminâ€¦" oninput="auditSearchDebounce()" autocomplete="off">
             </div>
         </div>
     </div>
@@ -642,7 +642,7 @@
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span>No activity recorded yet.</span>
         </div>
-        <div id="auditLoading" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">Loading…</div>
+        <div id="auditLoading" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">Loadingâ€¦</div>
     </div>
     <div id="auditPagination" class="sa-audit-pagination"></div>
 </div>
@@ -712,7 +712,7 @@
         var meta=actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
         var typeLabel=log.subjectType==='application'?'Application':'Mentor Request';
         var typeCls  =log.subjectType==='application'?'type-app':'type-req';
-        var note=log.note?(log.note.length>60?log.note.slice(0,60)+'…':log.note):'—';
+        var note=log.note?(log.note.length>60?log.note.slice(0,60)+'â€¦':log.note):'â€”';
         var statusFlow='';
         if(log.previousStatus||log.newStatus){
             statusFlow='<span class="sa-audit-status-flow">';
@@ -720,7 +720,7 @@
             if(log.previousStatus&&log.newStatus) statusFlow+='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
             if(log.newStatus) statusFlow+='<span class="badge '+log.newStatus.toLowerCase().replace(/ /g,'-')+' sa-audit-new-status">'+log.newStatus+'</span>';
             statusFlow+='</span>';
-        } else { statusFlow='<span style="color:#d1d5db;">—</span>'; }
+        } else { statusFlow='<span style="color:#d1d5db;">â€”</span>'; }
         return '<tr class="sa-audit-row" data-log-id="'+log.id+'">'
             +'<td class="sa-audit-time"><span class="sa-audit-date">'+log.loggedAt+'</span><span class="sa-audit-clock">'+log.loggedAtTime+'</span></td>'
             +'<td><span class="sa-audit-subject">'+log.subjectLabel+'</span>'+(log.subjectId?'<span class="sa-audit-id">#'+log.subjectId+'</span>':'')+'</td>'
@@ -739,13 +739,13 @@
         var html='';
         html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page-1)+')" '+(_page<=1?'disabled':'')+'>&lsaquo; Prev</button>';
         var start=Math.max(1,_page-2), end=Math.min(_pages,_page+2);
-        if(start>1) html+='<button class="sa-audit-pg-btn" onclick="auditGoPage(1)">1</button>'+(start>2?'<span style="padding:0 4px;color:#9ca3af;">…</span>':'');
+        if(start>1) html+='<button class="sa-audit-pg-btn" onclick="auditGoPage(1)">1</button>'+(start>2?'<span style="padding:0 4px;color:#9ca3af;">â€¦</span>':'');
         for(var i=start;i<=end;i++) html+='<button class="sa-audit-pg-btn'+(_page===i?' active':'')+' " onclick="auditGoPage('+i+')">'+i+'</button>';
-        if(end<_pages) html+=(end<_pages-1?'<span style="padding:0 4px;color:#9ca3af;">…</span>':'')+'<button class="sa-audit-pg-btn" onclick="auditGoPage('+_pages+')">'+_pages+'</button>';
+        if(end<_pages) html+=(end<_pages-1?'<span style="padding:0 4px;color:#9ca3af;">â€¦</span>':'')+'<button class="sa-audit-pg-btn" onclick="auditGoPage('+_pages+')">'+_pages+'</button>';
         html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page+1)+')" '+(_page>=_pages?'disabled':'')+'> Next &rsaquo;</button>';
         pg.innerHTML=html;
         var info=document.getElementById('auditPaginationInfo');
-        if(info) info.textContent=_total+' total · page '+_page+' of '+_pages;
+        if(info) info.textContent=_total+' total Â· page '+_page+' of '+_pages;
     }
 
     function auditLoadPage(page){
@@ -788,32 +788,16 @@
             auditLoadPage(1);
         },400);
     };
-
-    /* poll: only checks page 1 for new top entry, no full rebuild */
-    function auditPoll(){
-        fetch(AUDIT_URL+'?page=1&per_page=1',{headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
-        .then(function(r){return r.ok?r.json():null;})
-        .then(function(data){
-            if(!data||!data.logs||!data.logs.length) return;
-            var newTop=data.logs[0].id;
-            if(_topId>0&&newTop>_topId){
-                _topId=newTop;
-                auditLoadPage(1);
-                _saToast&&_saToast('New activity recorded.',true);
-            }
-        }).catch(function(){});
-    }
-
-    document.addEventListener('DOMContentLoaded',function(){ auditLoadPage(1); setInterval(auditPoll,20000); });
+    document.addEventListener('DOMContentLoaded',function(){ auditLoadPage(1); });
 })();
 </script>
 
-{# ── Create Mentor Modal - Only for Super Admin ── #}
+{# â”€â”€ Create Mentor Modal - Only for Super Admin â”€â”€ #}
 {% if is_super_admin %}
 <div class="sa-modal-overlay" id="createMentorModal">
     <div class="sa-modal-backdrop" onclick="closeCreateMentor()"></div>
     <div class="sa-modal">
-        <button class="sa-modal-close" onclick="closeCreateMentor()">×</button>
+        <button class="sa-modal-close" onclick="closeCreateMentor()">Ã—</button>
         <h3>Create Mentor Profile</h3>
         <form method="post" action="{{ path('mentoring_create_mentor') }}" data-turbo="false">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('create_mentor') }}">
@@ -821,35 +805,35 @@
             <div style="margin-bottom:16px;">
                 <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px;">Select User</label>
                 <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required>
-                    <option value="">— Select a user —</option>
+                    <option value="">â€” Select a user â€”</option>
                     {% for user in users %}
                     <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}" data-role="{{ user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}">
-                        {{ user.firstName }} {{ user.lastName }} — {{ user.email }}
+                        {{ user.firstName }} {{ user.lastName }} â€” {{ user.email }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
             <div class="sa-modal-row cols-4">
-                <div class="sa-modal-field"><label>First Name</label><input type="text" id="cm_first" class="sa-modal-input readonly" readonly placeholder="—"></div>
-                <div class="sa-modal-field"><label>Middle Name</label><input type="text" id="cm_middle" class="sa-modal-input readonly" readonly placeholder="—"></div>
-                <div class="sa-modal-field"><label>Last Name</label><input type="text" id="cm_last" class="sa-modal-input readonly" readonly placeholder="—"></div>
-                <div class="sa-modal-field"><label>Institutional Email</label><input type="text" id="cm_email" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>First Name</label><input type="text" id="cm_first" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
+                <div class="sa-modal-field"><label>Middle Name</label><input type="text" id="cm_middle" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
+                <div class="sa-modal-field"><label>Last Name</label><input type="text" id="cm_last" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
+                <div class="sa-modal-field"><label>Institutional Email</label><input type="text" id="cm_email" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
             </div>
             <div class="sa-modal-row cols-2">
-                <div class="sa-modal-field"><label>Program</label><input type="text" id="cm_program" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Program</label><input type="text" id="cm_program" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
                 <div class="sa-modal-field"><label>Specialization</label>
                     <select name="specialization" class="sa-modal-input" required>
-                        <option value="">Select specialization…</option>
+                        <option value="">Select specializationâ€¦</option>
                         {% for specialization in allSpecializations %}
                         <option value="{{ specialization.name }}">{{ specialization.name }}</option>{% endfor %}
                     </select>
                 </div>
             </div>
             <div class="sa-modal-row cols-3">
-                <div class="sa-modal-field"><label>Role</label><input type="text" id="cm_role" class="sa-modal-input readonly" readonly placeholder="—"></div>
+                <div class="sa-modal-field"><label>Role</label><input type="text" id="cm_role" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
                 <div class="sa-modal-field"><label>Mentoring Day</label>
                     <select name="availability_day" class="sa-modal-input">
-                        <option value="">Select day…</option>
+                        <option value="">Select dayâ€¦</option>
                         {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F','Saturday'] %}
                         <option value="{{ day }}">{{ day }}</option>{% endfor %}
                     </select>
@@ -857,14 +841,14 @@
                 <div class="sa-modal-field"><label>Mentoring Time</label>
                     <div class="sa-modal-time-row">
                         <input type="time" name="availability_start" class="sa-modal-input" min="07:00" max="21:00">
-                        <span class="sa-modal-time-sep">–</span>
+                        <span class="sa-modal-time-sep">â€“</span>
                         <input type="time" name="availability_end" class="sa-modal-input" min="07:00" max="21:00">
                     </div>
                 </div>
             </div>
             <div class="sa-modal-row cols-1">
                 <div class="sa-modal-field"><label>Mentoring Bio</label>
-                    <textarea name="bio" class="sa-modal-input" rows="4" placeholder="Short bio about this mentor…" style="resize:vertical;min-height:90px;"></textarea>
+                    <textarea name="bio" class="sa-modal-input" rows="4" placeholder="Short bio about this mentorâ€¦" style="resize:vertical;min-height:90px;"></textarea>
                 </div>
             </div>
             <div class="sa-modal-footer"><button type="submit" class="sa-modal-save">Save</button></div>
@@ -874,7 +858,7 @@
 {% endif %}
 
 <script>
-/* ── toast ── */
+/* â”€â”€ toast â”€â”€ */
 function _saToast(msg,ok){
     var n=document.createElement('div');
     n.style.cssText='position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
@@ -882,7 +866,7 @@ function _saToast(msg,ok){
     n.textContent=msg; document.body.appendChild(n);
     setTimeout(function(){n.style.opacity='0';setTimeout(function(){n.remove();},300);},3200);
 }
-/* ── Create Mentor modal ── */
+/* â”€â”€ Create Mentor modal â”€â”€ */
 function openCreateMentor(){document.getElementById('createMentorModal').classList.add('open');}
 function closeCreateMentor(){document.getElementById('createMentorModal').classList.remove('open');}
 (function(){
@@ -900,7 +884,7 @@ function cmFillUser(sel){
     document.getElementById('cm_program').value=o.dataset.program||'';
     document.getElementById('cm_role').value=o.dataset.role||'';
 }
-/* ── type dropdown toggle ── */
+/* â”€â”€ type dropdown toggle â”€â”€ */
 function saOnTypeChange(){
     var v=document.getElementById('saTypeSelect').value;
     document.getElementById('sa-list-all').style.display   = v==='all'    ? '' : 'none';
@@ -910,7 +894,7 @@ function saOnTypeChange(){
 }
 /* init on load */
 document.addEventListener('DOMContentLoaded', function(){ saOnTypeChange(); });
-/* ── item selection ── */
+/* â”€â”€ item selection â”€â”€ */
 function saClearCenter(){
     document.getElementById('saCenterEmpty').style.display='';
     document.querySelectorAll('.sa-det').forEach(function(el){el.style.display='none';});
@@ -922,7 +906,7 @@ function saSelectItem(el,type,id){
     if(pane){pane.style.display='';document.getElementById('saCenterEmpty').style.display='none';}
     if(el) el.classList.add('active');
 }
-/* ── mentor input toggle ── */
+/* â”€â”€ mentor input toggle â”€â”€ */
 function rqToggle(id){
     var sel=document.getElementById('rq-sel-'+id);
     var txt=document.getElementById('rq-txt-'+id);
@@ -939,14 +923,14 @@ function rqFill(id){
     var o=sel.options[sel.selectedIndex];
     if(o&&o.value&&o.dataset.spec){for(var i=0;i<spec.options.length;i++){if(spec.options[i].value===o.dataset.spec){spec.selectedIndex=i;break;}}}
 }
-/* ── decline application ── */
+/* â”€â”€ decline application â”€â”€ */
 function saDeclineApp(id){
     var note=prompt('Reason for rejection (optional):','');
     if(note===null) return;
     document.getElementById('decline-note-'+id).value=note;
     document.getElementById('decline-form-'+id).submit();
 }
-/* ── collapsible group headers ── */
+/* â”€â”€ collapsible group headers â”€â”€ */
 var SA_STORE = 'sa_groups_admin';
 function saGroupsLoad(){ try{ return JSON.parse(localStorage.getItem(SA_STORE)||'{}'); }catch(e){ return {}; } }
 function saGroupsSave(s){ try{ localStorage.setItem(SA_STORE, JSON.stringify(s)); }catch(e){} }
@@ -980,7 +964,7 @@ function saToggleGroup(hd){
     saGroupsSave(state);
 }
 document.addEventListener('DOMContentLoaded', saInitGroups);
-/* ── search filter ── */
+/* â”€â”€ search filter â”€â”€ */
 function saFilterList(){
     var q=document.getElementById('saSearch').value.toLowerCase();
     document.querySelectorAll('.sa-item').forEach(function(el){
@@ -988,74 +972,7 @@ function saFilterList(){
     });
 }
 
-/* ── Real-time polling ── */
-(function(){
-    var POLL_URL = '{{ path("admin_role_api_mentoring_poll") }}';
-    var INTERVAL = 15000;
-    var _lastTs = 0;
-
-    function statusBadge(status){
-        var cls = {pending:'pending',assigned:'assigned',approved:'approved',completed:'completed',cancelled:'cancelled',rejected:'rejected'}[status.toLowerCase()] || 'pending';
-        return '<span class="badge '+cls+'">'+status+'</span>';
-    }
-
-    function patchRequestPane(r){
-        var pane = document.getElementById('sa-det-custom-'+r.id);
-        if(!pane) return;
-        pane.querySelectorAll('.sa-field').forEach(function(f){
-            var lbl = f.querySelector('label');
-            if(!lbl) return;
-            var txt = lbl.textContent.trim();
-            var p = f.querySelector('p');
-            if(!p) return;
-            if(txt === 'Status')               p.innerHTML = statusBadge(r.status);
-            if(txt === 'Degree / Course')      p.textContent = r.departmentCourse || '—';
-            if(txt === 'Specialization Needed') p.textContent = r.preferredExpertise || '—';
-            if(txt === 'Preferred Day')        p.textContent = r.availableDates || '—';
-            if(txt === 'Preferred Time')       p.textContent = r.preferredSchedule || r.availableTime || '—';
-        });
-        /* update assigned mentor block if present */
-        var chosen = pane.querySelector('.sa-chosen strong');
-        if(chosen && r.assignedMentorName) chosen.textContent = r.assignedMentorName;
-    }
-
-    function patchAppPane(a){
-        var pane = document.getElementById('sa-det-apply-'+a.id);
-        if(!pane) return;
-        pane.querySelectorAll('.sa-field').forEach(function(f){
-            var lbl = f.querySelector('label');
-            if(!lbl) return;
-            var p = f.querySelector('p');
-            if(!p) return;
-            if(lbl.textContent.trim() === 'Status') p.innerHTML = statusBadge(a.status);
-        });
-    }
-
-    function doPoll(){
-        fetch(POLL_URL, {headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(data){
-            if(!data) return;
-            var isNew = data.ts > _lastTs && _lastTs > 0;
-            _lastTs = data.ts;
-            (data.requests||[]).forEach(function(r){ if(r.isAssistance) patchRequestPane(r); });
-            (data.applications||[]).forEach(patchAppPane);
-            if(isNew){
-                var ind = document.querySelector('.sa-refresh-indicator');
-                if(ind){ ind.textContent = 'Updated just now'; setTimeout(function(){ ind.textContent=''; }, 4000); }
-            }
-        })
-        .catch(function(){});
-    }
-
-    document.addEventListener('DOMContentLoaded', function(){
-        _lastTs = Date.now()/1000|0;
-        setTimeout(doPoll, 3000);
-        setInterval(doPoll, INTERVAL);
-    });
-})();
-
-/* ── AJAX for assign forms (with post-success lock to prevent double audit logs) ── */
+/* â”€â”€ AJAX for assign forms (with post-success lock to prevent double audit logs) â”€â”€ */
 function bindAjaxForms(){
     document.querySelectorAll('form[data-ajax="true"]').forEach(function(form){
         if(form.dataset.ajaxBound === '1') return;
@@ -1064,7 +981,7 @@ function bindAjaxForms(){
             e.preventDefault();
             var btn=form.querySelector('button[type="submit"]');
             var orig=btn?btn.innerHTML:'';
-            if(btn){btn.disabled=true;btn.innerHTML='Saving…';}
+            if(btn){btn.disabled=true;btn.innerHTML='Savingâ€¦';}
             fetch(form.action,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'},body:new FormData(form)})
             .then(function(r){if(!r.ok)throw new Error();return r.json();})
             .then(function(j){
@@ -1072,7 +989,6 @@ function bindAjaxForms(){
                     if(btn){btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Saved';btn.style.background='#0D9B00';}
                     form.querySelectorAll('input,select,textarea,button').forEach(function(el){el.disabled=true;});
                     _saToast(j.message||'Updated.',true);
-                    doPollAudit();
                 } else {
                     if(btn){btn.disabled=false;btn.innerHTML=orig;}
                     _saToast(j.message||'Error.',false);
@@ -1091,66 +1007,5 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 document.addEventListener('turbo:load', bindAjaxForms);
 
-/* ── Real-time Audit Log Polling ── */
-var _auditLastId = 0;
-function doPollAudit(){
-    fetch('{{ path("mentoring_audit_log_data") }}',{headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
-    .then(function(r){return r.ok?r.json():null;})
-    .then(function(data){
-        if(!data||!data.logs) return;
-        var tbody = document.querySelector('#auditTable tbody');
-        if(!tbody) return;
-        var actionMeta = {
-            'approve':       {label:'Approved',       cls:'audit-action-approve'},
-            'reject':        {label:'Rejected',        cls:'audit-action-reject'},
-            'update_status': {label:'Status Updated',  cls:'audit-action-update'},
-            'create_mentor': {label:'Mentor Created',  cls:'audit-action-create'},
-            'assign':        {label:'Assigned',        cls:'audit-action-assign'}
-        };
-        function statusBadge(s){
-            if(!s) return '';
-            return '<span class="badge '+s.toLowerCase().replace(/ /g,'-')+' sa-audit-new-status">'+s+'</span>';
-        }
-        function buildRow(log){
-            var meta = actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
-            var typeLabel = log.subjectType==='application'?'Application':'Mentor Request';
-            var typeCls = log.subjectType==='application'?'type-app':'type-req';
-            var search = (log.subjectLabel+' '+meta.label+' '+(log.performedByName||'')+' '+typeLabel).toLowerCase();
-            var statusFlow = '';
-            if(log.previousStatus||log.newStatus){
-                statusFlow = '<span class="sa-audit-status-flow">';
-                if(log.previousStatus) statusFlow += '<span class="sa-audit-prev-status">'+log.previousStatus+'</span>';
-                if(log.previousStatus&&log.newStatus) statusFlow += '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
-                if(log.newStatus) statusFlow += statusBadge(log.newStatus);
-                statusFlow += '</span>';
-            } else { statusFlow = '<span style="color:#d1d5db;">—</span>'; }
-            var noteText = log.note ? (log.note.length>60?log.note.slice(0,60)+'…':log.note) : '—';
-            return '<tr class="sa-audit-row" data-search="'+search+'" data-log-id="'+log.id+'">'
-                +'<td class="sa-audit-time"><span class="sa-audit-date">'+log.loggedAt+'</span><span class="sa-audit-clock">'+log.loggedAtTime+'</span></td>'
-                +'<td><span class="sa-audit-subject">'+log.subjectLabel+'</span>'+(log.subjectId?'<span class="sa-audit-id">#'+log.subjectId+'</span>':'')+'</td>'
-                +'<td><span class="sa-audit-type-badge '+typeCls+'">'+typeLabel+'</span></td>'
-                +'<td><span class="sa-audit-action-badge '+meta.cls+'">'+meta.label+'</span></td>'
-                +'<td>'+statusFlow+'</td>'
-                +'<td><div class="sa-audit-actor"><div class="sa-audit-actor-av">'+log.performedByName.slice(0,1).toUpperCase()+'</div><div><div class="sa-audit-actor-name">'+log.performedByName+'</div>'+(log.performedByRole?'<div class="sa-audit-actor-role">'+log.performedByRole+'</div>':'')+'</div></div></td>'
-                +'<td class="sa-audit-note">'+noteText+'</td>'
-                +'</tr>';
-        }
-        var topId = data.logs.length > 0 ? data.logs[0].id : 0;
-        var isNew = _auditLastId > 0 && topId > _auditLastId;
-        _auditLastId = topId;
-        tbody.innerHTML = data.logs.map(buildRow).join('');
-        auditFilter();
-        if(isNew){ _saToast('Audit log updated.',true); }
-    })
-    .catch(function(){});
-}
-document.addEventListener('DOMContentLoaded',function(){
-    _auditLastId = (function(){
-        var first = document.querySelector('#auditTable tbody tr[data-log-id]');
-        return first ? parseInt(first.dataset.logId)||0 : 0;
-    })();
-    setTimeout(doPollAudit,5000);
-    setInterval(doPollAudit,10000);
-});
 </script>
 {% endblock %}

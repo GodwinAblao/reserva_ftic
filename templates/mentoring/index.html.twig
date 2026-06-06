@@ -1,4 +1,4 @@
-{% extends 'layouts/app.html.twig' %}
+﻿{% extends 'layouts/app.html.twig' %}
 
 {% block title %}Mentoring | Reserva FTIC{% endblock %}
 
@@ -14,7 +14,7 @@
             display: block;
         }
 
-        /* ── Cancel Request Modal ── */
+        /* â”€â”€ Cancel Request Modal â”€â”€ */
         .cancel-modal-overlay{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;align-items:center;justify-content:center;padding:1.5rem;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
         .cancel-modal-overlay.is-open{display:flex;}
         .cancel-modal-dialog{width:min(480px,100%);background:#fff;border-radius:20px;padding:2rem 2rem 1.75rem;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28);animation:cancelModalIn .18s ease-out;}
@@ -214,13 +214,13 @@
                                         {% if request.assignedMentorName %}
                                         <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
                                             <span class="info-label">Assigned Mentor</span>
-                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} — {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} â€” {{ request.assignedMentorExpertise }}{% endif %}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.availableTime %}
                                         <div class="info-item wide">
                                             <span class="info-label">Confirmed Time</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' · ' : '' }}{{ request.availableTime }}</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' Â· ' : '' }}{{ request.availableTime }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod %}
@@ -288,7 +288,7 @@
                         {% if pendingMentorRequests|length > 0 %}
                             <div class="pending-section-header" style="width: 100%; margin-bottom: 16px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #16a34a;">
                                 <h4 style="margin: 0; color: #166534; font-size: 14px; font-weight: 600;">
-                                    📝 Pending Mentor Requests ({{ pendingMentorRequests|length }})
+                                    ðŸ“ Pending Mentor Requests ({{ pendingMentorRequests|length }})
                                 </h4>
                             </div>
                             {% for request in pendingMentorRequests %}
@@ -365,13 +365,13 @@
                                         {% if request.assignedMentorName %}
                                         <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
                                             <span class="info-label">Assigned Mentor</span>
-                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} — {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} â€” {{ request.assignedMentorExpertise }}{% endif %}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.availableTime %}
                                         <div class="info-item wide">
                                             <span class="info-label">Confirmed Time</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' · ' : '' }}{{ request.availableTime }}</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' Â· ' : '' }}{{ request.availableTime }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod == 'Online' and request.meetingLink %}
@@ -412,7 +412,7 @@
                         {% if pendingApplications|length > 0 %}
                             <div class="pending-section-header" style="width: 100%; margin: 24px 0 16px 0; padding: 12px 16px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #2563eb;">
                                 <h4 style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 600;">
-                                    🎓 Pending Mentor Applications ({{ pendingApplications|length }})
+                                    ðŸŽ“ Pending Mentor Applications ({{ pendingApplications|length }})
                                 </h4>
                             </div>
                             {% for application in pendingApplications %}
@@ -686,7 +686,7 @@
                                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                                 </svg>
-                                                <strong>Requested:</strong> {{ request.scheduledDate|date('F d, Y') }} at {{ request.scheduledTime ? request.scheduledTime|date('g:i A') : '—' }}
+                                                <strong>Requested:</strong> {{ request.scheduledDate|date('F d, Y') }} at {{ request.scheduledTime ? request.scheduledTime|date('g:i A') : 'â€”' }}
                                             </div>
                                             {% endif %}
                                             
@@ -723,7 +723,7 @@
                         {% if cancelledRequests|length > 0 %}
                             <div class="pending-section-header" style="width: 100%; margin-bottom: 16px; padding: 12px 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
                                 <h4 style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">
-                                    🚫 Cancelled Requests ({{ cancelledRequests|length }})
+                                    ðŸš« Cancelled Requests ({{ cancelledRequests|length }})
                                 </h4>
                             </div>
                             {% for request in cancelledRequests %}
@@ -802,12 +802,12 @@
                                     <div class="card-info-footer" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; padding: 12px;">
                                         {% if request.cancellationReason %}
                                         <div class="info-item wide">
-                                            <span class="info-label" style="color: #dc2626;">📝 Cancellation Reason</span>
+                                            <span class="info-label" style="color: #dc2626;">ðŸ“ Cancellation Reason</span>
                                             <span class="info-value" style="color: #7f1d1d; font-style: italic;">{{ request.cancellationReason }}</span>
                                         </div>
                                         {% else %}
                                         <div class="info-item wide">
-                                            <span class="info-label" style="color: #dc2626;">📝 Cancellation Reason</span>
+                                            <span class="info-label" style="color: #dc2626;">ðŸ“ Cancellation Reason</span>
                                             <span class="info-value" style="color: #9ca3af; font-style: italic;">No reason provided</span>
                                         </div>
                                         {% endif %}
@@ -861,12 +861,12 @@
                 <p>
                     <strong>
                         {% if recentRequest.preferredExpertise %}{{ recentRequest.preferredExpertise }}{% elseif recentRequest.mentorProfile %}{{ recentRequest.mentorProfile.displayName }}{% else %}Mentor Request{% endif %}
-                    </strong> —
+                    </strong> â€”
                     <span class="info-value status-{{ recentRequest.status|lower }}">{{ recentRequest.status|capitalize }}</span>
                     on {{ recentRequest.createdAt|date('M d, Y') }}.
                 </p>
                 {% if recentRequest.availableDates %}
-                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} · {{ recentRequest.preferredSchedule }}{% endif %}</p>
+                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} Â· {{ recentRequest.preferredSchedule }}{% endif %}</p>
                 {% endif %}
                 {% if recentRequest.assignedMentorName %}
                 <p style="font-size:12px;color:#0D9B00;margin:4px 0 0;font-weight:600;">Assigned: {{ recentRequest.assignedMentorName }}</p>
@@ -896,7 +896,7 @@
             <div class="mentor-list">
                 {% for mentor in leaderboard|slice(0, 3) %}
                     <div class="mentor-item">
-                        <div class="mentor-rank-icon">{{ loop.index == 1 ? '♕' : '♙' }}</div>
+                        <div class="mentor-rank-icon">{{ loop.index == 1 ? 'â™•' : 'â™™' }}</div>
                         <div class="mentor-avatar">
                             <span>{{ mentor.displayName|first|upper }}</span>
                         </div>
@@ -1017,16 +1017,16 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="assistance_schedule_start">Preferred Time — Start <span style="color:#c00">*</span></label>
+                            <label for="assistance_schedule_start">Preferred Time â€” Start <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="19:00" required>
-                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">⚠ Only 7:00 AM – 7:00 PM is allowed.</span>
+                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM â€“ 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-grid form-grid-2">
                         <div class="form-group">
                             <label for="assistance_schedule_end">End Time <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="19:00" required>
-                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">⚠ Only 7:00 AM – 7:00 PM is allowed.</span>
+                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM â€“ 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1308,91 +1308,6 @@
             });
         }
 
-        // ===== USER REQUEST REAL-TIME POLLING =====
-        (function(){
-            var POLL_URL = '{{ path("mentoring_my_requests_data") }}';
-            var INTERVAL = 20000;
-            var _lastStatuses = {};
-
-            function statusClass(s){ return s ? s.toLowerCase() : 'pending'; }
-
-            /* Helper to escape strings for JS */
-            function escapeJS(str){
-                if(!str) return '';
-                return str.replace(/[\\'"]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-            }
-
-            function doPoll(){
-                fetch(POLL_URL, {headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
-                .then(function(r){ return r.ok ? r.json() : null; })
-                .then(function(data){
-                    if(!data || !data.requests) return;
-                    
-                    var changed = false;
-                    data.requests.forEach(function(r){
-                        var prev = _lastStatuses[r.id];
-                        if(prev !== undefined && prev !== r.status) changed = true;
-                        _lastStatuses[r.id] = r.status;
-                        
-                        /* Update existing card status instead of rebuilding */
-                        var card = document.querySelector('.reservation-card-new[data-req-id="'+r.id+'"]');
-                        if(card){
-                            var statusEl = card.querySelector('.info-value[class*="status-"]');
-                            if(statusEl){
-                                statusEl.className = 'info-value status-'+statusClass(r.status);
-                                statusEl.textContent = r.status;
-                            }
-                            /* Update clickability for accepted status */
-                            if(r.status === 'Accepted' && !card.classList.contains('session-item-clickable')){
-                                card.classList.add('session-item-clickable');
-                                card.setAttribute('onclick', 'openSessionDetailsModal({isStudent:true,mentorName:\''+escapeJS(r.mentorProfileName||r.assignedMentorName||'')+'\',mentorEmail:\''+escapeJS(r.mentorEmail||'')+'\',scheduledDate:\''+escapeJS(r.scheduledDate||'Flexible')+'\',scheduledTime:\''+escapeJS(r.scheduledTime||'To be confirmed')+'\',meetingType:\''+escapeJS(r.meetingType||'Not specified')+'\',meetingLink:\''+escapeJS(r.meetingLink||'')+'\',facilityReservedBy:\''+escapeJS(r.facilityReservedBy||'')+'\',meetingLocation:\''+escapeJS(r.meetingLocation||'')+'\',status:\'Accepted\',mentorResponse:\''+escapeJS(r.mentorResponse||'')+'\'})');
-                            }
-                        }
-                    });
-
-                    /* Also update the sidebar Recent Request snippet */
-                    var sideP = document.querySelector('.reservations-side-card p');
-                    if(sideP && data.requests.length > 0){
-                        var latest = data.requests[0];
-                        var spec = latest.preferredExpertise || latest.mentorProfileName || 'Mentor Request';
-                        sideP.innerHTML = '<strong>'+spec+'</strong> — <span class="info-value status-'+statusClass(latest.status)+'">'+latest.status+'</span> on '+latest.createdAt+'.';
-                    }
-
-                    if(changed){
-                        var n=document.createElement('div');
-                        n.style.cssText='position:fixed;top:16px;right:16px;z-index:9999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;background:#d1fae5;color:#065f46;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:opacity .3s;';
-                        n.textContent='Your mentor request was updated!';
-                        document.body.appendChild(n);
-                        setTimeout(function(){n.style.opacity='0';setTimeout(function(){n.remove();},300);},4000);
-                    }
-                })
-                .catch(function(){});
-            }
-            
-            /* Helper to escape strings for JS */
-            function escapeJS(str){
-                if(!str) return '';
-                return str.replace(/[\\'"]/g, '\\$&').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-            }
-
-            function init(){
-                /* Seed initial statuses from rendered cards */
-                document.querySelectorAll('#custom-requests-content .reservation-card-new[data-req-id]').forEach(function(card){
-                    var s = card.querySelector('.info-value[class*="status-"]');
-                    if(s) _lastStatuses[card.dataset.reqId] = s.textContent.trim();
-                });
-                setTimeout(doPoll, 5000);
-                setInterval(doPoll, INTERVAL);
-            }
-
-            if(document.readyState === 'loading'){
-                document.addEventListener('DOMContentLoaded', init, {once:true});
-            } else {
-                init();
-            }
-            document.addEventListener('turbo:load', init);
-        })();
-
         document.querySelectorAll('form[data-loading-label]').forEach(form => {
             if (form.dataset.noLoading === 'true') {
                 return; // Skip loading state for these forms
@@ -1428,7 +1343,7 @@
             margin-bottom: 0.25rem;
         }
 
-        /* ── Mentor Response Modals ── */
+        /* â”€â”€ Mentor Response Modals â”€â”€ */
         .mentor-modal-overlay {
             display: none;
             position: fixed;
@@ -1839,7 +1754,7 @@
         }
     </style>
 
-    {# ── Accept Modal ── #}
+    {# â”€â”€ Accept Modal â”€â”€ #}
     <div class="mentor-modal-overlay" id="acceptModal">
         <div class="mentor-modal-dialog">
             <div class="mentor-modal-header">
@@ -1866,7 +1781,7 @@
                             <line x1="8" y1="2" x2="8" y2="6"></line>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        <strong>Student Requested:</strong> <span id="scheduledDateText">—</span>
+                        <strong>Student Requested:</strong> <span id="scheduledDateText">â€”</span>
                     </div>
                     
                     {# Meeting Type Selection #}
@@ -2007,7 +1922,7 @@
         </div>
     </div>
 
-    {# ── Decline Modal ── #}
+    {# â”€â”€ Decline Modal â”€â”€ #}
     <div class="mentor-modal-overlay" id="declineModal">
         <div class="mentor-modal-dialog">
             <div class="mentor-modal-header">
@@ -2042,7 +1957,7 @@
         </div>
     </div>
 
-    {# ── Session Details Modal ── #}
+    {# â”€â”€ Session Details Modal â”€â”€ #}
     <div class="mentor-modal-overlay" id="sessionDetailsModal">
         <div class="mentor-modal-dialog details-modal">
             <div class="mentor-modal-header">
@@ -2147,7 +2062,7 @@
         </div>
     </div>
 
-    {# ── Cancel Request Modal ── #}
+    {# â”€â”€ Cancel Request Modal â”€â”€ #}
     <div class="cancel-modal-overlay" id="cancelRequestModal">
         <div class="cancel-modal-dialog" style="width: min(520px, 100%);">
             <div class="cancel-modal-icon">
@@ -2186,7 +2101,7 @@
     </div>
 
     <script>
-        // ── Mentor Response Modal Functions ──
+        // â”€â”€ Mentor Response Modal Functions â”€â”€
         let currentRequestId = null;
         
         function openAcceptModal(requestId, studentName, scheduledDate, scheduledTime, csrfToken) {
@@ -2329,7 +2244,7 @@
             if (e.target === this) closeDeclineModal();
         });
         
-        // ── Session Details Modal Functions ──
+        // â”€â”€ Session Details Modal Functions â”€â”€
         function openSessionDetailsModal(requestData) {
             const modal = document.getElementById('sessionDetailsModal');
             
@@ -2457,7 +2372,7 @@
             }
         });
 
-        // ── Cancel Request Modal Functions ──
+        // â”€â”€ Cancel Request Modal Functions â”€â”€
         let cancelFormToSubmit = null;
 
         function openCancelModal(form) {

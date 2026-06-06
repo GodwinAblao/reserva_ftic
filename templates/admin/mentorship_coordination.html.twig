@@ -1,4 +1,4 @@
-{% extends 'layouts/app.html.twig' %}
+﻿{% extends 'layouts/app.html.twig' %}
 
 {% block title %}Mentorship Coordination | Reserva FTIC{% endblock %}
 
@@ -64,7 +64,7 @@
 {% block content %}
 <div class="mc-layout">
 
-    {# ── Left: message list ── #}
+    {# â”€â”€ Left: message list â”€â”€ #}
     <div class="mc-list-panel">
         <div class="mc-list-filters">
             <select class="mc-status-select" id="mcStatusFilter" onchange="filterRequests()">
@@ -116,7 +116,7 @@
         </div>
     </div>
 
-    {# ── Right: detail + assignment form ── #}
+    {# â”€â”€ Right: detail + assignment form â”€â”€ #}
     <div class="mc-detail-panel" id="mcDetailPanel">
         {% if requests|length > 0 %}
             {% for req in requests %}
@@ -127,7 +127,7 @@
                     : '') %}
             {% set displaySchedule = req.preferredSchedule
                 ?: (hasChosen and req.mentorProfile.availabilityStart and req.mentorProfile.availabilityEnd
-                    ? ('2000-01-01 ' ~ req.mentorProfile.availabilityStart)|date('g:i A') ~ ' – ' ~ ('2000-01-01 ' ~ req.mentorProfile.availabilityEnd)|date('g:i A')
+                    ? ('2000-01-01 ' ~ req.mentorProfile.availabilityStart)|date('g:i A') ~ ' â€“ ' ~ ('2000-01-01 ' ~ req.mentorProfile.availabilityEnd)|date('g:i A')
                     : '') %}
             {% set displayExpertise = req.preferredExpertise ?: (hasChosen ? req.mentorProfile.specialization : '') %}
             <div class="mc-detail-inner mc-req-detail" id="mc-req-{{ req.id }}" style="{{ not loop.first ? 'display:none' : '' }}">
@@ -152,15 +152,15 @@
                     </div>
                     <div class="mc-req-field">
                         <label>Time</label>
-                        <p>{{ displaySchedule ?: '—' }}</p>
+                        <p>{{ displaySchedule ?: 'â€”' }}</p>
                     </div>
                     <div class="mc-req-field">
                         <label>Preferred Expertise</label>
-                        <p>{{ displayExpertise ?: '—' }}</p>
+                        <p>{{ displayExpertise ?: 'â€”' }}</p>
                     </div>
                     <div class="mc-req-field sub">
                         <label>Department / Course</label>
-                        <p>{{ displayDept ?: '—' }}</p>
+                        <p>{{ displayDept ?: 'â€”' }}</p>
                     </div>
                     <div class="mc-req-field sub" style="grid-column:span 2;">
                         <label>Status</label>
@@ -174,7 +174,7 @@
                 {% endif %}
 
                 {% if hasChosen %}
-                {# User already picked a mentor — no manual assignment allowed #}
+                {# User already picked a mentor â€” no manual assignment allowed #}
                 <div class="mc-assign-section">
                     <div class="mc-chosen-notice">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
@@ -200,7 +200,7 @@
                             <div class="mc-assign-field">
                                 <label>Meeting Method</label>
                                 <select name="meeting_method_override" class="mc-assign-input">
-                                    <option value="">— keep current —</option>
+                                    <option value="">â€” keep current â€”</option>
                                     <option value="In Person" {{ req.meetingMethod == 'In Person' ? 'selected' : '' }}>In Person</option>
                                     <option value="Online" {{ req.meetingMethod == 'Online' ? 'selected' : '' }}>Online</option>
                                     <option value="Hybrid" {{ req.meetingMethod == 'Hybrid' ? 'selected' : '' }}>Hybrid</option>
@@ -218,7 +218,7 @@
                     </form>
                 </div>
                 {% else %}
-                {# No mentor chosen by user — show full assignment form #}
+                {# No mentor chosen by user â€” show full assignment form #}
                 <div class="mc-assign-section">
                     <h4 class="mc-assign-title">Mentor Assignment</h4>
                     <form method="POST" action="{{ path(is_granted('ROLE_SUPER_ADMIN') ? 'admin_mentorship_assign' : 'admin_role_mentorship_assign', {'id': req.id}) }}" data-ajax="true">
@@ -228,7 +228,7 @@
                                 <label>Select Existing Mentor</label>
                                 <select name="mentor_id" class="mc-assign-input" id="mc-mentor-sel-{{ req.id }}"
                                     onchange="mcAutoFill({{ req.id }})">
-                                    <option value="">— Pick from system —</option>
+                                    <option value="">â€” Pick from system â€”</option>
                                     {% for mentor in mentors %}
                                     <option value="{{ mentor.id }}"
                                         data-name="{{ mentor.displayName }}"
@@ -249,7 +249,7 @@
                             <div class="mc-assign-field">
                                 <label>Specialization</label>
                                 <select name="specialization" class="mc-assign-input" id="mc-spec-{{ req.id }}">
-                                    <option value="">Select specialization…</option>
+                                    <option value="">Select specializationâ€¦</option>
                                     {% for specialization in allSpecializations %}
                                     <option value="{{ specialization.name }}" {{ req.assignedMentorExpertise == specialization.name ? 'selected' : '' }}>{{ specialization.name }}</option>
                                     {% endfor %}
@@ -276,12 +276,12 @@
                             <div class="mc-assign-field">
                                 <label>Start Time</label>
                                 <input type="time" name="available_time_start" class="mc-assign-input" min="07:00" max="21:00"
-                                    value="{{ req.availableTime ? req.availableTime|split(' – ')|first|trim : '' }}">
+                                    value="{{ req.availableTime ? req.availableTime|split(' â€“ ')|first|trim : '' }}">
                             </div>
                             <div class="mc-assign-field">
                                 <label>End Time</label>
                                 <input type="time" name="available_time_end" class="mc-assign-input" min="07:00" max="21:00"
-                                    value="{{ req.availableTime and '–' in req.availableTime ? req.availableTime|split('–')|last|trim : '' }}">
+                                    value="{{ req.availableTime and 'â€“' in req.availableTime ? req.availableTime|split('â€“')|last|trim : '' }}">
                             </div>
                         </div>
                         <div class="mc-assign-grid">
@@ -313,7 +313,7 @@
     </div>
 </div>
 
-{# ── Leaderboard + Stats strip ── #}
+{# â”€â”€ Leaderboard + Stats strip â”€â”€ #}
 {% if leaderboard is defined and leaderboard|length > 0 %}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px 20px;">
@@ -377,14 +377,14 @@ function mcAutoFill(reqId) {
     }
 }
 
-// ── AJAX form submit ──
+// â”€â”€ AJAX form submit â”€â”€
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('form[data-ajax="true"]').forEach(function (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             var btn = form.querySelector('button[type="submit"]');
             var origText = btn ? btn.innerHTML : '';
-            if (btn) { btn.disabled = true; btn.innerHTML = 'Saving…'; }
+            if (btn) { btn.disabled = true; btn.innerHTML = 'Savingâ€¦'; }
             var data = new FormData(form);
             fetch(form.action, {
                 method: 'POST',
@@ -422,28 +422,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
-
-    // ── 30-second polling for real-time sync ──
-    var _mcLastCheck = Date.now();
-    setInterval(function () {
-        fetch(window.location.href, { headers: { 'X-MC-Poll': '1' }, cache: 'no-store' })
-            .then(function (r) { return r.text(); })
-            .then(function (html) {
-                var parser = new DOMParser();
-                var doc = parser.parseFromString(html, 'text/html');
-                var newList = doc.getElementById('mcListScroll');
-                var curList = document.getElementById('mcListScroll');
-                if (!newList || !curList) return;
-                // Only refresh list items, preserve active state
-                var activeId = (document.querySelector('.mc-list-item.active') || {}).dataset && document.querySelector('.mc-list-item.active').dataset.id;
-                curList.innerHTML = newList.innerHTML;
-                if (activeId) {
-                    var restored = curList.querySelector('.mc-list-item[data-id="' + activeId + '"]');
-                    if (restored) restored.classList.add('active');
-                }
-            })
-            .catch(function () {});
-    }, 30000);
 });
 </script>
 {% endblock %}
