@@ -32,15 +32,64 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/reservations', name: 'admin_reservations')]
     public function listReservations(
         ReservationRepository $reservationRepo,
+        Request $request,
     ): Response {
-        $pending = $reservationRepo->findBy(['status' => 'Pending'], ['createdAt' => 'DESC']);
-        $approved = $reservationRepo->findBy(['status' => 'Approved'], ['reservationDate' => 'DESC']);
-        $rejected = $reservationRepo->findBy(['status' => 'Rejected'], ['reservationDate' => 'DESC']);
+        $limit = 10;
+        $page = max(1, (int) $request->query->get('page', 1));
+        $status = (string) $request->query->get('status', 'All');
+        $allowedStatuses = [
+            'All' => null,
+            'Pending' => ['Pending'],
+            'Approved' => ['Approved'],
+            'Canceled' => ['Cancelled', 'Canceled'],
+            'Cancelled' => ['Cancelled', 'Canceled'],
+            'Rejected' => ['Rejected'],
+        ];
+        if (!array_key_exists($status, $allowedStatuses)) {
+            $status = 'All';
+        }
+
+        $qb = $reservationRepo->createQueryBuilder('r')
+            ->leftJoin('r.facility', 'f')
+            ->addSelect('f')
+            ->orderBy('r.createdAt', 'DESC')
+            ->addOrderBy('r.id', 'DESC');
+
+        if ($allowedStatuses[$status] !== null) {
+            $qb->andWhere('r.status IN (:statuses)')
+                ->setParameter('statuses', $allowedStatuses[$status]);
+        }
+
+        $total = (int) (clone $qb)
+            ->select('COUNT(r.id)')
+            ->resetDQLPart('orderBy')
+            ->getQuery()
+            ->getSingleScalarResult();
+        $pages = max(1, (int) ceil($total / $limit));
+
+        if ($page > $pages) {
+            return $this->redirectToRoute('admin_reservations', [
+                'status' => $status,
+                'page' => $pages,
+            ]);
+        }
+
+        $reservations = $qb
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
 
         return $this->render('super_admin/reservations.html.twig', [
-            'pending' => $pending,
-            'approved' => $approved,
-            'rejected' => $rejected,
+            'reservations' => $reservations,
+            'selectedStatus' => $status,
+            'statusOptions' => ['All', 'Pending', 'Approved', 'Canceled', 'Rejected'],
+            'pagination' => [
+                'page' => $page,
+                'pages' => $pages,
+                'limit' => $limit,
+                'total' => $total,
+            ],
         ]);
     }
 

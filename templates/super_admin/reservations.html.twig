@@ -5,13 +5,17 @@
 {% block stylesheets %}
 {{ parent() }}
 <style>
-.rm-table-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 22px 24px; margin-top: 20px; }
-.rm-table-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0 0 6px; }
-.rm-table { width: 100%; border-collapse: collapse; }
-.rm-table th { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; padding: 0 12px 10px; text-align: left; border-bottom: 1px solid #f3f4f6; }
-.rm-table td { padding: 12px; font-size: 13.5px; color: #374151; border-bottom: 1px solid #f9fafb; }
-.rm-table tr:last-child td { border-bottom: none; }
-.rm-table tbody tr:hover td { background: #fafafa; }
+.rm-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; margin: 0 0 18px; flex-wrap:wrap; }
+.rm-filter-form { display:flex; align-items:center; gap:10px; margin:0; }
+.rm-filter-label { font-size:12px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; }
+.rm-filter-select { min-width:170px; height:38px; border:1px solid #d1d5db; border-radius:8px; background:#fff; color:#374151; padding:0 12px; font-size:13px; font-weight:600; }
+.rm-count { font-size:13px; color:#6b7280; font-weight:600; }
+.rm-pagination { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:18px; flex-wrap:wrap; }
+.rm-page-link { min-width:34px; height:34px; padding:0 11px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #d1d5db; border-radius:8px; background:#fff; color:#374151; font-size:13px; font-weight:700; text-decoration:none; }
+.rm-page-link:hover { border-color:#0d9b00; color:#0d9b00; }
+.rm-page-link.active { background:#0d9b00; border-color:#0d9b00; color:#fff; }
+.rm-page-link.disabled { opacity:.45; pointer-events:none; }
+.rm-status-heading { display:flex; align-items:center; gap:8px; }
 </style>
 {% endblock %}
 
@@ -30,26 +34,51 @@
     </div>
 </div>
 
-{# ── Pending ───────────────────────────────────────────── #}
 <div class="sa-card">
+    <div class="rm-toolbar">
+        <form method="get" action="{{ path('admin_reservations') }}" class="rm-filter-form">
+            <label for="reservation-status-filter" class="rm-filter-label">Status</label>
+            <select id="reservation-status-filter" name="status" class="rm-filter-select" onchange="this.form.submit()">
+                {% for option in statusOptions %}
+                    <option value="{{ option }}" {{ selectedStatus == option ? 'selected' : '' }}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <div class="rm-count">
+            Showing {{ reservations|length }} of {{ pagination.total }} reservation{{ pagination.total == 1 ? '' : 's' }}
+        </div>
+    </div>
+
     <div class="sa-card-header">
         <div>
-            <h3 class="sa-card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Pending Reservations
-                <span class="sa-badge sa-badge-pending">{{ pending|length }}</span>
+            <h3 class="sa-card-title rm-status-heading">
+                {% if selectedStatus == 'Approved' %}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                {% elseif selectedStatus == 'Pending' %}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {% elseif selectedStatus == 'Rejected' %}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                {% elseif selectedStatus == 'Canceled' %}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                {% else %}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0d9b00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Z"/></svg>
+                {% endif %}
+                {{ selectedStatus == 'All' ? 'All Reservations' : selectedStatus ~ ' Reservations' }}
+                <span class="sa-badge">{{ pagination.total }}</span>
             </h3>
-            <p class="sa-card-subtitle">Review and approve or reject new reservation requests.</p>
+            <p class="sa-card-subtitle">10 reservations per page.</p>
         </div>
     </div>
 
-    {% if pending|length > 0 %}
+    {% if reservations|length > 0 %}
         <div class="sa-reservation-list">
-            {% for reservation in pending %}
-                <div class="sa-reservation-row row-pending">
+            {% for reservation in reservations %}
+                {% set status = reservation.status %}
+                {% set statusClass = status == 'Approved' ? 'approved' : (status == 'Rejected' ? 'rejected' : (status in ['Cancelled', 'Canceled'] ? 'cancelled' : 'pending')) %}
+                <div class="sa-reservation-row row-{{ statusClass }}">
                     <div class="sa-row-head">
                         <h4>{{ reservation.facility.name }}</h4>
-                        <span class="sa-badge sa-badge-pending">Pending</span>
+                        <span class="sa-badge sa-badge-{{ statusClass }}">{{ status == 'Cancelled' ? 'Canceled' : status }}</span>
                     </div>
 
                     <div class="sa-detail-grid">
@@ -63,138 +92,11 @@
                         </div>
                         <div class="sa-detail-col">
                             <label>Contact</label>
-                            <p>{{ reservation.contact }}</p>
+                            <p>{{ reservation.contact ?: 'N/A' }}</p>
                         </div>
                         <div class="sa-detail-col">
                             <label>Date &amp; Time</label>
-                            <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} – {{ reservation.reservationEndTime|date('h:i A') }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Attendees</label>
-                            <p>{{ reservation.capacity }} / {{ reservation.facility.capacity }}</p>
-                        </div>
-                        {% if reservation.purpose %}
-                            <div class="sa-detail-col full-width">
-                                <label>Event Objectives</label>
-                                <p>{{ reservation.purpose }}</p>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="sa-row-actions">
-                        <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display:inline;" data-ajax="true" data-ajax-reload="1000">
-                            <input type="hidden" name="_token" value="{{ csrf_token('approve_reservation_' ~ reservation.id) }}">
-                            <button type="submit" class="sa-btn sa-btn-approve">✓ Approve</button>
-                        </form>
-
-                        <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display:inline;" class="reject-form" data-ajax="true" data-ajax-reload="1000">
-                            <input type="hidden" name="_token" value="{{ csrf_token('reject_reservation_' ~ reservation.id) }}">
-                            <input type="hidden" name="reason" class="reject-reason">
-                            <button type="button" class="sa-btn sa-btn-reject" onclick="showRejectModal(this)">✕ Reject</button>
-                        </form>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="sa-empty">No pending reservations at the moment.</div>
-    {% endif %}
-</div>
-
-{# ── Approved ──────────────────────────────────────────── #}
-<div class="sa-card">
-    <div class="sa-card-header">
-        <h3 class="sa-card-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Approved Reservations
-            <span class="sa-badge sa-badge-approved">{{ approved|length }}</span>
-        </h3>
-    </div>
-
-    {% if approved|length > 0 %}
-        <div class="sa-reservation-list">
-            {% for reservation in approved %}
-                <div class="sa-reservation-row row-approved">
-                    <div class="sa-row-head">
-                        <h4>{{ reservation.facility.name }}</h4>
-                        <span class="sa-badge sa-badge-approved">Approved</span>
-                    </div>
-                    <div class="sa-detail-grid">
-                        <div class="sa-detail-col">
-                            <label>Requester</label>
-                            <p>{{ reservation.name }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Email</label>
-                            <p>{{ reservation.email }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Contact</label>
-                            <p>{{ reservation.contact ?: '—' }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Date &amp; Time</label>
-                            <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} – {{ reservation.reservationEndTime|date('h:i A') }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Attendees</label>
-                            <p>{{ reservation.capacity }} / {{ reservation.facility.capacity }}</p>
-                        </div>
-                        {% if reservation.eventName %}
-                            <div class="sa-detail-col">
-                                <label>Event Name</label>
-                                <p>{{ reservation.eventName }}</p>
-                            </div>
-                        {% endif %}
-                        {% if reservation.purpose %}
-                            <div class="sa-detail-col full-width">
-                                <label>Event Objectives</label>
-                                <p>{{ reservation.purpose }}</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="sa-empty">No approved reservations.</div>
-    {% endif %}
-</div>
-
-{# ── Rejected ──────────────────────────────────────────── #}
-<div class="sa-card">
-    <div class="sa-card-header">
-        <h3 class="sa-card-title">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Rejected Reservations
-            <span class="sa-badge sa-badge-rejected">{{ rejected|length }}</span>
-        </h3>
-    </div>
-
-    {% if rejected|length > 0 %}
-        <div class="sa-reservation-list">
-            {% for reservation in rejected %}
-                <div class="sa-reservation-row row-rejected">
-                    <div class="sa-row-head">
-                        <h4>{{ reservation.facility.name }}</h4>
-                        <span class="sa-badge sa-badge-rejected">Rejected</span>
-                    </div>
-                    <div class="sa-detail-grid">
-                        <div class="sa-detail-col">
-                            <label>Requester</label>
-                            <p>{{ reservation.name }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Email</label>
-                            <p>{{ reservation.email }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Contact</label>
-                            <p>{{ reservation.contact ?: '—' }}</p>
-                        </div>
-                        <div class="sa-detail-col">
-                            <label>Date &amp; Time</label>
-                            <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} – {{ reservation.reservationEndTime|date('h:i A') }}</p>
+                            <p>{{ reservation.reservationDate|date('M d, Y') }} · {{ reservation.reservationStartTime|date('h:i A') }} - {{ reservation.reservationEndTime|date('h:i A') }}</p>
                         </div>
                         <div class="sa-detail-col">
                             <label>Attendees</label>
@@ -219,16 +121,44 @@
                             </div>
                         {% endif %}
                     </div>
+
+                    {% if status == 'Pending' %}
+                        <div class="sa-row-actions">
+                            <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display:inline;" data-ajax="true" data-ajax-reload="1000">
+                                <input type="hidden" name="_token" value="{{ csrf_token('approve_reservation_' ~ reservation.id) }}">
+                                <button type="submit" class="sa-btn sa-btn-approve">Approve</button>
+                            </form>
+
+                            <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display:inline;" class="reject-form" data-ajax="true" data-ajax-reload="1000">
+                                <input type="hidden" name="_token" value="{{ csrf_token('reject_reservation_' ~ reservation.id) }}">
+                                <input type="hidden" name="reason" class="reject-reason">
+                                <button type="button" class="sa-btn sa-btn-reject" onclick="showRejectModal(this)">Reject</button>
+                            </form>
+                        </div>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>
     {% else %}
-        <div class="sa-empty">No rejected reservations.</div>
+        <div class="sa-empty">No reservations found for this status.</div>
+    {% endif %}
+
+    {% if pagination.pages > 1 %}
+        {% set baseParams = selectedStatus == 'All' ? {} : {status: selectedStatus} %}
+        {% set firstPageCandidate = pagination.page - 2 %}
+        {% set lastPageCandidate = pagination.page + 2 %}
+        {% set firstPage = firstPageCandidate > 1 ? firstPageCandidate : 1 %}
+        {% set lastPage = lastPageCandidate < pagination.pages ? lastPageCandidate : pagination.pages %}
+        <div class="rm-pagination">
+            <a class="rm-page-link {{ pagination.page == 1 ? 'disabled' : '' }}" href="{{ path('admin_reservations', baseParams|merge({page: pagination.page - 1})) }}">Prev</a>
+            {% for p in firstPage..lastPage %}
+                <a class="rm-page-link {{ p == pagination.page ? 'active' : '' }}" href="{{ path('admin_reservations', baseParams|merge({page: p})) }}">{{ p }}</a>
+            {% endfor %}
+            <a class="rm-page-link {{ pagination.page == pagination.pages ? 'disabled' : '' }}" href="{{ path('admin_reservations', baseParams|merge({page: pagination.page + 1})) }}">Next</a>
+        </div>
     {% endif %}
 </div>
 
-
-{# ── Reject Modal ──────────────────────────────────────── #}
 <div id="rejectModal" class="sa-modal-overlay" style="display:none;">
     <div class="sa-modal">
         <div class="sa-modal-header">
@@ -247,7 +177,6 @@
 </div>
 
 <script>
-    // Move reject modal to body to ensure it's not constrained by parent containers
     document.addEventListener('DOMContentLoaded', function() {
         const rejectModal = document.getElementById('rejectModal');
         if (rejectModal && rejectModal.parentElement !== document.body) {
