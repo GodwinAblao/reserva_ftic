@@ -540,58 +540,35 @@ class MentoringController extends AbstractController
         $em->persist($application);
         $em->flush();
 
-        // Send notifications immediately for better reliability
+        // Send notifications
         try {
-            // Notify the user
             $this->notificationService->notifyMentorApplicationSubmitted($user, $application->getId());
-            error_log('User notification sent for mentor application ' . $application->getId());
-
-            // Notify all admins (both Admin and Super Admin)
             $admins = $em->getRepository(User::class)->findAdmins();
             $applicantName = trim($firstName . ' ' . $lastName);
-            
-            error_log('DEBUG: Found ' . count($admins) . ' admin users for mentor application notification');
-            error_log('DEBUG: Current user submitting application: ID=' . $user->getId() . ', Email=' . $user->getEmail() . ', Roles=' . implode(',', $user->getRoles()));
-            
             foreach ($admins as $admin) {
-                error_log('DEBUG: Processing admin user: ID=' . $admin->getId() . ', Email=' . $admin->getEmail() . ', Roles=' . implode(',', $admin->getRoles()));
                 try {
-                    $notification = $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $applicantName);
-                    error_log('DEBUG: Mentor application notification CREATED with ID ' . $notification->getId() . ' for admin ' . $admin->getId() . ' for application ' . $application->getId());
-                    
-                    // Immediately verify the notification was saved
-                    $savedNotification = $em->getRepository(\App\Entity\Notification::class)->find($notification->getId());
-                    if ($savedNotification) {
-                        error_log('DEBUG: Notification verified in database - ID: ' . $savedNotification->getId() . ', User: ' . $savedNotification->getUser()->getId() . ', Title: ' . $savedNotification->getTitle());
-                    } else {
-                        error_log('DEBUG: ERROR - Notification not found in database after creation!');
-                    }
+                    $this->notificationService->notifyAdminNewMentorApplication($admin, $application->getId(), $applicantName);
                 } catch (\Exception $e) {
-                    error_log('DEBUG: Failed to send mentor application notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
-                    error_log('DEBUG: Notification error trace: ' . $e->getTraceAsString());
+                    // Non-critical: notification failure should not block application submission
                 }
             }
         } catch (\Exception $e) {
-            error_log('Failed to send notifications for mentor application: ' . $e->getMessage());
+            // Non-critical: notification failure should not block application submission
         }
 
-        // Defer only file uploads to after response to prevent blocking
+        // Defer file uploads to after response
         register_shutdown_function(function() use ($uploadedFiles, $em, $application) {
             try {
-                // Move files and update application
                 $proofFiles = [];
                 $targetDir = $this->getParameter('kernel.project_dir') . '/public/uploads/profiles';
-                
                 foreach ($uploadedFiles as $fileInfo) {
                     $fileInfo['file']->move($targetDir, $fileInfo['filename']);
                     $proofFiles[] = $fileInfo['filename'];
                 }
-                
                 $application->setSupportingDocuments($proofFiles ?: null);
                 $em->flush();
-                error_log('File uploads completed for mentor application ' . $application->getId());
             } catch (\Exception $e) {
-                error_log('Failed to process file uploads (async): ' . $e->getMessage());
+                // File upload failure logged silently
             }
         });
 
@@ -600,132 +577,6 @@ class MentoringController extends AbstractController
         return $this->redirectToRoute('mentoring_index');
     }
 
-    #[Route('/test-notification', name: 'test_notification', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function testNotification(EntityManagerInterface $em, MailerInterface $mailer): Response
-    {
-        $user = $this->getUser();
-        if (!$user) {
-            return new Response('User not found');
-        }
-
-        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
-        error_log('DEBUG: Creating test notification for user ' . $userId);
-        
-        try {
-            // FORCE CREATE NOTIFICATION - bypass all potential issues
-            $notification = new \App\Entity\Notification();
-            $notification->setUser($user);
-            $notification->setType('test');
-            $notification->setTitle('ADMIN TEST NOTIFICATION');
-            $notification->setMessage('This is a forced test notification for admin user.');
-            $notification->setStatus('Pending');
-            $notification->setIsRead(false);
-            $notification->setCreatedAt(new \DateTime());
-            
-            $em->persist($notification);
-            $em->flush();
-            
-            error_log('DEBUG: FORCED test notification created with ID: ' . $notification->getId());
-            
-            // Verify it was saved
-            $savedNotification = $em->getRepository(\App\Entity\Notification::class)->find($notification->getId());
-            if ($savedNotification) {
-                error_log('DEBUG: FORCED notification verified in database!');
-            } else {
-                error_log('DEBUG: ERROR - FORCED notification not found in database!');
-            }
-            
-            // Also test admin user detection
-            $admins = $em->getRepository(User::class)->findAdmins();
-            error_log('DEBUG: Found ' . count($admins) . ' admin users in system:');
-            foreach ($admins as $admin) {
-                error_log('DEBUG: Admin - ID: ' . $admin->getId() . ', Email: ' . $admin->getEmail() . ', Roles: ' . implode(',', $admin->getRoles()));
-            }
-            
-            // Test notification API for current user
-            $userNotifications = $em->getRepository(\App\Entity\Notification::class)->findBy(['user' => $user], ['createdAt' => 'DESC'], 5);
-            error_log('DEBUG: User ' . $userId . ' has ' . count($userNotifications) . ' recent notifications');
-            
-            // Test the notification API directly
-            $unreadCount = $em->getRepository(\App\Entity\Notification::class)->count(['user' => $user, 'isRead' => false]);
-            error_log('DEBUG: User ' . $userId . ' has ' . $unreadCount . ' UNREAD notifications');
-            
-            // Test the notification APIs directly
-            $notificationRepo = $em->getRepository(\App\Entity\Notification::class);
-            
-            // Test poll data
-            $pollData = $notificationRepo->getPollData($user);
-            error_log('DEBUG: Poll data result: ' . json_encode($pollData));
-            
-            // Test unread count
-            $unreadCount = $notificationRepo->getUnreadCount($user);
-            error_log('DEBUG: Unread count result: ' . $unreadCount);
-            
-            // Test findLatest
-            $latestNotifications = $notificationRepo->findLatest($user, 5);
-            error_log('DEBUG: Latest notifications count: ' . count($latestNotifications));
-            
-            // Test email sending to admins
-            $emailTestResults = [];
-            foreach ($admins as $admin) {
-                try {
-                    error_log('EMAIL TEST: Attempting to send test email to admin: ' . $admin->getEmail());
-                    
-                    $testEmail = (new \Symfony\Component\Mime\Email())
-                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
-                        ->to($admin->getEmail())
-                        ->subject('TEST EMAIL - Admin Notification System')
-                        ->html('<h1>Test Email</h1><p>This is a test email to verify admin email notifications are working.</p><p>Admin: ' . $admin->getEmail() . '</p><p>Time: ' . date('Y-m-d H:i:s') . '</p>');
-                    
-                    // Use the mailer parameter
-                    $mailer->send($testEmail);
-                    error_log('EMAIL TEST: Successfully sent test email to admin: ' . $admin->getEmail());
-                    $emailTestResults[] = 'SUCCESS: ' . $admin->getEmail();
-                } catch (\Exception $e) {
-                    error_log('EMAIL TEST: FAILED to send test email to admin ' . $admin->getEmail() . ': ' . $e->getMessage());
-                    error_log('EMAIL TEST: Email error trace: ' . $e->getTraceAsString());
-                    $emailTestResults[] = 'FAILED: ' . $admin->getEmail() . ' - ' . $e->getMessage();
-                }
-            }
-            
-            return new Response('FORCED test notification created with ID: ' . $notification->getId() . '. Found ' . count($admins) . ' admin users. User has ' . count($userNotifications) . ' notifications, ' . $unreadCount . ' unread. Poll data: ' . json_encode($pollData) . '. Latest: ' . count($latestNotifications) . '. Email test results: ' . implode('; ', $emailTestResults));
-        } catch (\Exception $e) {
-            error_log('DEBUG: Failed to create test notification: ' . $e->getMessage());
-            error_log('DEBUG: Error trace: ' . $e->getTraceAsString());
-            return new Response('Failed to create test notification: ' . $e->getMessage());
-        }
-    }
-
-    #[Route('/test-email', name: 'test_email', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function testEmail(MailerInterface $mailer): Response
-    {
-        $user = $this->getUser();
-        if (!$user) {
-            return new Response('User not found');
-        }
-
-        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
-        error_log('EMAIL TEST: Simple email test for user: ' . $userEmail);
-        
-        try {
-            $testEmail = (new \Symfony\Component\Mime\Email())
-                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
-                ->to($userEmail)
-                ->subject('SIMPLE EMAIL TEST - Admin Notification System')
-                ->html('<h1>Simple Email Test</h1><p>This is a basic test to verify email sending works.</p><p>User: ' . $userEmail . '</p><p>Time: ' . date('Y-m-d H:i:s') . '</p><p>If you receive this, email system is working!</p>');
-            
-            $mailer->send($testEmail);
-            error_log('EMAIL TEST: SUCCESS - Simple email sent to: ' . $userEmail);
-            return new Response('SUCCESS: Test email sent to ' . $userEmail . '. Check your inbox!');
-            
-        } catch (\Exception $e) {
-            error_log('EMAIL TEST: FAILED - Could not send email to ' . $userEmail . ': ' . $e->getMessage());
-            error_log('EMAIL TEST: Error details: ' . $e->getTraceAsString());
-            return new Response('FAILED: Could not send email - Error: ' . $e->getMessage());
-        }
-    }
 
 #[Route('/admin/application/{id}/{decision}', name: 'mentoring_review_application', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
@@ -758,7 +609,7 @@ class MentoringController extends AbstractController
                 ->setStatus('Rejected')
                 ->setAdminNote($request->request->get('admin_note'));
             $subjectLabel = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $application->getEmail();
-            $this->auditLog($em, 'application', $application->getId(), $subjectLabel, 'reject', $prevStatus, 'Rejected', $request->request->get('admin_note'));
+            $this->auditLog($em, ['type' => 'application', 'id' => $application->getId(), 'label' => $subjectLabel, 'action' => 'reject', 'prev' => $prevStatus, 'next' => 'Rejected', 'note' => $request->request->get('admin_note')]);
             $em->flush();
 
             // Notify the user
@@ -782,13 +633,10 @@ class MentoringController extends AbstractController
                             'Rejected',
                             $application->getId()
                         );
-                        error_log('Mentor application rejection notification sent to admin ' . $admin->getId());
                     } catch (\Exception $e) {
-                        error_log('Failed to send mentor application rejection notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
                     }
                 }
             } catch (\Exception $e) {
-                error_log('Failed to send admin notifications for mentor application rejection: ' . $e->getMessage());
             }
 
             $this->addFlash('success', 'Mentor application rejected.');
@@ -832,7 +680,7 @@ $validUntil = $request->request->get('valid_until');
         $prevStatus = $application->getStatus();
         $application->setStatus('Approved');
         $subjectLabel = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? '')) ?: $application->getEmail();
-        $this->auditLog($em, 'application', $application->getId(), $subjectLabel, 'approve', $prevStatus, 'Approved', $validUntil ? 'Valid until: ' . $validUntil : null);
+        $this->auditLog($em, ['type' => 'application', 'id' => $application->getId(), 'label' => $subjectLabel, 'action' => 'approve', 'prev' => $prevStatus, 'next' => 'Approved', 'note' => $validUntil ? 'Valid until: ' . $validUntil : null]);
         $em->flush();
 
         // Notify the user
@@ -856,13 +704,10 @@ $validUntil = $request->request->get('valid_until');
                         'Approved',
                         $application->getId()
                     );
-                    error_log('Mentor application approval notification sent to admin ' . $admin->getId());
                 } catch (\Exception $e) {
-                    error_log('Failed to send mentor application approval notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
                 }
             }
         } catch (\Exception $e) {
-            error_log('Failed to send admin notifications for mentor application approval: ' . $e->getMessage());
         }
 
         $this->addFlash('success', 'Student approved as mentor.');
@@ -964,7 +809,7 @@ $validUntil = $request->request->get('valid_until');
 
         $em->persist($profile);
         $mentorLabel = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
-        $this->auditLog($em, 'application', null, $mentorLabel, 'create_mentor', null, 'Active', 'Mentor profile created manually');
+        $this->auditLog($em, ['type' => 'application', 'id' => null, 'label' => $mentorLabel, 'action' => 'create_mentor', 'prev' => null, 'next' => 'Active', 'note' => 'Mentor profile created manually']);
         $em->flush();
 
         // Notify the user that a mentor profile was created for them
@@ -985,13 +830,10 @@ $validUntil = $request->request->get('valid_until');
                         'Active',
                         $profile->getId()
                     );
-                    error_log('Mentor profile creation notification sent to admin ' . $admin->getId());
                 } catch (\Exception $e) {
-                    error_log('Failed to send mentor profile creation notification to admin ' . $admin->getId() . ': ' . $e->getMessage());
                 }
             }
         } catch (\Exception $e) {
-            error_log('Failed to send admin notifications for mentor profile creation: ' . $e->getMessage());
         }
 
         $this->addFlash('success', 'Mentor profile created.');
@@ -1416,25 +1258,13 @@ $validUntil = $request->request->get('valid_until');
         try {
             $adminUrl = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
             $admins = $em->getRepository(User::class)->findAdmins();
-            error_log('MENTOR REQUEST: Found ' . count($admins) . ' admin users for assistance request notification');
             $firstAdmin = true;
             
             foreach ($admins as $admin) {
-                error_log('MENTOR REQUEST: Processing admin user: ID=' . $admin->getId() . ', Email=' . $admin->getEmail());
                 try {
                     $adminNotification = $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
-                    error_log('MENTOR REQUEST: Admin notification created successfully for user ' . $admin->getId() . ' with ID: ' . $adminNotification->getId());
                     
-                    // Verify notification was saved
-                    $savedNotification = $em->getRepository(\App\Entity\Notification::class)->find($adminNotification->getId());
-                    if ($savedNotification) {
-                        error_log('MENTOR REQUEST: Notification verified in database - ID: ' . $savedNotification->getId() . ', Title: ' . $savedNotification->getTitle());
-                    } else {
-                        error_log('MENTOR REQUEST: ERROR - Notification not found in database after creation!');
-                    }
                 } catch (\Exception $e) {
-                    error_log('MENTOR REQUEST: Failed to create admin notification for user ' . $admin->getId() . ': ' . $e->getMessage());
-                    error_log('MENTOR REQUEST: Error trace: ' . $e->getTraceAsString());
                 }
                 
                 // Only email the first admin to prevent SMTP lag; others get in-app notification
@@ -1442,7 +1272,6 @@ $validUntil = $request->request->get('valid_until');
                     try {
                         $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
                     } catch (\Exception $e) {
-                        error_log('Failed to send admin email: ' . $e->getMessage());
                     }
                     $firstAdmin = false;
                 }
@@ -1455,15 +1284,11 @@ $validUntil = $request->request->get('valid_until');
                     'Pending',
                     'Your mentor assistance request has been submitted and is now pending review.'
                 );
-                error_log('User notification created successfully with ID: ' . $userNotification->getId());
             } catch (\Exception $e) {
-                error_log('Failed to create user notification: ' . $e->getMessage());
-                error_log('Notification creation error trace: ' . $e->getTraceAsString());
             }
 
             $this->addFlash('success', 'Your mentor request has been submitted. Admin will review it and send mentor details once a match is found.');
         } catch (\Exception $e) {
-            error_log('Error in mentor assistance request processing: ' . $e->getMessage());
             $this->addFlash('error', 'Your request was submitted but there was an issue sending notifications. Please contact support if needed.');
         }
 
@@ -1601,17 +1426,13 @@ $validUntil = $request->request->get('valid_until');
 
             try {
                 $this->notificationService->notifyMentorAssistanceStatus($student, $mentorRequest->getId(), $status, $notificationMessage);
-                error_log('Student notification created successfully for request ' . $mentorRequest->getId());
             } catch (\Exception $e) {
-                error_log('Failed to create student notification: ' . $e->getMessage());
             }
 
             if (in_array($status, ['Assigned', 'Completed'], true)) {
                 try {
                     $this->sendMentorAssistanceResponseEmail($mailer, $student, $mentorRequest);
-                    error_log('Student email sent successfully for request ' . $mentorRequest->getId());
                 } catch (\Exception $e) {
-                    error_log('Failed to send student email: ' . $e->getMessage());
                 }
             }
         }
@@ -1619,17 +1440,13 @@ $validUntil = $request->request->get('valid_until');
         $noteText = $instructions !== '' ? $instructions : ($mentorName !== '' ? 'Assigned to: ' . $mentorName : null);
         
         try {
-            $this->auditLog($em, 'custom_request', $mentorRequest->getId(), $requesterLabel, 'update_status', $prevStatus, $status, $noteText);
-            error_log('Audit log created successfully for request ' . $mentorRequest->getId());
+            $this->auditLog($em, ['type' => 'custom_request', 'id' => $mentorRequest->getId(), 'label' => $requesterLabel, 'action' => 'update_status', 'prev' => $prevStatus, 'next' => $status, 'note' => $noteText]);
         } catch (\Exception $e) {
-            error_log('Failed to create audit log: ' . $e->getMessage());
         }
         
         try {
             $em->flush();
-            error_log('Database flush completed successfully for request ' . $mentorRequest->getId());
         } catch (\Exception $e) {
-            error_log('Failed to flush database: ' . $e->getMessage());
             throw $e; // Re-throw database errors as they're critical
         }
 
@@ -1644,7 +1461,6 @@ $validUntil = $request->request->get('valid_until');
                 try {
                     $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, $status, $requesterName);
                 } catch (\Exception $e) {
-                    error_log('Failed to create admin notification for user ' . $u->getId() . ': ' . $e->getMessage());
                 }
             }
 
@@ -1653,16 +1469,13 @@ $validUntil = $request->request->get('valid_until');
                 try {
                     return $this->json(['success' => true, 'message' => 'Mentor request updated and the requester has been notified.']);
                 } catch (\Exception $e) {
-                    error_log('Failed to create JSON response: ' . $e->getMessage());
                     return $this->json(['success' => false, 'message' => 'Action completed but response failed.']);
                 }
             }
 
             try {
                 $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
-                error_log('Flash message added successfully for request ' . $mentorRequest->getId());
             } catch (\Exception $e) {
-                error_log('Failed to add flash message: ' . $e->getMessage());
             }
 
             try {
@@ -1672,17 +1485,12 @@ $validUntil = $request->request->get('valid_until');
                     : 'admin_role_mentorship_coordination';
                 
                 $redirectResponse = $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
-                error_log('Redirect response created successfully for request ' . $mentorRequest->getId() . ' to route: ' . $redirectRoute);
                 return $redirectResponse;
             } catch (\Exception $e) {
-                error_log('Failed to create redirect response: ' . $e->getMessage());
-                error_log('Redirect error trace: ' . $e->getTraceAsString());
                 // Return a simple success response if redirect fails
                 return new Response('Action completed successfully. Please navigate back to the mentor requests page.', 200);
             }
         } catch (\Exception $e) {
-            error_log('Error in admin notification/response phase: ' . $e->getMessage());
-            error_log('Error trace: ' . $e->getTraceAsString());
             
             // Even if there's an error in notifications, the main action succeeded
             $this->addFlash('success', 'Mentor request updated successfully. There was a minor issue with notifications, but the main action completed.');
@@ -1947,44 +1755,36 @@ $validUntil = $request->request->get('valid_until');
         return $results;
     }
 
-    private function auditLog(
-        EntityManagerInterface $em,
-        string $subjectType,
-        ?int $subjectId,
-        string $subjectLabel,
-        string $action,
-        ?string $previousStatus,
-        ?string $newStatus,
-        ?string $note = null
-    ): void {
+    /**
+     * @param array{type:string,id:?int,label:string,action:string,prev:?string,next:?string,note?:?string} $ctx
+     */
+    private function auditLog(EntityManagerInterface $em, array $ctx): void
+    {
         $actor = $this->getUser();
         $actorName = null;
         $actorRole = null;
         if ($actor instanceof User) {
-            $actorName = trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? ''));
-            if ($actorName === '') {
-                $actorName = $actor->getEmail();
-            }
+            $actorName = trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? '')) ?: $actor->getEmail();
             $actorRole = $this->isGranted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin';
         }
 
         /** @var \App\Repository\MentoringAuditLogRepository $repo */
         $repo = $em->getRepository(MentoringAuditLog::class);
-        if ($repo->existsRecent($subjectType, $subjectId, $action, $newStatus, $actor instanceof User ? $actor->getId() : null)) {
+        if ($repo->existsRecent($ctx['type'], $ctx['id'], $ctx['action'], $ctx['next'], $actor instanceof User ? $actor->getId() : null)) {
             return;
         }
 
         $log = (new MentoringAuditLog())
-            ->setSubjectType($subjectType)
-            ->setSubjectId($subjectId)
-            ->setSubjectLabel($subjectLabel)
-            ->setAction($action)
-            ->setPreviousStatus($previousStatus)
-            ->setNewStatus($newStatus)
+            ->setSubjectType($ctx['type'])
+            ->setSubjectId($ctx['id'])
+            ->setSubjectLabel($ctx['label'])
+            ->setAction($ctx['action'])
+            ->setPreviousStatus($ctx['prev'])
+            ->setNewStatus($ctx['next'])
             ->setPerformedBy($actor instanceof User ? $actor : null)
             ->setPerformedByName($actorName)
             ->setPerformedByRole($actorRole)
-            ->setNote($note);
+            ->setNote($ctx['note'] ?? null);
         $em->persist($log);
     }
 
@@ -2001,8 +1801,6 @@ $validUntil = $request->request->get('valid_until');
     private function sendMentorAssistanceRequestEmail(MailerInterface $mailer, User $admin, MentorCustomRequest $mentorRequest, string $adminUrl): void
     {
         try {
-            error_log('EMAIL: Attempting to send mentor assistance request email to admin: ' . $admin->getEmail());
-            
             $email = (new Email())
                 ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($admin->getEmail())
@@ -2013,10 +1811,8 @@ $validUntil = $request->request->get('valid_until');
                 ]));
 
             $mailer->send($email);
-            error_log('EMAIL: Successfully sent mentor assistance request email to admin: ' . $admin->getEmail());
         } catch (\Throwable $e) {
-            error_log('EMAIL: FAILED to send mentor assistance request email to admin ' . $admin->getEmail() . ': ' . $e->getMessage());
-            error_log('EMAIL: Email error trace: ' . $e->getTraceAsString());
+            // Email delivery should not block the in-system notification.
         }
     }
 

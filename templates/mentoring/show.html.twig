@@ -180,10 +180,12 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn-primary btn-lg" id="submitCustomRequest" style="display:flex; align-items:center; justify-content:center; gap:.5rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
+                        <span class="btn-icon" style="display:flex;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </span>
                         <span class="btn-text">Send Mentoring Request</span>
                     </button>
                     <p class="form-note" style="text-align:center; margin-top:.75rem; color:#64748b; font-size:.875rem;">
@@ -450,11 +452,13 @@
 
     /* Loading state for button */
     .submit-loading {
-        opacity: 0.7;
+        opacity: 0.75;
         pointer-events: none;
+        cursor: not-allowed;
     }
 
-    .submit-loading .btn-text {
+    .submit-loading .btn-text,
+    .submit-loading .btn-icon {
         display: none;
     }
 
@@ -463,16 +467,15 @@
         display: inline-block;
         width: 16px;
         height: 16px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top: 2px solid white;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #fff;
         border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+        animation: spin 0.75s linear infinite;
+        vertical-align: middle;
     }
 
     @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+        to { transform: rotate(360deg); }
     }
 </style>
 
@@ -488,13 +491,14 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    function initMentoringForm() {
         const textarea = document.getElementById('custom_message');
         const charCount = document.getElementById('char-count');
         const charMin = document.getElementById('char-min');
         const customRequestForm = document.getElementById('customRequestForm');
         const datePicker = document.getElementById('scheduled_date');
         const dateError = document.getElementById('date_error');
+        if (!customRequestForm) return;
 
         // Character counter with min validation
         if (textarea && charCount) {
@@ -604,7 +608,10 @@
                 }
             });
         }
-    });
+    }
+
+    document.addEventListener('DOMContentLoaded', initMentoringForm);
+    document.addEventListener('turbo:load', initMentoringForm);
 
     function showSuccessModal() {
         const modal = document.getElementById('successModal');
