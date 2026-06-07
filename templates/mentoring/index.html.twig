@@ -1,4 +1,4 @@
-﻿{% extends 'layouts/app.html.twig' %}
+{% extends 'layouts/app.html.twig' %}
 
 {% block title %}Mentoring | Reserva FTIC{% endblock %}
 
@@ -214,13 +214,13 @@
                                         {% if request.assignedMentorName %}
                                         <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
                                             <span class="info-label">Assigned Mentor</span>
-                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} â€” {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} - {{ request.assignedMentorExpertise }}{% endif %}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.availableTime %}
                                         <div class="info-item wide">
                                             <span class="info-label">Confirmed Time</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' Â· ' : '' }}{{ request.availableTime }}</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' &middot; ' : '' }}{{ request.availableTime }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod %}
@@ -365,13 +365,13 @@
                                         {% if request.assignedMentorName %}
                                         <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
                                             <span class="info-label">Assigned Mentor</span>
-                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} â€” {{ request.assignedMentorExpertise }}{% endif %}</span>
+                                            <span class="info-value status-approved"><strong>{{ request.assignedMentorName }}</strong>{% if request.assignedMentorExpertise %} - {{ request.assignedMentorExpertise }}{% endif %}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.availableTime %}
                                         <div class="info-item wide">
                                             <span class="info-label">Confirmed Time</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' Â· ' : '' }}{{ request.availableTime }}</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' &middot; ' : '' }}{{ request.availableTime }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod == 'Online' and request.meetingLink %}
@@ -686,7 +686,7 @@
                                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                                 </svg>
-                                                <strong>Requested:</strong> {{ request.scheduledDate|date('F d, Y') }} at {{ request.scheduledTime ? request.scheduledTime|date('g:i A') : 'â€”' }}
+                                                <strong>Requested:</strong> {{ request.scheduledDate|date('F d, Y') }} at {{ request.scheduledTime ? request.scheduledTime|date('g:i A') : '-' }}
                                             </div>
                                             {% endif %}
                                             
@@ -861,12 +861,12 @@
                 <p>
                     <strong>
                         {% if recentRequest.preferredExpertise %}{{ recentRequest.preferredExpertise }}{% elseif recentRequest.mentorProfile %}{{ recentRequest.mentorProfile.displayName }}{% else %}Mentor Request{% endif %}
-                    </strong> â€”
+                    </strong> -
                     <span class="info-value status-{{ recentRequest.status|lower }}">{{ recentRequest.status|capitalize }}</span>
                     on {{ recentRequest.createdAt|date('M d, Y') }}.
                 </p>
                 {% if recentRequest.availableDates %}
-                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} Â· {{ recentRequest.preferredSchedule }}{% endif %}</p>
+                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} &middot; {{ recentRequest.preferredSchedule }}{% endif %}</p>
                 {% endif %}
                 {% if recentRequest.assignedMentorName %}
                 <p style="font-size:12px;color:#0D9B00;margin:4px 0 0;font-weight:600;">Assigned: {{ recentRequest.assignedMentorName }}</p>
@@ -1017,16 +1017,16 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="assistance_schedule_start">Preferred Time â€” Start <span style="color:#c00">*</span></label>
+                            <label for="assistance_schedule_start">Preferred Time - Start <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="19:00" required>
-                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM â€“ 7:00 PM is allowed.</span>
+                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM - 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-grid form-grid-2">
                         <div class="form-group">
                             <label for="assistance_schedule_end">End Time <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="19:00" required>
-                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM â€“ 7:00 PM is allowed.</span>
+                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM - 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1781,7 +1781,7 @@
                             <line x1="8" y1="2" x2="8" y2="6"></line>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        <strong>Student Requested:</strong> <span id="scheduledDateText">â€”</span>
+                        <strong>Student Requested:</strong> <span id="scheduledDateText">-</span>
                     </div>
                     
                     {# Meeting Type Selection #}

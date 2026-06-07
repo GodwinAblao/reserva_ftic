@@ -144,19 +144,8 @@
                                min="{{ "now"|date('Y-m-d') }}"
                                data-availability-days='{{ availabilityDays|json_encode|raw }}'
                                style="padding:0.75rem; font-size:1rem;{% if availabilityDays|length == 0 %}border-color:#f59e0b;{% endif %}">
-                        {% if availabilityDays|length > 0 %}
-                            <small class="form-hint" style="color:#059669; font-size:.875rem; margin-top:.25rem; display:block; font-weight:500;">
-                                ✓ Mentor available on: {{ availabilityDays|join(', ') }}
-                            </small>
-                            <small class="form-hint" style="color:#64748b; font-size:.8rem; margin-top:.15rem; display:block;">
-                                Please select one of these days. Other dates will be rejected.
-                            </small>
-                        {% else %}
-                            <small class="form-hint" style="color:#d97706; font-size:.875rem; margin-top:.25rem; display:block; font-weight:500;">
-                                ⚠ This mentor has not set specific available days. Any date can be selected.
-                            </small>
-                        {% endif %}
-                        <div class="date-error" id="date_error" style="color:#dc2626; font-size:.875rem; margin-top:.25rem; display:none; background:#fef2f2; padding:0.5rem; border-radius:4px; border:1px solid #fecaca;"></div>
+                        <div id="date_feedback" style="display:none; font-size:.875rem; margin-top:.35rem; padding:.45rem .65rem; border-radius:6px; border:1px solid;"></div>
+                        <div id="date_error" style="display:none;"></div>
                     </div>
                     
                     <input type="hidden" name="scheduled_time" id="scheduled_time" value="{{ availabilityStart|default('09:00') }}">
@@ -521,64 +510,97 @@
             updateCharCount();
         }
 
-        // Calendar scheduling functionality
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
         // Date validation based on mentor availability
-        if (datePicker && dateError) {
-            let availabilityDays = [];
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const feedbackDiv = document.getElementById('date_feedback');
+        const submitBtn = document.getElementById('submitCustomRequest');
+
+        let availabilityDays = [];
+        let dateValid = false;
+
+        if (datePicker) {
             try {
                 availabilityDays = JSON.parse(datePicker.dataset.availabilityDays || '[]');
             } catch (e) {
-                console.error('Error parsing availability days:', e);
                 availabilityDays = [];
             }
-            
-            console.log('Mentor availability days:', availabilityDays);
-            
+
+            // Disable submit until a valid date is chosen (when days are restricted)
+            if (availabilityDays.length > 0 && submitBtn) {
+                submitBtn.disabled = true;
+            }
+
             datePicker.addEventListener('change', function() {
                 if (!this.value) {
-                    dateError.style.display = 'none';
+                    if (feedbackDiv) feedbackDiv.style.display = 'none';
+                    dateValid = false;
+                    if (submitBtn && availabilityDays.length > 0) submitBtn.disabled = true;
                     return;
                 }
-                
+
                 const selectedDate = new Date(this.value + 'T00:00:00');
                 const dayName = dayNames[selectedDate.getDay()];
-                
-                console.log('Selected date:', this.value, 'Day:', dayName);
-                
-                // If mentor has specific available days, validate against them
-                if (availabilityDays.length > 0) {
-                    if (!availabilityDays.includes(dayName)) {
-                        dateError.innerHTML = '<strong>⚠ Date not available</strong><br>This mentor only accepts requests for: <strong>' + availabilityDays.join(', ') + '</strong>. Please select a different date.';
-                        dateError.style.display = 'block';
-                        this.value = '';
-                        // Scroll to error
-                        dateError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    } else {
-                        dateError.style.display = 'none';
+
+                if (availabilityDays.length > 0 && !availabilityDays.includes(dayName)) {
+                    // Invalid day selected
+                    dateValid = false;
+                    if (feedbackDiv) {
+                        feedbackDiv.textContent = '\u2717 Mentor is not available on the selected date';
+                        feedbackDiv.style.cssText = 'display:block;font-size:.875rem;margin-top:.35rem;padding:.45rem .65rem;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;color:#dc2626;';
                     }
+                    if (submitBtn) submitBtn.disabled = true;
                 } else {
-                    // No specific days set - any day is allowed
-                    dateError.style.display = 'none';
-                    console.log('No availability days set - allowing any date');
+                    // Valid day
+                    dateValid = true;
+                    if (feedbackDiv) {
+                        const label = availabilityDays.length > 0
+                            ? '\u2713 Mentor available on: ' + availabilityDays.join(', ')
+                            : '\u2713 Date selected';
+                        feedbackDiv.textContent = label;
+                        feedbackDiv.style.cssText = 'display:block;font-size:.875rem;margin-top:.35rem;padding:.45rem .65rem;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#166534;';
+                    }
+                    if (submitBtn) submitBtn.disabled = false;
                 }
             });
         }
 
-        // Form validation before submit
+        // Form validation + loading state on submit
         if (customRequestForm) {
             customRequestForm.addEventListener('submit', function(e) {
                 const dateVal = datePicker ? datePicker.value : '';
                 const messageVal = textarea ? textarea.value.trim() : '';
-                
-                if (!dateVal || !messageVal || messageVal.length < 10) {
+
+                if (!dateVal) {
                     e.preventDefault();
-                    let errors = [];
-                    if (!dateVal) errors.push('Please select a date');
-                    if (!messageVal || messageVal.length < 10) errors.push('Please enter a message (minimum 10 characters)');
-                    alert('Please fix the following:\n• ' + errors.join('\n• '));
+                    if (feedbackDiv) {
+                        feedbackDiv.textContent = '\u2717 Please select a date before submitting.';
+                        feedbackDiv.style.cssText = 'display:block;font-size:.875rem;margin-top:.35rem;padding:.45rem .65rem;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;color:#dc2626;';
+                    }
                     return false;
+                }
+
+                if (availabilityDays.length > 0) {
+                    const dayName = dayNames[new Date(dateVal + 'T00:00:00').getDay()];
+                    if (!availabilityDays.includes(dayName)) {
+                        e.preventDefault();
+                        if (feedbackDiv) {
+                            feedbackDiv.textContent = '\u2717 Mentor is not available on the selected date. Allowed days: ' + availabilityDays.join(', ');
+                            feedbackDiv.style.cssText = 'display:block;font-size:.875rem;margin-top:.35rem;padding:.45rem .65rem;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;color:#dc2626;';
+                        }
+                        return false;
+                    }
+                }
+
+                if (!messageVal || messageVal.length < 10) {
+                    e.preventDefault();
+                    alert('Please enter a message (minimum 10 characters)');
+                    return false;
+                }
+
+                // All valid — show loading state
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('submit-loading');
                 }
             });
         }

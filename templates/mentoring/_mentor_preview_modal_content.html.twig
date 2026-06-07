@@ -27,8 +27,8 @@
         <p style="margin:0; color:#4b5563;">{{ mentor.bio|default('This mentor has not added a bio yet.') }}</p>
     </div>
 
-    {# Mentor Availability Info #}
-    <div class="mentor-availability-info" style="margin-bottom:1.25rem; padding:.75rem; background:#f8fafc; border-radius:8px; border-left:4px solid #3b82f6;">
+    {# Mentor Availability Info — hidden until a date is selected #}
+    <div class="mentor-availability-info" id="avail_info_{{ mentor.id }}" style="display:none; margin-bottom:1.25rem; padding:.75rem; background:#f8fafc; border-radius:8px; border-left:4px solid #3b82f6;">
         <h4 style="margin:0 0 .5rem 0; font-size:.9rem; color:#1e40af;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:.35rem;">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -100,22 +100,20 @@
                         Select Date & Time
                     </h4>
                     
-                    {# Date Picker #}
+                    {# Date Picker - Custom Calendar #}
                     <div class="form-section" style="margin-bottom:.75rem;">
-                        <label for="scheduled_date_{{ mentor.id }}" class="form-label" style="display:block; margin-bottom:.4rem; font-size:.85rem; font-weight:600; color:#374151;">Preferred Date <span class="form-required">*</span></label>
-                        <input type="date" 
-                               name="scheduled_date" 
+                        <label class="form-label" style="display:block; margin-bottom:.4rem; font-size:.85rem; font-weight:600; color:#374151;">Preferred Date <span class="form-required">*</span></label>
+                        <input type="hidden"
+                               name="scheduled_date"
                                id="scheduled_date_{{ mentor.id }}"
-                               class="form-input scheduled-date-picker"
-                               required
-                               min="{{ "now"|date('Y-m-d') }}"
-                               data-mentor-id="{{ mentor.id }}"
-                               data-availability-days='{{ availabilityDays|json_encode|raw }}'
-                               style="width:100%; padding:.6rem .75rem; border:1px solid #e5e7eb; border-radius:8px; font-size:.9rem; color:#374151; background:#fff;">
-                        <small class="form-hint" style="color:#64748b; font-size:.75rem; display:block; margin-top:.3rem;">
-                            {% if availabilityDays %}Only {{ availabilityDays|join(', ') }} are available{% else %}Select any available date{% endif %}
-                        </small>
-                        <div class="date-error" id="date_error_{{ mentor.id }}" style="color:#dc2626; font-size:.8rem; margin-top:.25rem; display:none; background:#fef2f2; padding:.4rem; border-radius:6px; border:1px solid #fecaca;"></div>
+                               required>
+                        <div class="mentor-mini-cal"
+                             id="mcal_{{ mentor.id }}"
+                             data-mentor-id="{{ mentor.id }}"
+                             data-availability-days='{{ availabilityDays|json_encode|raw }}'
+                             data-min="{{ 'now'|date('Y-m-d') }}"></div>
+                        <div id="mcal_selected_{{ mentor.id }}" class="mcal-selected-display" style="display:none;"></div>
+                        <div id="date_feedback_{{ mentor.id }}" style="display:none; font-size:.8rem; margin-top:.35rem; padding:.4rem .6rem; border-radius:6px; border:1px solid;"></div>
                     </div>
                     
                     {# Time Slot Selection #}
@@ -158,12 +156,14 @@
                 </div>
 
                 <div class="form-actions" style="display:flex; flex-direction:column; gap:.5rem;">
-                    <button type="submit" class="btn-primary" id="submit_request_{{ mentor.id }}" style="display:flex; align-items:center; justify-content:center; gap:.5rem; width:100%; padding:.7rem 1.25rem; background:#0D9B00; color:#fff; border:none; border-radius:8px; font-size:.95rem; font-weight:600; cursor:pointer; transition:background .2s;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                        Send Mentoring Request
+                    <button type="submit" class="btn-primary" id="submit_request_{{ mentor.id }}" {% if availabilityDays %}disabled{% endif %} style="display:flex; align-items:center; justify-content:center; gap:.5rem; width:100%; padding:.7rem 1.25rem; background:#0D9B00; color:#fff; border:none; border-radius:8px; font-size:.95rem; font-weight:600; cursor:pointer; transition:background .2s;">
+                        <span class="mentor-req-btn-icon" style="display:flex;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </span>
+                        <span class="mentor-req-btn-text">Send Mentoring Request</span>
                     </button>
                     <p class="form-note" style="text-align:center; margin:0; font-size:.8rem; color:#6b7280;">
                         {{ mentor.displayName }} will review your request and confirm the meeting details.
@@ -178,6 +178,28 @@
     </div>
 </div>
 
+<style>
+.mentor-mini-cal{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:.65rem;user-select:none;}
+.mcal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem;}
+.mcal-nav{background:none;border:1px solid #e5e7eb;border-radius:6px;font-size:1rem;cursor:pointer;color:#374151;padding:2px 9px;line-height:1.4;}
+.mcal-nav:hover{background:#f3f4f6;}
+.mcal-title{font-size:.82rem;font-weight:700;color:#111827;}
+.mcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.mcal-dow{text-align:center;font-size:.68rem;font-weight:600;color:#9ca3af;padding:3px 0;}
+.mcal-cell{text-align:center;padding:5px 2px;font-size:.78rem;border-radius:6px;color:#374151;line-height:1.3;}
+.mcal-cell.available{cursor:pointer;}
+.mcal-cell.available:hover{background:#f0fdf4;color:#065f46;}
+.mcal-cell.unavailable{color:#d1d5db;cursor:not-allowed;}
+.mcal-cell.past{color:#e5e7eb;cursor:default;}
+.mcal-cell.today.available{font-weight:700;background:#fef9c3;}
+.mcal-cell.selected{background:#0D9B00 !important;color:#fff !important;font-weight:700;}
+.mcal-selected-display{margin-top:.4rem;font-size:.78rem;color:#065f46;background:#d1fae5;padding:.35rem .6rem;border-radius:6px;}
+.mentor-req-btn-loading{opacity:.75;pointer-events:none;cursor:not-allowed;}
+.mentor-req-btn-loading .mentor-req-btn-icon{display:none;}
+.mentor-req-btn-loading .mentor-req-btn-text{display:none;}
+.mentor-req-btn-loading::after{content:'';display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:mreqspin .7s linear infinite;vertical-align:middle;}
+@keyframes mreqspin{to{transform:rotate(360deg);}}
+</style>
 <script>
 (function() {
     // Toggle "Other" specialization text box
@@ -185,104 +207,169 @@
         const otherInput = document.getElementById(otherInputId);
         if (otherInput) {
             otherInput.style.display = select.value === 'Other' ? 'block' : 'none';
-            if (select.value !== 'Other') {
-                otherInput.value = '';
-            }
+            if (select.value !== 'Other') otherInput.value = '';
         }
     };
 
-    // Availability-based calendar scheduling
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    
-    function generateTimeSlots(startTime, endTime, intervalMinutes = 30) {
-        const slots = [];
-        const [startHour, startMin] = startTime.split(':').map(Number);
-        const [endHour, endMin] = endTime.split(':').map(Number);
-        
-        let currentHour = startHour;
-        let currentMin = startMin;
-        
-        while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-            const timeStr = String(currentHour).padStart(2, '0') + ':' + String(currentMin).padStart(2, '0');
-            const displayTime = new Date('2000-01-01T' + timeStr).toLocaleTimeString('en-US', {
-                hour: 'numeric', minute: '2-digit', hour12: true
-            });
-            slots.push({ value: timeStr, label: displayTime });
-            
-            currentMin += intervalMinutes;
-            if (currentMin >= 60) {
-                currentHour += 1;
-                currentMin = 0;
+    /* ── Mini Calendar Widget ── */
+    const CAL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const CAL_DOWS   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    const DAY_NUM    = {Sunday:0,Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6};
+
+    function buildCalendar(calEl) {
+        const mid         = calEl.dataset.mentorId;
+        const rawDays     = JSON.parse(calEl.dataset.availabilityDays || '[]');
+        const minStr      = calEl.dataset.min;   // 'YYYY-MM-DD'
+        const hiddenInput = document.getElementById('scheduled_date_' + mid);
+        const selDisplay  = document.getElementById('mcal_selected_' + mid);
+        const timeSelect  = document.getElementById('scheduled_time_' + mid);
+
+        // Handle compound day names like 'Monday | M-W-TH' → 'Monday'
+        const allowedNums = new Set(
+            rawDays.map(d => DAY_NUM[d.split('|')[0].trim()]).filter(n => n !== undefined)
+        );
+
+        const [my, mm, md] = minStr.split('-').map(Number);
+        const minDate = new Date(my, mm - 1, md);
+        const today   = new Date(); today.setHours(0,0,0,0);
+
+        let year  = today.getFullYear();
+        let month = today.getMonth();
+        let selectedStr = null;
+
+        function render() {
+            const firstDow = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let html = `<div class="mcal-header">
+                <button type="button" class="mcal-nav" onclick="_mcalNav('${mid}',-1)">&#8249;</button>
+                <span class="mcal-title">${CAL_MONTHS[month]} ${year}</span>
+                <button type="button" class="mcal-nav" onclick="_mcalNav('${mid}',1)">&#8250;</button>
+            </div><div class="mcal-grid">`;
+            CAL_DOWS.forEach(d => { html += `<div class="mcal-dow">${d}</div>`; });
+            for (let i = 0; i < firstDow; i++) html += '<div class="mcal-cell"></div>';
+            for (let d = 1; d <= daysInMonth; d++) {
+                const cell   = new Date(year, month, d);
+                const dow    = cell.getDay();
+                const dStr   = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                const isPast = cell < minDate;
+                const isBad  = allowedNums.size > 0 && !allowedNums.has(dow);
+                const isToday = cell.getTime() === today.getTime();
+                const isSel  = dStr === selectedStr;
+                let cls = 'mcal-cell';
+                if (isSel)   cls += ' selected';
+                else if (isPast || isBad) cls += isPast ? ' past' : ' unavailable';
+                else { cls += ' available'; if (isToday) cls += ' today'; }
+                const handler = (!isPast && !isBad) ? ` onclick="_mcalPick('${mid}','${dStr}')"` : '';
+                html += `<div class="${cls}"${handler}>${d}</div>`;
             }
+            html += '</div>';
+            calEl.innerHTML = html;
         }
-        
+
+        const availInfo   = document.getElementById('avail_info_' + mid);
+        const feedbackDiv = document.getElementById('date_feedback_' + mid);
+        const submitBtn   = document.getElementById('submit_request_' + mid);
+
+        function pick(dStr) {
+            selectedStr = dStr;
+            if (hiddenInput) hiddenInput.value = dStr;
+
+            const d   = new Date(dStr + 'T00:00:00');
+            const dow = d.getDay();
+            const valid = allowedNums.size === 0 || allowedNums.has(dow);
+            const dayLabel = d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+            if (selDisplay) {
+                selDisplay.textContent = dayLabel;
+                selDisplay.style.display = 'block';
+            }
+
+            if (feedbackDiv) {
+                if (valid) {
+                    feedbackDiv.textContent = '\u2713 Mentor available on: ' + (rawDays.length ? rawDays.join(', ') : 'all days');
+                    feedbackDiv.style.cssText = 'display:block;font-size:.8rem;margin-top:.35rem;padding:.4rem .6rem;border-radius:6px;border:1px solid #86efac;background:#f0fdf4;color:#166534;';
+                } else {
+                    feedbackDiv.textContent = '\u2717 Mentor is not available on the selected date';
+                    feedbackDiv.style.cssText = 'display:block;font-size:.8rem;margin-top:.35rem;padding:.4rem .6rem;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;color:#dc2626;';
+                }
+            }
+
+            if (availInfo) availInfo.style.display = 'block';
+            if (submitBtn) submitBtn.disabled = !valid;
+
+            if (timeSelect) { if (valid) refillTime(timeSelect); else { timeSelect.innerHTML = '<option value="">-- Select date first --</option>'; } }
+            render();
+        }
+
+        calEl._mcalNav = function(dir) {
+            month += dir;
+            if (month < 0)  { month = 11; year--; }
+            if (month > 11) { month = 0;  year++; }
+            render();
+        };
+        calEl._mcalPick = pick;
+        render();
+    }
+
+    window._mcalNav  = function(mid, dir) { document.getElementById('mcal_' + mid)?._mcalNav(dir); };
+    window._mcalPick = function(mid, d)   { document.getElementById('mcal_' + mid)?._mcalPick(d); };
+
+    /* ── Time slot generator ── */
+    function generateTimeSlots(startTime, endTime, interval) {
+        interval = interval || 30;
+        const slots = [];
+        const [sh, sm] = startTime.split(':').map(Number);
+        const [eh, em] = endTime.split(':').map(Number);
+        let h = sh, m = sm;
+        while (h < eh || (h === eh && m < em)) {
+            const ts = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+            const lbl = new Date('2000-01-01T' + ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+            slots.push({value:ts,label:lbl});
+            m += interval; if (m >= 60) { h++; m = 0; }
+        }
         return slots;
     }
-    
-    document.querySelectorAll('.scheduled-date-picker').forEach(function(datePicker) {
-        const mentorId = datePicker.dataset.mentorId;
-        const availabilityDays = JSON.parse(datePicker.dataset.availabilityDays || '[]');
-        const timeSelect = document.getElementById('scheduled_time_' + mentorId);
-        const startTime = timeSelect?.dataset.startTime || '09:00';
-        const endTime = timeSelect?.dataset.endTime || '17:00';
-        
-        // Generate time slots
-        if (timeSelect) {
-            const slots = generateTimeSlots(startTime, endTime);
-            slots.forEach(function(slot) {
-                const option = document.createElement('option');
-                option.value = slot.value;
-                option.textContent = slot.label;
-                timeSelect.appendChild(option);
-            });
-        }
-        
-        // Date validation based on mentor availability
-        datePicker.addEventListener('change', function() {
-            // Parse date without timezone issues (YYYY-MM-DD format from input)
-            const dateStr = this.value;
-            if (!dateStr) return;
-            
-            const [year, month, day] = dateStr.split('-').map(Number);
-            // JavaScript months are 0-indexed, so subtract 1 from month
-            const selectedDate = new Date(year, month - 1, day);
-            const dayName = dayNames[selectedDate.getDay()];
-            const errorDiv = document.getElementById('date_error_' + mentorId);
-            
-            // DEBUG: Log values to console
-            console.log('DEBUG: Selected date:', dateStr);
-            console.log('DEBUG: Parsed year/month/day:', year, month, day);
-            console.log('DEBUG: Selected day name:', dayName);
-            console.log('DEBUG: Available days:', availabilityDays);
-            console.log('DEBUG: Is day included?', availabilityDays.includes(dayName));
-            
-            // Clear previous error
-            errorDiv.style.display = 'none';
-            errorDiv.textContent = '';
-            
-            if (availabilityDays.length > 0 && !availabilityDays.includes(dayName)) {
-                errorDiv.textContent = 'This mentor is only available on: ' + availabilityDays.join(', ');
-                errorDiv.textContent += ' (You selected: ' + dayName + ')';
-                errorDiv.style.display = 'block';
-                this.value = '';
+
+    function refillTime(timeSelect) {
+        const start = timeSelect.dataset.startTime || '09:00';
+        const end   = timeSelect.dataset.endTime   || '17:00';
+        timeSelect.innerHTML = '<option value="">-- Select a time slot --</option>';
+        generateTimeSlots(start, end).forEach(function(s) {
+            const o = document.createElement('option');
+            o.value = s.value; o.textContent = s.label;
+            timeSelect.appendChild(o);
+        });
+    }
+
+    /* ── Init all calendars in this modal ── */
+    document.querySelectorAll('.mentor-mini-cal').forEach(buildCalendar);
+
+    /* ── Populate time selects on load ── */
+    document.querySelectorAll('.scheduled-time-select').forEach(function(sel) {
+        refillTime(sel);
+    });
+
+    /* ── Form-level submit guard + loading state ── */
+    document.querySelectorAll('form[data-mentor-preview-form]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            const mid    = form.dataset.mentorId;
+            const hidden = document.getElementById('scheduled_date_' + mid);
+            const btn    = document.getElementById('submit_request_' + mid);
+            const fb     = document.getElementById('date_feedback_' + mid);
+
+            if (!hidden || !hidden.value) {
+                e.preventDefault();
+                if (fb) { fb.textContent = '\u2717 Please select a date first.'; fb.style.cssText = 'display:block;font-size:.8rem;margin-top:.35rem;padding:.4rem .6rem;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;color:#dc2626;'; }
                 return;
             }
-            
-            // Regenerate time slots for the selected date
-            if (timeSelect) {
-                timeSelect.innerHTML = '<option value="">Select time slot...</option>';
-                const slots = generateTimeSlots(startTime, endTime);
-                slots.forEach(function(slot) {
-                    const option = document.createElement('option');
-                    option.value = slot.value;
-                    option.textContent = slot.label;
-                    timeSelect.appendChild(option);
-                });
-            }
+            if (btn && btn.disabled) { e.preventDefault(); return; }
+
+            // All valid — show loading
+            if (btn) { btn.classList.add('mentor-req-btn-loading'); btn.disabled = true; }
         });
     });
-    
-    // Character counter for textarea
+
+    /* ── Character counter ── */
     document.querySelectorAll('.custom-textarea').forEach(function(textarea) {
         const counter = textarea.parentElement.querySelector('.char-count');
         if (counter) {

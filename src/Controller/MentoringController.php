@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -231,8 +232,8 @@ class MentoringController extends AbstractController
         // Create combined chronological array of all requests and applications
         $allItems = [];
         
-        // Add mentor requests
-        foreach ($allRequests as $request) {
+        // Add only assistance requests (user-initiated help requests, not direct mentor requests)
+        foreach ($assistanceRequests as $request) {
             $allItems[] = [
                 'type' => 'request',
                 'item' => $request,
@@ -672,7 +673,7 @@ class MentoringController extends AbstractController
                     error_log('EMAIL TEST: Attempting to send test email to admin: ' . $admin->getEmail());
                     
                     $testEmail = (new \Symfony\Component\Mime\Email())
-                        ->from('noreply@fticreserva.website')
+                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                         ->to($admin->getEmail())
                         ->subject('TEST EMAIL - Admin Notification System')
                         ->html('<h1>Test Email</h1><p>This is a test email to verify admin email notifications are working.</p><p>Admin: ' . $admin->getEmail() . '</p><p>Time: ' . date('Y-m-d H:i:s') . '</p>');
@@ -710,7 +711,7 @@ class MentoringController extends AbstractController
         
         try {
             $testEmail = (new \Symfony\Component\Mime\Email())
-                ->from('noreply@fticreserva.website')
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($userEmail)
                 ->subject('SIMPLE EMAIL TEST - Admin Notification System')
                 ->html('<h1>Simple Email Test</h1><p>This is a basic test to verify email sending works.</p><p>User: ' . $userEmail . '</p><p>Time: ' . date('Y-m-d H:i:s') . '</p><p>If you receive this, email system is working!</p>');
@@ -1244,6 +1245,22 @@ $validUntil = $request->request->get('valid_until');
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
 
+        // Backend enforcement of mentor availability days
+        $availabilityDays = $profile->getAvailabilityDays() ?? [];
+        if (!empty($availabilityDays)) {
+            $dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            $selectedDay = $dayNames[(int)$scheduledDate->format('w')];
+            if (!in_array($selectedDay, $availabilityDays, true)) {
+                $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+                $msg = 'This mentor is only available on: ' . implode(', ', $availabilityDays) . '. Please select a valid date.';
+                if ($isAjax) {
+                    return new JsonResponse(['error' => $msg], Response::HTTP_BAD_REQUEST);
+                }
+                $this->addFlash('error', $msg);
+                return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
+            }
+        }
+
         $customRequest = new \App\Entity\MentorCustomRequest();
         $customRequest->setStudent($currentUser)
             ->setMentorProfile($profile)
@@ -1299,7 +1316,7 @@ $validUntil = $request->request->get('valid_until');
             ]);
 
             $emailMessage = (new Email())
-                ->from('noreply@fticreserva.website')
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($user->getEmail())
                 ->subject('New Custom Mentoring Request from ' . $studentName)
                 ->html($emailHtml);
@@ -1319,7 +1336,7 @@ $validUntil = $request->request->get('valid_until');
             ]);
             
             $studentEmailMessage = (new Email())
-                ->from('noreply@fticreserva.website')
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($student->getEmail())
                 ->subject('Your Mentoring Request Has Been Sent')
                 ->html($studentEmailHtml);
@@ -1811,7 +1828,7 @@ $validUntil = $request->request->get('valid_until');
             ]);
 
             $emailMessage = (new Email())
-                ->from('noreply@fticreserva.website')
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($student->getEmail())
                 ->subject($title)
                 ->html($emailHtml);
@@ -1987,7 +2004,7 @@ $validUntil = $request->request->get('valid_until');
             error_log('EMAIL: Attempting to send mentor assistance request email to admin: ' . $admin->getEmail());
             
             $email = (new Email())
-                ->from('noreply@fticreserva.website')
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($admin->getEmail())
                 ->subject('New Mentor Assistance Request')
                 ->html($this->renderView('emails/mentor_assistance_request.html.twig', [
@@ -2007,7 +2024,7 @@ $validUntil = $request->request->get('valid_until');
     {
         try {
             $email = (new Email())
-                ->from('noreply@fticreserva.website')
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                 ->to($student->getEmail())
                 ->subject('Mentor Details for Your Request')
                 ->html($this->renderView('emails/mentor_assistance_response.html.twig', [

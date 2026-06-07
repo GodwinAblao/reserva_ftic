@@ -694,7 +694,7 @@ class AdminController extends AbstractController
                     r.email, r.contact, r.capacity, r.purpose, r.status
              FROM reservation r
              INNER JOIN facility f ON r.facility_id = f.id
-             WHERE r.status != 'Suggested'
+             WHERE r.status = 'Pending'
              ORDER BY r.created_at DESC LIMIT 8"
         )->fetchAllAssociative();
 

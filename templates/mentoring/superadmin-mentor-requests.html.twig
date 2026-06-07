@@ -1,4 +1,4 @@
-﻿{% extends 'layouts/app.html.twig' %}
+{% extends 'layouts/app.html.twig' %}
 
 {% block title %}Mentoring Dashboard | Super Admin | Reserva FTIC{% endblock %}
 
@@ -129,7 +129,7 @@
 <div class="sa-toolbar">
     <div class="sa-toolbar-search">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="saSearch" placeholder="Search by nameâ€¦" oninput="saFilterList()">
+        <input type="text" id="saSearch" placeholder="Search by name..." oninput="saFilterList()">
     </div>
     {% if is_super_admin %}
     <button class="sa-create-btn" onclick="openCreateMentor()">
@@ -237,13 +237,13 @@
                             {% if itemData.type == 'request' %}
                                 {% set itemName = item.fullName ?: (item.student ? (item.student.firstName~' '~item.student.lastName) : 'Unknown') %}
                                 <div class="sa-item" data-id="{{ item.id }}" data-type="custom" data-name="{{ itemName|lower }}" onclick="saSelectItem(this,'custom',{{ item.id }})">
-                                    <div class="sa-item-top"><span class="sa-item-name">{{ itemName }}</span><span class="sa-item-time">{{ item.createdAt|date('M d Â· H:i') }}</span></div>
+                                    <div class="sa-item-top"><span class="sa-item-name">{{ itemName }}</span><span class="sa-item-time">{{ item.createdAt|date('M d, H:i') }}</span></div>
                                     <div class="sa-item-sub">Mentor Request</div>
                                     <div class="sa-item-msg">{{ item.message|default('')|slice(0,55) }}</div>
                                 </div>
                             {% elseif itemData.type == 'application' %}
                                 <div class="sa-item" data-id="{{ item.id }}" data-type="apply" data-name="{{ ((item.firstName~' '~item.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ item.id }})">
-                                    <div class="sa-item-top"><span class="sa-item-name">{{ item.firstName }} {{ item.lastName }}</span><span class="sa-item-time">{{ item.createdAt|date('M d Â· H:i') }}</span></div>
+                                    <div class="sa-item-top"><span class="sa-item-name">{{ item.firstName }} {{ item.lastName }}</span><span class="sa-item-time">{{ item.createdAt|date('M d, H:i') }}</span></div>
                                     <div class="sa-item-sub">Mentor Application</div>
                                     <div class="sa-item-msg">{{ item.specialization }}</div>
                                 </div>
@@ -307,7 +307,7 @@
                 {% for req in weekReqs %}
                 {% set reqName = req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown') %}
                 <div class="sa-item" data-id="{{ req.id }}" data-type="custom" data-name="{{ reqName|lower }}" onclick="saSelectItem(this,'custom',{{ req.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ reqName }}</span><span class="sa-item-time">{{ req.createdAt|date('M d Â· H:i') }}</span></div>
+                    <div class="sa-item-top"><span class="sa-item-name">{{ reqName }}</span><span class="sa-item-time">{{ req.createdAt|date('M d, H:i') }}</span></div>
                     <div class="sa-item-sub">Mentor Request</div>
                     <div class="sa-item-msg">{{ req.message|default('')|slice(0,55) }}</div>
                 </div>{% endfor %}
@@ -354,7 +354,7 @@
                 <div class="sa-group-body" data-body="apply-week">
                 {% for app in weekApps %}
                 <div class="sa-item" data-id="{{ app.id }}" data-type="apply" data-name="{{ ((app.firstName~' '~app.lastName)|trim)|lower }}" onclick="saSelectItem(this,'apply',{{ app.id }})">
-                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d Â· H:i') }}</span></div>
+                    <div class="sa-item-top"><span class="sa-item-name">{{ app.firstName }} {{ app.lastName }}</span><span class="sa-item-time">{{ app.createdAt|date('M d, H:i') }}</span></div>
                     <div class="sa-item-sub">Mentoring Application</div>
                     <div class="sa-item-msg">{{ app.specialization }}</div>
                 </div>{% endfor %}
@@ -399,23 +399,23 @@
                 <div class="sa-det-av">{{ (req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown'))|slice(0,1)|upper }}</div>
                 <div>
                     <div class="sa-det-name">{{ req.fullName ?: (req.student ? (req.student.firstName~' '~req.student.lastName) : 'Unknown') }}</div>
-                    <div class="sa-det-sub">{{ req.student ? req.student.email : (req.email ?: 'â€”') }}</div>
+                    <div class="sa-det-sub">{{ req.student ? req.student.email : (req.email ?: '-') }}</div>
                 </div>
             </div>
             <div class="sa-sec">Mentor Request Details</div>
             <div class="sa-hr"></div>
             <div class="sa-sec">Requester Information</div>
             <div class="sa-grid4">
-                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: (req.student ? ((req.student.firstName~' '~req.student.lastName)|trim) : 'â€”') }}</p></div>
-                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student ? req.student.email : (req.email ?: 'â€”') }}</p></div>
-                <div class="sa-field"><label>Degree / Course</label><p>{{ req.departmentCourse ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Full Name</label><p>{{ req.fullName ?: (req.student ? ((req.student.firstName~' '~req.student.lastName)|trim) : '-') }}</p></div>
+                <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ req.student ? req.student.email : (req.email ?: '-') }}</p></div>
+                <div class="sa-field"><label>Degree / Course</label><p>{{ req.departmentCourse ?: '-' }}</p></div>
                 <div class="sa-field"><label>Status</label><p><span class="badge {{ req.status|lower }}">{{ req.status }}</span></p></div>
             </div>
             <div class="sa-sec">Request Preferences</div>
             <div class="sa-grid3">
-                <div class="sa-field"><label>Specialization Needed</label><p>{{ req.preferredExpertise ?: (req.mentorProfile ? req.mentorProfile.specialization : 'â€”') }}</p></div>
-                <div class="sa-field"><label>Preferred Day</label><p>{{ req.availableDates ?: 'â€”' }}</p></div>
-                <div class="sa-field"><label>Preferred Time</label><p>{{ req.preferredSchedule ?: (req.availableTime ?: 'â€”') }}</p></div>
+                <div class="sa-field"><label>Specialization Needed</label><p>{{ req.preferredExpertise ?: (req.mentorProfile ? req.mentorProfile.specialization : '-') }}</p></div>
+                <div class="sa-field"><label>Preferred Day</label><p>{{ req.availableDates ?: '-' }}</p></div>
+                <div class="sa-field"><label>Preferred Time</label><p>{{ req.preferredSchedule ?: (req.availableTime ?: '-') }}</p></div>
             </div>
             {% if req.message %}
             <div class="sa-sec">Message / Notes</div>
@@ -425,11 +425,11 @@
             <div class="sa-sec">Current Assignment</div>
             <div class="sa-chosen">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-                Assigned to: <strong>{{ req.assignedMentorName }}</strong>{% if req.assignedMentorExpertise %} Â· {{ req.assignedMentorExpertise }}{% endif %}
-                {% if req.availableTime %} Â· {{ req.availableTime }}{% endif %}
-                {% if req.meetingMethod %} Â· {{ req.meetingMethod }}{% endif %}
-                {% if req.meetingMethod == 'Online' and req.meetingLink %} Â· <a href="{{ req.meetingLink }}" target="_blank" rel="noopener noreferrer" style="color:#0D9B00;font-weight:600;">Join Meeting</a>{% endif %}
-                {% if req.meetingMethod == 'In Person' and req.meetingLocation %} Â· {{ req.meetingLocation }}{% endif %}
+                Assigned to: <strong>{{ req.assignedMentorName }}</strong>{% if req.assignedMentorExpertise %} &middot; {{ req.assignedMentorExpertise }}{% endif %}
+                {% if req.availableTime %} &middot; {{ req.availableTime }}{% endif %}
+                {% if req.meetingMethod %} &middot; {{ req.meetingMethod }}{% endif %}
+                {% if req.meetingMethod == 'Online' and req.meetingLink %} &middot; <a href="{{ req.meetingLink }}" target="_blank" rel="noopener noreferrer" style="color:#0D9B00;font-weight:600;">Join Meeting</a>{% endif %}
+                {% if req.meetingMethod == 'In Person' and req.meetingLocation %} &middot; {{ req.meetingLocation }}{% endif %}
             </div>
             {% endif %}
             {% if req.adminInstructions %}
@@ -464,7 +464,7 @@
                     </div>
                     <div class="sa-assign-field"><label>Meeting Method</label>
                         <select name="meeting_method_override" class="sa-inp">
-                            <option value="">â€” keep current â€”</option>
+                            <option value="">-- keep current --</option>
                             <option value="In Person" {{ req.meetingMethod=='In Person'?'selected':'' }}>In Person</option>
                             <option value="Online" {{ req.meetingMethod=='Online'?'selected':'' }}>Online</option>
                             <option value="Hybrid" {{ req.meetingMethod=='Hybrid'?'selected':'' }}>Hybrid</option>
@@ -487,32 +487,32 @@
                             <span style="font-size:10px;font-weight:600;color:#0D9B00;cursor:pointer;" onclick="rqToggle({{ req.id }})" id="rq-tlbl-{{ req.id }}">Type manually</span>
                         </label>
                         <select name="mentor_id" class="sa-inp" id="rq-sel-{{ req.id }}" onchange="rqFill({{ req.id }})">
-                            <option value="">â€” Pick from system â€”</option>
+                            <option value="">-- Pick from system --</option>
                             {% for mentor in mentors %}<option value="{{ mentor.id }}" data-name="{{ mentor.displayName }}" data-spec="{{ mentor.specialization }}" {{ req.assignedMentorName==mentor.displayName?'selected':'' }}>{{ mentor.displayName }} ({{ mentor.specialization }})</option>{% endfor %}
                         </select>
-                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter mentor nameâ€¦" value="{{ req.assignedMentorName ?? '' }}" style="display:none;margin-top:6px;">
+                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter mentor name..." value="{{ req.assignedMentorName ?? '' }}" style="display:none;margin-top:6px;">
                     </div>
                     <div class="sa-assign-field"><label>Specialization</label>
                         {% set saStdNames = allSpecializations|map(s => s.name) %}
                         {% set saIsCustom = req.assignedMentorExpertise and req.assignedMentorExpertise != 'Other' and req.assignedMentorExpertise not in saStdNames %}
                         {% set saExpertiseVal = saIsCustom ? 'Other' : req.assignedMentorExpertise %}
                         <select name="expertise" class="sa-inp sa-expertise-select" id="rq-spec-{{ req.id }}" onchange="saToggleOther(this, 'rq-spec-other-{{ req.id }}')">
-                            <option value="">Selectâ€¦</option>
+                            <option value="">Select...</option>
                             {% for specialization in allSpecializations %}<option value="{{ specialization.name }}" {{ saExpertiseVal==specialization.name?'selected':'' }}>{{ specialization.name }}</option>{% endfor %}
                             {% if 'Other' not in saStdNames %}<option value="Other" {{ saExpertiseVal=='Other'?'selected':'' }}>Other</option>{% endif %}
                         </select>
-                        <input type="text" name="expertise_other" class="sa-inp" id="rq-spec-other-{{ req.id }}" placeholder="Specify specializationâ€¦" style="margin-top:4px;{{ saIsCustom ? '' : 'display:none;' }}" value="{{ saIsCustom ? req.assignedMentorExpertise : '' }}">
+                        <input type="text" name="expertise_other" class="sa-inp" id="rq-spec-other-{{ req.id }}" placeholder="Specify specialization..." style="margin-top:4px;{{ saIsCustom ? '' : 'display:none;' }}" value="{{ saIsCustom ? req.assignedMentorExpertise : '' }}">
                     </div>
                 </div>
                 <div class="sa-grid2">
                     <div class="sa-assign-field"><label>Meeting Method</label>
                         <select name="meeting_method" class="sa-inp" id="rq-method-{{ req.id }}" onchange="saToggleMethod(this,'rq-link-{{ req.id }}','rq-loc-{{ req.id }}')">
-                            <option value="">Selectâ€¦</option>
+                            <option value="">Select...</option>
                             <option value="Online" {{ req.meetingMethod=='Online'?'selected':'' }}>Online</option>
                             <option value="In Person" {{ req.meetingMethod=='In Person'?'selected':'' }}>In Person</option>
                         </select>
-                        <input type="url" name="meeting_link" id="rq-link-{{ req.id }}" class="sa-inp" placeholder="Meeting link (Zoom/Google Meet)â€¦" style="margin-top:4px;{{ req.meetingMethod=='Online' ? '' : 'display:none;' }}" value="{{ req.meetingLink }}">
-                        <input type="text" name="meeting_location" id="rq-loc-{{ req.id }}" class="sa-inp" placeholder="Specify locationâ€¦" style="margin-top:4px;{{ req.meetingMethod=='In Person' ? '' : 'display:none;' }}" value="{{ req.meetingLocation }}">
+                        <input type="url" name="meeting_link" id="rq-link-{{ req.id }}" class="sa-inp" placeholder="Meeting link (Zoom/Google Meet)..." style="margin-top:4px;{{ req.meetingMethod=='Online' ? '' : 'display:none;' }}" value="{{ req.meetingLink }}">
+                        <input type="text" name="meeting_location" id="rq-loc-{{ req.id }}" class="sa-inp" placeholder="Specify location..." style="margin-top:4px;{{ req.meetingMethod=='In Person' ? '' : 'display:none;' }}" value="{{ req.meetingLocation }}">
                     </div>
                     <div class="sa-assign-field"><label>Day</label>
                         <select name="available_dates" class="sa-inp">
@@ -522,10 +522,10 @@
                 </div>
                 <div class="sa-grid2">
                     <div class="sa-assign-field"><label>Start Time</label>
-                        <input type="time" name="available_time_start" class="sa-inp" value="{{ req.availableTime ? req.availableTime|split(' â€“ ')|first|trim : '' }}">
+                        <input type="time" name="available_time_start" class="sa-inp" value="">
                     </div>
                     <div class="sa-assign-field"><label>End Time</label>
-                        <input type="time" name="available_time_end" class="sa-inp" value="{{ req.availableTime and 'â€“' in req.availableTime ? req.availableTime|split('â€“')|last|trim : '' }}">
+                        <input type="time" name="available_time_end" class="sa-inp" value="">
                     </div>
                 </div>
                 <div class="sa-grid2">
@@ -562,23 +562,23 @@
             <div class="sa-hr"></div>
             <div class="sa-sec">Personal Information</div>
             <div class="sa-grid3">
-                <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: 'â€”' }}</p></div>
-                <div class="sa-field"><label>Middle Name</label><p>{{ app.middleName ?: 'â€”' }}</p></div>
-                <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>First Name</label><p>{{ app.firstName ?: '-' }}</p></div>
+                <div class="sa-field"><label>Middle Name</label><p>{{ app.middleName ?: '-' }}</p></div>
+                <div class="sa-field"><label>Last Name</label><p>{{ app.lastName ?: '-' }}</p></div>
             </div>
             <div class="sa-grid2">
                 <div class="sa-field"><label>Email</label><p style="font-size:11px;">{{ app.email }}</p></div>
-                <div class="sa-field"><label>Program / Course</label><p>{{ app.programCourse ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Program / Course</label><p>{{ app.programCourse ?: '-' }}</p></div>
             </div>
             <div class="sa-sec">Academic Background &amp; Mentoring</div>
             <div class="sa-grid3">
                 <div class="sa-field"><label>Specialization</label><p>{{ app.specialization }}</p></div>
-                <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Availability</label><p>{{ app.availabilityTime ?: '-' }}</p></div>
                 <div class="sa-field"><label>Status</label><p><span class="badge {{ app.status|lower }}">{{ app.status }}</span></p></div>
             </div>
             <div class="sa-grid2">
-                <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: 'â€”' }}</p></div>
-                <div class="sa-field"><label>Highest Education</label><p>{{ app.highestEducation ?: 'â€”' }}</p></div>
+                <div class="sa-field"><label>Current Profession</label><p>{{ app.currentProfession ?: '-' }}</p></div>
+                <div class="sa-field"><label>Highest Education</label><p>{{ app.highestEducation ?: '-' }}</p></div>
             </div>
             {% if app.reason %}
             <div class="sa-sec">Reason / Message</div>
@@ -655,7 +655,7 @@
             <span id="auditPaginationInfo" style="font-size:11px;color:#9ca3af;"></span>
             <div class="sa-audit-search-wrap">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="auditSearchInput" placeholder="Search by name, action, adminâ€¦" oninput="auditSearchDebounce()" autocomplete="off">
+                <input type="text" id="auditSearchInput" placeholder="Search by name, action, admin..." oninput="auditSearchDebounce()" autocomplete="off">
             </div>
         </div>
     </div>
@@ -673,7 +673,7 @@
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <span>No activity recorded yet.</span>
         </div>
-        <div id="auditLoading" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">Loadingâ€¦</div>
+        <div id="auditLoading" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">Loading...</div>
     </div>
     <div id="auditPagination" class="sa-audit-pagination"></div>
 </div>
@@ -744,7 +744,7 @@
         var meta=actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
         var typeLabel=log.subjectType==='application'?'Application':'Mentor Request';
         var typeCls  =log.subjectType==='application'?'type-app':'type-req';
-        var note=log.note?(log.note.length>60?log.note.slice(0,60)+'â€¦':log.note):'â€”';
+        var note=log.note?(log.note.length>60?log.note.slice(0,60)+'...':log.note):'-';
         var statusFlow='';
         if(log.previousStatus||log.newStatus){
             statusFlow='<span class="sa-audit-status-flow">';
@@ -752,7 +752,7 @@
             if(log.previousStatus&&log.newStatus) statusFlow+='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
             if(log.newStatus) statusFlow+='<span class="badge '+log.newStatus.toLowerCase().replace(/ /g,'-')+' sa-audit-new-status">'+log.newStatus+'</span>';
             statusFlow+='</span>';
-        } else { statusFlow='<span style="color:#d1d5db;">â€”</span>'; }
+        } else { statusFlow='<span style="color:#d1d5db;">-</span>'; }
         return '<tr class="sa-audit-row" data-log-id="'+log.id+'">'
             +'<td class="sa-audit-time"><span class="sa-audit-date">'+log.loggedAt+'</span><span class="sa-audit-clock">'+log.loggedAtTime+'</span></td>'
             +'<td><span class="sa-audit-subject">'+log.subjectLabel+'</span>'+(log.subjectId?'<span class="sa-audit-id">#'+log.subjectId+'</span>':'')+'</td>'
@@ -771,13 +771,13 @@
         var html='';
         html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page-1)+')" '+(_page<=1?'disabled':'')+'>&lsaquo; Prev</button>';
         var start=Math.max(1,_page-2), end=Math.min(_pages,_page+2);
-        if(start>1) html+='<button class="sa-audit-pg-btn" onclick="auditGoPage(1)">1</button>'+(start>2?'<span style="padding:0 4px;color:#9ca3af;">â€¦</span>':'');
+        if(start>1) html+='<button class="sa-audit-pg-btn" onclick="auditGoPage(1)">1</button>'+(start>2?'<span style="padding:0 4px;color:#9ca3af;">...</span>':'');
         for(var i=start;i<=end;i++) html+='<button class="sa-audit-pg-btn'+(_page===i?' active':'')+' " onclick="auditGoPage('+i+')">'+i+'</button>';
-        if(end<_pages) html+=(end<_pages-1?'<span style="padding:0 4px;color:#9ca3af;">â€¦</span>':'')+'<button class="sa-audit-pg-btn" onclick="auditGoPage('+_pages+')">'+_pages+'</button>';
+        if(end<_pages) html+=(end<_pages-1?'<span style="padding:0 4px;color:#9ca3af;">...</span>':'')+'<button class="sa-audit-pg-btn" onclick="auditGoPage('+_pages+')">'+_pages+'</button>';
         html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page+1)+')" '+(_page>=_pages?'disabled':'')+'> Next &rsaquo;</button>';
         pg.innerHTML=html;
         var info=document.getElementById('auditPaginationInfo');
-        if(info) info.textContent=_total+' total Â· page '+_page+' of '+_pages;
+        if(info) info.textContent=_total+' total · page '+_page+' of '+_pages;
     }
 
     function auditLoadPage(page){
@@ -820,7 +820,9 @@
         },400);
     };
 
-    document.addEventListener('DOMContentLoaded',function(){ auditLoadPage(1); });
+    function _saInitAudit() { _loading = false; _page = 1; auditLoadPage(1); }
+    document.addEventListener('DOMContentLoaded', _saInitAudit);
+    document.addEventListener('turbo:load',       _saInitAudit);
 })();
 </script>
 
@@ -829,7 +831,7 @@
 <div class="sa-modal-overlay" id="createMentorModal">
     <div class="sa-modal-backdrop" onclick="closeCreateMentor()"></div>
     <div class="sa-modal">
-        <button class="sa-modal-close" onclick="closeCreateMentor()">Ã—</button>
+        <button class="sa-modal-close" onclick="closeCreateMentor()">&times;</button>
         <h3>Create Mentor Profile</h3>
         <form method="post" action="{{ path('mentoring_create_mentor') }}" data-turbo="false">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('create_mentor') }}">
@@ -838,28 +840,28 @@
                 <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px;">Search & Select User</label>
                 <input type="text" id="cm_user_search" class="sa-modal-input" placeholder="Type to search users..." onkeyup="cmFilterUsers(this.value)" style="margin-bottom:8px;">
                 <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required size="5" style="min-height:120px;">
-                    <option value="">â€” Select a user â€”</option>
+                    <option value="">-- Select a user --</option>
                     {% for user in users %}
                     <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}" data-role="{{ user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}">
-                        {{ user.firstName }} {{ user.lastName }} â€” {{ user.email }}
+                        {{ user.firstName }} {{ user.lastName }} - {{ user.email }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
             <div class="sa-modal-row cols-4">
-                <div class="sa-modal-field"><label>First Name</label><input type="text" id="cm_first" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
-                <div class="sa-modal-field"><label>Middle Name</label><input type="text" id="cm_middle" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
-                <div class="sa-modal-field"><label>Last Name</label><input type="text" id="cm_last" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
-                <div class="sa-modal-field"><label>Institutional Email</label><input type="text" id="cm_email" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
+                <div class="sa-modal-field"><label>First Name</label><input type="text" id="cm_first" class="sa-modal-input readonly" readonly placeholder="-"></div>
+                <div class="sa-modal-field"><label>Middle Name</label><input type="text" id="cm_middle" class="sa-modal-input readonly" readonly placeholder="-"></div>
+                <div class="sa-modal-field"><label>Last Name</label><input type="text" id="cm_last" class="sa-modal-input readonly" readonly placeholder="-"></div>
+                <div class="sa-modal-field"><label>Institutional Email</label><input type="text" id="cm_email" class="sa-modal-input readonly" readonly placeholder="-"></div>
             </div>
             <div class="sa-modal-row cols-2">
-                <div class="sa-modal-field"><label>Program</label><input type="text" id="cm_program" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
+                <div class="sa-modal-field"><label>Program</label><input type="text" id="cm_program" class="sa-modal-input readonly" readonly placeholder="-"></div>
                 <div class="sa-modal-field"><label>Display Name <span style="color:#ef4444;">*</span></label><input type="text" name="display_name" id="cm_display_name" class="sa-modal-input" required placeholder="e.g. Dr. Juan Santos"></div>
             </div>
             <div class="sa-modal-row cols-1">
                 <div class="sa-modal-field"><label>Specialization <span style="color:#ef4444;">*</span></label>
                     <select name="specialization" class="sa-modal-input" required>
-                        <option value="">Select specializationâ€¦</option>
+                        <option value="">Select specialization...</option>
                         {% for specialization in allSpecializations %}
                         <option value="{{ specialization.name }}">{{ specialization.name }}</option>{% endfor %}
                     </select>
@@ -868,7 +870,7 @@
             <div class="sa-modal-row cols-3">
                 <div class="sa-modal-field"><label>Role <span style="color:#ef4444;">*</span></label>
                     <select name="role" id="cm_role_select" class="sa-modal-input" required>
-                        <option value="">Select roleâ€¦</option>
+                        <option value="">Select role...</option>
                         <option value="Student">Student</option>
                         <option value="Faculty">Faculty</option>
                         <option value="Mentor">Mentor</option>
@@ -876,7 +878,7 @@
                 </div>
                 <div class="sa-modal-field"><label>Mentoring Day <span style="color:#ef4444;">*</span></label>
                     <select name="availabilityDays[]" class="sa-modal-input" required>
-                        <option value="">Select dayâ€¦</option>
+                        <option value="">Select day...</option>
                         {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Monday | M-W-TH','Tuesday | T-TH','Wednesday | M-W','Thursday | T-TH-S','Friday | M-F','Saturday'] %}
                         <option value="{{ day }}">{{ day }}</option>{% endfor %}
                     </select>
@@ -890,7 +892,7 @@
                             {% if h < 21 %}<option value="{{ hour }}:30">{{ hour }}:30 AM</option>{% endif %}
                             {% endfor %}
                         </select>
-                        <span class="sa-modal-time-sep">â€“</span>
+                        <span class="sa-modal-time-sep">-</span>
                         <select name="availability_end" class="sa-modal-input" style="flex:1;">
                             <option value="">End</option>
                             {% for h in 7..21 %}{% set hour = '%02d'|format(h) %}
@@ -903,7 +905,7 @@
             </div>
             <div class="sa-modal-row cols-1">
                 <div class="sa-modal-field"><label>Mentoring Bio</label>
-                    <textarea name="bio" class="sa-modal-input" rows="4" placeholder="Short bio about this mentorâ€¦" style="resize:vertical;min-height:90px;"></textarea>
+                    <textarea name="bio" class="sa-modal-input" rows="4" placeholder="Short bio about this mentor..." style="resize:vertical;min-height:90px;"></textarea>
                 </div>
             </div>
             <div class="sa-modal-footer"><button type="submit" class="sa-modal-save">Save</button></div>
@@ -1163,7 +1165,7 @@ function closeFilePreviewModal() {
         <h3>Reject Application?</h3>
         <p>This will reject the mentor application. The applicant will be notified.</p>
         <label class="reject-modal-label">Reason for Rejection <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
-        <textarea id="rejectModalNote" class="reject-modal-textarea" rows="3" placeholder="Enter a reason for rejectionâ€¦"></textarea>
+        <textarea id="rejectModalNote" class="reject-modal-textarea" rows="3" placeholder="Enter a reason for rejection..."></textarea>
         <div class="reject-modal-actions">
             <button type="button" class="reject-modal-cancel" onclick="closeRejectModal()">Cancel</button>
             <button type="button" class="reject-modal-confirm" onclick="submitRejectModal()">Yes, Reject</button>

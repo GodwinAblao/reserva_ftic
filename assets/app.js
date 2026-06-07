@@ -1,4 +1,4 @@
-﻿import './stimulus_bootstrap.js';
+import './stimulus_bootstrap.js';
 import './styles/app.css';
 
 /* â”€â”€ Global: Reservation detail modal (used by both admin & user sidebars) â”€â”€ */
@@ -30,7 +30,7 @@ window.showResvDetail = function(r) {
             ${r.eventName ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">EVENT NAME</span>${esc(r.eventName)}</div>` : ''}
             ${r.email     ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">EMAIL</span>${esc(r.email)}</div>` : ''}
             ${r.contact   ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">CONTACT</span>${esc(r.contact)}</div>` : ''}
-            <div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">DATE &amp; TIME</span>${esc(r.date)}${r.time ? ', ' + esc(r.time) : ''}${r.endTime ? ' â€“ ' + esc(r.endTime) : ''}</div>
+            <div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">DATE &amp; TIME</span>${esc(r.date)}${r.time ? ', ' + esc(r.time) : ''}${r.endTime ? ' - ' + esc(r.endTime) : ''}</div>
             ${r.capacity  ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">ATTENDEES</span>${esc(String(r.capacity))} people</div>` : ''}
             ${r.purpose   ? `<div><span style="color:#9ca3af;font-size:11px;font-weight:600;display:block;margin-bottom:1px;">EVENT OBJECTIVE</span>${esc(r.purpose)}</div>` : ''}
         </div>
@@ -39,21 +39,21 @@ window.showResvDetail = function(r) {
 };
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   RESERVA FTIC  â€”  Global UX + Performance Layer
+   RESERVA FTIC  \u2014  Global UX + Performance Layer
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    Key design goals:
-   Â· One fetch per interval cycle, never concurrent duplicates
-   Â· Hash-based diffing â€” DOM only touched when data changes
-   Â· No setTimeout delays on DOM writes (instant swap)
-   Â· Browser cache respected via Cache-Control headers
-   Â· Safety timeout on every async operation
+   \u00B7 One fetch per interval cycle, never concurrent duplicates
+   \u00B7 Hash-based diffing \u2014 DOM only touched when data changes
+   \u00B7 No setTimeout delays on DOM writes (instant swap)
+   \u00B7 Browser cache respected via Cache-Control headers
+   \u00B7 Safety timeout on every async operation
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Shared helpers
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/** Lightweight XOR hash â€” fast enough for small JSON strings */
+/** Lightweight XOR hash \u2014 fast enough for small JSON strings */
 function hashStr(s) {
     let h = 0x811c9dc5;
     for (let i = 0; i < s.length; i++) {
@@ -70,7 +70,7 @@ function esc(s) {
         .replace(/>/g, '&gt;');
 }
 
-/** apiFetch â€” fetch with abort timeout. Returns JSON or null. */
+/** apiFetch \u2014 fetch with abort timeout. Returns JSON or null. */
 function apiFetch(url, timeoutMs = 8000) {
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -119,7 +119,7 @@ if (window.Turbo?.setProgressBarDelay) {
 /** Swap el.innerHTML only when content actually changed (hash diff) */
 function diffSet(el, html) {
     const h = hashStr(html);
-    if (el._rpHash === h) return false;   // unchanged â€” skip DOM write
+    if (el._rpHash === h) return false;   // unchanged \u2014 skip DOM write
     el._rpHash  = h;
     el.innerHTML = html;
     return true;
@@ -128,9 +128,9 @@ function diffSet(el, html) {
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    1. Navigation Progress Bar
-   Â· Instant start on click
-   Â· Finishes on DOMContentLoaded / load / pageshow (bfcache)
-   Â· 8-second hard safety auto-finish
+   \u00B7 Instant start on click
+   \u00B7 Finishes on DOMContentLoaded / load / pageshow (bfcache)
+   \u00B7 8-second hard safety auto-finish
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const NavProgress = (() => {
     const bar = document.createElement('div');
@@ -205,7 +205,7 @@ const NavProgress = (() => {
 })();
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   2. Content area fade-in (GPU composited â€” no layout thrash)
+   2. Content area fade-in (GPU composited \u2014 no layout thrash)
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 (() => {
     function fadeIn() {
@@ -225,9 +225,9 @@ const NavProgress = (() => {
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    3. AJAX form submissions
-   Â· WeakSet dedup (no double-submit)
-   Â· NavProgress integration
-   Â· data-ajax="true" + optional data-ajax-reload="ms"
+   \u00B7 WeakSet dedup (no double-submit)
+   \u00B7 NavProgress integration
+   \u00B7 data-ajax="true" + optional data-ajax-reload="ms"
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 (() => {
     const flying = new WeakSet();
@@ -250,7 +250,7 @@ const NavProgress = (() => {
         flying.add(form);
         const btn = form.querySelector('[type="submit"]');
         const orig = btn?.textContent ?? '';
-        if (btn) { btn.disabled = true; btn.textContent = 'Savingâ€¦'; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
         NavProgress.start();
 
         try {
@@ -325,8 +325,10 @@ const NavProgress = (() => {
     }
 
     function render(data, panel) {
-        const list = (data.recentReservations ?? []).slice(0, MAX_ITEMS);
-        const html = list.length ? list.map(buildCard).join('') : EMPTY('No recent reservations');
+        const list = (data.recentReservations ?? [])
+            .filter(r => r.status === 'Pending')
+            .slice(0, MAX_ITEMS);
+        const html = list.length ? list.map(buildCard).join('') : EMPTY('No pending reservations');
         if (panel._rpHtml !== html) {
             panel._rpHtml = html;
             panel.innerHTML = html;
