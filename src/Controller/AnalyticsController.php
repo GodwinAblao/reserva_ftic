@@ -53,7 +53,7 @@ class AnalyticsController extends AbstractController
         $weeklySeries = $this->weeklySeries($historyRows);
         $forecast = $this->movingAverageForecast($series, 3);
         $weeklyForecast = $this->movingAverageForecast($weeklySeries, 8);
-        $localAnalytics = $this->localAnalyticsFallback($em, $usage, $series, $forecast, $weeklySeries, $weeklyForecast);
+        $localAnalytics = $this->localAnalyticsFallback($em, compact('usage', 'series', 'forecast', 'weeklySeries', 'weeklyForecast'));
 
         return $this->render('analytics/dashboard.html.twig', [
             'usage' => $usage,
@@ -125,234 +125,44 @@ class AnalyticsController extends AbstractController
             'generatedAt' => date('c'),
         ];
 
-        // Calculate facility stats and metrics
-        $facilityStats = [];
-        $facilityReservations = []; // For per-facility data
-        $statusCounts = ['Approved' => 0, 'Pending' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Completed' => 0];
-        $monthlyTrends = [];
-        $weeklyTrends = [];
-        $hourlyPeak = [];
-        $hourlyHeatmap = []; // hour x day heatmap
-        $capacityCounts = [];
-        $purposeCounts = [];
-        $purposeSuccess = []; // For event success rate
-        $setupGaps = [];
-        $rsoCount = 0;
-        $rsoCompleted = 0;
-        $facilityDailyBookings = []; // For overlap detection
+        $metrics = $this->aggregateReservationMetrics($reservations);
+        $facilityStats        = $metrics['facilityStats'];
+        $facilityReservations = $metrics['facilityReservations'];
+        $facilityDailyBookings= $metrics['facilityDailyBookings'];
+        $statusCounts         = $metrics['statusCounts'];
+        $monthlyTrends        = $metrics['monthlyTrends'];
+        $weeklyTrends         = $metrics['weeklyTrends'];
+        $hourlyPeak           = $metrics['hourlyPeak'];
+        $hourlyHeatmap        = $metrics['hourlyHeatmap'];
+        $purposeCounts        = $metrics['purposeCounts'];
+        $setupGaps            = $metrics['setupGaps'];
+        $rsoCount             = $metrics['rsoCount'];
+        $rsoCompleted         = $metrics['rsoCompleted'];
+        $purposeSuccess       = $metrics['purposeSuccess'];
 
-        foreach ($reservations as $res) {
-            $status = $res->getStatus();
-            // Treat Completed as Approved for analytics
-            $effectiveStatus = $status === 'Completed' ? 'Approved' : $status;
-            $statusCounts[$effectiveStatus] = ($statusCounts[$effectiveStatus] ?? 0) + 1;
-
-            // Facility stats - use ID as key to prevent duplicates
-            $facility = $res->getFacility();
-            $facId = $facility?->getId() ?? 0;
-            $facName = $facility->getName() ?? 'Unknown';
-            if (!isset($facilityStats[$facId])) {
-                $facilityStats[$facId] = ['name' => $facName, 'count' => 0, 'capacity' => 0, 'id' => $facId];
-            }
-            $facilityStats[$facId]['count']++;
-            $facilityStats[$facId]['capacity'] += $res->getCapacity() ?? 0;
-
-            // Monthly trends
-            $month = $res->getReservationDate()?->format('Y-m');
-            if ($month) {
-                $monthlyTrends[$month] = ($monthlyTrends[$month] ?? 0) + 1;
-            }
-
-            // Weekly trends
-            $week = $res->getReservationDate()?->format('Y-W');
-            if ($week) {
-                $weeklyTrends[$week] = ($weeklyTrends[$week] ?? 0) + 1;
-            }
-
-            // Hourly peaks
-            $hour = (int) $res->getReservationStartTime()?->format('G');
-            if ($hour !== null) {
-                $timeSlot = $hour >= 5 && $hour < 12 ? 'Morning (5AM-12PM)' :
-                           ($hour >= 12 && $hour < 17 ? 'Afternoon (12PM-5PM)' :
-                           ($hour >= 17 && $hour < 21 ? 'Evening (5PM-9PM)' : 'Night (9PM-5AM)'));
-                $hourlyPeak[$timeSlot] = ($hourlyPeak[$timeSlot] ?? 0) + 1;
-            }
-
-            // Purpose counts and success tracking
-            $purpose = $res->getPurpose() ?? 'General';
-            $purposeCounts[$purpose] = ($purposeCounts[$purpose] ?? 0) + 1;
-            if (!isset($purposeSuccess[$purpose])) {
-                $purposeSuccess[$purpose] = ['total' => 0, 'approved' => 0];
-            }
-            $purposeSuccess[$purpose]['total']++;
-            if ($effectiveStatus === 'Approved') {
-                $purposeSuccess[$purpose]['approved']++;
-            }
-
-            // RSO tracking
-            if (str_contains(strtolower($purpose), 'rso')) {
-                $rsoCount++;
-                if ($effectiveStatus === 'Approved') {
-                    $rsoCompleted++;
-                }
-            }
-
-            // Setup gap calculation
-            $createdAt = $res->getCreatedAt();
-            $resDate = $res->getReservationDate();
-            if ($createdAt && $resDate) {
-                $gap = $createdAt->diff($resDate)->days;
-                $setupGaps[] = $gap;
-            }
-
-            // Daily bookings tracking for utilization
-            $facId = $facility?->getId() ?? 0;
-            $dateKey = $resDate?->format('Y-m-d');
-            if ($facId && $dateKey) {
-                $dayKey = $facId . '_' . $dateKey;
-                if (!isset($facilityDailyBookings[$dayKey])) {
-                    $facilityDailyBookings[$dayKey] = true;
-                }
-            }
-
-            // Per-facility weekly data
-            $week = $resDate?->format('Y-\WW');
-            if ($facId && $week) {
-                if (!isset($facilityReservations[$facId])) {
-                    $facilityReservations[$facId] = ['name' => $facility->getName(), 'weekly' => []];
-                }
-                $facilityReservations[$facId]['weekly'][$week] = ($facilityReservations[$facId]['weekly'][$week] ?? 0) + 1;
-            }
-
-            // Hourly heatmap (hour x day of week)
-            $hour = (int) $res->getReservationStartTime()?->format('G');
-            $dayOfWeek = $resDate?->format('N'); // 1=Mon, 7=Sun
-            if ($hour !== null && $dayOfWeek) {
-                $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                $dayName = $dayNames[(int)$dayOfWeek - 1];
-                if (!isset($hourlyHeatmap[$hour])) {
-                    $hourlyHeatmap[$hour] = [];
-                }
-                $hourlyHeatmap[$hour][$dayName] = ($hourlyHeatmap[$hour][$dayName] ?? 0) + 1;
-            }
-        }
-
-        // Calculate derived metrics
-        $totalReservations = count($reservations);
-        $approvedCompleted = $statusCounts['Approved'] + $statusCounts['Completed'];
+        $totalReservations    = count($reservations);
+        $approvedCompleted    = $statusCounts['Approved'] + $statusCounts['Completed'];
         $overallCompletionRate = $totalReservations > 0 ? round(($approvedCompleted / $totalReservations) * 100, 1) : 0;
-        $rsoCompletionRate = $rsoCount > 0 ? round(($rsoCompleted / $rsoCount) * 100, 1) : 0;
-        $averageSetupGap = count($setupGaps) > 0 ? round(array_sum($setupGaps) / count($setupGaps), 1) : 0;
-        $setupComplianceRate = count($setupGaps) > 0 ? round((count(array_filter($setupGaps, fn($g) => $g <= 3)) / count($setupGaps)) * 100, 1) : 0;
-        $noShowRate = $totalReservations > 0 ? round((($statusCounts['Cancelled'] + $statusCounts['Rejected']) / $totalReservations) * 100, 1) : 0;
+        $rsoCompletionRate    = $rsoCount > 0 ? round(($rsoCompleted / $rsoCount) * 100, 1) : 0;
+        $averageSetupGap      = $this->averageSetupGap($setupGaps);
+        $setupComplianceRate  = $this->setupComplianceRate($setupGaps);
+        $noShowRate           = $totalReservations > 0 ? round((($statusCounts['Cancelled'] + $statusCounts['Rejected']) / $totalReservations) * 100, 1) : 0;
 
-        // Event success by type
-        $eventSuccessByType = [];
-        foreach ($purposeSuccess as $purpose => $data) {
-            $eventSuccessByType[$purpose] = $data['total'] > 0 ? round(($data['approved'] / $data['total']) * 100, 1) : 0;
-        }
-        arsort($eventSuccessByType);
+        $eventSuccessByType   = $this->calcEventSuccess($purposeSuccess);
+        $topEvents            = array_slice($purposeCounts, 0, 5, true);
+        $perFacilityWeekly    = $this->buildPerFacilityWeekly($facilityReservations);
+        $roomUtilization      = $this->buildRoomUtilization($facilityStats, $facilityDailyBookings);
+        $heatmapData          = $this->buildHeatmap($hourlyHeatmap);
 
-        // Top events by volume
-        $topEvents = array_slice($purposeCounts, 0, 5, true);
-
-        // Per-facility weekly forecast (next 4 weeks)
-        $perFacilityWeekly = [];
-        foreach ($facilityReservations as $facId => $data) {
-            if (count($data['weekly']) >= 2) {
-                $forecast = $this->generateForecast($data['weekly'], 'W');
-                $forecastValues = array_slice($forecast['forecast'] ?? [], 0, 4, true);
-                // Calculate chart_value as average of forecast for frontend
-                $chartValue = count($forecastValues) > 0 ? round(array_sum($forecastValues) / count($forecastValues), 1) : 0;
-                $perFacilityWeekly[] = [
-                    'facility' => $data['name'],
-                    'forecast' => $forecastValues,
-                    'historical' => $data['weekly'],
-                    'chart_value' => $chartValue, // Required by frontend
-                ];
-            }
-        }
-
-        // Room utilization calculation - use actual date range
-        $roomUtilization = [];
-        $allDates = [];
-        foreach (array_keys($facilityDailyBookings) as $dayKey) {
-            $parts = explode('_', $dayKey);
-            if (isset($parts[1])) {
-                $allDates[] = $parts[1];
-            }
-        }
-        $uniqueDates = array_unique($allDates);
-        sort($uniqueDates);
-        $actualTotalDays = count($uniqueDates) > 0 
-            ? (new \DateTime($uniqueDates[0]))->diff(new \DateTime(end($uniqueDates)))->days + 1 
-            : 1;
-
-        foreach ($facilityStats as $id => $stats) {
-            $facilityBookings = array_filter($facilityDailyBookings, fn($k) => str_starts_with($k, $id . '_'), ARRAY_FILTER_USE_KEY);
-            $busyDays = count($facilityBookings);
-            $roomUtilization[$stats['name']] = [
-                'utilization_rate' => round($busyDays / max(1, $actualTotalDays), 2),
-                'total_bookings' => $stats['count'],
-            ];
-        }
-
-        // Format heatmap for frontend
-        $heatmapData = ['hours' => [], 'days' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], 'values' => []];
-        for ($h = 0; $h < 24; $h++) {
-            $heatmapData['hours'][] = $h;
-            $row = [];
-            foreach ($heatmapData['days'] as $day) {
-                $row[] = $hourlyHeatmap[$h][$day] ?? 0;
-            }
-            $heatmapData['values'][] = $row;
-        }
-
-        // Format facilities for response
         $facilities = [];
-        foreach ($facilityStats as $id => $stats) {
-            $facilities[] = [
-                'id' => $stats['id'],
-                'name' => $stats['name'],
-                'count' => $stats['count'],
-                'capacity' => $stats['capacity'],
-            ];
+        foreach ($facilityStats as $stats) {
+            $facilities[] = ['id' => $stats['id'], 'name' => $stats['name'], 'count' => $stats['count'], 'capacity' => $stats['capacity']];
         }
         usort($facilities, fn($a, $b) => $b['count'] <=> $a['count']);
 
-        // Calculate approval rate
-        $totalProcessed = $statusCounts['Approved'] + $statusCounts['Rejected'] + $statusCounts['Completed'];
-        $approvalRate = $totalProcessed > 0 ? round(($statusCounts['Approved'] + $statusCounts['Completed']) / $totalProcessed * 100) : 0;
-
-        // Build forecast series structure
-        $weeklyForecast = $this->generateForecast($weeklyTrends, 'W');
+        $weeklyForecast  = $this->generateForecast($weeklyTrends, 'W');
         $monthlyForecast = $this->generateForecast($monthlyTrends, 'M');
-
-        // Calculate forecast accuracy (RMSE) using cross-validation
-        // Compare last 4 actual weeks against naive forecast (4 weeks prior)
-        $weeklyRmse = 0;
-        $weeklyMape = 0;
-        if (count($weeklyTrends) >= 8) {
-            $weekKeys = array_keys($weeklyTrends);
-            $weekValues = array_values($weeklyTrends);
-            $n = count($weekValues);
-            
-            // Use last 4 weeks for validation against naive forecast
-            $errors = [];
-            $absPercentErrors = [];
-            for ($i = $n - 4; $i < $n; $i++) {
-                // Naive forecast: value from 4 weeks ago
-                $forecast = $weekValues[$i - 4] ?? $weekValues[$i - 1];
-                $actual = $weekValues[$i];
-                $errors[] = ($actual - $forecast) ** 2;
-                if ($actual > 0) {
-                    $absPercentErrors[] = abs(($actual - $forecast) / $actual) * 100;
-                }
-            }
-            
-            $weeklyRmse = count($errors) > 0 ? round(sqrt(array_sum($errors) / count($errors)), 2) : 0;
-            $weeklyMape = count($absPercentErrors) > 0 ? round(array_sum($absPercentErrors) / count($absPercentErrors), 1) : 0;
-        }
+        $weeklyRmse      = $this->naiveForecastRmse($weeklyTrends);
 
         return match($endpoint) {
             'meta' => array_merge($base, [
@@ -507,27 +317,22 @@ class AnalyticsController extends AbstractController
 
     private function monthlySeries(array $rows): array
     {
-        $series = [];
-        foreach ($rows as $row) {
-            $month = $row['reservationDate']->format('Y-m');
-            $series[$month] = ($series[$month] ?? 0) + 1;
-        }
-
-        ksort($series);
-
-        return $series;
+        return $this->buildSeries($rows, 'Y-m');
     }
 
     private function weeklySeries(array $rows): array
     {
+        return $this->buildSeries($rows, 'o-\WW');
+    }
+
+    private function buildSeries(array $rows, string $format): array
+    {
         $series = [];
         foreach ($rows as $row) {
-            $week = $row['reservationDate']->format('o-\WW');
-            $series[$week] = ($series[$week] ?? 0) + 1;
+            $key = $row['reservationDate']->format($format);
+            $series[$key] = ($series[$key] ?? 0) + 1;
         }
-
         ksort($series);
-
         return $series;
     }
 
@@ -566,36 +371,33 @@ class AnalyticsController extends AbstractController
 
     private function mae(array $series): float
     {
-        $values = array_values($series);
-        if (count($values) < 2) {
-            return 0.0;
-        }
-
-        $errors = [];
-        for ($i = 1; $i < count($values); $i++) {
-            $errors[] = abs($values[$i] - $values[$i - 1]);
-        }
-
-        return round(array_sum($errors) / count($errors), 2);
+        return $this->forecastError('mae', $series);
     }
 
     private function rmse(array $series): float
     {
+        return $this->forecastError('rmse', $series);
+    }
+
+    private function forecastError(string $type, array $series): float
+    {
         $values = array_values($series);
         if (count($values) < 2) {
             return 0.0;
         }
-
         $errors = [];
         for ($i = 1; $i < count($values); $i++) {
-            $errors[] = ($values[$i] - $values[$i - 1]) ** 2;
+            $errors[] = $type === 'mae'
+                ? abs($values[$i] - $values[$i - 1])
+                : ($values[$i] - $values[$i - 1]) ** 2;
         }
-
-        return round(sqrt(array_sum($errors) / count($errors)), 2);
+        $aggregate = array_sum($errors) / count($errors);
+        return round($type === 'rmse' ? sqrt($aggregate) : $aggregate, 2);
     }
 
-    private function localAnalyticsFallback(EntityManagerInterface $em, array $usage, array $series, array $forecast, array $weeklySeries, array $weeklyForecast): array
+    private function localAnalyticsFallback(EntityManagerInterface $em, array $ctx): array
     {
+        ['usage' => $usage, 'series' => $series, 'forecast' => $forecast, 'weeklySeries' => $weeklySeries, 'weeklyForecast' => $weeklyForecast] = $ctx;
         $rows = $em->createQueryBuilder()
             ->select('r.reservationDate, r.reservationStartTime, r.capacity, r.purpose, r.status, r.rejectionReason, r.createdAt, f.name AS facilityName, f.capacity AS facilityCapacity')
             ->from(Reservation::class, 'r')
@@ -608,50 +410,17 @@ class AnalyticsController extends AbstractController
             $rows = $this->csvAnalyticsRows();
         }
 
-        $hourly = [];
-        $statusCounts = [];
-        $purposeTotals = [];
-        $purposeCompleted = [];
-        $monthlyAttendees = [];
-        $rejectionReasons = [];
-        $setupGaps = [];
-        $facilityLoadDistribution = [];
 
-        foreach ($rows as $row) {
-            $hour = $row['reservationStartTime'] instanceof \DateTimeInterface
-                ? $row['reservationStartTime']->format('H')
-                : '00';
-            $hourly[$hour] = ($hourly[$hour] ?? 0) + 1;
-            $facilityName = (string) $row['facilityName'];
-            $facilityLoadDistribution[$facilityName] = ($facilityLoadDistribution[$facilityName] ?? 0) + 1;
+        $agg = $this->aggregateFallbackRows($rows);
+        $hourly                   = $agg['hourly'];
+        $facilityLoadDistribution = $agg['facilityLoadDistribution'];
+        $statusCounts             = $agg['statusCounts'];
+        $purposeTotals            = $agg['purposeTotals'];
+        $purposeCompleted         = $agg['purposeCompleted'];
+        $monthlyAttendees         = $agg['monthlyAttendees'];
+        $rejectionReasons         = $agg['rejectionReasons'];
+        $setupGaps                = $agg['setupGaps'];
 
-            $status = (string) $row['status'];
-            $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
-
-            $purpose = trim((string) ($row['purpose'] ?? 'General Reservation')) ?: 'General Reservation';
-            $purposeTotals[$purpose] = ($purposeTotals[$purpose] ?? 0) + 1;
-            if (in_array($status, ['Approved', 'Completed'], true)) {
-                $purposeCompleted[$purpose] = ($purposeCompleted[$purpose] ?? 0) + 1;
-            }
-
-            if ($row['reservationDate'] instanceof \DateTimeInterface) {
-                $month = $row['reservationDate']->format('Y-m');
-                $monthlyAttendees[$month] = ($monthlyAttendees[$month] ?? 0) + (int) $row['capacity'];
-            }
-
-            if ($status === 'Rejected' && !empty($row['rejectionReason'])) {
-                $reason = (string) $row['rejectionReason'];
-                $rejectionReasons[$reason] = ($rejectionReasons[$reason] ?? 0) + 1;
-            }
-
-            $setupDate = $row['setupDate'] ?? $row['createdAt'] ?? null;
-            if ($setupDate instanceof \DateTimeInterface && $row['reservationDate'] instanceof \DateTimeInterface) {
-                $setupGaps[] = max(0, (int) $setupDate->diff($row['reservationDate'])->format('%r%a'));
-            }
-        }
-
-        ksort($hourly);
-        ksort($monthlyAttendees);
 
         $eventSuccess = [];
         foreach ($purposeTotals as $purpose => $total) {
@@ -795,6 +564,229 @@ class AnalyticsController extends AbstractController
         return $percentages;
     }
 
+
+    private function aggregateReservationMetrics(array $reservations): array
+    {
+        $facilityStats = [];
+        $facilityReservations = [];
+        $facilityDailyBookings = [];
+        $statusCounts = ['Approved' => 0, 'Pending' => 0, 'Rejected' => 0, 'Cancelled' => 0, 'Completed' => 0];
+        $monthlyTrends = [];
+        $weeklyTrends = [];
+        $hourlyPeak = [];
+        $hourlyHeatmap = [];
+        $purposeCounts = [];
+        $purposeSuccess = [];
+        $setupGaps = [];
+        $rsoCount = 0;
+        $rsoCompleted = 0;
+        $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        foreach ($reservations as $res) {
+            $status = $res->getStatus();
+            $effectiveStatus = $status === 'Completed' ? 'Approved' : $status;
+            $statusCounts[$effectiveStatus] = ($statusCounts[$effectiveStatus] ?? 0) + 1;
+
+            $facility = $res->getFacility();
+            $facId    = $facility?->getId() ?? 0;
+            $facName  = $facility->getName() ?? 'Unknown';
+            $facilityStats[$facId] ??= ['name' => $facName, 'count' => 0, 'capacity' => 0, 'id' => $facId];
+            $facilityStats[$facId]['count']++;
+            $facilityStats[$facId]['capacity'] += $res->getCapacity() ?? 0;
+
+            $resDate = $res->getReservationDate();
+            if ($month = $resDate?->format('Y-m')) {
+                $monthlyTrends[$month] = ($monthlyTrends[$month] ?? 0) + 1;
+            }
+            if ($week = $resDate?->format('Y-W')) {
+                $weeklyTrends[$week] = ($weeklyTrends[$week] ?? 0) + 1;
+            }
+
+            $hour = (int) $res->getReservationStartTime()?->format('G');
+            $timeSlot = $hour >= 5 && $hour < 12 ? 'Morning (5AM-12PM)'
+                : ($hour >= 12 && $hour < 17 ? 'Afternoon (12PM-5PM)'
+                : ($hour >= 17 && $hour < 21 ? 'Evening (5PM-9PM)' : 'Night (9PM-5AM)'));
+            $hourlyPeak[$timeSlot] = ($hourlyPeak[$timeSlot] ?? 0) + 1;
+
+            $purpose = $res->getPurpose() ?? 'General';
+            $purposeCounts[$purpose] = ($purposeCounts[$purpose] ?? 0) + 1;
+            $purposeSuccess[$purpose] ??= ['total' => 0, 'approved' => 0];
+            $purposeSuccess[$purpose]['total']++;
+            if ($effectiveStatus === 'Approved') {
+                $purposeSuccess[$purpose]['approved']++;
+            }
+
+            if (str_contains(strtolower($purpose), 'rso')) {
+                $rsoCount++;
+                if ($effectiveStatus === 'Approved') $rsoCompleted++;
+            }
+
+            $createdAt = $res->getCreatedAt();
+            if ($createdAt && $resDate) {
+                $setupGaps[] = $createdAt->diff($resDate)->days;
+            }
+
+            $dateKey = $resDate?->format('Y-m-d');
+            if ($facId && $dateKey) {
+                $facilityDailyBookings[$facId . '_' . $dateKey] = true;
+            }
+            if ($facId && ($weekFmt = $resDate?->format('Y-\WW'))) {
+                $facilityReservations[$facId] ??= ['name' => $facName, 'weekly' => []];
+                $facilityReservations[$facId]['weekly'][$weekFmt] = ($facilityReservations[$facId]['weekly'][$weekFmt] ?? 0) + 1;
+            }
+
+            $dayOfWeek = $resDate?->format('N');
+            if ($dayOfWeek) {
+                $dayName = $dayNames[(int)$dayOfWeek - 1];
+                $hourlyHeatmap[$hour][$dayName] = ($hourlyHeatmap[$hour][$dayName] ?? 0) + 1;
+            }
+        }
+
+        return compact(
+            'facilityStats', 'facilityReservations', 'facilityDailyBookings',
+            'statusCounts', 'monthlyTrends', 'weeklyTrends',
+            'hourlyPeak', 'hourlyHeatmap', 'purposeCounts',
+            'purposeSuccess', 'setupGaps', 'rsoCount', 'rsoCompleted'
+        );
+    }
+
+    private function calcEventSuccess(array $purposeSuccess): array
+    {
+        $result = [];
+        foreach ($purposeSuccess as $purpose => $data) {
+            $result[$purpose] = $data['total'] > 0 ? round(($data['approved'] / $data['total']) * 100, 1) : 0;
+        }
+        arsort($result);
+        return $result;
+    }
+
+    private function buildPerFacilityWeekly(array $facilityReservations): array
+    {
+        $result = [];
+        foreach ($facilityReservations as $data) {
+            if (count($data['weekly']) < 2) continue;
+            $forecast = $this->generateForecast($data['weekly'], 'W');
+            $forecastValues = array_slice($forecast['forecast'] ?? [], 0, 4, true);
+            $chartValue = $forecastValues !== [] ? round(array_sum($forecastValues) / count($forecastValues), 1) : 0;
+            $result[] = ['facility' => $data['name'], 'forecast' => $forecastValues, 'historical' => $data['weekly'], 'chart_value' => $chartValue];
+        }
+        return $result;
+    }
+
+    private function buildRoomUtilization(array $facilityStats, array $facilityDailyBookings): array
+    {
+        $allDates = [];
+        foreach (array_keys($facilityDailyBookings) as $dayKey) {
+            $parts = explode('_', $dayKey);
+            if (isset($parts[1])) $allDates[] = $parts[1];
+        }
+        $uniqueDates = array_unique($allDates);
+        sort($uniqueDates);
+        $totalDays = count($uniqueDates) > 0
+            ? (new \DateTime($uniqueDates[0]))->diff(new \DateTime(end($uniqueDates)))->days + 1
+            : 1;
+
+        $result = [];
+        foreach ($facilityStats as $id => $stats) {
+            $busyDays = count(array_filter(
+                array_keys($facilityDailyBookings),
+                fn($k) => str_starts_with($k, $id . '_')
+            ));
+            $result[$stats['name']] = [
+                'utilization_rate' => round($busyDays / max(1, $totalDays), 2),
+                'total_bookings'   => $stats['count'],
+            ];
+        }
+        return $result;
+    }
+
+    private function buildHeatmap(array $hourlyHeatmap): array
+    {
+        $days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        $data = ['hours' => [], 'days' => $days, 'values' => []];
+        for ($h = 0; $h < 24; $h++) {
+            $data['hours'][] = $h;
+            $data['values'][] = array_map(fn($d) => $hourlyHeatmap[$h][$d] ?? 0, $days);
+        }
+        return $data;
+    }
+
+    private function averageSetupGap(array $gaps): float
+    {
+        return $gaps === [] ? 0 : round(array_sum($gaps) / count($gaps), 1);
+    }
+
+    private function setupComplianceRate(array $gaps): float
+    {
+        return $gaps === [] ? 0 : round((count(array_filter($gaps, fn($g) => $g <= 3)) / count($gaps)) * 100, 1);
+    }
+
+    private function naiveForecastRmse(array $weeklyTrends): float
+    {
+        if (count($weeklyTrends) < 8) return 0;
+        $values = array_values($weeklyTrends);
+        $n = count($values);
+        $errors = [];
+        for ($i = $n - 4; $i < $n; $i++) {
+            $predicted = $values[$i - 4] ?? $values[$i - 1];
+            $errors[]  = ($values[$i] - $predicted) ** 2;
+        }
+        return $errors !== [] ? round(sqrt(array_sum($errors) / count($errors)), 2) : 0;
+    }
+
+    private function aggregateFallbackRows(array $rows): array
+    {
+        $hourly = [];
+        $facilityLoadDistribution = [];
+        $statusCounts = [];
+        $purposeTotals = [];
+        $purposeCompleted = [];
+        $monthlyAttendees = [];
+        $rejectionReasons = [];
+        $setupGaps = [];
+
+        foreach ($rows as $row) {
+            $hour = $row['reservationStartTime'] instanceof \DateTimeInterface
+                ? $row['reservationStartTime']->format('H') : '00';
+            $hourly[$hour] = ($hourly[$hour] ?? 0) + 1;
+
+            $facilityName = (string) $row['facilityName'];
+            $facilityLoadDistribution[$facilityName] = ($facilityLoadDistribution[$facilityName] ?? 0) + 1;
+
+            $status = (string) $row['status'];
+            $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
+
+            $purpose = trim((string) ($row['purpose'] ?? 'General Reservation')) ?: 'General Reservation';
+            $purposeTotals[$purpose] = ($purposeTotals[$purpose] ?? 0) + 1;
+            if (in_array($status, ['Approved', 'Completed'], true)) {
+                $purposeCompleted[$purpose] = ($purposeCompleted[$purpose] ?? 0) + 1;
+            }
+
+            if ($row['reservationDate'] instanceof \DateTimeInterface) {
+                $month = $row['reservationDate']->format('Y-m');
+                $monthlyAttendees[$month] = ($monthlyAttendees[$month] ?? 0) + (int) $row['capacity'];
+            }
+
+            if ($status === 'Rejected' && !empty($row['rejectionReason'])) {
+                $reason = (string) $row['rejectionReason'];
+                $rejectionReasons[$reason] = ($rejectionReasons[$reason] ?? 0) + 1;
+            }
+
+            $setupDate = $row['setupDate'] ?? $row['createdAt'] ?? null;
+            if ($setupDate instanceof \DateTimeInterface && $row['reservationDate'] instanceof \DateTimeInterface) {
+                $setupGaps[] = max(0, (int) $setupDate->diff($row['reservationDate'])->format('%r%a'));
+            }
+        }
+
+        ksort($hourly);
+        ksort($monthlyAttendees);
+
+        return compact(
+            'hourly', 'facilityLoadDistribution', 'statusCounts',
+            'purposeTotals', 'purposeCompleted', 'monthlyAttendees',
+            'rejectionReasons', 'setupGaps'
+        );
+    }
     private function csvHistoryRows(): array
     {
         return array_map(

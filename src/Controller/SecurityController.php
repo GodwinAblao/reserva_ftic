@@ -26,10 +26,7 @@ class SecurityController extends AbstractController
     #[Route('/login', name: 'app_login')]
     public function login(AuthenticationUtils $authenticationUtils, Request $request): Response
     {
-        $response = new Response();
-        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', '0');
+        $response = $this->noCacheResponse();
 
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
@@ -41,7 +38,7 @@ class SecurityController extends AbstractController
         // Store error in flash bag for display
         if ($error) {
             // Check if email is from allowed domains
-            if ($lastUsername && !str_ends_with(strtolower($lastUsername), '@fit.edu.ph') && !str_ends_with(strtolower($lastUsername), '@feutech.edu.ph')) {
+            if ($this->isNonInstitutionalEmail($lastUsername)) {
                 $errorMessage = 'Please use your institutional email (@fit.edu.ph or @feutech.edu.ph).';
             } else {
                 $errorMessage = 'Invalid email or password. Please try again.';
@@ -60,10 +57,7 @@ class SecurityController extends AbstractController
     #[Route('/register', name: 'app_register')]
 public function register(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, MailerInterface $mailer, LoggerInterface $logger): Response
     {
-        $response = new Response();
-        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', '0');
+        $response = $this->noCacheResponse();
 
         if ($this->getUser()) {
             return $this->redirectToRoute('app_dashboard');
@@ -95,127 +89,13 @@ public function register(Request $request, EntityManagerInterface $entityManager
         $preFilledCode = trim($request->query->get('code', ''));
 
         if ($request->isMethod('POST')) {
-            $data = [
-                'firstName' => trim($request->request->get('firstName', '')),
-                'middleName' => trim($request->request->get('middleName', '')),
-                'lastName' => trim($request->request->get('lastName', '')),
-                'email' => trim($request->request->get('email', '')),
-            ];
-            $password = $request->request->get('password', '');
-            $passwordRepeat = $request->request->get('passwordRepeat', '');
-            $csrfToken = $request->request->get('_csrf_token', '');
-            $roles = [];
-
-            if (!$csrfTokenManager->isTokenValid(new CsrfToken('register', $csrfToken))) {
-                $errors[] = 'Invalid CSRF token. Please refresh the page and try again.';
-            }
-
-            if ($data['firstName'] === '') {
-                $errors[] = 'First name is required.';
-            }
-            if ($data['lastName'] === '') {
-                $errors[] = 'Last name is required.';
-            }
-            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'A valid email is required.';
-            } else {
-                $institutionalLower = strtolower($data['email']);
-                if (str_ends_with($institutionalLower, '@fit.edu.ph')) {
-                    $roles = ['ROLE_STUDENT'];
-                } elseif (str_ends_with($institutionalLower, '@feutech.edu.ph')) {
-                    $roles = ['ROLE_FACULTY'];
-                } else {
-                    $errors[] = 'Your email must end with @fit.edu.ph or @feutech.edu.ph.';
-                }
-            }
-            if ($password === '') {
-                $errors[] = 'Password is required.';
-            }
-            if ($password !== $passwordRepeat) {
-                $errors[] = 'Passwords must match.';
-            }
-
-            if (!$errors) {
-                $existingUser = $entityManager->getRepository(User::class)->findOneBy(['email' => $data['email']]);
-                if ($existingUser) {
-                    $errors[] = 'This email is already registered.';
-                }
-            }
-
-            // Secure password validation
-            if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/', $password)) {
-                $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
-            }
-
-            $commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1', 'admin', 'letmein'];
-            if (in_array(strtolower($password), $commonPasswords)) {
-                $errors[] = 'Password is too common. Choose a stronger one.';
-            }
-
-            if (!$errors) {
-                $tempUser = new User();
-                $hashedPassword = $passwordHasher->hashPassword($tempUser, $password);
-                $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-                // Store pending data in session
-                $session = $request->getSession();
-                $pendingData = [
-                    'firstName' => $data['firstName'],
-                    'middleName' => $data['middleName'] ?: null,
-                    'lastName' => $data['lastName'],
-                    'email' => $data['email'],
-                    'hashedPassword' => $hashedPassword,
-                    'roles' => $roles,
-                    'verificationCode' => $verificationCode,
-                ];
-                $session->set('pending_registration', $pendingData);
-
-                $logger->info('Registration pending', [
-                    'email' => $pendingData['email'],
-                    'verification_code' => $verificationCode,
-                ]);
-
-                $emailSent = false;
-                try {
-                    $verificationEmail = (new Email())
-                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
-                        ->replyTo('hurstdale101@gmail.com')
-                        ->to($pendingData['email'])
-                        ->subject('Reserva FTIC - Verify Your Registration')
-                        ->text(sprintf('Hi %s %s, your Reserva FTIC verification code is %s. Enter it on the site to complete registration.', $data['firstName'], $data['lastName'], $verificationCode))
-                        ->html($this->renderView('email/registration_verification.html.twig', [
-                            'user' => null,
-                            'email' => $pendingData['email'],
-                            'verificationCode' => $verificationCode,
-                            'name' => $data['firstName'] . ' ' . $data['lastName'],
-                        ]));
-
-                    $logger->info('Sending registration verification email', ['to' => $pendingData['email']]);
-                    $mailer->send($verificationEmail);
-                    $logger->info('Registration verification email sent successfully', ['to' => $pendingData['email']]);
-                    $emailSent = true;
-                } catch (\Exception $e) {
-                    $logger->error('Failed to send registration verification email', [
-                        'to' => $pendingData['email'],
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-
-                // Always show the OTP modal — session is set so the user can verify or resend
-                if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                    return new JsonResponse([
-                        'success' => true,
-                        'email' => $pendingData['email'],
-                        'emailSent' => $emailSent,
-                        'notice' => $emailSent ? null : 'Verification email could not be sent. Please use "Resend code" to try again.',
-                    ]);
-                }
-
-                return new RedirectResponse($this->generateUrl('app_verify_registration'));
+            $result = $this->handleRegistrationPost($request, $entityManager, $passwordHasher, $csrfTokenManager, $mailer, $logger, $data, $errors);
+            if ($result instanceof Response) {
+                return $result;
             }
         }
 
-        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+        if ($this->isAjaxRequest($request)) {
             $logger->error('Registration validation failed', ['errors' => $errors, 'email' => $data['email']]);
             return new JsonResponse([
                 'success' => false,
@@ -287,40 +167,12 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 if ($data['email'] !== $pendingData['email'] || $data['verificationCode'] !== $pendingData['verificationCode']) {
                     $errors[] = 'The verification code or email is invalid.';
                 } else {
-                    // Create user from pending data
-                    $user = new User();
-                    $user->setFirstName($pendingData['firstName']);
-                    $user->setMiddleName($pendingData['middleName']);
-                    $user->setLastName($pendingData['lastName']);
-                    $user->setEmail($pendingData['email']);
-                    $user->setPassword($pendingData['hashedPassword']);
-                    $user->setRoles($pendingData['roles']);
-                    $user->setIsVerified(true);  // Verified immediately
-                    $user->setVerificationCode(null);
-
-                    $entityManager->persist($user);
-                    $entityManager->flush();
-
-                    // $this->logger->info('User created from pending registration', ['user_id' => $user->getId(), 'email' => $user->getEmail()]);
-
-                    // Clear session
-                    $session->remove('pending_registration'); 
-                    $session->remove('verification_resend_available_at');
-
-                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                        return new JsonResponse([
-                            'success' => true,
-                            'redirectTo' => $this->generateUrl('app_login'),
-                        ]);
-                    }
-
-                    $this->addFlash('success', 'Registration complete');
-                    return new RedirectResponse($this->generateUrl('app_login'));
+                    return $this->createVerifiedUser($pendingData, $session, $entityManager, $request);
                 }
             }
         }
 
-        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+        if ($this->isAjaxRequest($request)) {
             return new JsonResponse([
                 'success' => false,
                 'errors' => $errors,
@@ -363,100 +215,15 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
         if (!$errors) {
             if ($pendingData && $email === $pendingData['email']) {
-                // Pending registration - regenerate code
-                $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                $pendingData['verificationCode'] = $verificationCode;
-                $session->set('pending_registration', $pendingData);
-
-                try {
-                    $verificationEmail = (new Email())
-                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
-                        ->replyTo('hurstdale101@gmail.com')
-                        ->to($pendingData['email'])
-                        ->subject('Reserva FTIC - New Verification Code')
-                        ->text(sprintf('Hi %s %s, your new Reserva FTIC verification code is %s.', $pendingData['firstName'], $pendingData['lastName'], $verificationCode))
-                        ->html($this->renderView('email/registration_verification.html.twig', [
-                            'user' => null,
-                            'email' => $pendingData['email'],
-                            'verificationCode' => $verificationCode,
-                            'name' => $pendingData['firstName'] . ' ' . $pendingData['lastName'],
-                        ]));
-
-                    // $this->logger->info('Resending verification for pending registration', ['to' => $email]);
-
-                    $mailer->send($verificationEmail);
-
-                    // $this->logger->info('Resend for pending sent', ['to' => $email]); 
-
-                    $session->set('verification_resend_available_at', time() + 120);
-
-                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                        return new JsonResponse([
-                            'success' => true,
-                            'message' => 'Verification code resent successfully.',
-                            'email' => $email,
-                            'cooldownRemaining' => 120,
-                        ]);
-                    }
-
-                    return new RedirectResponse($this->generateUrl('app_verify_registration'));
-                } catch (\Exception $e) {
-                        // $this->logger->error('Resend pending failed', [
-                            // 'to' => $email,
-                            // 'error' => $e->getMessage()
-                        // ]);
-                        $errors[] = 'Resend failed: ' . $e->getMessage(); 
-                }
+                $result = $this->resendToPending($pendingData, $session, $mailer, $request, $errors);
+                if ($result instanceof Response) return $result;
             } else {
-                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
-                if (!$user) {
-                    $errors[] = 'No account was found for that email address.';
-                } elseif ($user->isVerified()) {
-                    $this->addFlash('success', 'Your account is already verified. You may log in.');
-                    return new RedirectResponse($this->generateUrl('app_login'));
-                } else {
-                    $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                    $user->setVerificationCode($verificationCode);
-                    $entityManager->flush();
-
-                    try {
-                        $verificationEmail = (new Email())
-                            ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
-                            ->replyTo('hurstdale101@gmail.com')
-                            ->to($user->getEmail())
-                            ->subject('Reserva FTIC - New Verification Code')
-                            ->text(sprintf('Hi %s, your new Reserva FTIC verification code is %s.', $user->getFirstName() ?: $user->getEmail(), $verificationCode))
-                            ->html($this->renderView('email/registration_verification.html.twig', [
-                                'user' => $user,
-                                'email' => $user->getEmail(),
-                                'verificationCode' => $verificationCode,
-                                'name' => trim(($user->getFirstName() ?: '') . ' ' . ($user->getLastName() ?: '')),
-                            ]));
-
-                        $session->set('verification_resend_available_at', time() + 120);
-
-                        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                            return new JsonResponse([
-                                'success' => true,
-                                'message' => 'Verification code resent successfully.',
-                                'email' => $email,
-                                'cooldownRemaining' => 120,
-                            ]);
-                        }
-
-                        return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $email]));
-                    } catch (\Exception $e) {
-                        // $this->logger->error('Resend verification failed', [
-                            // 'to' => $email,
-                            // 'error' => $e->getMessage()
-                        // ]);
-                        $errors[] = 'Resend failed: ' . $e->getMessage(); 
-                    }
-                }
+                $result = $this->resendToExistingUser($email, $session, $entityManager, $mailer, $request, $errors);
+                if ($result instanceof Response) return $result;
             }
         }
 
-        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+        if ($this->isAjaxRequest($request)) {
             $cooldownRemaining = max(0, ((int) $session->get('verification_resend_available_at', 0)) - time());
 
             return new JsonResponse([
@@ -492,64 +259,41 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $errors[] = 'Invalid CSRF token.';
             }
 
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'Valid email required.';
-            } else {
-                // Validate email domain - only allow @fit.edu.ph and @feutech.edu.ph
-                $allowedDomains = ['fit.edu.ph', 'feutech.edu.ph'];
-                $emailDomain = substr(strrchr($email, '@'), 1);
-                
-                if (!in_array($emailDomain, $allowedDomains, true)) {
-                    $errors[] = 'Only @fit.edu.ph and @feutech.edu.ph email addresses are allowed.';
-                } else {
-                    // Check if email exists in database
-                    $user = $entityManager->getRepository(User::class)->findOneByEmailCaseInsensitive($email);
-                    
-                    if (!$user) {
-                        $errors[] = 'No account is associated with this email address.';
-                    } else {
-                        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                        $resetToken = bin2hex(random_bytes(32));
-
-                        // Log without DB update (since no columns)
-                        $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $resetToken]);
+            if (!$errors) {
+                $forgotErrors = $this->validateForgotEmail($email, $entityManager);
+                array_push($errors, ...$forgotErrors);
+            }
+            if (!$errors) {
+                $otp        = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $resetToken = bin2hex(random_bytes(32));
+                $logger->info('Forgot password OTP generated', ['email' => $email, 'otp' => $otp, 'token' => $resetToken]);
 
                 $session = $request->getSession();
                 $session->set('reset_email', $email);
-                $session->set('reset_token_expires', time() + 600); // 10 minutes
+                $session->set('reset_token_expires', time() + 600);
                 $session->set('reset_token', $resetToken);
-                $session->set('reset_otp', $otp); // Store OTP for validation
+                $session->set('reset_otp', $otp);
 
                 try {
                     $emailMessage = (new Email())
                         ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
                         ->to($email)
                         ->subject('Reserva FTIC Password Reset OTP')
-                        ->html($this->renderView('email/password_reset_otp.html.twig', [
-                            'user' => null,
-                            'otp' => $otp
-                        ]));
-
+                        ->html($this->renderView('email/password_reset_otp.html.twig', ['user' => null, 'otp' => $otp]));
                     $mailer->send($emailMessage);
                     $logger->info('OTP email sent successfully', ['to' => $email]);
                 } catch (\Exception $e) {
                     $logger->error('Failed to send OTP email', ['error' => $e->getMessage(), 'to' => $email]);
                 }
 
-                if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                    return new JsonResponse([
-                        'success' => true,
-                        'token' => $resetToken,
-                    ]);
+                if ($this->isAjaxRequest($request)) {
+                    return new JsonResponse(['success' => true, 'token' => $resetToken]);
                 }
-
                 return $this->redirectToRoute('app_otp_reset', ['token' => $resetToken]);
-                    }
-                }
             }
         }
 
-        if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+        if ($this->isAjaxRequest($request)) {
             return new JsonResponse([
                 'success' => false,
                 'error' => $errors[0] ?? 'Unable to send OTP.',
@@ -592,7 +336,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $errors[] = 'Invalid OTP. The code you entered does not match the one sent to your email.';
             } else {
                 // OTP is valid - proceed to password reset
-                if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+                if ($this->isAjaxRequest($request)) {
                     return new JsonResponse([
                         'success' => true,
                         'token' => $token,
@@ -602,7 +346,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 return $this->redirectToRoute('app_reset_password', ['token' => $token]);
             }
 
-            if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            if ($this->isAjaxRequest($request)) {
                 return new JsonResponse([
                     'success' => false,
                     'error' => $errors[0] ?? 'Invalid OTP.',
@@ -627,12 +371,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
         $errors = [];
 
-        if (!$resetEmail || !$resetToken || time() > $expires || $token !== $resetToken) {
-            $errors[] = 'Invalid or expired reset token. Please request a new password reset.';
-            $session->remove('reset_email');
-            $session->remove('reset_token');
-            $session->remove('reset_token_expires');
-        }
+        array_push($errors, ...$this->validateResetToken($session, $resetEmail, $resetToken, $expires, $token));
 
         if ($request->isMethod('POST')) {
             $password = $request->request->get('password', '');
@@ -643,19 +382,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $errors[] = 'Invalid CSRF token.';
             }
 
-            if (strlen($password) < 8) {
-                $errors[] = 'Password must be at least 8 characters.';
-            }
-
-            // Secure password validation
-            if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/', $password)) {
-                $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
-            }
-
-            $commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1'];
-            if (in_array(strtolower($password), $commonPasswords)) {
-                $errors[] = 'Password is too common. Choose a stronger one.';
-            }
+            array_push($errors, ...$this->validatePassword($password));
 
             // Check not same as old password
             $resetEmail = $session->get('reset_email');
@@ -666,47 +393,16 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 }
             }
 
-            // Secure password validation
-            if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$/', $password)) {
-                $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
-            }
-
-            $commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1'];
-            if (in_array(strtolower($password), $commonPasswords)) {
-                $errors[] = 'Password is too common. Choose a stronger one.';
-            }
             if ($password !== $passwordRepeat) {
                 $errors[] = 'Passwords must match.';
             }
 
             if (empty($errors)) {
-                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $resetEmail]);
-                if (!$user) {
-                    $errors[] = 'User not found. Please try forgot password again.';
-                } else {
-                    $user->setPassword($passwordHasher->hashPassword($user, $password));
-                    $entityManager->persist($user);
-                    $entityManager->flush();
-
-                    // Clear session
-                    $session->remove('reset_email');
-                    $session->remove('reset_token');
-                    $session->remove('reset_token_expires');
-                    $session->remove('reset_otp');
-
-                    if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
-                        return new JsonResponse([
-                            'success' => true,
-                            'message' => 'Password reset',
-                        ]);
-                    }
-
-                    $this->addFlash('success', 'Password reset');
-                    return $this->redirectToRoute('app_login');
-                }
+                $result = $this->applyPasswordReset($resetEmail, $password, $session, $entityManager, $passwordHasher, $request, $errors);
+                if ($result instanceof Response) return $result;
             }
 
-            if ($request->isXmlHttpRequest() || str_contains((string) $request->headers->get('Accept'), 'application/json')) {
+            if ($this->isAjaxRequest($request)) {
                 return new JsonResponse([
                     'success' => false,
                     'error' => $errors[0] ?? 'Password reset failed.',
@@ -719,6 +415,295 @@ public function register(Request $request, EntityManagerInterface $entityManager
             'errors' => $errors
         ]);
     }
+    private function isNonInstitutionalEmail(?string $email): bool
+    {
+        if (!$email) return false;
+        $lower = strtolower($email);
+        return !str_ends_with($lower, '@fit.edu.ph') && !str_ends_with($lower, '@feutech.edu.ph');
+    }
+
+    private function handleRegistrationPost(
+        Request $request,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $passwordHasher,
+        CsrfTokenManagerInterface $csrfTokenManager,
+        MailerInterface $mailer,
+        LoggerInterface $logger,
+        array &$data,
+        array &$errors,
+    ): ?Response {
+        $data = [
+            'firstName'  => trim($request->request->get('firstName', '')),
+            'middleName' => trim($request->request->get('middleName', '')),
+            'lastName'   => trim($request->request->get('lastName', '')),
+            'email'      => trim($request->request->get('email', '')),
+        ];
+        $password       = $request->request->get('password', '');
+        $passwordRepeat = $request->request->get('passwordRepeat', '');
+        $csrfToken      = $request->request->get('_csrf_token', '');
+
+        if (!$csrfTokenManager->isTokenValid(new CsrfToken('register', $csrfToken))) {
+            $errors[] = 'Invalid CSRF token. Please refresh the page and try again.';
+        }
+        if ($data['firstName'] === '') $errors[] = 'First name is required.';
+        if ($data['lastName']  === '') $errors[] = 'Last name is required.';
+        [$roles, $emailErrors] = $this->resolveEmailRole($data['email']);
+        array_push($errors, ...$emailErrors);
+        if ($password === '') $errors[] = 'Password is required.';
+
+        if (!$errors) {
+            if ($em->getRepository(User::class)->findOneBy(['email' => $data['email']])) {
+                $errors[] = 'This email is already registered.';
+            }
+            array_push($errors, ...$this->validatePassword($password));
+            if ($password !== $passwordRepeat) {
+                $errors[] = 'Passwords must match.';
+            }
+        }
+
+        if ($errors) return null;
+
+        $session      = $request->getSession();
+        $hashedPw     = $passwordHasher->hashPassword(new User(), $password);
+        $code         = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $pendingData  = [
+            'firstName'        => $data['firstName'],
+            'middleName'       => $data['middleName'] ?: null,
+            'lastName'         => $data['lastName'],
+            'email'            => $data['email'],
+            'hashedPassword'   => $hashedPw,
+            'roles'            => $roles,
+            'verificationCode' => $code,
+        ];
+        $session->set('pending_registration', $pendingData);
+        $logger->info('Registration pending', ['email' => $data['email'], 'verification_code' => $code]);
+
+        $emailSent = false;
+        try {
+            $mailer->send($this->buildVerificationEmail($data['email'], $data['firstName'] . ' ' . $data['lastName'], $code, 'Reserva FTIC - Verify Your Registration'));
+            $logger->info('Registration verification email sent successfully', ['to' => $data['email']]);
+            $emailSent = true;
+        } catch (\Exception $e) {
+            $logger->error('Failed to send registration verification email', ['to' => $data['email'], 'error' => $e->getMessage()]);
+        }
+
+        if ($this->isAjaxRequest($request)) {
+            return new JsonResponse([
+                'success'   => true,
+                'email'     => $data['email'],
+                'emailSent' => $emailSent,
+                'notice'    => $emailSent ? null : 'Verification email could not be sent. Please use "Resend code" to try again.',
+            ]);
+        }
+        return new RedirectResponse($this->generateUrl('app_verify_registration'));
+    }
+
+    private function createVerifiedUser(
+        array $pendingData,
+        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
+        EntityManagerInterface $em,
+        Request $request,
+    ): Response {
+        $user = (new User())
+            ->setFirstName($pendingData['firstName'])
+            ->setMiddleName($pendingData['middleName'])
+            ->setLastName($pendingData['lastName'])
+            ->setEmail($pendingData['email'])
+            ->setPassword($pendingData['hashedPassword'])
+            ->setRoles($pendingData['roles'])
+            ->setIsVerified(true)
+            ->setVerificationCode(null);
+
+        $em->persist($user);
+        $em->flush();
+        $session->remove('pending_registration');
+        $session->remove('verification_resend_available_at');
+
+        if ($this->isAjaxRequest($request)) {
+            return new JsonResponse(['success' => true, 'redirectTo' => $this->generateUrl('app_login')]);
+        }
+        $this->addFlash('success', 'Registration complete');
+        return new RedirectResponse($this->generateUrl('app_login'));
+    }
+
+    private function resendToPending(
+        array &$pendingData,
+        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
+        MailerInterface $mailer,
+        Request $request,
+        array &$errors,
+    ): ?Response {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $pendingData['verificationCode'] = $code;
+        $session->set('pending_registration', $pendingData);
+        try {
+            $mailer->send($this->buildVerificationEmail($pendingData['email'], $pendingData['firstName'] . ' ' . $pendingData['lastName'], $code, 'Reserva FTIC - New Verification Code'));
+            $session->set('verification_resend_available_at', time() + 120);
+            if ($this->isAjaxRequest($request)) {
+                return new JsonResponse(['success' => true, 'message' => 'Verification code resent successfully.', 'email' => $pendingData['email'], 'cooldownRemaining' => 120]);
+            }
+            return new RedirectResponse($this->generateUrl('app_verify_registration'));
+        } catch (\Exception $e) {
+            $errors[] = 'Resend failed: ' . $e->getMessage();
+            return null;
+        }
+    }
+
+    private function resendToExistingUser(
+        string $email,
+        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
+        EntityManagerInterface $em,
+        MailerInterface $mailer,
+        Request $request,
+        array &$errors,
+    ): ?Response {
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if (!$user) {
+            $errors[] = 'No account was found for that email address.';
+            return null;
+        }
+        if ($user->isVerified()) {
+            $this->addFlash('success', 'Your account is already verified. You may log in.');
+            return new RedirectResponse($this->generateUrl('app_login'));
+        }
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->setVerificationCode($code);
+        $em->flush();
+        try {
+            $mailer->send($this->buildVerificationEmail($user->getEmail(), trim(($user->getFirstName() ?: '') . ' ' . ($user->getLastName() ?: '')), $code, 'Reserva FTIC - New Verification Code'));
+            $session->set('verification_resend_available_at', time() + 120);
+            if ($this->isAjaxRequest($request)) {
+                return new JsonResponse(['success' => true, 'message' => 'Verification code resent successfully.', 'email' => $email, 'cooldownRemaining' => 120]);
+            }
+            return new RedirectResponse($this->generateUrl('app_verify_registration', ['email' => $email]));
+        } catch (\Exception $e) {
+            $errors[] = 'Resend failed: ' . $e->getMessage();
+            return null;
+        }
+    }
+
+    private function applyPasswordReset(
+        ?string $resetEmail,
+        string $password,
+        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $passwordHasher,
+        Request $request,
+        array &$errors,
+    ): ?Response {
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $resetEmail]);
+        if (!$user) {
+            $errors[] = 'User not found. Please try forgot password again.';
+            return null;
+        }
+        $user->setPassword($passwordHasher->hashPassword($user, $password));
+        $em->persist($user);
+        $em->flush();
+        $session->remove('reset_email');
+        $session->remove('reset_token');
+        $session->remove('reset_token_expires');
+        $session->remove('reset_otp');
+        if ($this->isAjaxRequest($request)) {
+            return new JsonResponse(['success' => true, 'message' => 'Password reset']);
+        }
+        $this->addFlash('success', 'Password reset');
+        return $this->redirectToRoute('app_login');
+    }
+
+    private function isAjaxRequest(Request $request): bool
+    {
+        return $request->isXmlHttpRequest()
+            || str_contains((string) $request->headers->get('Accept'), 'application/json');
+    }
+
+    private function noCacheResponse(): Response
+    {
+        $response = new Response();
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+        return $response;
+    }
+
+    private function validatePassword(string $password): array
+    {
+        $errors = [];
+        if (strlen($password) < 8) {
+            $errors[] = 'Password must be at least 8 characters.';
+        }
+        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $password)) {
+            $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
+        }
+        $common = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1', 'admin', 'letmein'];
+        if (in_array(strtolower($password), $common, true)) {
+            $errors[] = 'Password is too common. Choose a stronger one.';
+        }
+        return $errors;
+    }
+
+    private function resolveEmailRole(string $email): array
+    {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return [[], ['A valid email is required.']];
+        }
+        $lower = strtolower($email);
+        if (str_ends_with($lower, '@fit.edu.ph')) {
+            return [['ROLE_STUDENT'], []];
+        }
+        if (str_ends_with($lower, '@feutech.edu.ph')) {
+            return [['ROLE_FACULTY'], []];
+        }
+        return [[], ['Your email must end with @fit.edu.ph or @feutech.edu.ph.']];
+    }
+
+    private function buildVerificationEmail(string $to, string $name, string $code, string $subject): Email
+    {
+        return (new Email())
+            ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+            ->replyTo('hurstdale101@gmail.com')
+            ->to($to)
+            ->subject($subject)
+            ->text(sprintf('Hi %s, your Reserva FTIC verification code is %s.', $name, $code))
+            ->html($this->renderView('email/registration_verification.html.twig', [
+                'user'             => null,
+                'email'            => $to,
+                'verificationCode' => $code,
+                'name'             => $name,
+            ]));
+    }
+
+    private function validateResetToken(
+        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
+        ?string $resetEmail,
+        ?string $resetToken,
+        int $expires,
+        string $token,
+    ): array {
+        if (!$resetEmail || !$resetToken || time() > $expires || $token !== $resetToken) {
+            $session->remove('reset_email');
+            $session->remove('reset_token');
+            $session->remove('reset_token_expires');
+            return ['Invalid or expired reset token. Please request a new password reset.'];
+        }
+        return [];
+    }
+
+    private function validateForgotEmail(string $email, EntityManagerInterface $em): array
+    {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['Valid email required.'];
+        }
+        $domain = substr(strrchr($email, '@'), 1);
+        if (!in_array($domain, ['fit.edu.ph', 'feutech.edu.ph'], true)) {
+            return ['Only @fit.edu.ph and @feutech.edu.ph email addresses are allowed.'];
+        }
+        $user = $em->getRepository(User::class)->findOneByEmailCaseInsensitive($email);
+        if (!$user) {
+            return ['No account is associated with this email address.'];
+        }
+        return [];
+    }
+
 }
 
 

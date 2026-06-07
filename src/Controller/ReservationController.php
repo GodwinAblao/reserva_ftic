@@ -94,62 +94,11 @@ public function reserve(
                 $purpose = $request->request->get('purpose');
 
                 $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
-                $endTime = \DateTime::createFromFormat('H:i', $endTimeStr);
-                if (!$startTime || !$endTime) {
-                    return $this->json(
-                        ['error' => 'Please select a valid start and end time', 'message' => 'Please select a valid start and end time'],
-                        Response::HTTP_BAD_REQUEST
-                    );
-                }
+                $endTime   = \DateTime::createFromFormat('H:i', $endTimeStr);
+                $date      = \DateTime::createFromFormat('Y-m-d', $dateStr);
 
-                $dayStart = \DateTime::createFromFormat('H:i', '07:00');
-                $dayEnd = \DateTime::createFromFormat('H:i', '20:00');
-                if ($startTime < $dayStart || $endTime > $dayEnd || $endTime <= $startTime) {
-                    return $this->json(
-                        ['error' => 'Reservation time must be between 7:00 AM and 8:00 PM', 'message' => 'Reservation time must be between 7:00 AM and 8:00 PM'],
-                        Response::HTTP_BAD_REQUEST
-                    );
-                }
-
-                $startMinutes = ((int)$startTime->format('H')) * 60 + (int)$startTime->format('i');
-                $endMinutes = ((int)$endTime->format('H')) * 60 + (int)$endTime->format('i');
-                if (($startMinutes % 10 !== 0) || ($endMinutes % 10 !== 0)) {
-                    return $this->json(
-                        ['error' => 'Please select times in 10-minute intervals', 'message' => 'Please select times in 10-minute intervals'],
-                        Response::HTTP_BAD_REQUEST
-                    );
-                }
-
-                // Validate capacity doesn't exceed facility capacity
-                if ($capacity > $facility->getCapacity()) {
-                    return $this->json(
-                        ['error' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}", 'message' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}"],
-                        Response::HTTP_BAD_REQUEST
-                    );
-                }
-
-                // Check if time slot is already booked
-                $date = \DateTime::createFromFormat('Y-m-d', $dateStr);
-                if (!$date) {
-                    return $this->json(
-                        ['error' => 'Please select a valid reservation date', 'message' => 'Please select a valid reservation date'],
-                        Response::HTTP_BAD_REQUEST
-                    );
-                }
-
-                // Validate that reservation is not in the past
-                $now = new \DateTime();
-                $reservationDateTime = clone $date;
-                $reservationDateTime->setTime(
-                    (int)$startTime->format('H'),
-                    (int)$startTime->format('i')
-                );
-
-                if ($reservationDateTime < $now) {
-                    return $this->json(
-                        ['error' => 'Cannot create reservations for past time slots. Please select a future time.', 'message' => 'Cannot create reservations for past time slots. Please select a future time.'],
-                        Response::HTTP_BAD_REQUEST
-                    );
+                if ($validationError = $this->validateReservationInput($startTime, $endTime, $date, $capacity, $facility)) {
+                    return $validationError;
                 }
 
                 if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending'])) {
@@ -226,32 +175,9 @@ public function reserve(
 
         $availability = $availabilityService->buildAvailabilityMap($facility, new \DateTime('today'), 90);
 
-        $user = $this->getUser();
-        $userEmail = '';
-        $userName = '';
-        if ($user instanceof User) {
-            $userEmail = $user->getEmail();
-            $userName = trim(implode(' ', array_filter([
-                $user->getFirstName(),
-                $user->getMiddleName(),
-                $user->getLastName(),
-            ]))) ?: $user->getEmail();
-        }
+        [$userEmail, $userName] = $this->resolveUserDisplayInfo($this->getUser());
 
-        // Check if we have an existing reservation to restore (from query parameter when coming back from suggest-alternatives)
-        $existingReservation = null;
-        $restoreReservationId = $request->query->get('restore');
-        if ($restoreReservationId) {
-            $existingReservation = $reservationRepo->find($restoreReservationId);
-            // Verify the reservation belongs to current user and matches this facility
-            if ($existingReservation && 
-                $existingReservation->getUser() === $user && 
-                $existingReservation->getFacility() === $facility) {
-                error_log('RESERVE DEBUG: Restoring reservation data for ID: ' . $restoreReservationId);
-            } else {
-                $existingReservation = null;
-            }
-        }
+        $existingReservation = $this->resolveRestoreReservation($request, $reservationRepo, $this->getUser(), $facility);
 
         return $this->render('reservation/reserve.html.twig', [
             'facility' => $facility,
@@ -559,23 +485,10 @@ public function reserve(
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        $submittedToken = (string) $request->request->get('_token');
-        $expectedTokenId = 'select_alternative_' . $reservation->getId();
-        
-        if (!$this->isCsrfTokenValid($expectedTokenId, $submittedToken)) {
-            $this->addFlash('error', 'Invalid security token. Please try again.');
-            $currentUser = $this->getUser();
-            $userId = ($currentUser instanceof \App\Entity\User) ? $currentUser->getId() : 'none';
-            error_log('CSRF validation failed for select_alternative. Reservation: ' . $reservation->getId() . ', User: ' . $userId);
-            return $this->redirectToRoute('user_suggest_facility', ['id' => $reservation->getId()]);
+        if ($err = $this->guardReservationAccess($reservation, $request, 'select_alternative_' . $reservation->getId())) {
+            return $err;
         }
-
-        // Verify user owns this reservation
         $currentUser = $this->getUser();
-        if (!$currentUser || $reservation->getUser() !== $currentUser) {
-            $this->addFlash('error', 'You do not have permission to modify this reservation.');
-            return $this->redirectToRoute('user_reservations');
-        }
 
         $facility = $em->getRepository(Facility::class)->find($facilityId);
         if (!$facility) {
@@ -584,19 +497,7 @@ public function reserve(
         }
 
         $reservation->setFacility($facility);
-        // Set status to Pending after user accepts an alternative facility
-        $reservation->setStatus('Pending');
-        $em->flush();
-
-        // Send notification to super admin
-        $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
-
-        // Send confirmation email + in-app notification to user
-        $reservationMailer->notifyPending($reservation);
-
-        $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
-
-        return $this->redirectToRoute('user_reservations');
+        return $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
     }
 
     #[Route('/reservations/{id}/keep-original-facility', name: 'user_keep_original_facility', methods: ['POST'])]
@@ -609,36 +510,102 @@ public function reserve(
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        $submittedToken = (string) $request->request->get('_token');
-        $expectedTokenId = 'keep_original_' . $reservation->getId();
-        
-        if (!$this->isCsrfTokenValid($expectedTokenId, $submittedToken)) {
-            $this->addFlash('error', 'Invalid security token. Please try again.');
-            $currentUser = $this->getUser();
-            $userId = ($currentUser instanceof \App\Entity\User) ? $currentUser->getId() : 'none';
-            error_log('CSRF validation failed for keep_original_facility. Reservation: ' . $reservation->getId() . ', User: ' . $userId);
-            return $this->redirectToRoute('user_suggest_facility', ['id' => $reservation->getId()]);
+        if ($err = $this->guardReservationAccess($reservation, $request, 'keep_original_' . $reservation->getId())) {
+            return $err;
         }
 
-        // Verify user owns this reservation
+        return $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
+    }
+
+    private function validateReservationInput(
+        mixed $startTime,
+        mixed $endTime,
+        mixed $date,
+        int $capacity,
+        Facility $facility,
+    ): ?JsonResponse {
+        if (!$startTime || !$endTime) {
+            return $this->json(['error' => 'Please select a valid start and end time', 'message' => 'Please select a valid start and end time'], Response::HTTP_BAD_REQUEST);
+        }
+        $dayStart = \DateTime::createFromFormat('H:i', '07:00');
+        $dayEnd   = \DateTime::createFromFormat('H:i', '20:00');
+        if ($startTime < $dayStart || $endTime > $dayEnd || $endTime <= $startTime) {
+            return $this->json(['error' => 'Reservation time must be between 7:00 AM and 8:00 PM', 'message' => 'Reservation time must be between 7:00 AM and 8:00 PM'], Response::HTTP_BAD_REQUEST);
+        }
+        $startMinutes = ((int)$startTime->format('H')) * 60 + (int)$startTime->format('i');
+        $endMinutes   = ((int)$endTime->format('H'))   * 60 + (int)$endTime->format('i');
+        if ($startMinutes % 10 !== 0 || $endMinutes % 10 !== 0) {
+            return $this->json(['error' => 'Please select times in 10-minute intervals', 'message' => 'Please select times in 10-minute intervals'], Response::HTTP_BAD_REQUEST);
+        }
+        if ($capacity > $facility->getCapacity()) {
+            return $this->json(['error' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}", 'message' => "Capacity cannot exceed facility maximum of {$facility->getCapacity()}"], Response::HTTP_BAD_REQUEST);
+        }
+        if (!$date) {
+            return $this->json(['error' => 'Please select a valid reservation date', 'message' => 'Please select a valid reservation date'], Response::HTTP_BAD_REQUEST);
+        }
+        $reservationDateTime = clone $date;
+        $reservationDateTime->setTime((int)$startTime->format('H'), (int)$startTime->format('i'));
+        if ($reservationDateTime < new \DateTime()) {
+            return $this->json(['error' => 'Cannot create reservations for past time slots. Please select a future time.', 'message' => 'Cannot create reservations for past time slots. Please select a future time.'], Response::HTTP_BAD_REQUEST);
+        }
+        return null;
+    }
+
+    private function resolveUserDisplayInfo(mixed $user): array
+    {
+        if (!$user instanceof User) {
+            return ['', ''];
+        }
+        $email = $user->getEmail();
+        $name  = trim(implode(' ', array_filter([
+            $user->getFirstName(),
+            $user->getMiddleName(),
+            $user->getLastName(),
+        ]))) ?: $email;
+        return [$email, $name];
+    }
+
+    private function resolveRestoreReservation(
+        Request $request,
+        ReservationRepository $reservationRepo,
+        mixed $user,
+        Facility $facility,
+    ): ?Reservation {
+        $restoreId = $request->query->get('restore');
+        if (!$restoreId) return null;
+        $res = $reservationRepo->find($restoreId);
+        if ($res && $res->getUser() === $user && $res->getFacility() === $facility) {
+            return $res;
+        }
+        return null;
+    }
+
+    private function guardReservationAccess(Reservation $reservation, Request $request, string $tokenId): ?Response
+    {
+        if (!$this->isCsrfTokenValid($tokenId, (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            return $this->redirectToRoute('user_suggest_facility', ['id' => $reservation->getId()]);
+        }
         $currentUser = $this->getUser();
         if (!$currentUser || $reservation->getUser() !== $currentUser) {
             $this->addFlash('error', 'You do not have permission to modify this reservation.');
             return $this->redirectToRoute('user_reservations');
         }
+        return null;
+    }
 
-        // Set status to Pending after user chooses to keep original facility
+    private function submitPendingReservation(
+        Reservation $reservation,
+        EntityManagerInterface $em,
+        MailerInterface $mailer,
+        UserRepository $userRepository,
+        ReservationMailer $reservationMailer,
+    ): Response {
         $reservation->setStatus('Pending');
         $em->flush();
-
-        // Send notification to super admin
         $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
-
-        // Send confirmation email + in-app notification to user
         $reservationMailer->notifyPending($reservation);
-
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
-
         return $this->redirectToRoute('user_reservations');
     }
 

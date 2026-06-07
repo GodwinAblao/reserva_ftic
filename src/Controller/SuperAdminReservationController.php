@@ -269,24 +269,15 @@ class SuperAdminReservationController extends AbstractController
             return $this->json(['success' => false, 'message' => 'Invalid facility selected.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $date  = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
         $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
-        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+        $end   = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
 
-        if (!$date || !$start || !$end || $end <= $start) {
-            return $this->json(['success' => false, 'message' => 'Invalid date or time values.'], Response::HTTP_BAD_REQUEST);
+        if ($err = $this->validateScheduleDateTime($date, $start, $end, 'Invalid date or time values.')) {
+            return $err;
         }
-
-        // Check if the date is Sunday
-        if ($date->format('w') == '0') {
-            return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Check if within allowed hours
-        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
-        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
-        if ($start < $dayStart || $end > $dayEnd) {
-            return $this->json(['success' => false, 'message' => 'Schedule blocks must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+        if ($err = $this->assertWithinBusinessHours($date, $start, $end, 'Schedule blocks must be between 7:00 AM and 8:00 PM.')) {
+            return $err;
         }
 
         // Check for time conflicts - Super Admin can override
@@ -328,31 +319,11 @@ class SuperAdminReservationController extends AbstractController
 
         $message = 'Schedule block added successfully. The selected time is now unavailable for reservations.' . ($hasConflicts && $overrideConflict ? ' Email notifications sent to affected faculty.' : '');
         if ($isAjax) {
-            return $this->json([
-                'success' => true,
-                'message' => $message,
-                'block' => [
-                    'id' => 'block_' . $block->getId(),
-                    'itemType' => 'block',
-                    'name' => $block->getTitle(),
-                    'eventName' => $block->getTitle(),
-                    'email' => '',
-                    'contact' => '',
-                    'purpose' => $block->getNotes(),
-                    'status' => $block->getType() ?: 'Manual',
-                    'capacity' => 0,
-                    'reservationDate' => $block->getBlockDate()->format('Y-m-d'),
-                    'reservationStartTime' => $block->getStartTime()->format('H:i'),
-                    'reservationEndTime' => $block->getEndTime()->format('H:i'),
-                    'facility' => [
-                        'id' => $facility->getId(),
-                        'name' => $facility->getName(),
-                        'capacity' => $facility->getCapacity(),
-                    ],
-                    'isBlock' => true,
-                ],
-                'scheduleRevision' => $scheduleRevision->getRevision(),
-            ]);
+            return $this->json(array_merge(
+                ['success' => true, 'message' => $message],
+                $this->buildBlockJson($block, $facility),
+                ['scheduleRevision' => $scheduleRevision->getRevision()]
+            ));
         }
 
         $this->addFlash('success', $message);
@@ -365,11 +336,11 @@ class SuperAdminReservationController extends AbstractController
         FacilityRepository $facilityRepo,
         ReservationRepository $reservationRepo,
     ): JsonResponse {
-        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->query->get('date'));
+        $date  = \DateTime::createFromFormat('!Y-m-d', (string) $request->query->get('date'));
         $start = \DateTime::createFromFormat('!H:i', (string) $request->query->get('start'));
-        $end = \DateTime::createFromFormat('!H:i', (string) $request->query->get('end'));
+        $end   = \DateTime::createFromFormat('!H:i', (string) $request->query->get('end'));
 
-        if (!$date || !$start || !$end || $end <= $start) {
+        if ($this->isInvalidDateTimeRange($date, $start, $end)) {
             return $this->json(['facilities' => [], 'message' => 'Invalid date or time.'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -509,47 +480,21 @@ class SuperAdminReservationController extends AbstractController
         $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
         $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
 
-        if (!$facility || !$date || !$start || !$end || $end <= $start) {
+        if (!$facility) {
             return $this->json(['success' => false, 'message' => 'Invalid class schedule data.'], Response::HTTP_BAD_REQUEST);
         }
-
-        if ($date->format('w') === '0') {
-            return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+        if ($err = $this->validateScheduleDateTime($date, $start, $end, 'Invalid class schedule data.')) {
+            return $err;
         }
-
-        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
-        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
-        if ($start < $dayStart || $end > $dayEnd) {
-            return $this->json(['success' => false, 'message' => 'Class schedules must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+        if ($err = $this->assertWithinBusinessHours($date, $start, $end, 'Class schedules must be between 7:00 AM and 8:00 PM.')) {
+            return $err;
         }
 
         // Skip conflict validation for Super Admin
         // Super Admin can edit any schedule regardless of conflicts
 
-        $previousFacility = $schedule->getFacility();
-        if ($previousFacility && $previousFacility->getId() !== $facility->getId()) {
-            $schedule->setPreviousFacility($previousFacility);
-            $schedule->setIsRelocated(true);
-        }
-
-        $schedule->setFacility($facility);
-        $schedule->setScheduleDate($date);
-        $schedule->setStartTime($start);
-        $schedule->setEndTime($end);
-
-        $courseCode = trim((string) $request->request->get('course_code', $schedule->getCourseCode()));
-        if ($courseCode !== '') {
-            $schedule->setCourseCode($courseCode);
-        }
-        $section = trim((string) $request->request->get('section', $schedule->getSection() ?? ''));
-        $schedule->setSection($section !== '' ? $section : null);
-        $facultyName = trim((string) $request->request->get('faculty_name', $schedule->getFacultyName() ?? ''));
-        $schedule->setFacultyName($facultyName !== '' ? $facultyName : null);
-
         $oldFacultyEmail = $schedule->getFacultyEmail();
-        $facultyEmail = trim((string) $request->request->get('faculty_email', $schedule->getFacultyEmail() ?? ''));
-        $schedule->setFacultyEmail($facultyEmail !== '' ? $facultyEmail : null);
-        $schedule->setFacultyUser($facultyMatcher->resolveFacultyUser($schedule->getFacultyEmail()));
+        $facultyEmail    = $this->applyClassScheduleFields($schedule, $request, $facility, $date, $start, $end, $facultyMatcher);
 
         $em->flush();
 
@@ -613,47 +558,28 @@ class SuperAdminReservationController extends AbstractController
         $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
         $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
 
-        if (!$facility || !$date || !$start || !$end || $end <= $start) {
+        if (!$facility) {
             return $this->json(['success' => false, 'message' => 'Invalid schedule block data.'], Response::HTTP_BAD_REQUEST);
         }
-
-        if ($date->format('w') == '0') {
-            return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+        if ($err = $this->validateScheduleDateTime($date, $start, $end, 'Invalid schedule block data.')) {
+            return $err;
         }
-
-        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
-        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
-        if ($start < $dayStart || $end > $dayEnd) {
-            return $this->json(['success' => false, 'message' => 'Schedule blocks must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+        if ($err = $this->assertWithinBusinessHours($date, $start, $end, 'Schedule blocks must be between 7:00 AM and 8:00 PM.')) {
+            return $err;
         }
 
         // Skip conflict validation for Super Admin
         // Super Admin can edit any schedule regardless of conflicts
 
-        $blockType = (string) $request->request->get('block_type', 'Manual');
-        if (!in_array($blockType, ['Manual', 'Blocked', 'Maintenance'], true)) {
-            $blockType = 'Manual';
-        }
-        
-        // If block type is "Available", delete the block to restore original availability
+        $blockType = $this->resolveBlockType((string) $request->request->get('block_type', 'Manual'));
+
         if ($blockType === 'Available') {
             $em->remove($block);
             $em->flush();
-            
-            return $this->json([
-                'success' => true,
-                'message' => 'Schedule block removed. Time slot is now available.',
-                'scheduleRevision' => $scheduleRevision->getRevision(),
-            ]);
+            return $this->json(['success' => true, 'message' => 'Schedule block removed. Time slot is now available.', 'scheduleRevision' => $scheduleRevision->getRevision()]);
         }
-        
-        $block->setFacility($facility);
-        $block->setBlockDate($date);
-        $block->setStartTime($start);
-        $block->setEndTime($end);
-        $block->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable');
-        $block->setType($blockType);
-        $block->setNotes($request->request->get('notes'));
+
+        $this->applyBlockFields($block, $request, $facility, $date, $start, $end, $blockType);
 
         $em->flush();
 
@@ -833,4 +759,117 @@ class SuperAdminReservationController extends AbstractController
             ]);
         }
     }
+    private function isInvalidDateTimeRange(mixed $date, mixed $start, mixed $end): bool
+    {
+        return !$date || !$start || !$end || $end <= $start;
+    }
+
+    private function validateScheduleDateTime(mixed $date, mixed $start, mixed $end, string $message): ?JsonResponse
+    {
+        if ($this->isInvalidDateTimeRange($date, $start, $end)) {
+            return $this->json(['success' => false, 'message' => $message], Response::HTTP_BAD_REQUEST);
+        }
+        if ($date->format('w') === '0' || $date->format('w') === 0) {
+            return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+        }
+        return null;
+    }
+
+    private function assertWithinBusinessHours(mixed $date, mixed $start, mixed $end, string $message): ?JsonResponse
+    {
+        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
+        $dayEnd   = \DateTime::createFromFormat('!H:i', '20:00');
+        if ($start < $dayStart || $end > $dayEnd) {
+            return $this->json(['success' => false, 'message' => $message], Response::HTTP_BAD_REQUEST);
+        }
+        return null;
+    }
+
+    private function resolveBlockType(string $raw): string
+    {
+        return in_array($raw, ['Manual', 'Blocked', 'Maintenance', 'Available'], true) ? $raw : 'Manual';
+    }
+
+    private function buildBlockJson(FacilityScheduleBlock $block, Facility $facility): array
+    {
+        return [
+            'block' => [
+                'id'                   => 'block_' . $block->getId(),
+                'itemType'             => 'block',
+                'name'                 => $block->getTitle(),
+                'eventName'            => $block->getTitle(),
+                'email'                => '',
+                'contact'              => '',
+                'purpose'              => $block->getNotes(),
+                'status'               => $block->getType() ?: 'Manual',
+                'capacity'             => 0,
+                'reservationDate'      => $block->getBlockDate()->format('Y-m-d'),
+                'reservationStartTime' => $block->getStartTime()->format('H:i'),
+                'reservationEndTime'   => $block->getEndTime()->format('H:i'),
+                'facility'             => [
+                    'id'       => $facility->getId(),
+                    'name'     => $facility->getName(),
+                    'capacity' => $facility->getCapacity(),
+                ],
+                'isBlock' => true,
+            ],
+        ];
+    }
+
+    private function applyClassScheduleFields(
+        ClassSchedule $schedule,
+        Request $request,
+        Facility $facility,
+        \DateTime $date,
+        \DateTime $start,
+        \DateTime $end,
+        \App\Service\ClassScheduleFacultyMatcher $facultyMatcher,
+    ): string {
+        $previousFacility = $schedule->getFacility();
+        if ($previousFacility && $previousFacility->getId() !== $facility->getId()) {
+            $schedule->setPreviousFacility($previousFacility);
+            $schedule->setIsRelocated(true);
+        }
+
+        $schedule->setFacility($facility)
+                 ->setScheduleDate($date)
+                 ->setStartTime($start)
+                 ->setEndTime($end);
+
+        $courseCode = trim((string) $request->request->get('course_code', $schedule->getCourseCode()));
+        if ($courseCode !== '') {
+            $schedule->setCourseCode($courseCode);
+        }
+
+        $section = trim((string) $request->request->get('section', $schedule->getSection() ?? ''));
+        $schedule->setSection($section !== '' ? $section : null);
+
+        $facultyName = trim((string) $request->request->get('faculty_name', $schedule->getFacultyName() ?? ''));
+        $schedule->setFacultyName($facultyName !== '' ? $facultyName : null);
+
+        $facultyEmail = trim((string) $request->request->get('faculty_email', $schedule->getFacultyEmail() ?? ''));
+        $schedule->setFacultyEmail($facultyEmail !== '' ? $facultyEmail : null);
+        $schedule->setFacultyUser($facultyMatcher->resolveFacultyUser($schedule->getFacultyEmail()));
+
+        return $facultyEmail;
+    }
+
+    private function applyBlockFields(
+        FacilityScheduleBlock $block,
+        Request $request,
+        Facility $facility,
+        \DateTime $date,
+        \DateTime $start,
+        \DateTime $end,
+        string $blockType,
+    ): void {
+        $block->setFacility($facility)
+              ->setBlockDate($date)
+              ->setStartTime($start)
+              ->setEndTime($end)
+              ->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable')
+              ->setType($blockType)
+              ->setNotes($request->request->get('notes'));
+    }
+
 }

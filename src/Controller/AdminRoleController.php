@@ -536,74 +536,112 @@ class AdminRoleController extends AbstractController
         if (!$this->isCsrfTokenValid('mentorship_assign_' . $id, (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
+
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
-        $req = $em->getRepository(\App\Entity\MentorCustomRequest::class)->find($id);
-        if ($req) {
-            $mentorId = (int) $request->request->get('mentor_id', 0);
-            $mentorNameManual = trim((string) $request->request->get('mentor_name_manual', ''));
-            $specialization   = trim((string) $request->request->get('specialization', ''));
-            if ($mentorId > 0) {
-                $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
-                if ($mentor) {
-                    $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
-                    $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
-                }
-            } else {
-                if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
-                if ($specialization !== '') $req->setAssignedMentorExpertise($specialization);
-            }
-            $timeStart = trim((string) $request->request->get('available_time_start', ''));
-            $timeEnd   = trim((string) $request->request->get('available_time_end', ''));
-            $fmtTime = static function (string $t): string {
-                $dt = \DateTime::createFromFormat('H:i', $t);
-                return $dt ? $dt->format('g:i A') : $t;
-            };
-            $availableTime = ($timeStart !== '' && $timeEnd !== '')
-                ? $fmtTime($timeStart) . ' – ' . $fmtTime($timeEnd)
-                : trim((string) $request->request->get('available_time', ''));
-            $meetingMethod = trim((string) $request->request->get('meeting_method_override', '')) ?: trim((string) $request->request->get('meeting_method', ''));
-            $req->setMeetingMethod($meetingMethod ?: null);
-            $req->setAvailableDates($request->request->get('available_dates') ?: null);
-            $req->setAvailableTime($availableTime ?: null);
-            $req->setAdminInstructions($request->request->get('admin_instructions') ?: null);
-            $submittedStatus = trim((string) $request->request->get('status', 'approved'));
-            $prevStatus = $req->getStatus();
-            $req->setStatus(in_array($submittedStatus, ['pending','reviewing','assigned','completed','cancelled','approved'], true) ? $submittedStatus : 'approved');
-            $student = $req->getStudent();
-            $requesterName = $req->getFullName() ?: ($student ? trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? '')) : 'Unknown');
-            $actor = $this->getUser();
-            $actorName = $actor instanceof User ? trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? '')) : 'Admin';
-            if ($actorName === '') { $actorName = $actor instanceof User ? $actor->getEmail() : 'Admin'; }
-            $instructions = trim((string) $request->request->get('admin_instructions', ''));
-            $noteText = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
-            /** @var MentoringAuditLogRepository $auditRepo */
-            $auditRepo = $em->getRepository(MentoringAuditLog::class);
-            if (!$auditRepo->existsRecent('custom_request', $id, 'update_status', $submittedStatus, $actor instanceof User ? $actor->getId() : null)) {
-                $auditLog = (new MentoringAuditLog())
-                    ->setSubjectType('custom_request')
-                    ->setSubjectId($id)
-                    ->setSubjectLabel($requesterName)
-                    ->setAction('update_status')
-                    ->setPreviousStatus($prevStatus)
-                    ->setNewStatus($submittedStatus)
-                    ->setPerformedBy($actor instanceof User ? $actor : null)
-                    ->setPerformedByName($actorName)
-                    ->setPerformedByRole('Admin')
-                    ->setNote($noteText);
-                $em->persist($auditLog);
-            }
-            $em->flush();
-            $actorName2 = $actor instanceof User ? trim($actor->getFirstName() . ' ' . $actor->getLastName()) : 'Admin';
-            foreach ($em->getRepository(User::class)->findAdmins() as $u) {
-                if ($u === $actor) continue;
-                $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName2, ucfirst($submittedStatus), $requesterName);
-            }
-            if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
-            $this->addFlash('success', 'Mentor assigned successfully.');
-        } else {
+        $req    = $em->getRepository(\App\Entity\MentorCustomRequest::class)->find($id);
+
+        if (!$req) {
             if ($isAjax) return $this->json(['success' => false, 'message' => 'Request not found.']);
+            return $this->redirectToRoute('admin_role_mentorship_coordination');
         }
+
+        $this->applyMentorAssignment($req, $request, $em);
+        $submittedStatus = $this->resolveAssignStatus($request);
+        $prevStatus      = $req->getStatus();
+        $req->setStatus($submittedStatus);
+
+        $actor         = $this->getUser();
+        $actorName     = $actor instanceof User
+            ? (trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? '')) ?: $actor->getEmail())
+            : 'Admin';
+        $student       = $req->getStudent();
+        $requesterName = $req->getFullName()
+            ?: ($student ? trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? '')) : 'Unknown');
+        $instructions  = trim((string) $request->request->get('admin_instructions', ''));
+        $noteText      = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
+
+        $this->persistAssignAuditLog($em, $id, $requesterName, $prevStatus, $submittedStatus, $actor, $actorName, $noteText);
+        $em->flush();
+
+        foreach ($em->getRepository(User::class)->findAdmins() as $u) {
+            if ($u === $actor) continue;
+            $notifService->notifyAdminMentorRequestUpdated($u, $id, $actorName, ucfirst($submittedStatus), $requesterName);
+        }
+
+        if ($isAjax) return $this->json(['success' => true, 'message' => 'Mentor assigned successfully.']);
+        $this->addFlash('success', 'Mentor assigned successfully.');
         return $this->redirectToRoute('admin_role_mentorship_coordination');
+    }
+
+    private function applyMentorAssignment(\App\Entity\MentorCustomRequest $req, Request $request, EntityManagerInterface $em): void
+    {
+        $mentorId         = (int) $request->request->get('mentor_id', 0);
+        $mentorNameManual = trim((string) $request->request->get('mentor_name_manual', ''));
+        $specialization   = trim((string) $request->request->get('specialization', ''));
+
+        if ($mentorId > 0) {
+            $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
+            if ($mentor) {
+                $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
+                $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
+            }
+        } else {
+            if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
+            if ($specialization !== '')   $req->setAssignedMentorExpertise($specialization);
+        }
+
+        $timeStart   = trim((string) $request->request->get('available_time_start', ''));
+        $timeEnd     = trim((string) $request->request->get('available_time_end', ''));
+        $fmtTime     = static function (string $t): string {
+            $dt = \DateTime::createFromFormat('H:i', $t);
+            return $dt ? $dt->format('g:i A') : $t;
+        };
+        $availTime   = ($timeStart !== '' && $timeEnd !== '')
+            ? $fmtTime($timeStart) . ' – ' . $fmtTime($timeEnd)
+            : trim((string) $request->request->get('available_time', ''));
+        $meetingMethod = trim((string) $request->request->get('meeting_method_override', ''))
+            ?: trim((string) $request->request->get('meeting_method', ''));
+
+        $req->setMeetingMethod($meetingMethod ?: null)
+            ->setAvailableDates($request->request->get('available_dates') ?: null)
+            ->setAvailableTime($availTime ?: null)
+            ->setAdminInstructions($request->request->get('admin_instructions') ?: null);
+    }
+
+    private function resolveAssignStatus(Request $request): string
+    {
+        $s = trim((string) $request->request->get('status', 'approved'));
+        return in_array($s, ['pending', 'reviewing', 'assigned', 'completed', 'cancelled', 'approved'], true)
+            ? $s
+            : 'approved';
+    }
+
+    private function persistAssignAuditLog(
+        EntityManagerInterface $em,
+        int $id,
+        string $requesterName,
+        ?string $prevStatus,
+        string $newStatus,
+        mixed $actor,
+        string $actorName,
+        ?string $noteText
+    ): void {
+        /** @var MentoringAuditLogRepository $auditRepo */
+        $auditRepo = $em->getRepository(MentoringAuditLog::class);
+        if ($auditRepo->existsRecent('custom_request', $id, 'update_status', $newStatus, $actor instanceof User ? $actor->getId() : null)) {
+            return;
+        }
+        $em->persist((new MentoringAuditLog())
+            ->setSubjectType('custom_request')
+            ->setSubjectId($id)
+            ->setSubjectLabel($requesterName)
+            ->setAction('update_status')
+            ->setPreviousStatus($prevStatus)
+            ->setNewStatus($newStatus)
+            ->setPerformedBy($actor instanceof User ? $actor : null)
+            ->setPerformedByName($actorName)
+            ->setPerformedByRole('Admin')
+            ->setNote($noteText));
     }
 
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
@@ -622,7 +660,7 @@ class AdminRoleController extends AbstractController
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
-            'users' => $em->getRepository(User::class)->findAll(),
+            'users' => $em->getRepository(User::class)->findBy([], ['lastName' => 'ASC', 'firstName' => 'ASC'], 300),
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
             'is_super_admin' => false,
@@ -792,37 +830,38 @@ class AdminRoleController extends AbstractController
 
     private function reservationStatusCountsToday(EntityManagerInterface $em): array
     {
-        $today = new \DateTime('today');
-        $tomorrow = new \DateTime('tomorrow');
-        $statuses = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
-        $counts = [];
-        foreach ($statuses as $status) {
-            $counts[$status] = (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')
-                ->select('COUNT(r.id)')
-                ->where('r.status = :status AND r.reservationDate >= :today AND r.reservationDate < :tomorrow')
-                ->setParameter('status', $status)
-                ->setParameter('today', $today)
-                ->setParameter('tomorrow', $tomorrow)
-                ->getQuery()->getSingleScalarResult();
+        $today    = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+        $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d H:i:s');
+        $rows     = $em->getConnection()->fetchAllAssociative(
+            'SELECT status, COUNT(*) AS cnt FROM reservation
+             WHERE reservation_date >= ? AND reservation_date < ?
+               AND status IN (\'Pending\',\'Approved\',\'Rejected\',\'Cancelled\')
+             GROUP BY status',
+            [$today, $tomorrow]
+        );
+        $counts = ['Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Cancelled' => 0];
+        foreach ($rows as $row) {
+            $counts[$row['status']] = (int) $row['cnt'];
         }
         return $counts;
     }
 
     private function facilityReservationCountsToday(EntityManagerInterface $em): array
     {
-        $today = new \DateTime('today');
-        $tomorrow = new \DateTime('tomorrow');
-        $facilities = $em->getRepository(\App\Entity\Facility::class)->findAll();
+        $today    = (new \DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+        $tomorrow = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d H:i:s');
+        $rows     = $em->getConnection()->fetchAllAssociative(
+            'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
+             FROM facility f
+             LEFT JOIN reservation r ON r.facility_id = f.id
+               AND r.reservation_date >= ? AND r.reservation_date < ?
+             GROUP BY f.id, f.name
+             ORDER BY f.name',
+            [$today, $tomorrow]
+        );
         $counts = [];
-        foreach ($facilities as $facility) {
-            $cnt = (int) $em->getRepository(Reservation::class)->createQueryBuilder('r')
-                ->select('COUNT(r.id)')
-                ->where('r.facility = :facility AND r.reservationDate >= :today AND r.reservationDate < :tomorrow')
-                ->setParameter('facility', $facility)
-                ->setParameter('today', $today)
-                ->setParameter('tomorrow', $tomorrow)
-                ->getQuery()->getSingleScalarResult();
-            $counts[$facility->getName()] = $cnt;
+        foreach ($rows as $row) {
+            $counts[$row['facility_name']] = (int) $row['cnt'];
         }
         return $counts;
     }
@@ -848,31 +887,37 @@ class AdminRoleController extends AbstractController
 
     private function facilityReservationCounts(EntityManagerInterface $em): array
     {
-        $repo = $em->getRepository(Reservation::class);
-        $facilities = $em->getRepository(\App\Entity\Facility::class)->findAll();
-        
+        $rows = $em->getConnection()->fetchAllAssociative(
+            'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
+             FROM facility f
+             LEFT JOIN reservation r ON r.facility_id = f.id
+             GROUP BY f.id, f.name
+             ORDER BY f.name'
+        );
         $counts = [];
-        foreach ($facilities as $facility) {
-            $counts[$facility->getName()] = $repo->count(['facility' => $facility]);
+        foreach ($rows as $row) {
+            $counts[$row['facility_name']] = (int) $row['cnt'];
         }
-        
         return $counts;
     }
 
     private function topExpertise(EntityManagerInterface $em): array
     {
-        $mentorProfiles = $em->getRepository(MentorProfile::class)->findAll();
-        $expertiseCounts = [];
+        $rows = $em->createQueryBuilder()
+            ->select('m.specialization AS spec, COUNT(m.id) AS cnt')
+            ->from(MentorProfile::class, 'm')
+            ->where('m.specialization IS NOT NULL')
+            ->groupBy('m.specialization')
+            ->orderBy('cnt', 'DESC')
+            ->setMaxResults(5)
+            ->getQuery()
+            ->getArrayResult();
 
-        foreach ($mentorProfiles as $profile) {
-            $specialization = $profile->getSpecialization();
-            if (!empty($specialization)) {
-                $expertiseCounts[$specialization] = ($expertiseCounts[$specialization] ?? 0) + 1;
-            }
+        $counts = [];
+        foreach ($rows as $row) {
+            $counts[$row['spec']] = (int) $row['cnt'];
         }
-
-        arsort($expertiseCounts);
-        return array_slice($expertiseCounts, 0, 5, true);
+        return $counts;
     }
 
     private function adminModules(): array
@@ -925,26 +970,6 @@ class AdminRoleController extends AbstractController
         return $rows;
     }
 
-    #[Route('/api/mentoring-panel', name: 'admin_role_api_mentoring_panel', methods: ['GET'])]
-    public function mentoringPanelApi(EntityManagerInterface $em): JsonResponse
-    {
-        $requests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 10);
-        $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 5);
-
-        $reqData = array_map(fn($r) => [
-            'id'     => $r->getId(),
-            'name'   => $r->getFullName() ?: ($r->getStudent() ? trim($r->getStudent()->getFirstName() . ' ' . $r->getStudent()->getLastName()) : 'Unknown'),
-            'status' => $r->getStatus(),
-            'topic'  => $r->getPreferredExpertise() ?: 'General',
-        ], $requests);
-
-        $lbData = array_map(fn($m) => [
-            'name'   => $m->getDisplayName(),
-            'points' => $m->getEngagementPoints(),
-        ], $leaderboard);
-
-        return $this->json(['requests' => $reqData, 'leaderboard' => $lbData]);
-    }
 
     #[Route('/api/mentoring-requests-poll', name: 'admin_role_api_mentoring_poll', methods: ['GET'])]
     public function mentoringRequestsPoll(EntityManagerInterface $em): JsonResponse
