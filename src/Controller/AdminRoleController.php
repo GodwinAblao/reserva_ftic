@@ -69,14 +69,13 @@ class AdminRoleController extends AbstractController
     #[Route('/api/stats', name: 'admin_role_api_stats', methods: ['GET'])]
     public function apiStats(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $data = $cache->get('admin.dashboard.stats.admin.v2', function (ItemInterface $item) use ($em): array {
-            $item->expiresAfter(10);
-            return $this->getDashboardData($em);
-        });
-
-        $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=120');
-        return $response;
+        return $this->cachedJsonResponse(
+            $cache,
+            'admin.dashboard.stats.admin.v2',
+            10,
+            fn() => $this->getDashboardData($em),
+            'private, max-age=120',
+        );
     }
 
     #[Route('/api/analytics', name: 'admin_role_api_analytics', methods: ['GET'])]
@@ -134,14 +133,13 @@ class AdminRoleController extends AbstractController
     #[Route('/api/recent-reservations', name: 'admin_role_api_recent_reservations', methods: ['GET'])]
     public function apiRecentReservations(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $data = $cache->get('admin.dashboard.recent_reservations.v2', function (ItemInterface $item) use ($em): array {
-            $item->expiresAfter(10);
-            return $this->getRecentReservationsData($em);
-        });
-
-        $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=120');
-        return $response;
+        return $this->cachedJsonResponse(
+            $cache,
+            'admin.dashboard.recent_reservations.v2',
+            10,
+            fn() => $this->getRecentReservationsData($em),
+            'private, max-age=120',
+        );
     }
 
     #[Route('/api/mentoring-panel', name: 'admin_role_api_mentoring_panel', methods: ['GET'])]
@@ -394,17 +392,7 @@ class AdminRoleController extends AbstractController
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
         $result = $statusManager->approve($reservation, $isAjax);
 
-        if ($result instanceof JsonResponse) {
-            return $result;
-        }
-
-        if (!$result['success']) {
-            $this->addFlash('error', $result['message']);
-        } else {
-            $this->addFlash('success', $result['message']);
-        }
-
-        return $this->redirectToRoute('admin_role_reservation_monitoring');
+        return $this->handleStatusResult($result, 'admin_role_reservation_monitoring');
     }
 
     #[Route('/reservations/{id}/reject', name: 'admin_role_reject_reservation', methods: ['POST'])]
@@ -425,17 +413,7 @@ class AdminRoleController extends AbstractController
         $reason = (string) ($request->request->get('reason') ?? 'Not specified');
         $result = $statusManager->reject($reservation, $reason, $isAjax);
 
-        if ($result instanceof JsonResponse) {
-            return $result;
-        }
-
-        if (!$result['success']) {
-            $this->addFlash('error', $result['message']);
-        } else {
-            $this->addFlash('success', $result['message']);
-        }
-
-        return $this->redirectToRoute('admin_role_reservation_monitoring');
+        return $this->handleStatusResult($result, 'admin_role_reservation_monitoring');
     }
 
     #[Route('/reservations/{id}/status', name: 'admin_role_update_reservation_status', methods: ['POST'])]
@@ -560,7 +538,14 @@ class AdminRoleController extends AbstractController
         $instructions  = trim((string) $request->request->get('admin_instructions', ''));
         $noteText      = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
 
-        $this->persistAssignAuditLog($em, $id, $requesterName, $prevStatus, $submittedStatus, $actor, $actorName, $noteText);
+        $this->persistAssignAuditLog($em, $id, [
+            'requesterName' => $requesterName,
+            'prevStatus'    => $prevStatus,
+            'newStatus'     => $submittedStatus,
+            'actor'         => $actor,
+            'actorName'     => $actorName,
+            'note'          => $noteText,
+        ]);
         $em->flush();
 
         foreach ($em->getRepository(User::class)->findAdmins() as $u) {
@@ -579,16 +564,7 @@ class AdminRoleController extends AbstractController
         $mentorNameManual = trim((string) $request->request->get('mentor_name_manual', ''));
         $specialization   = trim((string) $request->request->get('specialization', ''));
 
-        if ($mentorId > 0) {
-            $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
-            if ($mentor) {
-                $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
-                $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
-            }
-        } else {
-            if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
-            if ($specialization !== '')   $req->setAssignedMentorExpertise($specialization);
-        }
+        $this->resolveMentorIdentity($req, $em, $mentorId, $mentorNameManual, $specialization);
 
         $timeStart   = trim((string) $request->request->get('available_time_start', ''));
         $timeEnd     = trim((string) $request->request->get('available_time_end', ''));
@@ -619,29 +595,25 @@ class AdminRoleController extends AbstractController
     private function persistAssignAuditLog(
         EntityManagerInterface $em,
         int $id,
-        string $requesterName,
-        ?string $prevStatus,
-        string $newStatus,
-        mixed $actor,
-        string $actorName,
-        ?string $noteText
+        array $ctx,
     ): void {
         /** @var MentoringAuditLogRepository $auditRepo */
         $auditRepo = $em->getRepository(MentoringAuditLog::class);
-        if ($auditRepo->existsRecent('custom_request', $id, 'update_status', $newStatus, $actor instanceof User ? $actor->getId() : null)) {
+        $actor = $ctx['actor'];
+        if ($auditRepo->existsRecent('custom_request', $id, 'update_status', $ctx['newStatus'], $actor instanceof User ? $actor->getId() : null)) {
             return;
         }
         $em->persist((new MentoringAuditLog())
             ->setSubjectType('custom_request')
             ->setSubjectId($id)
-            ->setSubjectLabel($requesterName)
+            ->setSubjectLabel($ctx['requesterName'])
             ->setAction('update_status')
-            ->setPreviousStatus($prevStatus)
-            ->setNewStatus($newStatus)
+            ->setPreviousStatus($ctx['prevStatus'])
+            ->setNewStatus($ctx['newStatus'])
             ->setPerformedBy($actor instanceof User ? $actor : null)
-            ->setPerformedByName($actorName)
+            ->setPerformedByName($ctx['actorName'])
             ->setPerformedByRole('Admin')
-            ->setNote($noteText));
+            ->setNote($ctx['note']));
     }
 
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
@@ -1019,4 +991,48 @@ class AdminRoleController extends AbstractController
         $response->setMaxAge(0)->headers->addCacheControlDirective('no-store');
         return $response;
     }
+    private function handleStatusResult(array|JsonResponse $result, string $redirectRoute): Response
+    {
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
+        $this->addFlash($result['success'] ? 'success' : 'error', $result['message']);
+        return $this->redirectToRoute($redirectRoute);
+    }
+
+    private function resolveMentorIdentity(
+        \App\Entity\MentorCustomRequest $req,
+        EntityManagerInterface $em,
+        int $mentorId,
+        string $mentorNameManual,
+        string $specialization,
+    ): void {
+        if ($mentorId > 0) {
+            $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
+            if ($mentor) {
+                $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
+                $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
+            }
+        } else {
+            if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
+            if ($specialization   !== '') $req->setAssignedMentorExpertise($specialization);
+        }
+    }
+
+    private function cachedJsonResponse(
+        \Symfony\Contracts\Cache\CacheInterface $cache,
+        string $key,
+        int $ttl,
+        callable $builder,
+        string $cacheControl,
+    ): JsonResponse {
+        $data = $cache->get($key, function (\Symfony\Contracts\Cache\ItemInterface $item) use ($ttl, $builder): array {
+            $item->expiresAfter($ttl);
+            return $builder();
+        });
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', $cacheControl);
+        return $response;
+    }
+
 }

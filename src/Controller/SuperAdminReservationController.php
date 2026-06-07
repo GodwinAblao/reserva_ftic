@@ -23,6 +23,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use App\DTO\ScheduleSlot;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/super-admin')]
@@ -285,12 +286,7 @@ class SuperAdminReservationController extends AbstractController
         $overrideConflict = $request->request->get('override_conflict') === 'true';
         
         if ($hasConflicts && !$overrideConflict) {
-            return $this->json([
-                'success' => false, 
-                'message' => 'This time range has existing reservations, class schedules, or blocks. As Super Admin, you can override this conflict.',
-                'hasConflicts' => true,
-                'conflictMessage' => 'Existing items found in this time slot. Override to proceed?'
-            ], Response::HTTP_CONFLICT);
+            return $this->resolveConflictResponse();
         }
 
         // Create the block
@@ -299,22 +295,14 @@ class SuperAdminReservationController extends AbstractController
             $type = 'Manual';
         }
 
-        $block = new FacilityScheduleBlock();
-        $block->setFacility($facility);
-        $block->setBlockDate($date);
-        $block->setStartTime($start);
-        $block->setEndTime($end);
-        $block->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable');
-        $block->setType($type);
-        $block->setNotes($request->request->get('notes'));
-        $block->setSource('Manual Entry');
+        $block = $this->buildNewBlock(new ScheduleSlot($facility, $date, $start, $end), $type, $request);
 
         $em->persist($block);
         $em->flush();
 
         // Send email notifications to affected faculty if there were conflicts
         if ($hasConflicts && $overrideConflict) {
-            $this->notifyAffectedFaculty($facility, $date, $start, $end, $block, $reservationRepo, $classScheduleRepo);
+            $this->notifyAffectedFaculty(new ScheduleSlot($facility, $date, $start, $end), $block, $classScheduleRepo);
         }
 
         $message = 'Schedule block added successfully. The selected time is now unavailable for reservations.' . ($hasConflicts && $overrideConflict ? ' Email notifications sent to affected faculty.' : '');
@@ -476,9 +464,9 @@ class SuperAdminReservationController extends AbstractController
         // Super Admin has full privileges and doesn't need CSRF protection
 
         $facility = $facilityRepo->find($request->request->get('facility'));
-        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $date  = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
         $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
-        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+        $end   = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
 
         if (!$facility) {
             return $this->json(['success' => false, 'message' => 'Invalid class schedule data.'], Response::HTTP_BAD_REQUEST);
@@ -490,11 +478,8 @@ class SuperAdminReservationController extends AbstractController
             return $err;
         }
 
-        // Skip conflict validation for Super Admin
-        // Super Admin can edit any schedule regardless of conflicts
-
         $oldFacultyEmail = $schedule->getFacultyEmail();
-        $facultyEmail    = $this->applyClassScheduleFields($schedule, $request, $facility, $date, $start, $end, $facultyMatcher);
+        $facultyEmail    = $this->applyClassScheduleFields($schedule, $request, new ScheduleSlot($facility, $date, $start, $end), $facultyMatcher);
 
         $em->flush();
 
@@ -554,9 +539,9 @@ class SuperAdminReservationController extends AbstractController
         // Super Admin has full privileges and doesn't need CSRF protection
 
         $facility = $facilityRepo->find($request->request->get('facility'));
-        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $date  = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
         $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
-        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+        $end   = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
 
         if (!$facility) {
             return $this->json(['success' => false, 'message' => 'Invalid schedule block data.'], Response::HTTP_BAD_REQUEST);
@@ -568,9 +553,6 @@ class SuperAdminReservationController extends AbstractController
             return $err;
         }
 
-        // Skip conflict validation for Super Admin
-        // Super Admin can edit any schedule regardless of conflicts
-
         $blockType = $this->resolveBlockType((string) $request->request->get('block_type', 'Manual'));
 
         if ($blockType === 'Available') {
@@ -579,7 +561,7 @@ class SuperAdminReservationController extends AbstractController
             return $this->json(['success' => true, 'message' => 'Schedule block removed. Time slot is now available.', 'scheduleRevision' => $scheduleRevision->getRevision()]);
         }
 
-        $this->applyBlockFields($block, $request, $facility, $date, $start, $end, $blockType);
+        $this->applyBlockFields($block, $request, new ScheduleSlot($facility, $date, $start, $end), $blockType);
 
         $em->flush();
 
@@ -614,30 +596,27 @@ class SuperAdminReservationController extends AbstractController
         ]);
     }
 
-    private function notifyAffectedFaculty(Facility $facility, \DateTimeInterface $date, \DateTimeInterface $start, \DateTimeInterface $end, ?FacilityScheduleBlock $block, ReservationRepository $reservationRepo, ClassScheduleRepository $classScheduleRepo): void
+    private function notifyAffectedFaculty(ScheduleSlot $slot, ?FacilityScheduleBlock $block, ClassScheduleRepository $classScheduleRepo): void
     {
-        
-        // Find all class schedules that conflict with this time slot
         $conflictingSchedules = $classScheduleRepo->createQueryBuilder('cs')
             ->where('cs.facility = :facility')
             ->andWhere('cs.scheduleDate = :date')
             ->andWhere('(cs.startTime < :end AND cs.endTime > :start)')
-            ->setParameter('facility', $facility)
-            ->setParameter('date', $date)
-            ->setParameter('start', $start)
-            ->setParameter('end', $end)
+            ->setParameter('facility', $slot->facility)
+            ->setParameter('date', $slot->date)
+            ->setParameter('start', $slot->start)
+            ->setParameter('end', $slot->end)
             ->getQuery()
             ->getResult();
 
         foreach ($conflictingSchedules as $schedule) {
             if ($schedule->getFacultyEmail()) {
-                // Log the notification (you can implement actual email sending later)
                 $action = $block ? 'blocked' : 'modified';
-                error_log('Faculty notification sent to: ' . $schedule->getFacultyEmail() . 
-                         ' for ' . $action . ' schedule: ' . $schedule->getCourseCode() . 
-                         ' on ' . $date->format('Y-m-d') . 
-                         ' from ' . $start->format('H:i') . ' to ' . $end->format('H:i') . 
-                         ' at facility: ' . $facility->getName());
+                error_log('Faculty notification sent to: ' . $schedule->getFacultyEmail() .
+                         ' for ' . $action . ' schedule: ' . $schedule->getCourseCode() .
+                         ' on ' . $slot->date->format('Y-m-d') .
+                         ' from ' . $slot->start->format('H:i') . ' to ' . $slot->end->format('H:i') .
+                         ' at facility: ' . $slot->facility->getName());
             }
         }
     }
@@ -819,12 +798,10 @@ class SuperAdminReservationController extends AbstractController
     private function applyClassScheduleFields(
         ClassSchedule $schedule,
         Request $request,
-        Facility $facility,
-        \DateTime $date,
-        \DateTime $start,
-        \DateTime $end,
+        ScheduleSlot $slot,
         \App\Service\ClassScheduleFacultyMatcher $facultyMatcher,
     ): string {
+        $facility = $slot->facility;
         $previousFacility = $schedule->getFacility();
         if ($previousFacility && $previousFacility->getId() !== $facility->getId()) {
             $schedule->setPreviousFacility($previousFacility);
@@ -832,9 +809,9 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $schedule->setFacility($facility)
-                 ->setScheduleDate($date)
-                 ->setStartTime($start)
-                 ->setEndTime($end);
+                 ->setScheduleDate($slot->date)
+                 ->setStartTime($slot->start)
+                 ->setEndTime($slot->end);
 
         $courseCode = trim((string) $request->request->get('course_code', $schedule->getCourseCode()));
         if ($courseCode !== '') {
@@ -857,19 +834,39 @@ class SuperAdminReservationController extends AbstractController
     private function applyBlockFields(
         FacilityScheduleBlock $block,
         Request $request,
-        Facility $facility,
-        \DateTime $date,
-        \DateTime $start,
-        \DateTime $end,
+        ScheduleSlot $slot,
         string $blockType,
     ): void {
-        $block->setFacility($facility)
-              ->setBlockDate($date)
-              ->setStartTime($start)
-              ->setEndTime($end)
+        $block->setFacility($slot->facility)
+              ->setBlockDate($slot->date)
+              ->setStartTime($slot->start)
+              ->setEndTime($slot->end)
               ->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable')
               ->setType($blockType)
               ->setNotes($request->request->get('notes'));
     }
 
+    private function buildNewBlock(ScheduleSlot $slot, string $type, Request $request): FacilityScheduleBlock
+    {
+        $block = new FacilityScheduleBlock();
+        $block->setFacility($slot->facility)
+              ->setBlockDate($slot->date)
+              ->setStartTime($slot->start)
+              ->setEndTime($slot->end)
+              ->setTitle(trim((string) $request->request->get('title')) ?: 'Unavailable')
+              ->setType($type)
+              ->setNotes($request->request->get('notes'))
+              ->setSource('Manual Entry');
+        return $block;
+    }
+
+    private function resolveConflictResponse(): JsonResponse
+    {
+        return $this->json([
+            'success'         => false,
+            'message'         => 'This time range has existing reservations, class schedules, or blocks. As Super Admin, you can override this conflict.',
+            'hasConflicts'    => true,
+            'conflictMessage' => 'Existing items found in this time slot. Override to proceed?',
+        ], Response::HTTP_CONFLICT);
+    }
 }

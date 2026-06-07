@@ -62,27 +62,25 @@ class AdminController extends AbstractController
     #[Route('/api/stats', name: 'admin_api_stats', methods: ['GET'])]
     public function apiStats(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $data = $cache->get('admin.dashboard.stats.superadmin.v2', function (ItemInterface $item) use ($em): array {
-            $item->expiresAfter(120);
-            return $this->getDashboardData($em);
-        });
-
-        $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=120');
-        return $response;
+        return $this->cachedJsonResponse(
+            $cache,
+            'admin.dashboard.stats.superadmin.v2',
+            120,
+            fn() => $this->getDashboardData($em),
+            'private, max-age=120',
+        );
     }
 
     #[Route('/api/recent-reservations', name: 'admin_api_recent_reservations', methods: ['GET'])]
     public function apiRecentReservations(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
     {
-        $data = $cache->get('admin.dashboard.recent_reservations.v2', function (ItemInterface $item) use ($em): array {
-            $item->expiresAfter(120);
-            return $this->getRecentReservationsData($em);
-        });
-
-        $response = $this->json($data);
-        $response->headers->set('Cache-Control', 'private, max-age=120');
-        return $response;
+        return $this->cachedJsonResponse(
+            $cache,
+            'admin.dashboard.recent_reservations.v2',
+            120,
+            fn() => $this->getRecentReservationsData($em),
+            'private, max-age=120',
+        );
     }
 
     #[Route('/api/reservations', name: 'admin_api_reservations', methods: ['GET'])]
@@ -446,7 +444,15 @@ class AdminController extends AbstractController
         $instructions  = trim((string) $request->request->get('admin_instructions', ''));
         $noteText      = $instructions !== '' ? $instructions : ($req->getAssignedMentorName() ? 'Assigned to: ' . $req->getAssignedMentorName() : null);
 
-        $this->persistAssignAuditLog($em, $id, $requesterName, $prevStatus, $submittedStatus, $actor, $actorName, $noteText);
+        $this->persistAssignAuditLog($em, $id, [
+            'requesterName' => $requesterName,
+            'prevStatus'    => $prevStatus,
+            'newStatus'     => $submittedStatus,
+            'actor'         => $actor,
+            'actorName'     => $actorName,
+            'note'          => $noteText,
+            'isSuperAdmin'  => $this->isGranted('ROLE_SUPER_ADMIN'),
+        ]);
         $em->flush();
 
         foreach ($em->getRepository(User::class)->findAdmins() as $u) {
@@ -465,16 +471,7 @@ class AdminController extends AbstractController
         $mentorNameManual = trim((string) $request->request->get('mentor_name_manual', ''));
         $specialization   = trim((string) $request->request->get('specialization', ''));
 
-        if ($mentorId > 0) {
-            $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
-            if ($mentor) {
-                $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
-                $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
-            }
-        } else {
-            if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
-            if ($specialization !== '')   $req->setAssignedMentorExpertise($specialization);
-        }
+        $this->resolveMentorIdentity($req, $em, $mentorId, $mentorNameManual, $specialization);
 
         $timeStart     = trim((string) $request->request->get('available_time_start', ''));
         $timeEnd       = trim((string) $request->request->get('available_time_end', ''));
@@ -505,29 +502,25 @@ class AdminController extends AbstractController
     private function persistAssignAuditLog(
         EntityManagerInterface $em,
         int $id,
-        string $requesterName,
-        ?string $prevStatus,
-        string $newStatus,
-        mixed $actor,
-        string $actorName,
-        ?string $noteText
+        array $ctx,
     ): void {
         /** @var MentoringAuditLogRepository $auditRepo */
         $auditRepo = $em->getRepository(MentoringAuditLog::class);
-        if ($auditRepo->existsRecent('custom_request', $id, 'update_status', $newStatus, $actor instanceof User ? $actor->getId() : null)) {
+        $actor = $ctx['actor'];
+        if ($auditRepo->existsRecent('custom_request', $id, 'update_status', $ctx['newStatus'], $actor instanceof User ? $actor->getId() : null)) {
             return;
         }
         $em->persist((new MentoringAuditLog())
             ->setSubjectType('custom_request')
             ->setSubjectId($id)
-            ->setSubjectLabel($requesterName)
+            ->setSubjectLabel($ctx['requesterName'])
             ->setAction('update_status')
-            ->setPreviousStatus($prevStatus)
-            ->setNewStatus($newStatus)
+            ->setPreviousStatus($ctx['prevStatus'])
+            ->setNewStatus($ctx['newStatus'])
             ->setPerformedBy($actor instanceof User ? $actor : null)
-            ->setPerformedByName($actorName)
-            ->setPerformedByRole($this->isGranted('ROLE_SUPER_ADMIN') ? 'Super Admin' : 'Admin')
-            ->setNote($noteText));
+            ->setPerformedByName($ctx['actorName'])
+            ->setPerformedByRole(($ctx['isSuperAdmin'] ?? false) ? 'Super Admin' : 'Admin')
+            ->setNote($ctx['note']));
     }
 
     #[Route('/mentorship-coordination', name: 'admin_mentorship_coordination', methods: ['GET'])]
@@ -791,58 +784,7 @@ class AdminController extends AbstractController
             [$today, $tomorrow, $today]
         )->fetchAllAssociative();
 
-        $resCounts = []; $aptCounts = []; $reqCounts = [];
-        $mentors = 0; $facilities = 0; $users = 0; $resToday = 0; $activeRes = 0;
-
-        foreach ($batch as $row) {
-            $cnt = (int) $row['cnt'];
-            match ($row['grp']) {
-                'res_status' => $resCounts[$row['lbl']] = $cnt,
-                'apt_status' => $aptCounts[$row['lbl']] = $cnt,
-                'req_status' => $reqCounts[$row['lbl']] = $cnt,
-                'meta'       => match ($row['lbl']) {
-                    'mentors'    => $mentors    = $cnt,
-                    'facilities' => $facilities = $cnt,
-                    'users'      => $users      = $cnt,
-                    'today_res'  => $resToday   = $cnt,
-                    'active_res' => $activeRes  = $cnt,
-                    default      => null,
-                },
-                default => null,
-            };
-        }
-
-        $resTotal = (int) array_sum($resCounts);
-
-        return [
-            'reservations' => [
-                'total' => $resTotal,
-                'approved' => (int) ($resCounts['Approved'] ?? 0),
-                'pending' => (int) ($resCounts['Pending'] ?? 0),
-                'rejected' => (int) ($resCounts['Rejected'] ?? 0),
-                'today' => $resToday,
-            ],
-            'mentoring' => [
-                'totalMentors' => $mentors,
-                'appointments' => [
-                    'total' => (int) array_sum($aptCounts),
-                    'pending' => (int) ($aptCounts['Pending'] ?? 0),
-                    'completed' => (int) ($aptCounts['Completed'] ?? 0),
-                ],
-                'requests' => [
-                    'total' => (int) array_sum($reqCounts),
-                    'pending' => (int) ($reqCounts['Pending'] ?? 0),
-                ],
-            ],
-            'facilities' => [
-                'total' => $facilities,
-                'activeReservations' => $activeRes,
-            ],
-            'users' => [
-                'total' => $users,
-            ],
-            'timestamp' => (new \DateTime())->format('c'),
-        ];
+        return $this->parseDashboardBatch($batch);
     }
 
     private function getMentoringAppointments(EntityManagerInterface $em, int $page, int $limit, ?string $status): array
@@ -850,30 +792,21 @@ class AdminController extends AbstractController
         $qb = $em->getRepository(MentoringAppointment::class)->createQueryBuilder('a')
             ->leftJoin('a.mentor', 'm')->leftJoin('a.student', 's')->addSelect('m', 's');
         if ($status) $qb->andWhere('a.status = :status')->setParameter('status', $status);
-        $qb->orderBy('a.scheduledAt', 'DESC');
-        $total = (int) (clone $qb)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult();
-        $appointments = $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getArrayResult();
-        return ['data' => $appointments, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total, 'pages' => (int) ceil($total / $limit)]];
+        return $this->paginatedQuery($qb->orderBy('a.scheduledAt', 'DESC'), 'a.id', $page, $limit);
     }
 
     private function getMentoringRequests(EntityManagerInterface $em, int $page, int $limit, ?string $status): array
     {
         $qb = $em->getRepository(MentorCustomRequest::class)->createQueryBuilder('r')->leftJoin('r.student', 's')->addSelect('s');
         if ($status) $qb->andWhere('r.status = :status')->setParameter('status', $status);
-        $qb->orderBy('r.createdAt', 'DESC');
-        $total = (int) (clone $qb)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
-        $requests = $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getArrayResult();
-        return ['data' => $requests, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total, 'pages' => (int) ceil($total / $limit)]];
+        return $this->paginatedQuery($qb->orderBy('r.createdAt', 'DESC'), 'r.id', $page, $limit);
     }
 
     private function getMentorApplications(EntityManagerInterface $em, int $page, int $limit, ?string $status): array
     {
         $qb = $em->getRepository(MentorApplication::class)->createQueryBuilder('a')->leftJoin('a.user', 'u')->addSelect('u');
         if ($status) $qb->andWhere('a.status = :status')->setParameter('status', $status);
-        $qb->orderBy('a.createdAt', 'DESC');
-        $total = (int) (clone $qb)->select('COUNT(a.id)')->getQuery()->getSingleScalarResult();
-        $applications = $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getArrayResult();
-        return ['data' => $applications, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total, 'pages' => (int) ceil($total / $limit)]];
+        return $this->paginatedQuery($qb->orderBy('a.createdAt', 'DESC'), 'a.id', $page, $limit);
     }
 
     private function checkForChanges(EntityManagerInterface $em, \DateTime $lastCheck): array
@@ -900,16 +833,7 @@ class AdminController extends AbstractController
         $conn = $em->getConnection();
         $today = new \DateTime();
         
-        // Build date range for last 7 days
-        $dates = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = (clone $today)->modify("-$i days");
-            $dates[$date->format('Y-m-d')] = $date->format('D');
-        }
-        
-        $dateKeys = array_keys($dates);
-        
-        $rangeEnd = (new \DateTimeImmutable($dateKeys[count($dateKeys)-1]))->modify('+1 day')->format('Y-m-d 00:00:00');
+        [$dates, $dateKeys, $rangeEnd] = $this->buildDateRange($today, 7);
 
         // Single query for all reservation trends
         $rows = $conn->executeQuery(
@@ -943,22 +867,15 @@ class AdminController extends AbstractController
         $conn = $em->getConnection();
         $today = new \DateTime();
         
-        // Build date range for last 7 days
-        $dates = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = (clone $today)->modify("-$i days");
-            $dates[$date->format('Y-m-d')] = $date->format('D');
-        }
-        
-        $dateKeys = array_keys($dates);
-        
+        [$dates, $dateKeys, $rangeEnd] = $this->buildDateRange($today, 7);
+
         // Single query for appointment trends
         $aptRows = $conn->executeQuery(
             "SELECT CAST(scheduled_at AS DATE) as dt, COUNT(*) as cnt 
              FROM mentoring_appointment 
              WHERE scheduled_at >= ? AND scheduled_at < ?
              GROUP BY CAST(scheduled_at AS DATE)",
-            [$dateKeys[0] . ' 00:00:00', (new \DateTimeImmutable($dateKeys[count($dateKeys)-1]))->modify('+1 day')->format('Y-m-d 00:00:00')]
+            [$dateKeys[0] . ' 00:00:00', $rangeEnd]
         )->fetchAllKeyValue();
         
         // Single query for request trends
@@ -967,7 +884,7 @@ class AdminController extends AbstractController
              FROM mentor_custom_request 
              WHERE created_at >= ? AND created_at < ?
              GROUP BY CAST(created_at AS DATE)",
-            [$dateKeys[0] . ' 00:00:00', (new \DateTimeImmutable($dateKeys[count($dateKeys)-1]))->modify('+1 day')->format('Y-m-d 00:00:00')]
+            [$dateKeys[0] . ' 00:00:00', $rangeEnd]
         )->fetchAllKeyValue();
         
         $trends = [];
@@ -1023,4 +940,111 @@ class AdminController extends AbstractController
             ['area' => 'Reports', 'priority' => 'High', 'task' => 'Download operation reports for mentoring', 'weight' => '2%'],
         ];
     }
+    private function cachedJsonResponse(
+        \Symfony\Contracts\Cache\CacheInterface $cache,
+        string $key,
+        int $ttl,
+        callable $builder,
+        string $cacheControl,
+    ): JsonResponse {
+        $data = $cache->get($key, function (\Symfony\Contracts\Cache\ItemInterface $item) use ($ttl, $builder): array {
+            $item->expiresAfter($ttl);
+            return $builder();
+        });
+        $response = $this->json($data);
+        $response->headers->set('Cache-Control', $cacheControl);
+        return $response;
+    }
+
+    private function resolveMentorIdentity(
+        MentorCustomRequest $req,
+        EntityManagerInterface $em,
+        int $mentorId,
+        string $mentorNameManual,
+        string $specialization,
+    ): void {
+        if ($mentorId > 0) {
+            $mentor = $em->getRepository(MentorProfile::class)->find($mentorId);
+            if ($mentor) {
+                $req->setAssignedMentorName($mentorNameManual ?: $mentor->getDisplayName());
+                $req->setAssignedMentorExpertise($specialization ?: $mentor->getSpecialization());
+            }
+        } else {
+            if ($mentorNameManual !== '') $req->setAssignedMentorName($mentorNameManual);
+            if ($specialization   !== '') $req->setAssignedMentorExpertise($specialization);
+        }
+    }
+
+    private function paginatedQuery(
+        \Doctrine\ORM\QueryBuilder $qb,
+        string $countAlias,
+        int $page,
+        int $limit,
+    ): array {
+        $total = (int) (clone $qb)->select('COUNT(' . $countAlias . ')')->getQuery()->getSingleScalarResult();
+        $data  = $qb->setFirstResult(($page - 1) * $limit)->setMaxResults($limit)->getQuery()->getArrayResult();
+        return ['data' => $data, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => $total, 'pages' => (int) ceil($total / $limit)]];
+    }
+
+    private function parseDashboardBatch(array $batch): array
+    {
+        $resCounts = []; $aptCounts = []; $reqCounts = [];
+        $mentors = 0; $facilities = 0; $users = 0; $resToday = 0; $activeRes = 0;
+
+        foreach ($batch as $row) {
+            $cnt = (int) $row['cnt'];
+            match ($row['grp']) {
+                'res_status' => $resCounts[$row['lbl']] = $cnt,
+                'apt_status' => $aptCounts[$row['lbl']] = $cnt,
+                'req_status' => $reqCounts[$row['lbl']] = $cnt,
+                'meta'       => match ($row['lbl']) {
+                    'mentors'    => $mentors    = $cnt,
+                    'facilities' => $facilities = $cnt,
+                    'users'      => $users      = $cnt,
+                    'today_res'  => $resToday   = $cnt,
+                    'active_res' => $activeRes  = $cnt,
+                    default      => null,
+                },
+                default => null,
+            };
+        }
+
+        return [
+            'reservations' => [
+                'total'    => (int) array_sum($resCounts),
+                'approved' => (int) ($resCounts['Approved'] ?? 0),
+                'pending'  => (int) ($resCounts['Pending']  ?? 0),
+                'rejected' => (int) ($resCounts['Rejected'] ?? 0),
+                'today'    => $resToday,
+            ],
+            'mentoring' => [
+                'totalMentors'  => $mentors,
+                'appointments'  => [
+                    'total'     => (int) array_sum($aptCounts),
+                    'pending'   => (int) ($aptCounts['Pending']   ?? 0),
+                    'completed' => (int) ($aptCounts['Completed'] ?? 0),
+                ],
+                'requests' => [
+                    'total'   => (int) array_sum($reqCounts),
+                    'pending' => (int) ($reqCounts['Pending'] ?? 0),
+                ],
+            ],
+            'facilities' => ['total' => $facilities, 'activeReservations' => $activeRes],
+            'users'      => ['total' => $users],
+            'timestamp'  => (new \DateTime())->format('c'),
+        ];
+    }
+
+    private function buildDateRange(\DateTime $today, int $days): array
+    {
+        $dates = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $d = (clone $today)->modify("-$i days");
+            $dates[$d->format('Y-m-d')] = $d->format('D');
+        }
+        $keys     = array_keys($dates);
+        $rangeEnd = (new \DateTimeImmutable($keys[count($keys) - 1]))->modify('+1 day')->format('Y-m-d 00:00:00');
+        return [$dates, $keys, $rangeEnd];
+    }
+
 }

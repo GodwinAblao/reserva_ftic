@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\DTO\ResetTokenContext;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -274,17 +275,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $session->set('reset_token', $resetToken);
                 $session->set('reset_otp', $otp);
 
-                try {
-                    $emailMessage = (new Email())
-                        ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
-                        ->to($email)
-                        ->subject('Reserva FTIC Password Reset OTP')
-                        ->html($this->renderView('email/password_reset_otp.html.twig', ['user' => null, 'otp' => $otp]));
-                    $mailer->send($emailMessage);
-                    $logger->info('OTP email sent successfully', ['to' => $email]);
-                } catch (\Exception $e) {
-                    $logger->error('Failed to send OTP email', ['error' => $e->getMessage(), 'to' => $email]);
-                }
+                $this->sendOtpEmail($email, $otp, $mailer, $logger);
 
                 if ($this->isAjaxRequest($request)) {
                     return new JsonResponse(['success' => true, 'token' => $resetToken]);
@@ -316,8 +307,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
         $errors = [];
         $otp = '';
 
-        // Validate token and OTP session exist
-        if (!$storedOtp || !$resetToken || $token !== $resetToken) {
+        if (!$this->isOtpSessionValid($storedOtp, $resetToken, $token)) {
             $errors[] = 'Invalid or expired OTP session. Please request a new password reset.';
         }
 
@@ -329,10 +319,9 @@ public function register(Request $request, EntityManagerInterface $entityManager
                 $errors[] = 'Invalid CSRF token.';
             }
 
-            if (strlen($otp) !== 6 || !ctype_digit($otp)) {
+            if (!$this->isValidOtpFormat($otp)) {
                 $errors[] = 'Valid 6-digit OTP required.';
             } elseif ($otp !== $storedOtp) {
-                // Compare with the OTP that was sent
                 $errors[] = 'Invalid OTP. The code you entered does not match the one sent to your email.';
             } else {
                 // OTP is valid - proceed to password reset
@@ -365,13 +354,16 @@ public function register(Request $request, EntityManagerInterface $entityManager
     public function resetPassword(Request $request, string $token, UserPasswordHasherInterface $passwordHasher, CsrfTokenManagerInterface $csrfTokenManager, EntityManagerInterface $entityManager): Response
     {
         $session = $request->getSession();
-        $resetEmail = $session->get('reset_email');
-        $resetToken = $session->get('reset_token');
-        $expires = $session->get('reset_token_expires', 0);
+        $ctx = new ResetTokenContext(
+            $session,
+            $session->get('reset_email'),
+            $session->get('reset_token'),
+            (int) $session->get('reset_token_expires', 0),
+        );
 
         $errors = [];
 
-        array_push($errors, ...$this->validateResetToken($session, $resetEmail, $resetToken, $expires, $token));
+        array_push($errors, ...$this->validateResetToken($ctx, $token));
 
         if ($request->isMethod('POST')) {
             $password = $request->request->get('password', '');
@@ -384,10 +376,8 @@ public function register(Request $request, EntityManagerInterface $entityManager
 
             array_push($errors, ...$this->validatePassword($password));
 
-            // Check not same as old password
-            $resetEmail = $session->get('reset_email');
-            if ($resetEmail) {
-                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $resetEmail]);
+            if ($ctx->resetEmail) {
+                $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $ctx->resetEmail]);
                 if ($user && $passwordHasher->isPasswordValid($user, $password)) {
                     $errors[] = 'New password cannot be the same as old password.';
                 }
@@ -398,7 +388,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
             }
 
             if (empty($errors)) {
-                $result = $this->applyPasswordReset($resetEmail, $password, $session, $entityManager, $passwordHasher, $request, $errors);
+                $result = $this->applyPasswordReset($ctx, $password, $entityManager, $passwordHasher, $request, $errors);
                 if ($result instanceof Response) return $result;
             }
 
@@ -452,13 +442,7 @@ public function register(Request $request, EntityManagerInterface $entityManager
         if ($password === '') $errors[] = 'Password is required.';
 
         if (!$errors) {
-            if ($em->getRepository(User::class)->findOneBy(['email' => $data['email']])) {
-                $errors[] = 'This email is already registered.';
-            }
-            array_push($errors, ...$this->validatePassword($password));
-            if ($password !== $passwordRepeat) {
-                $errors[] = 'Passwords must match.';
-            }
+            array_push($errors, ...$this->validateRegistrationPassword($data['email'], $password, $passwordRepeat, $em));
         }
 
         if ($errors) return null;
@@ -583,15 +567,14 @@ public function register(Request $request, EntityManagerInterface $entityManager
     }
 
     private function applyPasswordReset(
-        ?string $resetEmail,
+        ResetTokenContext $ctx,
         string $password,
-        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
         EntityManagerInterface $em,
         UserPasswordHasherInterface $passwordHasher,
         Request $request,
         array &$errors,
     ): ?Response {
-        $user = $em->getRepository(User::class)->findOneBy(['email' => $resetEmail]);
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $ctx->resetEmail]);
         if (!$user) {
             $errors[] = 'User not found. Please try forgot password again.';
             return null;
@@ -599,10 +582,8 @@ public function register(Request $request, EntityManagerInterface $entityManager
         $user->setPassword($passwordHasher->hashPassword($user, $password));
         $em->persist($user);
         $em->flush();
-        $session->remove('reset_email');
-        $session->remove('reset_token');
-        $session->remove('reset_token_expires');
-        $session->remove('reset_otp');
+        $ctx->clearSession();
+        $ctx->session->remove('reset_otp');
         if ($this->isAjaxRequest($request)) {
             return new JsonResponse(['success' => true, 'message' => 'Password reset']);
         }
@@ -672,17 +653,10 @@ public function register(Request $request, EntityManagerInterface $entityManager
             ]));
     }
 
-    private function validateResetToken(
-        \Symfony\Component\HttpFoundation\Session\SessionInterface $session,
-        ?string $resetEmail,
-        ?string $resetToken,
-        int $expires,
-        string $token,
-    ): array {
-        if (!$resetEmail || !$resetToken || time() > $expires || $token !== $resetToken) {
-            $session->remove('reset_email');
-            $session->remove('reset_token');
-            $session->remove('reset_token_expires');
+    private function validateResetToken(ResetTokenContext $ctx, string $token): array
+    {
+        if (!$ctx->isValid($token)) {
+            $ctx->clearSession();
             return ['Invalid or expired reset token. Please request a new password reset.'];
         }
         return [];
@@ -704,6 +678,44 @@ public function register(Request $request, EntityManagerInterface $entityManager
         return [];
     }
 
+    private function validateRegistrationPassword(string $email, string $password, string $passwordRepeat, EntityManagerInterface $em): array
+    {
+        $errors = [];
+        if ($em->getRepository(User::class)->findOneBy(['email' => $email])) {
+            $errors[] = 'This email is already registered.';
+        }
+        array_push($errors, ...$this->validatePassword($password));
+        if ($password !== $passwordRepeat) {
+            $errors[] = 'Passwords must match.';
+        }
+        return $errors;
+    }
+
+    private function sendOtpEmail(string $email, string $otp, MailerInterface $mailer, LoggerInterface $logger): void
+    {
+        try {
+            $mailer->send(
+                (new Email())
+                    ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+                    ->to($email)
+                    ->subject('Reserva FTIC Password Reset OTP')
+                    ->html($this->renderView('email/password_reset_otp.html.twig', ['user' => null, 'otp' => $otp]))
+            );
+            $logger->info('OTP email sent successfully', ['to' => $email]);
+        } catch (\Exception $e) {
+            $logger->error('Failed to send OTP email', ['error' => $e->getMessage(), 'to' => $email]);
+        }
+    }
+
+    private function isValidOtpFormat(string $otp): bool
+    {
+        return strlen($otp) === 6 && ctype_digit($otp);
+    }
+
+    private function isOtpSessionValid(?string $storedOtp, ?string $resetToken, string $token): bool
+    {
+        return $storedOtp !== null && $resetToken !== null && $token === $resetToken;
+    }
 }
 
 
