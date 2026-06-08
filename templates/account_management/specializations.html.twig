@@ -138,6 +138,143 @@
             color: #6b7280;
             margin-top: 8px;
         }
+        .spec-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .spec-btn .btn-spinner {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spec-spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spec-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Delete Confirmation Modal */
+        .spec-delete-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            animation: spec-fade-in 0.2s ease;
+        }
+        .spec-delete-modal.is-open {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes spec-fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes spec-slide-up {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .spec-delete-modal-content {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+            animation: spec-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        }
+        .spec-delete-modal-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(220,38,38,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+        }
+        .spec-delete-modal-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #dc2626;
+        }
+        .spec-delete-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        .spec-delete-modal-msg {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 1.75rem;
+            line-height: 1.6;
+        }
+        .spec-delete-modal-msg strong {
+            color: #374151;
+        }
+        .spec-delete-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .spec-modal-btn-cancel {
+            padding: 10px 24px;
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .spec-modal-btn-cancel:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        .spec-modal-btn-delete {
+            padding: 10px 24px;
+            background: linear-gradient(130deg, #dc2626 0%, #b91c1c 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .spec-modal-btn-delete:hover {
+            background: linear-gradient(130deg, #b91c1c 0%, #991b1b 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220,38,38,0.3);
+        }
+        .spec-modal-btn-delete:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .spec-modal-btn-delete .del-spinner {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spec-spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
     </style>
 
     <div class="spec-container">
@@ -164,7 +301,7 @@
                     <input type="text" name="name" id="name" placeholder="e.g. Artificial Intelligence" required>
                 </div>
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token('specialization_create') }}">
-                <button type="submit" class="spec-btn spec-btn-primary">Add Specialization</button>
+                <button type="submit" id="btn-add-spec" class="spec-btn spec-btn-primary">Add Specialization</button>
             </form>
         </div>
 
@@ -189,10 +326,11 @@
                                 <td>{{ specialization.name }}</td>
                                 <td>{{ specialization.createdAt|date('M d, Y g:i A') }}</td>
                                 <td>
-                                    <form method="post" action="{{ path('app_specialization_delete', {'id': specialization.id}) }}" onsubmit="return confirm('Are you sure you want to delete this specialization?');" style="display: inline;">
-                                        <input type="hidden" name="_csrf_token" value="{{ csrf_token('delete_specialization_' ~ specialization.id) }}">
-                                        <button type="submit" class="spec-delete-btn">Delete</button>
-                                    </form>
+                                    <button type="button" class="spec-delete-btn"
+                                        data-name="{{ specialization.name|e('html_attr') }}"
+                                        data-csrf="{{ csrf_token('delete_specialization_' ~ specialization.id) }}"
+                                        data-action="{{ path('app_specialization_delete', {'id': specialization.id}) }}"
+                                        onclick="openSpecDeleteModal(this)">Delete</button>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -203,4 +341,68 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="specDeleteModal" class="spec-delete-modal">
+        <div class="spec-delete-modal-content">
+            <div class="spec-delete-modal-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+            </div>
+            <div class="spec-delete-modal-title">Delete Specialization</div>
+            <div class="spec-delete-modal-msg">
+                Are you sure you want to delete <strong id="specDeleteName"></strong>?<br>This action cannot be undone.
+            </div>
+            <div class="spec-delete-modal-actions">
+                <button type="button" class="spec-modal-btn-cancel" onclick="closeSpecDeleteModal()">Cancel</button>
+                <form id="specDeleteForm" method="post" action="" style="display:inline;">
+                    <input type="hidden" id="specDeleteCsrf" name="_csrf_token" value="">
+                    <button type="submit" id="specDeleteConfirmBtn" class="spec-modal-btn-delete">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add Specialization loading state
+        document.querySelector('.spec-add-form').addEventListener('submit', function () {
+            var btn = document.getElementById('btn-add-spec');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span>Adding...';
+        });
+
+        // Delete modal
+        function openSpecDeleteModal(btn) {
+            document.getElementById('specDeleteName').textContent = btn.dataset.name || 'this specialization';
+            document.getElementById('specDeleteCsrf').value       = btn.dataset.csrf;
+            document.getElementById('specDeleteForm').action      = btn.dataset.action;
+            document.getElementById('specDeleteModal').classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSpecDeleteModal() {
+            document.getElementById('specDeleteModal').classList.remove('is-open');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('specDeleteForm').addEventListener('submit', function () {
+            var btn = document.getElementById('specDeleteConfirmBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="del-spinner"></span>Deleting...';
+        });
+
+        document.getElementById('specDeleteModal').addEventListener('click', function (e) {
+            if (e.target === this) closeSpecDeleteModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && document.getElementById('specDeleteModal').classList.contains('is-open')) {
+                closeSpecDeleteModal();
+            }
+        });
+
+        // Move modal to body so it isn't clipped by parent containers
+        document.body.appendChild(document.getElementById('specDeleteModal'));
+    </script>
 {% endblock %}

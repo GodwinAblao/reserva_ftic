@@ -42,6 +42,8 @@ security:
         - { path: ^/verify-registration, roles: PUBLIC_ACCESS }
         - { path: ^/verify-registration/resend, roles: PUBLIC_ACCESS }
         - { path: ^/logout, roles: PUBLIC_ACCESS }
+        - { path: ^/login/verify-account, roles: PUBLIC_ACCESS }
+        - { path: ^/login/resend-account-otp, roles: PUBLIC_ACCESS }
         - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
         - { path: ^/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/otp-reset, roles: PUBLIC_ACCESS }

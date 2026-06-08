@@ -375,6 +375,123 @@
             background: #f9fafb;
             border-color: #9ca3af;
         }
+
+        /* Delete Confirmation Modal */
+        .delete-confirm-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s ease;
+        }
+        .delete-confirm-modal.is-open {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-confirm-content {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 440px;
+            width: 90%;
+            position: relative;
+            animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+        .delete-confirm-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(220, 38, 38, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+        }
+        .delete-confirm-icon svg {
+            width: 28px;
+            height: 28px;
+            color: #dc2626;
+        }
+        .delete-confirm-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        .delete-confirm-message {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 1.75rem;
+            line-height: 1.6;
+        }
+        .delete-confirm-name {
+            font-weight: 700;
+            color: #374151;
+        }
+        .delete-confirm-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .btn-delete-cancel {
+            padding: 10px 24px;
+            background: #fff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-delete-cancel:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+        .btn-delete-confirm {
+            padding: 10px 24px;
+            background: linear-gradient(130deg, #dc2626 0%, #b91c1c 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-delete-confirm:hover {
+            background: linear-gradient(130deg, #b91c1c 0%, #991b1b 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        .btn-delete-confirm:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-delete-confirm .del-spinner {
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: del-spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes del-spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 
     <div class="content-header">
@@ -470,10 +587,12 @@
                             <button class="btn-link" onclick="viewAccount({{ user.id }})">View</button>
                             <a href="{{ path('app_account_management_edit', {'id': user.id}) }}" class="btn-link">Edit</a>
                             {% if user != app.user %}
-                                <form method="post" action="{{ path('app_account_management_delete', {'id': user.id}) }}" style="display: inline;" onsubmit="return confirm('Are you sure?');">
-                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('delete_' ~ user.id) }}">
-                                    <button type="submit" class="btn-link btn-danger">Delete</button>
-                                </form>
+                                <button type="button" class="btn-link btn-danger"
+                                    data-user-id="{{ user.id }}"
+                                    data-user-name="{{ (user.firstName ~ ' ' ~ user.lastName)|trim|e('html_attr') }}"
+                                    data-csrf="{{ csrf_token('delete_' ~ user.id) }}"
+                                    data-action="{{ path('app_account_management_delete', {'id': user.id}) }}"
+                                    onclick="openDeleteModal(this)">Delete</button>
                             {% endif %}
                         </td>
                     </tr>
@@ -508,6 +627,29 @@
                 <a class="account-page-link {{ pagination.page == pagination.pages ? 'disabled' : '' }}" href="{{ path('app_account_management', baseParams|merge({page: pagination.page + 1})) }}">Next</a>
             </div>
         {% endif %}
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="delete-confirm-modal">
+        <div class="delete-confirm-content">
+            <div class="delete-confirm-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+            </div>
+            <div class="delete-confirm-title">Delete Account</div>
+            <div class="delete-confirm-message">
+                Are you sure you want to delete <span class="delete-confirm-name" id="deleteConfirmName"></span>?
+                <br>This action cannot be undone.
+            </div>
+            <div class="delete-confirm-actions">
+                <button type="button" class="btn-delete-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <form id="deleteConfirmForm" method="post" action="" style="display:inline;">
+                    <input type="hidden" id="deleteConfirmCsrf" name="_csrf_token" value="">
+                    <button type="submit" class="btn-delete-confirm">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Account View Modal -->
@@ -579,6 +721,43 @@
         if (accountViewModal && accountViewModal.parentElement !== document.body) {
             document.body.appendChild(accountViewModal);
         }
+
+        // Move delete modal to body too
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        if (deleteModal && deleteModal.parentElement !== document.body) {
+            document.body.appendChild(deleteModal);
+        }
+
+        // Delete confirmation modal
+        window.openDeleteModal = function(btn) {
+            var userName  = btn.dataset.userName  || 'this account';
+            var csrfToken = btn.dataset.csrf;
+            var actionUrl = btn.dataset.action;
+            document.getElementById('deleteConfirmName').textContent = userName;
+            document.getElementById('deleteConfirmCsrf').value = csrfToken;
+            document.getElementById('deleteConfirmForm').action = actionUrl;
+            deleteModal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeDeleteModal = function() {
+            deleteModal.classList.remove('is-open');
+            document.body.style.overflow = '';
+        };
+
+        document.getElementById('deleteConfirmForm').addEventListener('submit', function() {
+            var btn = this.querySelector('.btn-delete-confirm');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="del-spinner"></span>Deleting...';
+        });
+
+        deleteModal.addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteModal();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && deleteModal.classList.contains('is-open')) closeDeleteModal();
+        });
     })();
     </script>
 {% endblock %}

@@ -109,6 +109,37 @@
             color: #6b7280;
             margin-top: 4px;
         }
+        .field-error {
+            font-size: 12px;
+            color: #dc2626;
+            margin-top: 4px;
+            display: none;
+        }
+        .form-group input.input-error {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+        .btn-submit:disabled {
+            background: linear-gradient(130deg, #6b7280 0%, #4b5563 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+        .btn-submit .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         .profile-picture-upload {
             display: flex;
             align-items: center;
@@ -224,8 +255,9 @@
 
                 <div class="form-group">
                     <label for="email">Institutional Email <span class="required">*</span></label>
-                    <input type="email" name="email" id="email" placeholder="example@fit.edu.ph" required>
-                    <div class="hint">Must end with @fit.edu.ph or @feutech.edu.ph</div>
+                    <input type="email" name="email" id="email" placeholder="example@fit.edu.ph" required autocomplete="email">
+                    <div class="field-error" id="email-error">Only @fit.edu.ph or @feutech.edu.ph email addresses are allowed.</div>
+                    <div class="hint" id="email-hint">Must end with @fit.edu.ph or @feutech.edu.ph</div>
                 </div>
 
                 <div class="form-group">
@@ -260,7 +292,7 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token('account_create') }}">
 
             <div class="form-actions">
-                <button type="submit" class="btn-submit" style="z-index: 9999; position: relative;">Create Account</button>
+                <button type="submit" id="btn-create" class="btn-submit" style="z-index: 9999; position: relative;">Create Account</button>
                 <a href="{{ path('app_account_management') }}" class="btn-cancel">Cancel</a>
             </div>
         </form>
@@ -277,5 +309,58 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        (function () {
+            const ALLOWED_DOMAINS = ['fit.edu.ph', 'feutech.edu.ph'];
+            const emailInput = document.getElementById('email');
+            const emailError = document.getElementById('email-error');
+            const emailHint  = document.getElementById('email-hint');
+            const submitBtn  = document.getElementById('btn-create');
+
+            function getDomain(email) {
+                const at = email.lastIndexOf('@');
+                return at !== -1 ? email.slice(at + 1).toLowerCase() : null;
+            }
+
+            function isAllowedDomain(email) {
+                const domain = getDomain(email);
+                return domain !== null && ALLOWED_DOMAINS.includes(domain);
+            }
+
+            function validateEmail() {
+                const val = emailInput.value.trim();
+                if (val === '') {
+                    emailInput.classList.remove('input-error');
+                    emailError.style.display = 'none';
+                    emailHint.style.display  = 'block';
+                    submitBtn.disabled = false;
+                    return;
+                }
+                if (!isAllowedDomain(val)) {
+                    emailInput.classList.add('input-error');
+                    emailError.style.display = 'block';
+                    emailHint.style.display  = 'none';
+                    submitBtn.disabled = true;
+                } else {
+                    emailInput.classList.remove('input-error');
+                    emailError.style.display = 'none';
+                    emailHint.style.display  = 'block';
+                    submitBtn.disabled = false;
+                }
+            }
+
+            emailInput.addEventListener('input', validateEmail);
+            emailInput.addEventListener('blur',  validateEmail);
+
+            emailInput.closest('form').addEventListener('submit', function (e) {
+                validateEmail();
+                if (submitBtn.disabled) {
+                    e.preventDefault();
+                    return;
+                }
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner"></span>Creating Account...';
+            });
+        })();
     </script>
 {% endblock %}

@@ -19,14 +19,20 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Psr\Log\LoggerInterface;
 
 class SecurityController extends AbstractController
 {
     #[Route('/login', name: 'app_login')]
-    public function login(AuthenticationUtils $authenticationUtils, Request $request): Response
-    {
+    public function login(
+        AuthenticationUtils $authenticationUtils,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        MailerInterface $mailer,
+        LoggerInterface $logger,
+    ): Response {
         $response = $this->noCacheResponse();
 
         if ($this->getUser()) {
@@ -35,21 +41,62 @@ class SecurityController extends AbstractController
 
         $error = $authenticationUtils->getLastAuthenticationError();
         $lastUsername = $authenticationUtils->getLastUsername();
+        $session = $request->getSession();
 
-        // Store error in flash bag for display
+        $showAccountVerifyModal = false;
+        $accountVerifyEmail     = '';
+
         if ($error) {
-            // Check if email is from allowed domains
-            if ($this->isNonInstitutionalEmail($lastUsername)) {
-                $errorMessage = 'Please use your institutional email (@fit.edu.ph or @feutech.edu.ph).';
-            } else {
-                $errorMessage = 'Invalid email or password. Please try again.';
+            $unverifiedEmail = $session->get('_unverified_login_email');
+            $session->remove('_unverified_login_email');
+
+            $unverifiedUser = null;
+            if ($unverifiedEmail !== null) {
+                $candidate = $entityManager->getRepository(User::class)->findOneBy(['email' => $unverifiedEmail]);
+                if ($candidate && !$candidate->isVerified()) {
+                    $unverifiedUser = $candidate;
+                }
             }
-            $request->getSession()->getFlashBag()->add('login_error', $errorMessage);
+
+            if ($unverifiedUser !== null) {
+                $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $unverifiedUser->setVerificationCode($otp);
+                $entityManager->flush();
+
+                $session->set('account_verify_email', $lastUsername);
+                $session->set('account_verify_otp_expires', time() + 600);
+                $session->set('account_verify_resend_at', time() + 120);
+
+                $name = trim(($unverifiedUser->getFirstName() ?? '') . ' ' . ($unverifiedUser->getLastName() ?? '')) ?: $lastUsername;
+                try {
+                    $mailer->send($this->buildVerificationEmail(
+                        $lastUsername,
+                        $name,
+                        $otp,
+                        'Reserva FTIC - Verify Your Account'
+                    ));
+                    $logger->info('Account verification OTP sent', ['email' => $lastUsername]);
+                } catch (\Exception $e) {
+                    $logger->error('Failed to send account verification OTP', ['email' => $lastUsername, 'error' => $e->getMessage()]);
+                }
+
+                $showAccountVerifyModal = true;
+                $accountVerifyEmail     = $lastUsername;
+            } else {
+                if ($this->isNonInstitutionalEmail($lastUsername)) {
+                    $errorMessage = 'Please use your institutional email (@fit.edu.ph or @feutech.edu.ph).';
+                } else {
+                    $errorMessage = 'Invalid email or password. Please try again.';
+                }
+                $session->getFlashBag()->add('login_error', $errorMessage);
+            }
         }
 
         $response->setContent($this->renderView('security/login.html.twig', [
-            'last_username' => $lastUsername,
-            'error' => $error,
+            'last_username'             => $lastUsername,
+            'error'                     => null,
+            'show_account_verify_modal' => $showAccountVerifyModal,
+            'account_verify_email'      => $accountVerifyEmail,
         ]));
 
         return $response;
@@ -238,6 +285,128 @@ public function register(Request $request, EntityManagerInterface $entityManager
             'errors' => $errors,
             'data' => ['email' => $email, 'verificationCode' => ''],
         ]);
+    }
+
+    #[Route('/login/verify-account', name: 'app_login_verify_account', methods: ['POST'])]
+    public function verifyAdminCreatedAccount(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        CsrfTokenManagerInterface $csrfTokenManager,
+    ): Response {
+        $session    = $request->getSession();
+        $csrfToken  = $request->request->get('_csrf_token', '');
+        $otp        = trim($request->request->get('otp', ''));
+        $email      = $session->get('account_verify_email', '');
+        $expires    = (int) $session->get('account_verify_otp_expires', 0);
+
+        $errors = [];
+
+        if (!$csrfTokenManager->isTokenValid(new CsrfToken('account_verify', $csrfToken))) {
+            $errors[] = 'Invalid CSRF token. Please refresh and try again.';
+        }
+
+        if (!$errors && time() > $expires) {
+            $errors[] = 'Verification code has expired. Please log in again to receive a new code.';
+        }
+
+        if (!$errors && !$this->isValidOtpFormat($otp)) {
+            $errors[] = 'Please enter a valid 6-digit verification code.';
+        }
+
+        if (!$errors) {
+            $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+            if (!$user) {
+                $errors[] = 'Account not found. Please try logging in again.';
+            } elseif ($user->getVerificationCode() !== $otp) {
+                $errors[] = 'The verification code is incorrect. Please check your email and try again.';
+            } else {
+                $user->setIsVerified(true);
+                $user->setVerificationCode(null);
+                $entityManager->flush();
+
+                $session->remove('account_verify_email');
+                $session->remove('account_verify_otp_expires');
+                $session->remove('account_verify_resend_at');
+
+                if ($this->isAjaxRequest($request)) {
+                    return new JsonResponse(['success' => true, 'redirectTo' => $this->generateUrl('app_login')]);
+                }
+                $this->addFlash('success', 'Account verified! You can now log in.');
+                return $this->redirectToRoute('app_login');
+            }
+        }
+
+        if ($this->isAjaxRequest($request)) {
+            return new JsonResponse(['success' => false, 'error' => $errors[0] ?? 'Verification failed.'], 400);
+        }
+
+        $this->addFlash('login_error', $errors[0] ?? 'Verification failed.');
+        return $this->redirectToRoute('app_login');
+    }
+
+    #[Route('/login/resend-account-otp', name: 'app_login_resend_account_otp', methods: ['POST'])]
+    public function resendAdminAccountOtp(
+        Request $request,
+        EntityManagerInterface $entityManager,
+        CsrfTokenManagerInterface $csrfTokenManager,
+        MailerInterface $mailer,
+        LoggerInterface $logger,
+    ): Response {
+        $session   = $request->getSession();
+        $csrfToken = $request->request->get('_csrf_token', '');
+        $email     = $session->get('account_verify_email', '');
+        $resendAt  = (int) $session->get('account_verify_resend_at', 0);
+
+        $errors = [];
+
+        if (!$csrfTokenManager->isTokenValid(new CsrfToken('account_verify_resend', $csrfToken))) {
+            $errors[] = 'Invalid CSRF token.';
+        }
+
+        if (!$errors && time() < $resendAt) {
+            $errors[] = 'Please wait before requesting another code.';
+        }
+
+        if (!$errors && !$email) {
+            $errors[] = 'Session expired. Please log in again.';
+        }
+
+        if (!$errors) {
+            $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+            if (!$user) {
+                $errors[] = 'Account not found.';
+            } else {
+                $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $user->setVerificationCode($otp);
+                $entityManager->flush();
+
+                $session->set('account_verify_otp_expires', time() + 600);
+                $session->set('account_verify_resend_at', time() + 120);
+
+                $name = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $email;
+                try {
+                    $mailer->send($this->buildVerificationEmail($email, $name, $otp, 'Reserva FTIC - New Verification Code'));
+                    $logger->info('Account verify OTP resent', ['email' => $email]);
+                } catch (\Exception $e) {
+                    $logger->error('Failed to resend account verify OTP', ['email' => $email, 'error' => $e->getMessage()]);
+                    $errors[] = 'Failed to send email. Please try again.';
+                }
+
+                if (!$errors) {
+                    if ($this->isAjaxRequest($request)) {
+                        return new JsonResponse(['success' => true, 'cooldownRemaining' => 120]);
+                    }
+                    $this->addFlash('success', 'A new verification code has been sent to your email.');
+                    return $this->redirectToRoute('app_login');
+                }
+            }
+        }
+
+        if ($this->isAjaxRequest($request)) {
+            return new JsonResponse(['success' => false, 'error' => $errors[0] ?? 'Could not resend code.'], 400);
+        }
+        $this->addFlash('login_error', $errors[0] ?? 'Could not resend code.');
+        return $this->redirectToRoute('app_login');
     }
 
     #[Route('/logout', name: 'app_logout')]

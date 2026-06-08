@@ -136,6 +136,36 @@
         </div>
     </div>
 
+    {# Modal for Account Verification (Super Admin-created accounts) #}
+    <div id="accountVerifyModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px);">
+        <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 420px; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+            <div style="text-align:center; margin-bottom:1.5rem;">
+                <div style="width:56px;height:56px;background:rgba(13,155,0,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#0D9B00" style="width:28px;height:28px;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
+                </div>
+                <h3 style="margin:0 0 0.5rem; color:#111827; font-size:1.2rem; font-weight:700;">Verify Your Account</h3>
+                <p id="accountVerifySubtitle" style="color:#6b7280; font-size:0.875rem; margin:0;">A 6-digit verification code has been sent to your email address.</p>
+            </div>
+            <div id="accountVerifyError" style="display:none; margin-bottom:1rem; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:0.75rem; border-radius:0.5rem; font-size:0.875rem;"></div>
+            <div id="accountVerifySuccess" style="display:none; margin-bottom:1rem; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:0.75rem; border-radius:0.5rem; font-size:0.875rem;"></div>
+            <form id="accountVerifyForm" method="post" action="{{ path('app_login_verify_account') }}">
+                <div class="form-group" style="margin-bottom:1.25rem;">
+                    <label for="accountVerifyCode" class="form-label">Verification Code</label>
+                    <input type="text" id="accountVerifyCode" name="otp" class="form-input" maxlength="6" placeholder="000000" autocomplete="one-time-code" inputmode="numeric" required style="letter-spacing:0.3em; font-size:1.2rem; text-align:center;">
+                    <small style="display:block; margin-top:6px; color:#6b7280; font-size:0.8rem;">Check your email (including spam). Code expires in 10 minutes.</small>
+                </div>
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('account_verify') }}">
+                <button type="submit" id="accountVerifySubmitBtn" class="submit-button" style="width:100%;">Verify &amp; Continue</button>
+            </form>
+            <div style="text-align:center; margin-top:1rem;">
+                <span style="color:#6b7280; font-size:0.875rem;">Didn't receive the code? </span>
+                <a href="#" id="accountVerifyResendLink" onclick="resendAccountVerifyOtp(); return false;" style="color:#0D9B00; font-weight:600; text-decoration:none; font-size:0.875rem;">Resend code</a>
+                <span id="accountVerifyCooldown" style="display:none; color:#9ca3af; font-size:0.875rem;"> (wait <span id="accountVerifyCooldownSecs">120</span>s)</span>
+            </div>
+            <input type="hidden" id="accountVerifyResendCsrf" value="{{ csrf_token('account_verify_resend') }}">
+        </div>
+    </div>
+
     {# Modal for Reset Password #}
     <div id="resetPasswordModal" class="modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="modal-content" style="background: white; padding: 2.5rem; border-radius: 1rem; width: 100%; max-width: 420px; position: relative;">
@@ -264,6 +294,12 @@
     document.addEventListener('DOMContentLoaded', initializePasswordToggles);
     document.addEventListener('turbo:load', initializePasswordToggles);
     initializePasswordToggles();
+
+    {% if show_account_verify_modal is defined and show_account_verify_modal %}
+    document.addEventListener('DOMContentLoaded', function() {
+        showAccountVerifyModal();
+    });
+    {% endif %}
 
     document.getElementById('loginForm')?.addEventListener('submit', function() {
         const loginSubmitButton = document.getElementById('loginSubmitButton');
@@ -477,6 +513,106 @@
             finishButtonLoading(changePasswordButton, 'Changing password...', loadingStartAt);
         });
     });
+
+    // ── Account Verify Modal ────────────────────────────────────────────────
+    function showAccountVerifyModal() {
+        document.getElementById('accountVerifyModal').style.display = 'flex';
+        setTimeout(function() { document.getElementById('accountVerifyCode').focus(); }, 100);
+        startAccountVerifyCooldown(120);
+    }
+
+    var _acvCooldownTimer = null;
+    function startAccountVerifyCooldown(secs) {
+        var remaining = secs;
+        var resendLink = document.getElementById('accountVerifyResendLink');
+        var cooldownEl = document.getElementById('accountVerifyCooldown');
+        var secsEl     = document.getElementById('accountVerifyCooldownSecs');
+        if (!resendLink) return;
+
+        resendLink.style.display = 'none';
+        cooldownEl.style.display = 'inline';
+        secsEl.textContent = remaining;
+
+        if (_acvCooldownTimer) clearInterval(_acvCooldownTimer);
+        _acvCooldownTimer = setInterval(function() {
+            remaining--;
+            secsEl.textContent = remaining;
+            if (remaining <= 0) {
+                clearInterval(_acvCooldownTimer);
+                resendLink.style.display = 'inline';
+                cooldownEl.style.display = 'none';
+            }
+        }, 1000);
+    }
+
+    function resendAccountVerifyOtp() {
+        var csrf = document.getElementById('accountVerifyResendCsrf').value;
+        var errDiv = document.getElementById('accountVerifyError');
+        var sucDiv = document.getElementById('accountVerifySuccess');
+        errDiv.style.display = 'none';
+        sucDiv.style.display = 'none';
+
+        fetch('{{ path("app_login_resend_account_otp") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: '_csrf_token=' + encodeURIComponent(csrf)
+        })
+        .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { d._status = res.status; return d; }); })
+        .then(function(data) {
+            if (data.success) {
+                sucDiv.textContent = 'A new verification code has been sent to your email.';
+                sucDiv.style.display = 'block';
+                startAccountVerifyCooldown(data.cooldownRemaining || 120);
+            } else {
+                errDiv.textContent = data.error || 'Could not resend code. Please try again.';
+                errDiv.style.display = 'block';
+            }
+        })
+        .catch(function() {
+            errDiv.textContent = 'Network error. Please try again.';
+            errDiv.style.display = 'block';
+        });
+    }
+
+    document.getElementById('accountVerifyForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var otp        = document.getElementById('accountVerifyCode').value.trim();
+        var csrf       = this.querySelector('input[name="_csrf_token"]').value;
+        var submitBtn  = document.getElementById('accountVerifySubmitBtn');
+        var errDiv     = document.getElementById('accountVerifyError');
+        var sucDiv     = document.getElementById('accountVerifySuccess');
+        var loadingStartAt = Date.now();
+
+        errDiv.style.display = 'none';
+        sucDiv.style.display = 'none';
+        setButtonLoading(submitBtn, true, 'Verifying...');
+
+        fetch('{{ path("app_login_verify_account") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: 'otp=' + encodeURIComponent(otp) + '&_csrf_token=' + encodeURIComponent(csrf)
+        })
+        .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { d._status = res.status; return d; }); })
+        .then(function(data) {
+            if (data.success) {
+                sucDiv.textContent = 'Account verified! Signing you in...';
+                sucDiv.style.display = 'block';
+                setTimeout(function() {
+                    window.location.href = data.redirectTo || '{{ path("app_login") }}';
+                }, 800);
+            } else {
+                errDiv.textContent = data.error || 'Invalid code. Please try again.';
+                errDiv.style.display = 'block';
+                finishButtonLoading(submitBtn, 'Verifying...', loadingStartAt);
+            }
+        })
+        .catch(function() {
+            errDiv.textContent = 'Network error. Please try again.';
+            errDiv.style.display = 'block';
+            finishButtonLoading(submitBtn, 'Verifying...', loadingStartAt);
+        });
+    });
+    // ── End Account Verify Modal ─────────────────────────────────────────────
 
     let isLogoNavigating = false;
     document.querySelectorAll('[data-logo-slide-link]').forEach(function(link) {

@@ -32,7 +32,7 @@ class AccountManagementController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $page = max(1, (int) $request->query->get('page', 1));
-        $limit = 25;
+        $limit = 10;
         $search = trim((string) $request->query->get('q', ''));
         $role = trim((string) $request->query->get('role', ''));
         $result = $userRepository->findPaginatedForAccountManagement($page, $limit, $search, $role);
