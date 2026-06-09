@@ -77,6 +77,9 @@ class Reservation
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $rejectionReason = null;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $cancellationReason = null;
+
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isSimulated = false;
 
@@ -279,6 +282,18 @@ class Reservation
     public function setRejectionReason(?string $rejectionReason): static
     {
         $this->rejectionReason = $rejectionReason;
+
+        return $this;
+    }
+
+    public function getCancellationReason(): ?string
+    {
+        return $this->cancellationReason;
+    }
+
+    public function setCancellationReason(?string $cancellationReason): static
+    {
+        $this->cancellationReason = $cancellationReason;
 
         return $this;
     }

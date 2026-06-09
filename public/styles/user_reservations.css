@@ -1104,6 +1104,19 @@
     gap: 8px;
 }
 
+.card-actions button {
+    width: auto !important;
+    max-width: none !important;
+    display: inline-block;
+    flex: 0 0 auto !important;
+}
+
+.card-actions .btn-danger-small {
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+}
+
 @media (max-width: 599px) {
     .card-actions {
         margin-top: 10px;
@@ -1269,8 +1282,7 @@
 .btn-secondary-small,
 .btn-danger-small,
 .btn-primary-small {
-    flex: 1;
-    padding: 10px 12px;
+    padding: 8px 16px;
     border: none;
     border-radius: 6px;
     font-weight: 600;
@@ -1279,7 +1291,10 @@
     text-decoration: none;
     font-size: 13px;
     transition: all 0.3s ease;
-    min-width: 100px;
+    width: auto !important;
+    max-width: none !important;
+    white-space: nowrap;
+    flex: 0 0 auto !important;
 }
 
 @media (max-width: 599px) {

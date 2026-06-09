@@ -355,6 +355,9 @@ public function reserve(
         }
 
         $reservation->setStatus('Cancelled');
+        $cancellationReason = $request->request->get('cancellation_reason');
+        $reservation->setCancellationReason($cancellationReason);
+        error_log('Cancellation reason being saved: ' . ($cancellationReason ?: 'NULL'));
         $em->flush();
 
         $reservationMailer->notifyCancelled($reservation);

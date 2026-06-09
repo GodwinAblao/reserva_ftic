@@ -120,6 +120,12 @@
                                 <p>{{ reservation.rejectionReason }}</p>
                             </div>
                         {% endif %}
+                        {% if reservation.cancellationReason %}
+                            <div class="sa-detail-col full-width">
+                                <label>Cancellation Reason</label>
+                                <p>{{ reservation.cancellationReason }}</p>
+                            </div>
+                        {% endif %}
                     </div>
 
                     {% if status == 'Pending' %}
