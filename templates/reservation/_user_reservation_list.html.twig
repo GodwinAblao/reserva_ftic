@@ -5,6 +5,9 @@
         <article class="reservation-card">
             <div class="reservation-card-header">
                 <h3 class="reservation-card-title">{{ reservation.facility.name }}</h3>
+                {% if reservation.institutionalEvent %}
+                    <span style="background: #dcfce7; color: #16a34a; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Institutional</span>
+                {% endif %}
             </div>
             <div class="reservation-card-details">
                 <div class="reservation-detail">
@@ -23,6 +26,12 @@
                     <label>Event Name</label>
                     <span>{{ reservation.eventName ?: 'Reserved Facility' }}</span>
                 </div>
+                {% if reservation.eventPurpose %}
+                <div class="reservation-detail">
+                    <label>Event Purpose</label>
+                    <span>{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+                </div>
+                {% endif %}
                 <div class="reservation-detail">
                     <label>Participants</label>
                     <span>{{ reservation.capacity }} people</span>

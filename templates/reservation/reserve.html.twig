@@ -68,7 +68,15 @@
 
         <!-- Reservation Form Section -->
         <div class="form-section card-panel">
-            <h3>Reservation Details</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0;">Reservation Details</h3>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="institutionalEvent" name="institutional_event"
+                           {{ existingReservation and existingReservation.institutionalEvent ? 'checked' : '' }}
+                           style="width: 20px; height: 20px; cursor: pointer;">
+                    <label for="institutionalEvent" style="margin: 0; cursor: pointer; font-weight: 600;">Institutional Event</label>
+                </div>
+            </div>
             <form id="reservationForm" class="form-group" data-turbo="false">
                 <div class="form-row">
                     <div class="form-group-item">
@@ -109,11 +117,37 @@
                                value="{{ existingReservation ? existingReservation.capacity : '' }}">
                         <small class="help-text">Maximum: {{ facility.capacity }} people</small>
                     </div>
+                    <div class="form-group-item">
+                        <label for="eventPurpose">Event Purpose</label>
+                        <select id="eventPurpose" name="event_purpose" class="form-input" required>
+                            <option value="">Select event purpose...</option>
+                            <option value="Meeting" {{ existingReservation and existingReservation.eventPurpose == 'Meeting' ? 'selected' : '' }}>Meeting</option>
+                            <option value="Lecture" {{ existingReservation and existingReservation.eventPurpose == 'Lecture' ? 'selected' : '' }}>Lecture</option>
+                            <option value="Seminar" {{ existingReservation and existingReservation.eventPurpose == 'Seminar' ? 'selected' : '' }}>Seminar</option>
+                            <option value="Webinar" {{ existingReservation and existingReservation.eventPurpose == 'Webinar' ? 'selected' : '' }}>Webinar</option>
+                            <option value="Workshop" {{ existingReservation and existingReservation.eventPurpose == 'Workshop' ? 'selected' : '' }}>Workshop</option>
+                            <option value="Training Program" {{ existingReservation and existingReservation.eventPurpose == 'Training Program' ? 'selected' : '' }}>Training Program</option>
+                            <option value="Capstone Defense" {{ existingReservation and existingReservation.eventPurpose == 'Capstone Defense' ? 'selected' : '' }}>Capstone Defense</option>
+                            <option value="Academic Conference" {{ existingReservation and existingReservation.eventPurpose == 'Academic Conference' ? 'selected' : '' }}>Academic Conference</option>
+                            <option value="Student Consultation" {{ existingReservation and existingReservation.eventPurpose == 'Student Consultation' ? 'selected' : '' }}>Student Consultation</option>
+                            <option value="Hackathon" {{ existingReservation and existingReservation.eventPurpose == 'Hackathon' ? 'selected' : '' }}>Hackathon</option>
+                            <option value="Pitching" {{ existingReservation and existingReservation.eventPurpose == 'Pitching' ? 'selected' : '' }}>Pitching</option>
+                            <option value="Launch Event" {{ existingReservation and existingReservation.eventPurpose == 'Launch Event' ? 'selected' : '' }}>Launch Event</option>
+                            <option value="others" {{ existingReservation and existingReservation.eventPurpose == 'others' ? 'selected' : '' }}>others... (Specify)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group-item" id="eventPurposeOtherContainer" style="display: none;">
+                    <label for="eventPurposeOther">Specify Other Event Purpose</label>
+                    <input type="text" id="eventPurposeOther" name="event_purpose_other" class="form-input"
+                           placeholder="Please specify the event purpose..."
+                           value="{{ existingReservation ? existingReservation.eventPurposeOther : '' }}">
                 </div>
 
                 <div class="form-group-item">
                     <label for="purpose">Event Objective</label>
-                    <textarea id="purpose" name="purpose" class="form-input" rows="4" 
+                    <textarea id="purpose" name="purpose" class="form-input" rows="4"
                               placeholder="Describe the objective of your event...">{{ existingReservation ? existingReservation.purpose : '' }}</textarea>
                 </div>
 
@@ -926,6 +960,34 @@
             addManagedEvent(phoneInput, 'keydown', function(e) {
                 if (e.key.length === 1 && !/[0-9+]/.test(e.key) && !e.ctrlKey && !e.metaKey) e.preventDefault();
             });
+        }
+
+        // Event Purpose dropdown - show/hide "other" text field
+        const eventPurposeSelect = document.getElementById('eventPurpose');
+        const eventPurposeOtherContainer = document.getElementById('eventPurposeOtherContainer');
+        const eventPurposeOtherInput = document.getElementById('eventPurposeOther');
+
+        function toggleEventPurposeOther() {
+            if (eventPurposeSelect && eventPurposeOtherContainer) {
+                if (eventPurposeSelect.value === 'others') {
+                    eventPurposeOtherContainer.style.display = 'flex';
+                    if (eventPurposeOtherInput) {
+                        eventPurposeOtherInput.required = true;
+                    }
+                } else {
+                    eventPurposeOtherContainer.style.display = 'none';
+                    if (eventPurposeOtherInput) {
+                        eventPurposeOtherInput.required = false;
+                        eventPurposeOtherInput.value = '';
+                    }
+                }
+            }
+        }
+
+        if (eventPurposeSelect) {
+            addManagedEvent(eventPurposeSelect, 'change', toggleEventPurposeOther);
+            // Check initial state on page load
+            toggleEventPurposeOther();
         }
 
         renderCalendar();

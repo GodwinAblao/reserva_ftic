@@ -41,15 +41,26 @@ class AdminController extends AbstractController
     #[Route('/dashboard', name: 'admin_home', methods: ['GET'])]
     public function home(EntityManagerInterface $em): Response
     {
+        $today = new \DateTime('today');
+        $nextWeek = (clone $today)->modify('+7 days');
+
+        $upcomingReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->where('r.status = :status')
+            ->andWhere('r.reservationDate >= :today')
+            ->andWhere('r.reservationDate <= :nextWeek')
+            ->setParameter('status', 'Approved')
+            ->setParameter('today', $today)
+            ->setParameter('nextWeek', $nextWeek)
+            ->orderBy('r.reservationDate', 'ASC')
+            ->setMaxResults(8)
+            ->getQuery()
+            ->getResult();
+
         return $this->render('admin/dashboard.html.twig', [
             'initialData' => $this->getDashboardData($em),
             'reservationStatusCounts' => $this->reservationStatusCounts($em),
             'mentoringStatusCounts' => $this->mentoringStatusCounts($em),
-            'upcomingReservations' => $em->getRepository(Reservation::class)->findBy(
-                ['status' => 'Approved'],
-                ['reservationDate' => 'ASC'],
-                8
-            ),
+            'upcomingReservations' => $upcomingReservations,
             'upcomingMentoringSessions' => $em->getRepository(MentoringAppointment::class)->findBy(
                 [],
                 ['scheduledAt' => 'ASC'],

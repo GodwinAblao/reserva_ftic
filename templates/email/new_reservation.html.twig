@@ -138,6 +138,20 @@
             </div>
             {% endif %}
 
+            {% if reservation.eventPurpose %}
+            <div class="detail-row">
+                <span class="label">Event Purpose:</span>
+                <span class="value">{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+            </div>
+            {% endif %}
+
+            {% if reservation.institutionalEvent %}
+            <div class="detail-row">
+                <span class="label">Institutional Event:</span>
+                <span class="value"><strong>Yes</strong></span>
+            </div>
+            {% endif %}
+
             <div class="detail-row">
                 <span class="label">Date:</span>
                 <span class="value">{{ reservation.reservationDate|date('F d, Y') }}</span>

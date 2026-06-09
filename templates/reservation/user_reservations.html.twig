@@ -86,6 +86,11 @@
                         {% for reservation in reservations['Approved'] %}
                             <div class="reservation-card-new">
                                 <div class="card-title">{{ reservation.facility.name }}</div>
+                                {% if reservation.institutionalEvent %}
+                                    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                                        <span style="background: #dcfce7; color: #16a34a; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Institutional</span>
+                                    </div>
+                                {% endif %}
                                 <div class="card-divider"></div>
                                 <div class="card-info-grid">
                                     <div class="info-item">
@@ -104,6 +109,12 @@
                                         <span class="info-label">Event Name</span>
                                         <span class="info-value">{{ reservation.eventName ?: 'N/A' }}</span>
                                     </div>
+                                    {% if reservation.eventPurpose %}
+                                    <div class="info-item">
+                                        <span class="info-label">Event Purpose</span>
+                                        <span class="info-value">{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+                                    </div>
+                                    {% endif %}
                                     <div class="info-item">
                                         <span class="info-label">Participants</span>
                                         <span class="info-value">{{ reservation.capacity }} people</span>
@@ -161,6 +172,11 @@
                         {% for reservation in reservations['Pending'] %}
                             <div class="reservation-card-new">
                                 <div class="card-title">{{ reservation.facility.name }}</div>
+                                {% if reservation.institutionalEvent %}
+                                    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                                        <span style="background: #dcfce7; color: #16a34a; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Institutional</span>
+                                    </div>
+                                {% endif %}
                                 <div class="card-divider"></div>
                                 <div class="card-info-grid">
                                     <div class="info-item">
@@ -179,6 +195,12 @@
                                         <span class="info-label">Event Name</span>
                                         <span class="info-value">{{ reservation.eventName ?: 'N/A' }}</span>
                                     </div>
+                                    {% if reservation.eventPurpose %}
+                                    <div class="info-item">
+                                        <span class="info-label">Event Purpose</span>
+                                        <span class="info-value">{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+                                    </div>
+                                    {% endif %}
                                     <div class="info-item">
                                         <span class="info-label">Participants</span>
                                         <span class="info-value">{{ reservation.capacity }} people</span>
@@ -235,6 +257,11 @@
                         {% for reservation in reservations['Rejected'] %}
                             <div class="reservation-card-new">
                                 <div class="card-title">{{ reservation.facility.name }}</div>
+                                {% if reservation.institutionalEvent %}
+                                    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                                        <span style="background: #dcfce7; color: #16a34a; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Institutional</span>
+                                    </div>
+                                {% endif %}
                                 <div class="card-divider"></div>
                                 <div class="card-info-grid">
                                     <div class="info-item">
@@ -253,6 +280,12 @@
                                         <span class="info-label">Event Name</span>
                                         <span class="info-value">{{ reservation.eventName ?: 'N/A' }}</span>
                                     </div>
+                                    {% if reservation.eventPurpose %}
+                                    <div class="info-item">
+                                        <span class="info-label">Event Purpose</span>
+                                        <span class="info-value">{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+                                    </div>
+                                    {% endif %}
                                     <div class="info-item">
                                         <span class="info-label">Participants</span>
                                         <span class="info-value">{{ reservation.capacity }} people</span>
@@ -312,6 +345,11 @@
                         {% for reservation in reservations['Cancelled'] %}
                             <div class="reservation-card-new">
                                 <div class="card-title">{{ reservation.facility.name }}</div>
+                                {% if reservation.institutionalEvent %}
+                                    <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                                        <span style="background: #dcfce7; color: #16a34a; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Institutional</span>
+                                    </div>
+                                {% endif %}
                                 <div class="card-divider"></div>
                                 <div class="card-info-grid">
                                     <div class="info-item">
@@ -330,6 +368,12 @@
                                         <span class="info-label">Event Name</span>
                                         <span class="info-value">{{ reservation.eventName ?: 'N/A' }}</span>
                                     </div>
+                                    {% if reservation.eventPurpose %}
+                                    <div class="info-item">
+                                        <span class="info-label">Event Purpose</span>
+                                        <span class="info-value">{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+                                    </div>
+                                    {% endif %}
                                     <div class="info-item">
                                         <span class="info-label">Participants</span>
                                         <span class="info-value">{{ reservation.capacity }} people</span>

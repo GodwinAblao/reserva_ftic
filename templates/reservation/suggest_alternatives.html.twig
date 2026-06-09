@@ -19,7 +19,12 @@
         </div>
         <div class="suggest-alt-grid">
             <section class="reservation-column">
-                <h3 class="mini-section-title">Reservation Request Details</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 class="mini-section-title" style="margin: 0;">Reservation Request Details</h3>
+                    {% if reservation.institutionalEvent %}
+                        <span style="background: #dcfce7; color: #16a34a; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase;">Institutional</span>
+                    {% endif %}
+                </div>
                 <div class="request-card">
                     <div class="request-card-grid">
                         <div class="request-field">
@@ -46,6 +51,12 @@
                             <span class="field-label">Facility Capacity:</span>
                             <span class="field-value">{{ reservation.facility.capacity }}</span>
                         </div>
+                        {% if reservation.eventPurpose %}
+                            <div class="request-field">
+                                <span class="field-label">Event Purpose:</span>
+                                <span class="field-value">{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</span>
+                            </div>
+                        {% endif %}
                         {% if reservation.purpose %}
                             <div class="request-field request-field-full">
                                 <span class="field-label">Event Objectives:</span>

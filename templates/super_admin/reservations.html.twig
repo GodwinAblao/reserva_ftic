@@ -78,7 +78,12 @@
                 <div class="sa-reservation-row row-{{ statusClass }}">
                     <div class="sa-row-head">
                         <h4>{{ reservation.facility.name }}</h4>
-                        <span class="sa-badge sa-badge-{{ statusClass }}">{{ status == 'Cancelled' ? 'Canceled' : status }}</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            {% if reservation.institutionalEvent %}
+                                <span class="sa-badge" style="background: #dbeafe; color: #1e40af;">Institutional</span>
+                            {% endif %}
+                            <span class="sa-badge sa-badge-{{ statusClass }}">{{ status == 'Cancelled' ? 'Canceled' : status }}</span>
+                        </div>
                     </div>
 
                     <div class="sa-detail-grid">
@@ -106,6 +111,12 @@
                             <div class="sa-detail-col">
                                 <label>Event Name</label>
                                 <p>{{ reservation.eventName }}</p>
+                            </div>
+                        {% endif %}
+                        {% if reservation.eventPurpose %}
+                            <div class="sa-detail-col">
+                                <label>Event Purpose</label>
+                                <p>{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</p>
                             </div>
                         {% endif %}
                         {% if reservation.purpose %}
@@ -140,6 +151,10 @@
                                 <input type="hidden" name="reason" class="reject-reason">
                                 <button type="button" class="sa-btn sa-btn-reject" onclick="showRejectModal(this)">Reject</button>
                             </form>
+                        </div>
+                    {% elseif status == 'Approved' %}
+                        <div class="sa-row-actions">
+                            <a href="{{ path('admin_edit_reservation', {'id': reservation.id}) }}" class="sa-btn sa-btn-secondary">Edit</a>
                         </div>
                     {% endif %}
                 </div>

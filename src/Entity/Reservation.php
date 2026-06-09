@@ -65,6 +65,15 @@ class Reservation
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $purpose = null;
 
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $eventPurpose = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $eventPurposeOther = null;
+
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $institutionalEvent = false;
+
     #[ORM\Column(length: 50)]
     private string $status = 'Pending'; // Pending, Suggested, Approved, Rejected, Cancelled
 
@@ -234,6 +243,42 @@ class Reservation
     public function setPurpose(?string $purpose): static
     {
         $this->purpose = $purpose;
+
+        return $this;
+    }
+
+    public function getEventPurpose(): ?string
+    {
+        return $this->eventPurpose;
+    }
+
+    public function setEventPurpose(?string $eventPurpose): static
+    {
+        $this->eventPurpose = $eventPurpose;
+
+        return $this;
+    }
+
+    public function getEventPurposeOther(): ?string
+    {
+        return $this->eventPurposeOther;
+    }
+
+    public function setEventPurposeOther(?string $eventPurposeOther): static
+    {
+        $this->eventPurposeOther = $eventPurposeOther;
+
+        return $this;
+    }
+
+    public function isInstitutionalEvent(): bool
+    {
+        return $this->institutionalEvent;
+    }
+
+    public function setInstitutionalEvent(bool $institutionalEvent): static
+    {
+        $this->institutionalEvent = $institutionalEvent;
 
         return $this;
     }

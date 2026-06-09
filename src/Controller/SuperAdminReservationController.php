@@ -133,6 +133,9 @@ class SuperAdminReservationController extends AbstractController
         $endTime = $request->request->get('reservationEndTime');
         $capacity = $request->request->get('capacity');
         $purpose = $request->request->get('purpose');
+        $eventPurpose = $request->request->get('event_purpose');
+        $eventPurposeOther = $request->request->get('event_purpose_other');
+        $institutionalEvent = $request->request->get('institutional_event') === 'on';
 
         // Update facility if provided
         if ($facilityId) {
@@ -165,6 +168,21 @@ class SuperAdminReservationController extends AbstractController
         // Update purpose if provided
         if ($purpose !== null) {
             $reservation->setPurpose($purpose);
+        }
+
+        // Update event purpose if provided
+        if ($eventPurpose !== null) {
+            $reservation->setEventPurpose($eventPurpose);
+        }
+
+        // Update event purpose other if provided
+        if ($eventPurposeOther !== null) {
+            $reservation->setEventPurposeOther($eventPurposeOther);
+        }
+
+        // Update institutional event flag if provided
+        if ($institutionalEvent !== null) {
+            $reservation->setInstitutionalEvent($institutionalEvent);
         }
 
         // Update status and log change if status changed

@@ -92,6 +92,9 @@ public function reserve(
                 $capacity = (int)$request->request->get('capacity');
                 $eventName = trim((string)$request->request->get('event_name')) ?: null;
                 $purpose = $request->request->get('purpose');
+                $eventPurpose = $request->request->get('event_purpose');
+                $eventPurposeOther = $request->request->get('event_purpose_other');
+                $institutionalEvent = $request->request->get('institutional_event') === 'on';
 
                 $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
                 $endTime   = \DateTime::createFromFormat('H:i', $endTimeStr);
@@ -138,6 +141,9 @@ public function reserve(
                 $reservation->setReservationEndTime($endTime);
                 $reservation->setCapacity($capacity);
                 $reservation->setPurpose($purpose);
+                $reservation->setEventPurpose($eventPurpose);
+                $reservation->setEventPurposeOther($eventPurposeOther);
+                $reservation->setInstitutionalEvent($institutionalEvent);
                 // Set initial status to Suggested - will become Pending after user confirms facility choice
                 $reservation->setStatus('Suggested');
 
