@@ -21,10 +21,22 @@ class ClassScheduleRepository extends ServiceEntityRepository
 
     public function deleteAll(): int
     {
-        return $this->createQueryBuilder('c')
-            ->delete()
-            ->getQuery()
-            ->execute();
+        $conn = $this->getEntityManager()->getConnection();
+
+        // Use native SQL to delete notification logs first (foreign key constraint)
+        try {
+            $conn->executeStatement('DELETE FROM class_schedule_notification_log');
+        } catch (\Exception $e) {
+            error_log('[DELETE ALL] Failed to clear notification logs: ' . $e->getMessage());
+        }
+
+        // Now delete class schedules using native SQL
+        try {
+            return $conn->executeStatement('DELETE FROM class_schedule');
+        } catch (\Exception $e) {
+            error_log('[DELETE ALL] Failed to clear class schedules: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     public function countAll(): int
@@ -202,5 +214,100 @@ class ClassScheduleRepository extends ServiceEntityRepository
             trim($startTime),
             trim($endTime),
         ]));
+    }
+
+    /**
+     * Find all class schedules by import batch ID.
+     * @return ClassSchedule[]
+     */
+    public function findByImportBatchId(string $importBatchId): array
+    {
+        return $this->createQueryBuilder('c')
+            ->andWhere('c.importBatchId = :importBatchId')
+            ->setParameter('importBatchId', $importBatchId)
+            ->orderBy('c.scheduleDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Delete all class schedules by import batch ID.
+     * Returns the number of deleted records.
+     */
+    public function deleteByImportBatchId(string $importBatchId): int
+    {
+        return $this->createQueryBuilder('c')
+            ->delete()
+            ->andWhere('c.importBatchId = :importBatchId')
+            ->setParameter('importBatchId', $importBatchId)
+            ->getQuery()
+            ->execute();
+    }
+
+    /**
+     * Delete all class schedules in the same series (same course, section, faculty, day, and time).
+     * Returns the number of deleted records.
+     */
+    public function deleteBySeries(string $courseCode, ?string $section, ?string $facultyName, string $dayOfWeek, string $startTime, string $endTime): int
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->delete()
+            ->andWhere('c.courseCode = :courseCode')
+            ->andWhere('c.dayOfWeek = :dayOfWeek')
+            ->andWhere('c.startTime = :startTime')
+            ->andWhere('c.endTime = :endTime')
+            ->setParameter('courseCode', $courseCode)
+            ->setParameter('dayOfWeek', $dayOfWeek)
+            ->setParameter('startTime', $startTime)
+            ->setParameter('endTime', $endTime);
+
+        if ($section !== null) {
+            $qb->andWhere('c.section = :section')
+               ->setParameter('section', $section);
+        } else {
+            $qb->andWhere('c.section IS NULL');
+        }
+
+        if ($facultyName !== null) {
+            $qb->andWhere('c.facultyName = :facultyName')
+               ->setParameter('facultyName', $facultyName);
+        } else {
+            $qb->andWhere('c.facultyName IS NULL');
+        }
+
+        return $qb->getQuery()->execute();
+    }
+
+    /**
+     * Get existing schedules with details for conflict checking.
+     * @return array<int, array{scheduleDate: string, startTime: string, endTime: string, facility: string, courseCode: string, section: ?string}>
+     */
+    public function getExistingSchedulesWithDetails(): array
+    {
+        $schedules = $this->createQueryBuilder('c')
+            ->leftJoin('c.facility', 'f')
+            ->addSelect('f')
+            ->orderBy('c.scheduleDate', 'ASC')
+            ->addOrderBy('c.startTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($schedules as $schedule) {
+            \assert($schedule instanceof ClassSchedule);
+            $result[] = [
+                'id' => $schedule->getId(),
+                'scheduleDate' => $schedule->getScheduleDate()?->format('Y-m-d') ?? '',
+                'startTime' => $schedule->getStartTime()?->format('H:i') ?? '',
+                'endTime' => $schedule->getEndTime()?->format('H:i') ?? '',
+                'facility' => $schedule->getFacility()?->getName() ?? 'Unknown',
+                'courseCode' => $schedule->getCourseCode(),
+                'section' => $schedule->getSection(),
+                'facultyName' => $schedule->getFacultyName(),
+                'dayOfWeek' => $schedule->getDayOfWeek(),
+            ];
+        }
+
+        return $result;
     }
 }

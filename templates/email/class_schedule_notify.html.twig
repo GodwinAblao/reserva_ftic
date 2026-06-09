@@ -4,18 +4,84 @@
     <meta charset="UTF-8">
     <title>Class schedule update</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-    <h2 style="color: #0d9b00;">Class schedule update</h2>
-    <p>{{ message }}</p>
-    {% if schedule %}
-    <table style="margin-top: 16px; border-collapse: collapse;">
-        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Course</td><td><strong>{{ schedule.courseCode }}{% if schedule.section %} · {{ schedule.section }}{% endif %}</strong></td></tr>
-        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Facility</td><td>{{ facilityName }}</td></tr>
-        {% if schedule.facultyName %}
-        <tr><td style="padding: 4px 12px 4px 0; color: #6b7280;">Faculty</td><td>{{ schedule.facultyName }}</td></tr>
-        {% endif %}
-    </table>
-    {% endif %}
-    <p style="margin-top: 24px; font-size: 12px; color: #9ca3af;">Reserva FTIC — automated message</p>
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; margin: 0; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #0d9b00 0%, #0a7a00 100%); padding: 30px 40px; text-align: center;">
+            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Class Schedule Update</h1>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 40px;">
+            <!-- Message -->
+            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #374151;">{{ message|nl2br }}</p>
+
+            {% if schedule %}
+            <!-- Schedule Details Card -->
+            <div style="background-color: #f3f4f6; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 18px; font-weight: 600; border-bottom: 2px solid #0d9b00; padding-bottom: 8px;">Schedule Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">Course</td>
+                        <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 14px;">{{ schedule.courseCode }}{% if schedule.section %} · {{ schedule.section }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Facility</td>
+                        <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{ facilityName }}</td>
+                    </tr>
+                    {% if schedule.scheduleDate %}
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Date</td>
+                        <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{ schedule.scheduleDate|date('F d, Y') }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if schedule.startTime and schedule.endTime %}
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Time</td>
+                        <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{ schedule.startTime|date('g:i A') }} - {{ schedule.endTime|date('g:i A') }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if schedule.facultyName %}
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Faculty</td>
+                        <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{ schedule.facultyName }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+
+            {% if blockType is defined %}
+            <!-- Block Details Card -->
+            <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px 0; color: #991b1b; font-size: 18px; font-weight: 600;">Block Information</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">Status</td>
+                        <td style="padding: 8px 0; color: #991b1b; font-weight: 600; font-size: 14px;">{{ blockType|capitalize }}</td>
+                    </tr>
+                    {% if blockTitle is defined and blockTitle and blockTitle != 'Unavailable' %}
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Label</td>
+                        <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{ blockTitle }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if blockNotes is defined and blockNotes %}
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px; vertical-align: top;">Reason</td>
+                        <td style="padding: 8px 0; color: #111827; font-size: 14px;">{{ blockNotes }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- Footer -->
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb; text-align: center;">
+                <p style="margin: 0; font-size: 13px; color: #6b7280;">This is an automated message from Reserva FTIC</p>
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #9ca3af;">Please do not reply to this email</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

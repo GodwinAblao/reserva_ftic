@@ -174,6 +174,7 @@ class CalendarDataService
             'facultyVerified' => $verified,
             'isRelocated' => $schedule->isRelocated(),
             'previousFacilityName' => $schedule->getPreviousFacility()?->getName(),
+            'term' => $schedule->getTerm(),
             'reservationDate' => $schedule->getScheduleDate()->format('Y-m-d'),
             'reservationStartTime' => $schedule->getStartTime()->format('H:i'),
             'reservationEndTime' => $schedule->getEndTime()->format('H:i'),

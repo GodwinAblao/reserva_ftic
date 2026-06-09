@@ -357,38 +357,142 @@
     {% if calendar_can_import|default(false) or calendar_full_mode %}
     <div class="sa-import-grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
         {% if calendar_can_import|default(false) %}
-        <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data" class="sa-import-card">
-            <h3>Import Class Schedule</h3>
-            <p>Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
+        <div class="import-tabs-container" style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow);">
+            <h3 style="font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 20px 0; padding-bottom: 12px; border-bottom: 2px solid var(--primary-light); display: flex; align-items: center; gap: 10px;">
+                <span style="width: 4px; height: 24px; background: var(--primary); border-radius: 2px; display: inline-block;"></span>
+                Import Class Schedule
+            </h3>
 
-            <div class="sa-import-mini-grid">
-                <div class="sa-import-field">
-                    <label>Start Date <span style="color: #dc2626;">*</span></label>
-                    <input type="date" name="start_date" required>
-                </div>
-                <div class="sa-import-field">
-                    <label>End Date <span style="color: #dc2626;">*</span></label>
-                    <input type="date" name="end_date" required>
-                </div>
+            <div class="import-tabs" style="display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 24px;">
+                <button type="button" class="import-tab active" data-tab="upload-csv" onclick="switchImportTab('upload-csv')" style="padding: 12px 24px; border: none; background: none; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; border-bottom: 3px solid var(--primary); margin-bottom: -2px; transition: all 0.2s;">Upload CSV</button>
+                <button type="button" class="import-tab" data-tab="input-schedule" onclick="switchImportTab('input-schedule')" style="padding: 12px 24px; border: none; background: none; font-size: 14px; font-weight: 600; color: var(--text-light); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s;">Input Schedule</button>
             </div>
 
-            <div class="sa-import-field">
-                <label>Upload CSV</label>
-                <input type="file" name="schedule_file" accept=".csv,text/csv">
+            <!-- Upload CSV Tab -->
+            <div id="tab-upload-csv" class="import-tab-content" style="display: block;">
+                <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data">
+                    <p style="font-size: 14px; color: var(--text-light); line-height: 1.6; margin-bottom: 16px;">Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
+
+                    <div class="sa-import-mini-grid">
+                        <div class="sa-import-field">
+                            <label>Start Date <span style="color: #dc2626;">*</span></label>
+                            <input type="date" name="start_date" required>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>End Date <span style="color: #dc2626;">*</span></label>
+                            <input type="date" name="end_date" required>
+                        </div>
+                    </div>
+
+                    <div class="sa-import-field">
+                        <label>Term <span style="color: #dc2626;">*</span></label>
+                        <select name="term" required>
+                            <option value="">Select Term</option>
+                            <option value="1">Term 1</option>
+                            <option value="2">Term 2</option>
+                            <option value="3">Term 3</option>
+                        </select>
+                    </div>
+
+                    <div class="sa-import-field">
+                        <label>Upload CSV</label>
+                        <input type="file" name="schedule_file" accept=".csv,text/csv">
+                    </div>
+
+                    <div class="sa-import-field" style="display: none;">
+                        <label>Or Paste Schedule Data</label>
+                        <textarea name="schedule_paste" placeholder="facility,day,start,end,course_code,section,faculty_name,faculty_email" style="height:80px; font-family:monospace;"></textarea>
+                    </div>
+
+                    <p class="sa-warning-text"><strong>Warning:</strong> CSV upload will DELETE all existing schedules and replace them with the new file. The schedule will only be displayed within the selected date range.</p>
+
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                        <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
+                        <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="flex: 1;">Import &amp; Sync Schedule</button>
+                    </div>
+                    <div id="scheduleImportMessage" class="schedule-import-message" style="display:none; margin-top: 12px;"></div>
+                    <div id="scheduleDeleteMessage" class="schedule-import-message" style="display:none; margin-top: 12px;"></div>
+                </form>
             </div>
 
-            <div class="sa-import-field">
-                <label>Or Paste Schedule Data</label>
-                <textarea name="schedule_paste" placeholder="facility,day,start,end,course_code,section,faculty_name,faculty_email" style="height:80px; font-family:monospace;"></textarea>
+            <!-- Input Schedule Tab -->
+            <div id="tab-input-schedule" class="import-tab-content" style="display: none;">
+                <form id="manualInputForm" action="{{ path('admin_calendar_import_manual') }}" method="POST">
+                    <div class="sa-import-mini-grid">
+                        <div class="sa-import-field">
+                            <label>Facility <span style="color: #dc2626;">*</span></label>
+                            <select name="facility" id="inputFacility" required>
+                                <option value="">Select Facility</option>
+                                {% for facility in facilities %}<option value="{{ facility.name }}">{{ facility.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Day <span style="color: #dc2626;">*</span></label>
+                            <select name="day" id="inputDay" required>
+                                <option value="">Select Day</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Start Time <span style="color: #dc2626;">*</span></label>
+                            <select name="start_time" id="inputStartTime" required>
+                                <option value="">Select Start Time</option>
+                                {% for hour in 7..18 %}
+                                <option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>
+                                <option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>
+                                {% endfor %}
+                                <option value="19:00">7:00 PM</option>
+                            </select>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>End Time <span style="color: #dc2626;">*</span></label>
+                            <select name="end_time" id="inputEndTime" required>
+                                <option value="">Select End Time</option>
+                                {% for hour in 7..18 %}
+                                {% if hour != 7 %}<option value="{{ '%02d:00'|format(hour) }}">{{ hour == 12 ? '12:00 PM' : (hour > 12 ? (hour-12) ~ ':00 PM' : hour ~ ':00 AM') }}</option>{% endif %}
+                                {% if hour != 7 %}<option value="{{ '%02d:50'|format(hour) }}">{{ hour == 12 ? '12:50 PM' : (hour > 12 ? (hour-12) ~ ':50 PM' : hour ~ ':50 AM') }}</option>{% endif %}
+                                {% endfor %}
+                                <option value="19:00">7:00 PM</option>
+                                <option value="20:00">8:00 PM</option>
+                            </select>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Start Date <span style="color: #dc2626;">*</span></label>
+                            <input type="date" name="start_date" id="inputStartDate" required>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>End Date <span style="color: #dc2626;">*</span></label>
+                            <input type="date" name="end_date" id="inputEndDate" required>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Course Code <span style="color: #dc2626;">*</span></label>
+                            <input type="text" name="course_code" id="inputCourseCode" placeholder="e.g., CS101" required>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Section <span style="color: #dc2626;">*</span></label>
+                            <input type="text" name="section" id="inputSection" placeholder="e.g., A" required>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Faculty Name <span style="color: #dc2626;">*</span></label>
+                            <input type="text" name="faculty_name" id="inputFacultyName" placeholder="e.g., Dr. John Smith" required>
+                        </div>
+                        <div class="sa-import-field">
+                            <label>Faculty Email</label>
+                            <input type="email" name="faculty_email" id="inputFacultyEmail" placeholder="faculty@feutech.edu.ph">
+                        </div>
+                    </div>
+                    <p class="sa-warning-text">Adds a new class schedule to the calendar without deleting any existing schedules.</p>
+                    <button type="submit" id="manualInputSubmit" class="sa-btn sa-btn-primary" style="width:100%; margin-top: 16px;">Add New Schedule</button>
+                    <div id="manualInputMessage" class="schedule-import-message" style="display:none; margin-top: 12px;"></div>
+                </form>
             </div>
-
-            <p class="sa-warning-text">Importing replaces the previous imported class schedule automatically. The schedule will only be displayed within the selected date range.</p>
-
-            <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
-            <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="width:100%; justify-content:center;">Import &amp; Sync Schedule</button>
-            <div id="scheduleImportMessage" class="schedule-import-message" style="display:none;"></div>
-            <div id="scheduleDeleteMessage" class="schedule-import-message" style="display:none;"></div>
-        </form>
+        </div>
         {% endif %}
 
         {% if calendar_full_mode %}
@@ -751,11 +855,11 @@
 <div id="deleteClassScheduleModal" class="delete-schedule-modal">
     <div class="delete-schedule-dialog">
         <div class="delete-schedule-icon">!</div>
-        <h3>Delete Class Schedule?</h3>
-        <p>This will delete this class schedule entry. The time slot may become available for reservations.</p>
+        <h3>Delete Entire Class Schedule?</h3>
+        <p>This action will permanently delete all schedule occurrences associated with this class and cannot be undone.</p>
         <div class="delete-schedule-actions">
             <button type="button" id="cancelDeleteClassSchedule" class="delete-schedule-cancel">Cancel</button>
-            <button type="button" id="confirmDeleteClassSchedule" class="delete-schedule-confirm">Yes, Delete Schedule</button>
+            <button type="button" id="confirmDeleteClassSchedule" class="delete-schedule-confirm">Delete Entire Schedule</button>
         </div>
     </div>
 </div>
@@ -1023,50 +1127,6 @@
             });
         }
     }
-
-    function initializeModalImprovements() {
-        // Create improved modal overlay
-        const modalOverlay = document.createElement('div');
-        modalOverlay.id = 'improvedModalOverlay';
-        modalOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-            z-index: 9998;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        `;
-        document.body.appendChild(modalOverlay);
-
-        // Override modal opening functions
-        const originalOpenModal = window.openModal;
-        window.openModal = function(event) {
-            if (event) {
-                renderEventModal(event);
-            }
-            modalOverlay.style.display = 'flex';
-        };
-
-        // Override modal closing functions
-        const originalCloseModal = window.closeModal;
-        window.closeModal = function() {
-            modalOverlay.style.display = 'none';
-            if (originalCloseModal) originalCloseModal();
-        };
-
-        // Close modal when clicking overlay
-        modalOverlay.addEventListener('click', function(e) {
-            if (e.target === modalOverlay) {
-                window.closeModal();
-            }
-        });
-    }
-
     function bootCalendar() {
         if (!document.getElementById('calendarView')) return;
 
@@ -1140,9 +1200,8 @@
         // Remove references to deleted manualBlockForm to prevent errors
         // The manual block form has been replaced by modifyScheduleForm
 
-        // Initialize date restrictions and modal improvements
+        // Initialize date restrictions
         initializeFormRestrictions();
-        initializeModalImprovements();
 
         inst.timer = setInterval(() => {
             if (!document.hidden) renderCalendar(true);
@@ -1320,9 +1379,14 @@
         if (actionType === 'modify') {
             modifyFields.style.display = 'grid';
             blockFields.style.display = 'none';
-            // Disable facility select in modify mode (class schedule facility cannot be changed)
-            facilitySelect.disabled = true;
-            facilitySelect.classList.add('disabled-field');
+            // Enable facility select in modify mode - user should be able to change it
+            facilitySelect.disabled = false;
+            facilitySelect.classList.remove('disabled-field');
+            // Enable time selects in modify mode - user should be able to change them
+            startTimeSelect.disabled = false;
+            startTimeSelect.classList.remove('disabled-field');
+            endTimeSelect.disabled = false;
+            endTimeSelect.classList.remove('disabled-field');
             // Add readonly styling to inputs
             readonlyInputs.forEach(input => {
                 if (input) input.classList.add('readonly-field');
@@ -1604,7 +1668,6 @@
 
     function openDeleteScheduleModal() {
         document.getElementById('deleteScheduleModal').classList.add('is-open');
-        playDeleteWarningSound();
     }
 
     function closeDeleteScheduleModal() {
@@ -1771,7 +1834,6 @@
     }
 
     async function renderCalendar(forceRefresh = false) {
-        updateDateDisplay();
         const startDate = getStartDate();
         const endDate = getEndDate();
         const container = document.getElementById('calendarView');
@@ -1784,6 +1846,7 @@
 
         if (cachedEvents) {
             renderCalendarEvents(cachedEvents, startDate, renderDate, renderMode);
+            updateDateDisplay();
             setCalendarStatus('Refreshing calendar data in real time...', 'loading', false);
         } else {
             container.innerHTML = renderMode === 'week'
@@ -1826,6 +1889,7 @@
                 calendarEventsCache.delete(firstKey);
             }
             renderCalendarEvents(events, startDate, renderDate, renderMode);
+            updateDateDisplay();
             setCalendarStatus(`Loaded ${events.length} calendar item${events.length === 1 ? '' : 's'} successfully.`, 'success', false);
         } catch (error) {
             window.clearTimeout(slowTimer);
@@ -1931,9 +1995,39 @@
     function updateDateDisplay() {
         const display = document.getElementById('currentDateDisplay');
         const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        // Get term from visible class schedules
+        const termDisplay = getCurrentTermDisplay();
+        
         display.textContent = viewMode === 'week'
-            ? `Weekly Schedule - ${monthYear}`
-            : `Daily Schedule - ${currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
+            ? `Weekly Schedule - ${monthYear}${termDisplay ? ` (${termDisplay})` : ''}`
+            : `Daily Schedule - ${currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}${termDisplay ? ` (${termDisplay})` : ''}`;
+    }
+
+    function getCurrentTermDisplay() {
+        // Get all visible class schedules and find the most common term
+        const eventElements = document.querySelectorAll('.event-block[data-term]');
+        if (eventElements.length === 0) return '';
+        
+        const terms = {};
+        eventElements.forEach(el => {
+            const term = el.dataset.term;
+            if (term) {
+                terms[term] = (terms[term] || 0) + 1;
+            }
+        });
+        
+        // Find the most common term
+        let maxCount = 0;
+        let mostCommonTerm = '';
+        for (const [term, count] of Object.entries(terms)) {
+            if (count > maxCount) {
+                maxCount = count;
+                mostCommonTerm = term;
+            }
+        }
+        
+        return mostCommonTerm ? `Term ${mostCommonTerm}` : '';
     }
 
     function formatDate(date) {
@@ -2074,6 +2168,7 @@
             ' data-course-code="' + escapeHtml(event.courseCode || '') + '"' +
             ' data-section="' + escapeHtml(event.section || '') + '"' +
             ' data-faculty-name="' + escapeHtml(event.facultyName || '') + '"' +
+            ' data-term="' + escapeHtml(event.term || '') + '"' +
             ' data-faculty-email="' + escapeHtml(event.facultyEmail || '') + '"' +
             ' data-faculty-verified="' + (event.facultyVerified ? '1' : '0') + '"' +
             ' data-is-relocated="' + (event.isRelocated ? '1' : '0') + '"' +
@@ -2120,6 +2215,7 @@
                 ['Section', data.section || '—'],
                 ['Faculty', data.facultyName || '—'],
                 ['Faculty email', emailDisplay],
+                ['Term', data.term ? `Term ${data.term}` : '—'],
                 ['Date', data.date],
                 ['Time', `${formatEventTime(data.start)} - ${formatEventTime(data.end)}`],
             ];
@@ -2243,10 +2339,18 @@
         document.getElementById('modifyFields').style.display = 'grid';
         document.getElementById('blockFields').style.display = 'none';
 
-        // Disable facility select in modify mode (class schedule facility cannot be changed)
+        // Enable facility select in modify mode - user should be able to change it
         const facilitySelect = document.getElementById('modifyFacilitySelect');
-        facilitySelect.disabled = true;
-        facilitySelect.classList.add('disabled-field');
+        facilitySelect.disabled = false;
+        facilitySelect.classList.remove('disabled-field');
+
+        // Enable time selects in modify mode - user should be able to change them
+        const startTimeSelect = document.getElementById('modifyStartTime');
+        const endTimeSelect = document.getElementById('modifyEndTime');
+        startTimeSelect.disabled = false;
+        startTimeSelect.classList.remove('disabled-field');
+        endTimeSelect.disabled = false;
+        endTimeSelect.classList.remove('disabled-field');
 
         // Add readonly styling to course code, section, and faculty name
         document.getElementById('modifyCourseCodeInput').classList.add('readonly-field');
@@ -2254,8 +2358,6 @@
         document.getElementById('modifyFacultyNameInput').classList.add('readonly-field');
 
         // Store original class times for blocking (time cannot be changed when blocking a class)
-        const startTimeSelect = document.getElementById('modifyStartTime');
-        const endTimeSelect = document.getElementById('modifyEndTime');
         startTimeSelect.dataset.classStartTime = modal.dataset.activeStart || '';
         endTimeSelect.dataset.classEndTime = modal.dataset.activeEnd || '';
 
@@ -2552,6 +2654,227 @@
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[character]));
+    }
+
+    // ============================================
+    // TAB-BASED IMPORT INTERFACE
+    // ============================================
+
+    // Tab switching function
+    function switchImportTab(tabName) {
+        document.querySelectorAll('.import-tab').forEach(t => {
+            t.classList.remove('active');
+            t.style.color = 'var(--text-light)';
+            t.style.borderBottomColor = 'transparent';
+        });
+        document.querySelectorAll('.import-tab-content').forEach(c => c.style.display = 'none');
+
+        const activeTab = document.querySelector('.import-tab[data-tab="' + tabName + '"]');
+        if (activeTab) {
+            activeTab.classList.add('active');
+            activeTab.style.color = 'var(--primary)';
+            activeTab.style.borderBottomColor = 'var(--primary)';
+        }
+
+        const activeContent = document.getElementById('tab-' + tabName);
+        if (activeContent) {
+            activeContent.style.display = 'block';
+        }
+    }
+
+    // Manual Input Form Handler
+    document.getElementById('manualInputForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('manualInputSubmit');
+        const origText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Importing...';
+
+        try {
+            const formData = new FormData(e.target);
+            const response = await fetch(e.target.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Import failed');
+            }
+
+            // Show success message
+            const msgDiv = document.getElementById('manualInputMessage');
+            msgDiv.textContent = data.message;
+            msgDiv.className = 'schedule-import-message';
+            msgDiv.style.display = 'block';
+            msgDiv.style.background = '#dcfce7';
+            msgDiv.style.color = '#166534';
+            msgDiv.style.border = '1px solid #86efac';
+            msgDiv.style.padding = '12px 16px';
+            msgDiv.style.borderRadius = '8px';
+            msgDiv.style.fontWeight = '500';
+
+            // Refresh calendar
+            calendarEventsCache.clear();
+            if (data.scheduleRevision) {
+                broadcastScheduleRevision(data.scheduleRevision);
+            }
+            if (data.date) {
+                currentDate = parseDateOnly(data.date);
+                window.history.replaceState(null, '', `${window.location.pathname}?date=${data.date}`);
+            }
+            await renderCalendar(true);
+
+            // Reset form
+            e.target.reset();
+
+            // Hide message after 5 seconds
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 5000);
+
+        } catch (err) {
+            const msgDiv = document.getElementById('manualInputMessage');
+            msgDiv.textContent = err.message || 'Import failed';
+            msgDiv.className = 'schedule-import-message';
+            msgDiv.style.display = 'block';
+            msgDiv.style.background = '#fee2e2';
+            msgDiv.style.color = '#991b1b';
+            msgDiv.style.border = '1px solid #fca5a5';
+            msgDiv.style.padding = '12px 16px';
+            msgDiv.style.borderRadius = '8px';
+            msgDiv.style.fontWeight = '500';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    });
+
+    // ============================================
+    // REAL-TIME CONFLICT DETECTION FOR INPUT SCHEDULE
+    // ============================================
+    let conflictCheckTimeout = null;
+
+    function checkConflict() {
+        const facility = document.getElementById('inputFacility')?.value;
+        const day = document.getElementById('inputDay')?.value;
+        const startTime = document.getElementById('inputStartTime')?.value;
+        const endTime = document.getElementById('inputEndTime')?.value;
+        const submitBtn = document.getElementById('manualInputSubmit');
+        const conflictDiv = document.getElementById('inputConflictMessage') || createConflictMessageDiv();
+
+        if (!facility || !day || !startTime || !endTime) {
+            conflictDiv.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
+
+        clearTimeout(conflictCheckTimeout);
+        conflictCheckTimeout = setTimeout(async () => {
+            try {
+                const formData = new FormData();
+                formData.append('facility', facility);
+                formData.append('day', day);
+                formData.append('start_time', startTime);
+                formData.append('end_time', endTime);
+
+                const response = await fetch('/super-admin/calendar/check-conflict', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                const data = await response.json();
+
+                if (data.hasConflict) {
+                    conflictDiv.textContent = `CONFLICT: ${data.conflict.courseCode} - ${data.conflict.section} (${data.conflict.facultyName}) already scheduled from ${data.conflict.startTime} to ${data.conflict.endTime}`;
+                    conflictDiv.style.display = 'block';
+                    conflictDiv.style.background = '#fee2e2';
+                    conflictDiv.style.color = '#991b1b';
+                    conflictDiv.style.border = '1px solid #fca5a5';
+                    conflictDiv.style.padding = '12px 16px';
+                    conflictDiv.style.borderRadius = '8px';
+                    conflictDiv.style.marginTop = '12px';
+                    conflictDiv.style.fontWeight = '600';
+                    if (submitBtn) submitBtn.disabled = true;
+                } else {
+                    conflictDiv.style.display = 'none';
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            } catch (err) {
+                // Silently fail - don't block user on error
+            }
+        }, 300);
+    }
+
+    function createConflictMessageDiv() {
+        const form = document.getElementById('manualInputForm');
+        const div = document.createElement('div');
+        div.id = 'inputConflictMessage';
+        div.style.display = 'none';
+        form.insertBefore(div, form.querySelector('button[type="submit"]'));
+        return div;
+    }
+
+    // Attach conflict detection listeners
+    ['inputFacility', 'inputDay', 'inputStartTime', 'inputEndTime'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', checkConflict);
+        }
+    });
+
+    // ============================================
+    // EMAIL DOMAIN VALIDATION FOR INPUT SCHEDULE
+    // ============================================
+    function validateEmailDomain() {
+        const emailInput = document.getElementById('inputFacultyEmail');
+        if (!emailInput) return;
+
+        const email = emailInput.value.trim().toLowerCase();
+        const allowedDomains = ['@feutech.edu.ph', '@fit.edu.ph'];
+        let errorSpan = document.getElementById('emailDomainError');
+
+        if (!errorSpan) {
+            errorSpan = document.createElement('span');
+            errorSpan.id = 'emailDomainError';
+            errorSpan.style.color = '#dc2626';
+            errorSpan.style.fontSize = '12px';
+            errorSpan.style.marginTop = '4px';
+            errorSpan.style.display = 'block';
+            emailInput.parentNode.appendChild(errorSpan);
+        }
+
+        if (email) {
+            const isValidDomain = allowedDomains.some(domain => email.endsWith(domain));
+            if (!isValidDomain) {
+                errorSpan.textContent = 'Email must be from @feutech.edu.ph or @fit.edu.ph';
+                emailInput.style.borderColor = '#dc2626';
+            } else {
+                errorSpan.textContent = '';
+                emailInput.style.borderColor = '';
+            }
+        } else {
+            errorSpan.textContent = '';
+            emailInput.style.borderColor = '';
+        }
+    }
+
+    const emailInput = document.getElementById('inputFacultyEmail');
+    if (emailInput) {
+        emailInput.addEventListener('blur', validateEmailDomain);
+        emailInput.addEventListener('input', () => {
+            const errorSpan = document.getElementById('emailDomainError');
+            if (errorSpan) errorSpan.textContent = '';
+            emailInput.style.borderColor = '';
+        });
     }
 </script>
 {% endblock %}

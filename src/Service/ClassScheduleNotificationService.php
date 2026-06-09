@@ -26,7 +26,7 @@ class ClassScheduleNotificationService
     /**
      * @return array{success: bool, message: string, channels: string}
      */
-    public function notifyFaculty(ClassSchedule $schedule, ?string $customMessage = null): array
+    public function notifyFaculty(ClassSchedule $schedule, ?string $customMessage = null, array $additionalContext = []): array
     {
         $actor = $this->security->getUser();
         if (!$actor instanceof User) {
@@ -47,7 +47,7 @@ class ClassScheduleNotificationService
         $channels = [];
 
         try {
-            $this->sendEmail($recipientEmail, $schedule, $message);
+            $this->sendEmail($recipientEmail, $schedule, $message, $additionalContext);
             $emailSent = true;
             $channels[] = 'email';
         } catch (\Throwable $e) {
@@ -132,18 +132,20 @@ class ClassScheduleNotificationService
         );
     }
 
-    private function sendEmail(string $to, ClassSchedule $schedule, string $message): void
+    private function sendEmail(string $to, ClassSchedule $schedule, string $message, array $additionalContext = []): void
     {
+        $context = array_merge([
+            'schedule' => $schedule,
+            'message' => $message,
+            'facilityName' => $schedule->getFacility()?->getName(),
+        ], $additionalContext);
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
             ->to($to)
             ->subject('Class schedule update — ' . $schedule->getCourseCode())
             ->htmlTemplate('email/class_schedule_notify.html.twig')
-            ->context([
-                'schedule' => $schedule,
-                'message' => $message,
-                'facilityName' => $schedule->getFacility()?->getName(),
-            ]);
+            ->context($context);
 
         $this->mailer->send($email);
     }

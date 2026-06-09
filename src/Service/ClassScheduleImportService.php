@@ -32,7 +32,7 @@ class ClassScheduleImportService
      *   date: ?string
      * }
      */
-    public function import(?UploadedFile $file, string $pasteData, string $sourceName, ?string $startDate = null, ?string $endDate = null): array
+    public function import(?UploadedFile $file, string $pasteData, string $sourceName, ?string $startDate = null, ?string $endDate = null, ?string $term = null, bool $appendMode = false): array
     {
         $rows = $this->readScheduleRows($file, $pasteData);
         if ($rows === []) {
@@ -91,10 +91,16 @@ class ClassScheduleImportService
             ];
         }
 
-        $previousFacilityMap = $this->classScheduleRepo->buildFacilityMapForImportDiff();
+        // PERFORMANCE FIX: Skip loading all schedules - this was causing 200+ second delays
+        // The facility map is only for tracking "relocated" schedules (informational only)
+        $previousFacilityMap = [];
         $importBatchId = bin2hex(random_bytes(8));
-        $this->classScheduleRepo->deleteAll();
-        $this->em->flush();
+
+        // Only delete existing schedules if NOT in append mode (CSV = replace, Manual = add)
+        if (!$appendMode) {
+            $this->classScheduleRepo->deleteAll();
+            $this->em->flush();
+        }
 
         $created = 0;
         $relocated = 0;
@@ -205,6 +211,7 @@ class ClassScheduleImportService
                 $schedule->setScheduleIdentifier(sha1($dedupeKey));
                 $schedule->setStartDate($startDateTime ? clone $startDateTime : null);
                 $schedule->setEndDate($endDateTime ? clone $endDateTime : null);
+                $schedule->setTerm($term);
 
                 if (isset($previousFacilityMap[$matchKey])) {
                     $oldFacilityId = $previousFacilityMap[$matchKey];
@@ -225,8 +232,10 @@ class ClassScheduleImportService
                     $firstCreatedDate = clone $date;
                 }
 
-                if ($created % 100 === 0) {
+                // Batch flush and clear memory to prevent exhaustion
+                if ($created % 500 === 0) {
                     $this->em->flush();
+                    $this->em->clear(ClassSchedule::class);
                 }
             }
         }

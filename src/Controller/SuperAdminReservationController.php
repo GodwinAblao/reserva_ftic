@@ -22,6 +22,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Routing\Attribute\Route;
 use App\DTO\ScheduleSlot;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -112,6 +113,7 @@ class SuperAdminReservationController extends AbstractController
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em,
         ReservationAuditLogger $auditLogger,
+        FacilityRepository $facilityRepo,
     ): Response {
         // Skip CSRF validation for Super Admin operations
         // Super Admin has full privileges and doesn't need CSRF protection
@@ -124,12 +126,54 @@ class SuperAdminReservationController extends AbstractController
             return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
         }
 
+        // Update all reservation fields
+        $facilityId = $request->request->get('facility');
+        $reservationDate = $request->request->get('reservationDate');
+        $startTime = $request->request->get('reservationStartTime');
+        $endTime = $request->request->get('reservationEndTime');
+        $capacity = $request->request->get('capacity');
+        $purpose = $request->request->get('purpose');
+
+        // Update facility if provided
+        if ($facilityId) {
+            $facility = $facilityRepo->find($facilityId);
+            if ($facility) {
+                $reservation->setFacility($facility);
+            }
+        }
+
+        // Update date if provided
+        if ($reservationDate) {
+            $reservation->setReservationDate(new \DateTime($reservationDate));
+        }
+
+        // Update start time if provided
+        if ($startTime) {
+            $reservation->setReservationStartTime(new \DateTime($startTime));
+        }
+
+        // Update end time if provided
+        if ($endTime) {
+            $reservation->setReservationEndTime(new \DateTime($endTime));
+        }
+
+        // Update capacity if provided
+        if ($capacity !== null) {
+            $reservation->setCapacity((int) $capacity);
+        }
+
+        // Update purpose if provided
+        if ($purpose !== null) {
+            $reservation->setPurpose($purpose);
+        }
+
+        // Update status and log change if status changed
         if ($previousStatus !== $newStatus) {
             $reservation->setStatus($newStatus);
-            $reservation->setUpdatedAt(new \DateTime());
             $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'admin_update', null);
         }
 
+        $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
 
         $this->addFlash('success', 'Reservation updated successfully.');
@@ -370,19 +414,30 @@ class SuperAdminReservationController extends AbstractController
         FacilityRepository $facilityRepo,
         EntityManagerInterface $em,
         ScheduleRevisionService $scheduleRevision,
+        ClassScheduleNotificationService $notificationService,
     ): JsonResponse {
         // Skip CSRF validation for Super Admin operations
         // Super Admin has full privileges and doesn't need CSRF protection
 
         $blockType = $request->request->get('block_type', 'Blocked');
-        
+        $blockTitle = $request->request->get('title', 'Unavailable');
+        $blockNotes = $request->request->get('notes', '');
+
         // Set the status on the class schedule instead of creating a separate block
         $schedule->setStatus($blockType);
         $em->flush();
 
+        // Send email notification to faculty with block details
+        $message = $this->buildBlockMessage($schedule, $blockType, $blockTitle, $blockNotes);
+        $notificationResult = $notificationService->notifyFaculty($schedule, $message, [
+            'blockType' => $blockType,
+            'blockTitle' => $blockTitle,
+            'blockNotes' => $blockNotes,
+        ]);
+
         return $this->json([
             'success' => true,
-            'message' => 'Class schedule blocked successfully. Time slot is now blocked.',
+            'message' => 'Class schedule blocked successfully. Time slot is now blocked.' . ($notificationResult['success'] ? ' Email notification sent to faculty.' : ''),
             'scheduleRevision' => $scheduleRevision->getRevision(),
         ]);
     }
@@ -393,14 +448,19 @@ class SuperAdminReservationController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         ScheduleRevisionService $scheduleRevision,
+        ClassScheduleNotificationService $notificationService,
     ): JsonResponse {
         // Clear the status to revert to normal
         $schedule->setStatus(null);
         $em->flush();
 
+        // Send email notification to faculty
+        $message = $this->buildRevertMessage($schedule);
+        $notificationResult = $notificationService->notifyFaculty($schedule, $message);
+
         return $this->json([
             'success' => true,
-            'message' => 'Class schedule reverted successfully. Time slot is now available.',
+            'message' => 'Class schedule reverted successfully. Time slot is now available.' . ($notificationResult['success'] ? ' Email notification sent to faculty.' : ''),
             'scheduleRevision' => $scheduleRevision->getRevision(),
         ]);
     }
@@ -512,16 +572,38 @@ class SuperAdminReservationController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         ScheduleRevisionService $scheduleRevision,
+        ClassScheduleRepository $classScheduleRepo,
     ): JsonResponse {
         // Skip CSRF validation for Super Admin operations
         // Super Admin has full privileges and doesn't need CSRF protection
 
-        $em->remove($schedule);
-        $em->flush();
+        // Delete entire series (same course, section, faculty, day, and time)
+        $courseCode = $schedule->getCourseCode();
+        $section = $schedule->getSection();
+        $facultyName = $schedule->getFacultyName();
+        $dayOfWeek = $schedule->getDayOfWeek();
+        $startTime = $schedule->getStartTime()?->format('H:i:s');
+        $endTime = $schedule->getEndTime()?->format('H:i:s');
+
+        if (!$dayOfWeek || !$startTime || !$endTime) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Cannot delete schedule: missing required fields.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $deletedCount = $classScheduleRepo->deleteBySeries(
+            $courseCode,
+            $section,
+            $facultyName,
+            $dayOfWeek,
+            $startTime,
+            $endTime
+        );
 
         return $this->json([
             'success' => true,
-            'message' => 'Class schedule deleted successfully.',
+            'message' => "Deleted {$deletedCount} schedule occurrence(s) from the series.",
             'scheduleRevision' => $scheduleRevision->getRevision(),
         ]);
     }
@@ -663,9 +745,10 @@ class SuperAdminReservationController extends AbstractController
             $pasteData = $request->request->get('schedule_paste');
             $startDate = $request->request->get('start_date');
             $endDate = $request->request->get('end_date');
+            $term = $request->request->get('term');
             $sourceName = $file ? $file->getClientOriginalName() : 'Pasted Data';
 
-            $result = $importService->import($file, $pasteData, $sourceName, $startDate, $endDate);
+            $result = $importService->import($file, $pasteData, $sourceName, $startDate, $endDate, $term);
 
             return $this->json([
                 'success' => $result['success'],
@@ -677,11 +760,72 @@ class SuperAdminReservationController extends AbstractController
                 'date' => $result['date'],
                 'scheduleRevision' => $scheduleRevision->getRevision(),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // Catch both Exception and Error to prevent HTML error pages
             return $this->json([
                 'success' => false,
                 'message' => 'Import failed: ' . $e->getMessage(),
-                'errors' => [$e->getMessage()],
+                'errors' => [$e->getMessage(), $e->getTraceAsString()],
+            ], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route('/calendar/import/manual', name: 'admin_calendar_import_manual', methods: ['POST'])]
+    public function importManualSchedule(
+        Request $request,
+        ClassScheduleImportService $importService,
+        FacilityRepository $facilityRepo,
+        ScheduleRevisionService $scheduleRevision,
+    ): JsonResponse {
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Access denied.',
+            ], Response::HTTP_FORBIDDEN);
+        }
+
+        try {
+            $facility = $request->request->get('facility');
+            $day = $request->request->get('day');
+            $startTime = $request->request->get('start_time');
+            $endTime = $request->request->get('end_time');
+            $courseCode = $request->request->get('course_code');
+            $section = $request->request->get('section');
+            $facultyName = $request->request->get('faculty_name');
+            $facultyEmail = $request->request->get('faculty_email');
+
+            // Validate required fields
+            if (!$facility || !$day || !$startTime || !$endTime || !$courseCode || !$section || !$facultyName || !$facultyEmail) {
+                return $this->json([
+                    'success' => false,
+                    'message' => 'All fields are required.',
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Create temporary CSV
+            $csvContent = "facility,day,start_time,end_time,course_code,section,faculty_name,faculty_email\n";
+            $csvContent .= "\"$facility\",\"$day\",\"$startTime\",\"$endTime\",\"$courseCode\",\"$section\",\"$facultyName\",\"$facultyEmail\"\n";
+
+            $tempFile = tempnam(sys_get_temp_dir(), 'schedule_') . '.csv';
+            file_put_contents($tempFile, $csvContent);
+
+            $uploadedFile = new UploadedFile($tempFile, 'manual_schedule.csv', 'text/csv', null, true);
+
+            // Import using the same service
+            $result = $importService->import($uploadedFile, '', 'Manual Entry', null, null, true);
+
+            unlink($tempFile);
+
+            return $this->json([
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'created' => $result['created'],
+                'scheduleRevision' => $scheduleRevision->getRevision(),
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Import failed: ' . $e->getMessage(),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -858,6 +1002,57 @@ class SuperAdminReservationController extends AbstractController
               ->setNotes($request->request->get('notes'))
               ->setSource('Manual Entry');
         return $block;
+    }
+
+    private function buildBlockMessage(ClassSchedule $schedule, string $blockType, string $blockTitle, string $blockNotes): string
+    {
+        $facility = $schedule->getFacility()?->getName() ?? 'Unknown facility';
+        $date = $schedule->getScheduleDate()?->format('M d, Y') ?? '';
+        $start = $schedule->getStartTime()?->format('g:i A') ?? '';
+        $end = $schedule->getEndTime()?->format('g:i A') ?? '';
+        $course = $schedule->getCourseCode();
+        $section = $schedule->getSection() ? ' Section ' . $schedule->getSection() : '';
+
+        $message = sprintf(
+            'Your class %s%s at %s on %s from %s to %s has been %s.',
+            $course,
+            $section,
+            $facility,
+            $date,
+            $start,
+            $end,
+            strtolower($blockType)
+        );
+
+        if ($blockTitle && $blockTitle !== 'Unavailable') {
+            $message .= sprintf("\n\nBlock Label: %s", $blockTitle);
+        }
+
+        if ($blockNotes) {
+            $message .= sprintf("\n\nReason: %s", $blockNotes);
+        }
+
+        return $message;
+    }
+
+    private function buildRevertMessage(ClassSchedule $schedule): string
+    {
+        $facility = $schedule->getFacility()?->getName() ?? 'Unknown facility';
+        $date = $schedule->getScheduleDate()?->format('M d, Y') ?? '';
+        $start = $schedule->getStartTime()?->format('g:i A') ?? '';
+        $end = $schedule->getEndTime()?->format('g:i A') ?? '';
+        $course = $schedule->getCourseCode();
+        $section = $schedule->getSection() ? ' Section ' . $schedule->getSection() : '';
+
+        return sprintf(
+            'Your class %s%s at %s on %s from %s to %s has been reverted to normal. The time slot is now available.',
+            $course,
+            $section,
+            $facility,
+            $date,
+            $start,
+            $end
+        );
     }
 
     private function resolveConflictResponse(): JsonResponse
