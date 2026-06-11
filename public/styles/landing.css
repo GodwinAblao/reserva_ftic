@@ -1347,6 +1347,225 @@ body.page-landing {
     margin: 0;
 }
 
+/* ============= SOCIAL LINKS SECTION ============= */
+.social-section-new {
+    padding: 4rem 2rem 4.5rem;
+    background:
+        radial-gradient(circle at top left, rgba(13, 155, 0, 0.08), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, #f4faf2 100%);
+    border-top: 1px solid rgba(13, 155, 0, 0.08);
+}
+
+.social-header {
+    max-width: 760px;
+    margin: 0 auto 1.75rem;
+    text-align: center;
+}
+
+.social-title {
+    margin: 0 0 0.45rem;
+    color: #111827;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.social-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.social-links-grid {
+    max-width: 820px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    font-size: 0;
+    line-height: 0;
+}
+
+.social-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    min-height: 56px;
+    padding: 0;
+    border-radius: 16px;
+    text-decoration: none;
+    text-decoration-line: none;
+    text-decoration-color: transparent;
+    -webkit-text-decoration-line: none;
+    -webkit-text-decoration-color: transparent;
+    text-decoration-skip-ink: none;
+    line-height: 1;
+    font-size: 0;
+    overflow: hidden;
+    border: 0 !important;
+    background-color: transparent;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 28px 28px;
+    box-shadow: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.social-icon-link:hover {
+    transform: translateY(-1px);
+    box-shadow: none;
+    border-color: transparent;
+}
+
+.social-icon-link::after,
+.social-icon-link::before {
+    content: none !important;
+}
+
+.social-icon-link--facebook {
+    background-image: url('/images/facebook.png');
+    background-color: rgba(24, 119, 242, 0.08);
+}
+
+.social-icon-link--instagram {
+    background-image: url('/images/instagram.png');
+    background-color: rgba(225, 48, 108, 0.08);
+}
+
+.social-icon-link--tiktok {
+    background-image: url('/images/tiktok.png');
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+.social-icon-fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1;
+}
+
+.social-icon-link--youtube {
+    background-color: rgba(255, 0, 0, 0.08);
+}
+
+.social-icon-link--yt {
+    background-color: rgba(255, 0, 0, 0.08);
+}
+
+.contact-section-new {
+    max-width: 820px;
+    margin: 2rem auto 0;
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(13, 155, 0, 0.12);
+    box-shadow: 0 14px 30px rgba(13, 155, 0, 0.06);
+    backdrop-filter: blur(10px);
+}
+
+.contact-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-align: left;
+}
+
+.contact-title {
+    margin: 0 0 0.35rem;
+    color: #111827;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.contact-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.contact-links-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.contact-link-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 220px;
+    padding: 0.85rem 1rem;
+    border-radius: 18px;
+    text-decoration: none;
+    border: 1px solid rgba(13, 155, 0, 0.12);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfef9 100%);
+    box-shadow: 0 10px 24px rgba(13, 155, 0, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.contact-link-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(13, 155, 0, 0.22);
+    box-shadow: 0 16px 30px rgba(13, 155, 0, 0.1);
+}
+
+.contact-link-icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: rgba(13, 155, 0, 0.1);
+    color: #0D9B00;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.contact-link-icon--email {
+    background-image: url('/images/icons8-microsoft-outlook-2025-48.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 22px 22px;
+    color: transparent;
+    font-size: 0;
+}
+
+.contact-link-label {
+    display: block;
+    color: #111827;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.contact-link-value {
+    display: block;
+    color: #0D9B00;
+    font-size: 0.82rem;
+    line-height: 1.25;
+    margin-top: 0.1rem;
+    word-break: break-word;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .faq-section-new {
@@ -1361,5 +1580,44 @@ body.page-landing {
     .faq-answer-new {
         padding: 0 1rem 0.875rem;
         font-size: 0.8rem;
+    }
+
+    .social-section-new {
+        padding: 3rem 1rem 3.5rem;
+    }
+
+    .social-links-grid {
+        gap: 0.75rem;
+    }
+
+    .social-icon-link {
+        width: 64px;
+        height: 64px;
+        min-height: 64px;
+    }
+
+    .social-icon-fallback {
+        font-size: 0.75rem;
+    }
+
+    .contact-links-grid {
+        width: 100%;
+    }
+
+    .contact-section-new {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .contact-copy {
+        width: 100%;
+        text-align: center;
+    }
+
+    .contact-link-card {
+        width: 100%;
+        min-width: 0;
     }
 }

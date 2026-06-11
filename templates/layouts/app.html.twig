@@ -92,6 +92,8 @@
     {% set admin_page_name = 'Facility Management' %}
 {% elseif route starts with 'mentoring_' %}
     {% set admin_page_name = 'Mentoring Management' %}
+{% elseif route == 'admin_landing_page' %}
+    {% set admin_page_name = 'Landing Page' %}
 {% elseif route starts with 'research_' %}
     {% set admin_page_name = 'Innovation Hub' %}
 {% elseif route starts with 'analytics_' or route == 'admin_role_reports' %}
@@ -264,6 +266,10 @@
                 <a class="nav-link {{ route starts with 'mentoring_' ? 'active' : '' }}" href="{{ path('mentoring_superadmin_requests') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7A2.5 2.5 0 0 1 17.5 16H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7Zm4 2.25h8V7h-8v1.75Zm0 3.25h5V11h-5v1Z" fill="currentColor"/></svg></span>
                     <span>Mentoring</span>
+                </a>
+                <a class="nav-link {{ route == 'admin_landing_page' ? 'active' : '' }}" href="{{ path('admin_landing_page') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4V4Zm2 2v12h12V6H6Zm2 2h8v2H8V8Zm0 4h8v2H8v-2Z" fill="currentColor"/></svg></span>
+                    <span>Landing Page</span>
                 </a>
                 <span class="nav-section-label">Reports and Analytics</span>
                 <a class="nav-link {{ route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">

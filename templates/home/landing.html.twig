@@ -6,8 +6,8 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/landing.css') }}?v=20260522-1">
-    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260522-1">
+    <link rel="stylesheet" href="{{ asset('styles/landing.css') }}?v=20260611-9">
+    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260611-9">
 {% endblock %}
 
 {% block javascripts %}{% endblock %}
@@ -35,31 +35,28 @@
     </header>
 
     <main>
+        {% set heroImageSrc = landing.heroImage starts with('http') ? landing.heroImage : asset(landing.heroImage|trim('/')) %}
         <section id="home" class="hero-section">
             <div class="hero-image-container">
-                <img src="{{ asset('innovcent_header_photo.jpg') }}" alt="FTIC Innovation Center workspace" class="hero-image">
+                <img src="{{ heroImageSrc }}" alt="FTIC Innovation Center workspace" class="hero-image">
                 <div class="hero-gradient"></div>
 
                 <div class="hero-content">
-                    <h1 class="hero-title">Your All-in-One Hub for Reservations, Mentoring, and Learning at FTIC</h1>
-                    <p class="hero-description">
-                        Reserva simplifies room reservations, mentoring sessions, and access to FTIC research and innovation articles — helping students and faculty stay organized, connected, and productive within the FEU Tech Innovation Center.
-                    </p>
+                    <h1 class="hero-title">{{ landing.heroTitle }}</h1>
+                    <p class="hero-description">{{ landing.heroDescription }}</p>
                     <div class="hero-buttons">
-                        <a class="btn-hero-primary" href="{{ path('app_register') }}" data-turbo="false" target="_self">Get Started</a>
+                        <a class="btn-hero-primary" href="{{ landing.heroCtaUrl }}" data-turbo="false" target="_self">{{ landing.heroCtaLabel }}</a>
                         <a class="btn-hero-secondary" href="#about">Learn More</a>
                     </div>
                 </div>
             </div>
-
-            
         </section>
 
         <!-- Facility detail modal -->
         <div id="facilityModal" class="facility-modal" style="display:none;">
             <div class="facility-modal-overlay" data-close="true"></div>
             <div class="facility-modal-dialog" role="dialog" aria-modal="true">
-                <button class="facility-modal-close" aria-label="Close">✕</button>
+                <button class="facility-modal-close" aria-label="Close">x</button>
                 <div class="facility-view-content">
                     <div class="facility-image-section" id="modalImageSection">
                         <div class="modal-main-image-wrap">
@@ -95,105 +92,73 @@
 
         <section class="offers-section">
             <div class="offers-header">
-                <h2 class="offers-title">What we Offer</h2>
-                <p class="offers-subtitle">Everything you need to stay organized and connected at FTIC</p>
+                <h2 class="offers-title">{{ landing.offersTitle }}</h2>
+                <p class="offers-subtitle">{{ landing.offersSubtitle }}</p>
             </div>
 
             <div class="offers-grid-new">
-                <!-- Large card left - Smart Facility Reservation -->
-                <article class="offer-card-large offer-facility">
-                    <div class="offer-card-content">
-                        <h3 class="offer-card-title">Smart Facility Reservation</h3>
-                        <p class="offer-card-desc">Check room availability in real time and book rooms for classes, meetings, and events</p>
-                        <a href="#facilities" class="offer-card-link">View Facilities &rarr;</a>
-                    </div>
-                </article>
-
-                <!-- Large card top right - Research & Innovation Hub -->
-                <article class="offer-card-large offer-research">
-                    <div class="offer-card-content">
-                        <h3 class="offer-card-title-white">FTIC Research &amp; Innovation Hub</h3>
-                        <p class="offer-card-desc-white">Access FTIC research publications, explore innovation content, and discover academic achievements</p>
-                        <a href="{{ path('app_register') }}" class="offer-card-link-white" data-turbo="false" target="_self">Get Started &rarr;</a>
-                    </div>
-                </article>
-
-                <!-- Medium card bottom middle - Mentoring Sessions -->
-                <article class="offer-card-medium offer-mentoring">
-                    <div class="offer-card-content">
-                        <h3 class="offer-card-title-white">Mentoring Sessions Made Easy</h3>
-                        <p class="offer-card-desc-white">Connect with mentors and schedule consultations quickly</p>
-                        <a href="{{ path('app_register') }}" class="offer-card-link-white" data-turbo="false" target="_self">Get Started &rarr;</a>
-                    </div>
-                </article>
-
-                <!-- Medium card bottom right - Mentorship Leaderboard -->
-                <article class="offer-card-medium offer-leaderboard">
-                    <div class="offer-card-content">
-                        <h3 class="offer-card-title-white">Mentorship Leaderboard</h3>
-                        <p class="offer-card-desc-white">Earn recognition through mentoring participation and track engagement</p>
-                        <a href="{{ path('app_register') }}" class="offer-card-link-white" data-turbo="false" target="_self">Get Started &rarr;</a>
-                    </div>
-                </article>
+                {% for offer in landing.offers %}
+                    {% set offerImage = offer.image starts with('http') ? offer.image : asset(offer.image|trim('/')) %}
+                    {% set offerOverlay = loop.index0 < 2
+                        ? 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)'
+                        : 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)' %}
+                    <article class="{{ loop.index0 < 2 ? 'offer-card-large' : 'offer-card-medium' }} offer-{{ offer.key }}" {% if offer.image %}style="background-image: {{ offerOverlay }}, url('{{ offerImage }}');"{% endif %}>
+                        <div class="offer-card-content">
+                            <h3 class="{{ loop.index0 < 1 ? 'offer-card-title' : 'offer-card-title-white' }}">{{ offer.title }}</h3>
+                            <p class="{{ loop.index0 < 1 ? 'offer-card-desc' : 'offer-card-desc-white' }}">{{ offer.description }}</p>
+                            <a href="{{ offer.linkUrl }}" class="{{ loop.index0 < 1 ? 'offer-card-link' : 'offer-card-link-white' }}">{{ offer.linkLabel }} &rarr;</a>
+                        </div>
+                    </article>
+                {% endfor %}
             </div>
         </section>
 
         <section id="about" class="about-section-new">
             <div class="about-header">
-                <h2 class="about-title">About Reserva</h2>
-                <p class="about-subtitle">Transforming the FTIC experience</p>
+                <h2 class="about-title">{{ landing.aboutTitle }}</h2>
+                <p class="about-subtitle">{{ landing.aboutSubtitle }}</p>
             </div>
 
             <div class="about-content-new">
                 <div class="about-logo">
-                    <img src="{{ asset('images/Reserva-Logo.png') }}" alt="Reserva Logo" class="about-logo-img">
+                    {% set aboutImageSrc = landing.aboutImage starts with('http') ? landing.aboutImage : asset(landing.aboutImage|trim('/')) %}
+                    <img src="{{ aboutImageSrc }}" alt="Reserva Logo" class="about-logo-img">
                 </div>
                 <div class="about-text-new">
-                    <p class="about-paragraph">
-                        Reserva is a modern web-based platform created for the FEU Tech Innovation Center (FTIC) to simplify facility
-                        reservations, mentoring coordination, and access to FTIC research and innovation content.
-                    </p>
-                    <p class="about-paragraph">
-                        By transforming manual processes into a centralized digital experience, Reserva helps create a more efficient,
-                        accessible, and connected environment for students and faculty.
-                    </p>
+                    {% for paragraph in landing.aboutParagraphs %}
+                        <p class="about-paragraph">{{ paragraph }}</p>
+                    {% endfor %}
                 </div>
             </div>
 
             <div class="mission-section">
-                <h3 class="mission-section-title">Our Mission</h3>
+                <h3 class="mission-section-title">{{ landing.missionTitle }}</h3>
                 <div class="mission-cards">
-                    <div class="mission-card-new">
-                        <div class="mission-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <circle cx="12" cy="12" r="4"></circle>
-                            </svg>
+                    {% for item in landing.missionItems %}
+                        <div class="mission-card-new">
+                            <div class="mission-icon">
+                                {% if loop.index0 == 0 %}
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <circle cx="12" cy="12" r="4"></circle>
+                                    </svg>
+                                {% elseif loop.index0 == 1 %}
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                        <path d="M2 17l10 5 10-5"></path>
+                                        <path d="M2 12l10 5 10-5"></path>
+                                    </svg>
+                                {% else %}
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 6v6l4 2"></path>
+                                    </svg>
+                                {% endif %}
+                            </div>
+                            <h4 class="mission-card-title">{{ item.title }}</h4>
+                            <p class="mission-card-text">{{ item.text }}</p>
                         </div>
-                        <h4 class="mission-card-title">Vision</h4>
-                        <p class="mission-card-text">Simplify reservation and scheduling processes while creating a smarter and more organized FTIC experience</p>
-                    </div>
-                    <div class="mission-card-new">
-                        <div class="mission-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                                <path d="M2 17l10 5 10-5"></path>
-                                <path d="M2 12l10 5 10-5"></path>
-                            </svg>
-                        </div>
-                        <h4 class="mission-card-title">Mission</h4>
-                        <p class="mission-card-text">Improve access to mentoring opportunities and centralize FTIC research and innovation resources</p>
-                    </div>
-                    <div class="mission-card-new">
-                        <div class="mission-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M12 6v6l4 2"></path>
-                            </svg>
-                        </div>
-                        <h4 class="mission-card-title">Goals</h4>
-                        <p class="mission-card-text">Encourage collaboration and engagement across the FTIC community for a connected environment</p>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </section>
@@ -250,23 +215,12 @@
 
         <section id="faq" class="faq-section-new">
             <div class="faq-header">
-                <h2 class="faq-title">Frequently Asked Questions</h2>
-                <p class="faq-subtitle">Everything you need to know about Reserva</p>
+                <h2 class="faq-title">{{ landing.faqTitle }}</h2>
+                <p class="faq-subtitle">{{ landing.faqSubtitle }}</p>
             </div>
 
             <div class="faq-container-new">
-                {% set faqs = [
-                    { question: 'What is Reserva?', answer: 'Reserva is a comprehensive web-based platform designed for the FEU Tech Innovation Center that simplifies facility reservations, mentoring coordination, and academic resource access in one place.' },
-                    { question: 'What can I do in Reserva?', answer: 'You can reserve rooms and facilities, request mentoring sessions, access academic resources, manage schedules, and track activities in one centralized dashboard.' },
-                    { question: 'How does room reservation work?', answer: 'Check room availability in real time, select your preferred room and time slot, submit your reservation request, and wait for approval.' },
-                    { question: 'How do mentoring sessions work?', answer: 'You can search for mentors based on skills and expertise, request a session, and receive confirmation once approved.' },
-                    { question: 'Can students apply as mentors?', answer: 'Yes. Students can apply to become mentors and share their expertise with others in the FTIC community.' },
-                    { question: 'What is the Mentorship Leaderboard?', answer: 'The Mentorship Leaderboard recognizes active mentors and tracks mentor engagement and contributions.' },
-                    { question: 'What resources can I access?', answer: 'You can access research papers, academic articles, innovation-focused content, and other educational materials for the FTIC community.' },
-                    { question: 'Can I manage my schedule in Reserva?', answer: 'Yes. Reserva provides a centralized dashboard where you can view and manage reservations, mentoring sessions, and schedules.' }
-                ] %}
-
-                {% for faq in faqs %}
+                {% for faq in landing.faqItems %}
                     <details class="faq-item-new">
                         <summary class="faq-question-new">
                             {{ faq.question }}
@@ -279,6 +233,47 @@
                         </div>
                     </details>
                 {% endfor %}
+            </div>
+        </section>
+
+        <section id="social" class="social-section-new">
+            <div class="social-header">
+                <h2 class="social-title">{{ landing.socialSectionTitle }}</h2>
+                <p class="social-subtitle">{{ landing.socialSectionSubtitle }}</p>
+            </div>
+
+            <div class="social-links-grid">
+                {% for social in landing.socialLinks %}
+                    {% set socialKey = social.platform|lower|replace({' ':'-','_':'-'}) %}
+                    {% set socialFallbackText = socialKey in ['youtube', 'yt'] ? 'YT' : social.platform|slice(0, 2)|upper %}
+                    <a class="social-icon-link social-icon-link--{{ socialKey }}" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.platform }}">
+                        {% if socialKey not in ['facebook', 'instagram', 'tiktok'] %}
+                            <span class="social-icon-fallback">{{ socialFallbackText }}</span>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+
+            <div class="contact-section-new">
+                <div class="contact-copy">
+                    <h3 class="contact-title">{{ landing.contactSectionTitle }}</h3>
+                    <p class="contact-subtitle">{{ landing.contactSectionSubtitle }}</p>
+                </div>
+                <div class="contact-links-grid">
+                    {% for contact in landing.contactLinks %}
+                        {% set contactKey = contact.label|lower|replace({' ':'-','_':'-'}) %}
+                        {% set contactIsEmail = contactKey in ['email', 'mail', 'contact-email'] or contact.url starts with('mailto:') %}
+                        <a class="contact-link-card contact-link-card--{{ contactKey }}" href="{{ contact.url }}" {% if contact.url starts with('mailto:') or contact.url starts with('tel:') %}target="_self"{% else %}target="_blank" rel="noopener noreferrer"{% endif %}>
+                            <span class="contact-link-icon {% if contactIsEmail %}contact-link-icon--email{% endif %}" aria-hidden="true">
+                                {% if not contactIsEmail %}{{ contact.label|slice(0, 1)|upper }}{% endif %}
+                            </span>
+                            <span class="contact-link-text">
+                                <span class="contact-link-label">{{ contact.label }}</span>
+                                <span class="contact-link-value">{{ contact.displayText ?: contact.url }}</span>
+                            </span>
+                        </a>
+                    {% endfor %}
+                </div>
             </div>
         </section>
     </main>
@@ -331,7 +326,6 @@
     </script>
 
     <script>
-        // Facility quick view modal wiring
         (function() {
             const modal = document.getElementById('facilityModal');
             if (!modal) return;
@@ -419,7 +413,6 @@
                     descBox.style.display = 'none';
                 }
 
-                // Reserve should go to sign up page for unauthenticated quick view
                 if (reserveBtn) {
                     reserveBtn.setAttribute('href', '{{ path('app_register') }}');
                     reserveBtn.setAttribute('data-turbo', 'false');

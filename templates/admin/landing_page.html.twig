@@ -1,0 +1,984 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block content %}
+    <div class="content-header landing-page-header">
+        <div>
+            <h2>Landing Page</h2>
+            <p>Update the public Home, Offers, About, Mission, and FAQ sections without changing the layout.</p>
+        </div>
+        <button type="button" id="landingPageEditToggle" class="btn-secondary landing-edit-toggle">Edit</button>
+    </div>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="flash-message flash-{{ label }}">
+                <div class="flash-content">
+                    <div class="flash-icon">{{ label == 'success' ? 'OK' : '!' }}</div>
+                    <div>{{ message }}</div>
+                </div>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <form id="landingPageForm" method="post" enctype="multipart/form-data" class="landing-page-form is-locked">
+        <input type="hidden" name="_token" value="{{ csrf_token('landing_page_content') }}">
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>Home</h3>
+                    <p>Hero content shown at the top of the landing page.</p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Hero Title</span>
+                    <input type="text" name="hero_title" value="{{ landing.heroTitle }}">
+                </label>
+                <label>
+                    <span>CTA Label</span>
+                    <input type="text" name="hero_cta_label" value="{{ landing.heroCtaLabel }}">
+                </label>
+            </div>
+
+            <label>
+                <span>Hero Description</span>
+                <textarea name="hero_description" rows="4">{{ landing.heroDescription }}</textarea>
+            </label>
+
+            <div class="grid-2">
+                <label>
+                    <span>CTA URL</span>
+                    <input type="text" name="hero_cta_url" value="{{ landing.heroCtaUrl }}">
+                </label>
+                <label>
+                    <span>Hero Image URL</span>
+                    <input type="text" name="hero_image_url" value="{{ landing.heroImage }}">
+                </label>
+            </div>
+
+            <label>
+                <span>Upload New Hero Image</span>
+                <input type="file" name="hero_image_file" accept="image/*">
+            </label>
+
+            <div class="image-preview">
+                {% set heroImageSrc = landing.heroImage starts with('http') ? landing.heroImage : asset(landing.heroImage|trim('/')) %}
+                <img src="{{ heroImageSrc }}" alt="Hero image preview">
+            </div>
+        </section>
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>Offers</h3>
+                    <p>Update the four feature cards shown in the offers section.</p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Section Title</span>
+                    <input type="text" name="offers_title" value="{{ landing.offersTitle }}">
+                </label>
+                <label>
+                    <span>Section Subtitle</span>
+                    <input type="text" name="offers_subtitle" value="{{ landing.offersSubtitle }}">
+                </label>
+            </div>
+
+            <div class="cards-grid">
+                {% for offer in landing.offers %}
+                    <article class="editor-card">
+                        <h4>{{ offer.title }}</h4>
+                        <input type="hidden" name="offers[{{ loop.index0 }}][key]" value="{{ offer.key }}">
+                        <label>
+                            <span>Title</span>
+                            <input type="text" name="offers[{{ loop.index0 }}][title]" value="{{ offer.title }}">
+                        </label>
+                        <label>
+                            <span>Description</span>
+                            <textarea name="offers[{{ loop.index0 }}][description]" rows="3">{{ offer.description }}</textarea>
+                        </label>
+                        <div class="grid-2">
+                            <label>
+                                <span>Link Label</span>
+                                <input type="text" name="offers[{{ loop.index0 }}][linkLabel]" value="{{ offer.linkLabel }}">
+                            </label>
+                            <label>
+                                <span>Link URL</span>
+                                <input type="text" name="offers[{{ loop.index0 }}][linkUrl]" value="{{ offer.linkUrl }}">
+                            </label>
+                        </div>
+                        <label>
+                            <span>Image URL</span>
+                            <input type="text" name="offers[{{ loop.index0 }}][image]" value="{{ offer.image }}">
+                        </label>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>About</h3>
+                    <p>Edit the public About content and logo image.</p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Section Title</span>
+                    <input type="text" name="about_title" value="{{ landing.aboutTitle }}">
+                </label>
+                <label>
+                    <span>Section Subtitle</span>
+                    <input type="text" name="about_subtitle" value="{{ landing.aboutSubtitle }}">
+                </label>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>About Image URL</span>
+                    <input type="text" name="about_image_url" value="{{ landing.aboutImage }}">
+                </label>
+                <label>
+                    <span>Upload New About Image</span>
+                    <input type="file" name="about_image_file" accept="image/*">
+                </label>
+            </div>
+
+            <div class="image-preview">
+                {% set aboutImageSrc = landing.aboutImage starts with('http') ? landing.aboutImage : asset(landing.aboutImage|trim('/')) %}
+                <img src="{{ aboutImageSrc }}" alt="About image preview">
+            </div>
+
+            <div class="grid-2">
+                {% for paragraph in landing.aboutParagraphs %}
+                    <label>
+                        <span>Paragraph {{ loop.index }}</span>
+                        <textarea name="about_paragraphs[]" rows="4">{{ paragraph }}</textarea>
+                    </label>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>Mission</h3>
+                    <p>Edit the Vision, Mission, and Goals cards.</p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Section Title</span>
+                    <input type="text" name="mission_title" value="{{ landing.missionTitle }}">
+                </label>
+                <label>
+                    <span>Section Subtitle</span>
+                    <input type="text" name="mission_subtitle" value="{{ landing.missionSubtitle }}">
+                </label>
+            </div>
+
+            <div class="cards-grid mission-grid">
+                {% for item in landing.missionItems %}
+                    <article class="editor-card">
+                        <h4>{{ item.title }}</h4>
+                        <label>
+                            <span>Title</span>
+                            <input type="text" name="mission_items[{{ loop.index0 }}][title]" value="{{ item.title }}">
+                        </label>
+                        <label>
+                            <span>Text</span>
+                            <textarea name="mission_items[{{ loop.index0 }}][text]" rows="4">{{ item.text }}</textarea>
+                        </label>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>FAQ</h3>
+                    <p>Manage the questions shown in the landing page FAQ accordion.</p>
+                </div>
+                <button type="button" class="btn-secondary" id="addFaqItem">+ Add FAQ</button>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Section Title</span>
+                    <input type="text" name="faq_title" value="{{ landing.faqTitle }}">
+                </label>
+                <label>
+                    <span>Section Subtitle</span>
+                    <input type="text" name="faq_subtitle" value="{{ landing.faqSubtitle }}">
+                </label>
+            </div>
+
+            <div id="faqList" class="faq-editor-list">
+                {% for faq in landing.faqItems %}
+                    <article class="editor-card faq-item-editor">
+                        <div class="faq-editor-header">
+                            <h4>FAQ Item {{ loop.index }}</h4>
+                            <button type="button" class="btn-secondary remove-faq-item">Remove</button>
+                        </div>
+                        <label>
+                            <span>Question</span>
+                            <input type="text" name="faq_items[{{ loop.index0 }}][question]" value="{{ faq.question }}">
+                        </label>
+                        <label>
+                            <span>Answer</span>
+                            <textarea name="faq_items[{{ loop.index0 }}][answer]" rows="4">{{ faq.answer }}</textarea>
+                        </label>
+                    </article>
+                {% endfor %}
+            </div>
+
+            <div class="faq-pagination" id="faqPagination" aria-label="FAQ pagination">
+                <button type="button" class="btn-secondary" id="faqPrevPage">Previous</button>
+                <div class="faq-pagination-info">
+                    <span id="faqPageLabel">Page 1</span>
+                    <span id="faqPageCount">of 1</span>
+                </div>
+                <button type="button" class="btn-secondary" id="faqNextPage">Next</button>
+            </div>
+        </section>
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>Social Links</h3>
+                    <p>Add or remove any social platform you want to show on the public landing page.</p>
+                </div>
+                <button type="button" class="btn-secondary" id="addSocialLink">+ Add Social</button>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Section Title</span>
+                    <input type="text" name="social_section_title" value="{{ landing.socialSectionTitle }}">
+                </label>
+                <label>
+                    <span>Section Subtitle</span>
+                    <input type="text" name="social_section_subtitle" value="{{ landing.socialSectionSubtitle }}">
+                </label>
+            </div>
+
+            <div id="socialLinksList" class="faq-editor-list">
+                {% for social in landing.socialLinks %}
+                    <article class="editor-card social-item-editor">
+                        <div class="faq-editor-header">
+                            <h4>Social Link {{ loop.index }}</h4>
+                            <button type="button" class="btn-secondary remove-social-item">Remove</button>
+                        </div>
+                        <label>
+                            <span>Platform</span>
+                            <input type="text" name="social_links[{{ loop.index0 }}][platform]" value="{{ social.platform }}">
+                        </label>
+                        <label>
+                            <span>URL</span>
+                            <input type="text" name="social_links[{{ loop.index0 }}][url]" value="{{ social.url }}">
+                        </label>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="landing-section-card">
+            <div class="section-title-row">
+                <div>
+                    <h3>Contact Us</h3>
+                    <p>Add or remove contact methods shown below the social links.</p>
+                </div>
+                <button type="button" class="btn-secondary" id="addContactLink">+ Add Contact</button>
+            </div>
+
+            <div class="grid-2">
+                <label>
+                    <span>Section Title</span>
+                    <input type="text" name="contact_section_title" value="{{ landing.contactSectionTitle }}">
+                </label>
+                <label>
+                    <span>Section Subtitle</span>
+                    <input type="text" name="contact_section_subtitle" value="{{ landing.contactSectionSubtitle }}">
+                </label>
+            </div>
+
+            <div id="contactLinksList" class="faq-editor-list">
+                {% for contact in landing.contactLinks %}
+                    <article class="editor-card contact-item-editor">
+                        <div class="faq-editor-header">
+                            <h4>Contact Link {{ loop.index }}</h4>
+                            <button type="button" class="btn-secondary remove-contact-item">Remove</button>
+                        </div>
+                        <div class="grid-2">
+                            <label>
+                                <span>Label</span>
+                                <input type="text" name="contact_links[{{ loop.index0 }}][label]" value="{{ contact.label }}">
+                            </label>
+                            <label>
+                                <span>Display Text</span>
+                                <input type="text" name="contact_links[{{ loop.index0 }}][displayText]" value="{{ contact.displayText }}">
+                            </label>
+                        </div>
+                        <label>
+                            <span>URL</span>
+                            <input type="text" name="contact_links[{{ loop.index0 }}][url]" value="{{ contact.url }}">
+                        </label>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="form-footer" id="landingPageSaveFooter" hidden>
+            <button type="submit" class="btn-primary" id="landingPageSaveButton" disabled>Save Changes</button>
+        </div>
+    </form>
+
+    <div id="landingPageDiscardModal" class="landing-discard-modal" hidden>
+        <div class="landing-discard-backdrop" data-discard-close></div>
+        <div class="landing-discard-panel" role="dialog" aria-modal="true" aria-labelledby="landingDiscardTitle">
+            <h3 id="landingDiscardTitle">Discard changes?</h3>
+            <p>If you leave now, any unsaved landing page edits will be lost.</p>
+            <div class="landing-discard-actions">
+                <button type="button" class="btn-secondary" id="landingDiscardCancel">Keep Editing</button>
+                <button type="button" class="btn-primary" id="landingDiscardConfirm">Discard Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <template id="faqItemTemplate">
+        <article class="editor-card faq-item-editor">
+            <div class="faq-editor-header">
+                <h4>FAQ Item</h4>
+                <button type="button" class="btn-secondary remove-faq-item">Remove</button>
+            </div>
+            <label>
+                <span>Question</span>
+                <input type="text" name="faq_items[__INDEX__][question]" value="">
+            </label>
+            <label>
+                <span>Answer</span>
+                <textarea name="faq_items[__INDEX__][answer]" rows="4"></textarea>
+            </label>
+        </article>
+    </template>
+
+    <template id="socialLinkTemplate">
+        <article class="editor-card social-item-editor">
+            <div class="faq-editor-header">
+                <h4>Social Link</h4>
+                <button type="button" class="btn-secondary remove-social-item">Remove</button>
+            </div>
+            <label>
+                <span>Platform</span>
+                <input type="text" name="social_links[__INDEX__][platform]" value="">
+            </label>
+            <label>
+                <span>URL</span>
+                <input type="text" name="social_links[__INDEX__][url]" value="">
+            </label>
+        </article>
+    </template>
+
+    <template id="contactLinkTemplate">
+        <article class="editor-card contact-item-editor">
+            <div class="faq-editor-header">
+                <h4>Contact Link</h4>
+                <button type="button" class="btn-secondary remove-contact-item">Remove</button>
+            </div>
+            <div class="grid-2">
+                <label>
+                    <span>Label</span>
+                    <input type="text" name="contact_links[__INDEX__][label]" value="">
+                </label>
+                <label>
+                    <span>Display Text</span>
+                    <input type="text" name="contact_links[__INDEX__][displayText]" value="">
+                </label>
+            </div>
+            <label>
+                <span>URL</span>
+                <input type="text" name="contact_links[__INDEX__][url]" value="">
+            </label>
+        </article>
+    </template>
+
+    <style>
+        .landing-page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        .landing-page-header p {
+            margin: .35rem 0 0;
+            color: #6b7280;
+        }
+        .landing-edit-toggle {
+            min-width: 110px;
+        }
+        .landing-page-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .landing-page-form.is-locked input:not([type="hidden"]),
+        .landing-page-form.is-locked textarea,
+        .landing-page-form.is-locked select {
+            background: #f9fafb;
+            cursor: not-allowed;
+        }
+        .landing-page-form.is-locked .btn-secondary,
+        .landing-page-form.is-locked .btn-primary {
+            opacity: .95;
+        }
+        .landing-section-card,
+        .editor-card {
+            background: white;
+            border: 1px solid rgba(0, 102, 51, 0.08);
+            border-radius: 18px;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+        }
+        .landing-section-card {
+            padding: 1.25rem;
+        }
+        .section-title-row,
+        .faq-editor-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .section-title-row h3,
+        .editor-card h4 {
+            margin: 0;
+            color: #111827;
+        }
+        .section-title-row p {
+            margin: .35rem 0 0;
+            color: #6b7280;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: .35rem;
+        }
+        label span {
+            font-size: .82rem;
+            font-weight: 700;
+            color: #374151;
+        }
+        input[type="text"],
+        textarea {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            padding: .8rem .9rem;
+            font: inherit;
+            color: #111827;
+            background: #fff;
+        }
+        textarea {
+            resize: vertical;
+        }
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #0d9b00;
+            box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.12);
+        }
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        .mission-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .editor-card {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: .85rem;
+        }
+        .image-preview {
+            margin-bottom: 1rem;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        .image-preview img {
+            display: block;
+            width: 100%;
+            max-height: 260px;
+            object-fit: cover;
+        }
+        .faq-editor-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .faq-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .faq-pagination-info {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            color: #6b7280;
+            font-size: .9rem;
+            font-weight: 600;
+        }
+        .faq-pagination .btn-secondary:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+        .social-item-editor,
+        .contact-item-editor {
+            width: 100%;
+        }
+        .form-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: .25rem;
+        }
+        .flash-message {
+            margin: 0 0 1rem;
+            border-radius: 14px;
+            padding: 14px 18px;
+        }
+        .flash-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .flash-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .btn-primary,
+        .btn-secondary {
+            border: none;
+            border-radius: 12px;
+            padding: .85rem 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-primary {
+            background: linear-gradient(130deg, #0d9b00 0%, #0d9b00 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: white;
+            border: 1px solid #0d9b00;
+            color: #0d9b00;
+        }
+        .landing-discard-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        .landing-discard-modal[hidden] {
+            display: none !important;
+        }
+        .landing-discard-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(4px);
+        }
+        .landing-discard-panel {
+            position: relative;
+            z-index: 1;
+            width: min(100%, 420px);
+            max-height: calc(100vh - 2rem);
+            overflow: auto;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid rgba(13, 155, 0, 0.12);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+            padding: 1.5rem;
+        }
+        .landing-discard-panel h3 {
+            margin: 0 0 .5rem;
+            color: #111827;
+        }
+        .landing-discard-panel p {
+            margin: 0;
+            color: #6b7280;
+            line-height: 1.55;
+        }
+        .landing-discard-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: .75rem;
+            margin-top: 1.25rem;
+        }
+        @media (max-width: 980px) {
+            .grid-2,
+            .cards-grid,
+            .mission-grid {
+                grid-template-columns: 1fr;
+            }
+            .landing-page-header,
+            .section-title-row,
+            .faq-editor-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+
+    <script>
+        (function() {
+            const form = document.getElementById('landingPageForm');
+            const editToggle = document.getElementById('landingPageEditToggle');
+            const saveFooter = document.getElementById('landingPageSaveFooter');
+            const saveButton = document.getElementById('landingPageSaveButton');
+            const addFaqButton = document.getElementById('addFaqItem');
+            const faqList = document.getElementById('faqList');
+            const template = document.getElementById('faqItemTemplate');
+            const prevPageButton = document.getElementById('faqPrevPage');
+            const nextPageButton = document.getElementById('faqNextPage');
+            const pageLabel = document.getElementById('faqPageLabel');
+            const pageCount = document.getElementById('faqPageCount');
+            const addSocialButton = document.getElementById('addSocialLink');
+            const socialList = document.getElementById('socialLinksList');
+            const socialTemplate = document.getElementById('socialLinkTemplate');
+            const addContactButton = document.getElementById('addContactLink');
+            const contactList = document.getElementById('contactLinksList');
+            const contactTemplate = document.getElementById('contactLinkTemplate');
+            const discardModal = document.getElementById('landingPageDiscardModal');
+            const discardCancelButton = document.getElementById('landingDiscardCancel');
+            const discardConfirmButton = document.getElementById('landingDiscardConfirm');
+
+            if (!form || !editToggle || !saveFooter || !saveButton || !addFaqButton || !faqList || !template || !prevPageButton || !nextPageButton || !pageLabel || !pageCount || !addSocialButton || !socialList || !socialTemplate || !addContactButton || !contactList || !contactTemplate || !discardModal || !discardCancelButton || !discardConfirmButton) {
+                return;
+            }
+
+            const pageSize = 5;
+            let currentPage = 1;
+            let editMode = false;
+            let initialSnapshot = null;
+            let isDirty = false;
+
+            function createItem(templateEl, index) {
+                const html = templateEl.innerHTML.replaceAll('__INDEX__', String(index));
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = html.trim();
+                return wrapper.firstElementChild;
+            }
+
+            function captureSnapshot() {
+                initialSnapshot = new FormData(form);
+                isDirty = false;
+            }
+
+            function updateDirtyState() {
+                if (!editMode || !initialSnapshot) {
+                    isDirty = false;
+                    return;
+                }
+
+                const currentSnapshot = new FormData(form);
+                const keys = new Set([...initialSnapshot.keys(), ...currentSnapshot.keys()]);
+
+                isDirty = false;
+                for (const key of keys) {
+                    const beforeValues = initialSnapshot.getAll(key).map(function(value) { return String(value); });
+                    const currentValues = currentSnapshot.getAll(key).map(function(value) { return String(value); });
+
+                    if (beforeValues.length !== currentValues.length) {
+                        isDirty = true;
+                        break;
+                    }
+
+                    for (let index = 0; index < beforeValues.length; index += 1) {
+                        if (beforeValues[index] !== currentValues[index]) {
+                            isDirty = true;
+                            break;
+                        }
+                    }
+
+                    if (isDirty) {
+                        break;
+                    }
+                }
+            }
+
+            function setEditingState(enabled) {
+                editMode = enabled;
+                if (enabled) {
+                    captureSnapshot();
+                } else {
+                    initialSnapshot = null;
+                    isDirty = false;
+                }
+                form.classList.toggle('is-locked', !enabled);
+                saveFooter.hidden = !enabled;
+                saveButton.disabled = !enabled;
+                editToggle.textContent = enabled ? 'Cancel' : 'Edit';
+                editToggle.classList.toggle('btn-primary', enabled);
+                editToggle.classList.toggle('btn-secondary', !enabled);
+
+                form.querySelectorAll('input, textarea, select, button[type="button"]').forEach(function(control) {
+                    if (control === editToggle) {
+                        return;
+                    }
+
+                    if (control.matches('#faqPrevPage, #faqNextPage')) {
+                        control.disabled = false;
+                        return;
+                    }
+
+                    if (enabled) {
+                        control.disabled = false;
+                        return;
+                    }
+
+                    if (control.tagName === 'BUTTON' && control.type === 'button') {
+                        control.disabled = true;
+                        return;
+                    }
+
+                    if (control.tagName === 'INPUT' || control.tagName === 'TEXTAREA' || control.tagName === 'SELECT') {
+                        control.disabled = true;
+                    }
+                });
+            }
+
+            function getFaqItems() {
+                return Array.from(faqList.querySelectorAll('.faq-item-editor'));
+            }
+
+            function totalPages() {
+                return Math.max(1, Math.ceil(getFaqItems().length / pageSize));
+            }
+
+            function syncFaqTitles() {
+                const items = getFaqItems();
+                items.forEach(function(item, index) {
+                    const heading = item.querySelector('.faq-editor-header h4');
+                    if (heading) {
+                        heading.textContent = 'FAQ Item ' + (index + 1);
+                    }
+                });
+            }
+
+            function renderFaqPage(page) {
+                const items = getFaqItems();
+                const pages = totalPages();
+                currentPage = Math.min(Math.max(1, page), pages);
+                const start = (currentPage - 1) * pageSize;
+                const end = start + pageSize;
+
+                items.forEach(function(item, index) {
+                    item.style.display = index >= start && index < end ? '' : 'none';
+                });
+
+                syncFaqTitles();
+                pageLabel.textContent = 'Page ' + currentPage;
+                pageCount.textContent = 'of ' + pages;
+                prevPageButton.disabled = currentPage <= 1;
+                nextPageButton.disabled = currentPage >= pages;
+            }
+
+            function syncCardTitles(rootSelector, headingPrefix) {
+                const items = Array.from(document.querySelectorAll(rootSelector));
+                items.forEach(function(item, index) {
+                    const heading = item.querySelector('.faq-editor-header h4');
+                    if (heading) {
+                        heading.textContent = headingPrefix + ' ' + (index + 1);
+                    }
+                });
+            }
+
+            function refreshSocialItems() {
+                syncCardTitles('.social-item-editor', 'Social Link');
+            }
+
+            function refreshContactItems() {
+                syncCardTitles('.contact-item-editor', 'Contact Link');
+            }
+
+            function openDiscardModal() {
+                discardModal.hidden = false;
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeDiscardModal() {
+                discardModal.hidden = true;
+                document.body.style.overflow = '';
+            }
+
+            setEditingState(false);
+
+            editToggle.addEventListener('click', function() {
+                if (editMode) {
+                    updateDirtyState();
+                    if (!isDirty) {
+                        setEditingState(false);
+                        return;
+                    }
+
+                    openDiscardModal();
+                    return;
+                }
+
+                setEditingState(true);
+            });
+
+            discardCancelButton.addEventListener('click', function() {
+                closeDiscardModal();
+            });
+
+            discardConfirmButton.addEventListener('click', function() {
+                closeDiscardModal();
+                setEditingState(false);
+                window.location.reload();
+            });
+
+            discardModal.addEventListener('click', function(event) {
+                if (event.target === discardModal || event.target.hasAttribute('data-discard-close')) {
+                    closeDiscardModal();
+                }
+            });
+
+            addFaqButton.addEventListener('click', function() {
+                if (!editMode) {
+                    return;
+                }
+                const index = Date.now();
+                const newItem = createItem(template, index);
+                newItem.querySelectorAll('.remove-faq-item').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        newItem.remove();
+                        renderFaqPage(Math.min(currentPage, totalPages()));
+                        updateDirtyState();
+                    });
+                });
+                faqList.appendChild(newItem);
+                renderFaqPage(totalPages());
+                updateDirtyState();
+            });
+
+            addSocialButton.addEventListener('click', function() {
+                if (!editMode) {
+                    return;
+                }
+                const index = Date.now();
+                const newItem = createItem(socialTemplate, index);
+                newItem.querySelectorAll('.remove-social-item').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        newItem.remove();
+                        refreshSocialItems();
+                        updateDirtyState();
+                    });
+                });
+                socialList.appendChild(newItem);
+                refreshSocialItems();
+                updateDirtyState();
+            });
+
+            addContactButton.addEventListener('click', function() {
+                if (!editMode) {
+                    return;
+                }
+                const index = Date.now();
+                const newItem = createItem(contactTemplate, index);
+                newItem.querySelectorAll('.remove-contact-item').forEach(function(button) {
+                    button.addEventListener('click', function() {
+                        newItem.remove();
+                        refreshContactItems();
+                        updateDirtyState();
+                    });
+                });
+                contactList.appendChild(newItem);
+                refreshContactItems();
+                updateDirtyState();
+            });
+
+            faqList.querySelectorAll('.remove-faq-item').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const card = button.closest('.faq-item-editor');
+                    if (card) {
+                        card.remove();
+                        renderFaqPage(Math.min(currentPage, totalPages()));
+                    }
+                });
+            });
+
+            socialList.querySelectorAll('.remove-social-item').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const card = button.closest('.social-item-editor');
+                    if (card) {
+                        card.remove();
+                        refreshSocialItems();
+                    }
+                });
+            });
+
+            contactList.querySelectorAll('.remove-contact-item').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    const card = button.closest('.contact-item-editor');
+                    if (card) {
+                        card.remove();
+                        refreshContactItems();
+                        updateDirtyState();
+                    }
+                });
+            });
+
+            form.querySelectorAll('input, textarea, select').forEach(function(control) {
+                control.addEventListener('input', updateDirtyState);
+                control.addEventListener('change', updateDirtyState);
+            });
+
+            form.addEventListener('input', function() {
+                updateDirtyState();
+            });
+            form.addEventListener('change', function() {
+                updateDirtyState();
+            });
+
+            prevPageButton.addEventListener('click', function() {
+                renderFaqPage(currentPage - 1);
+            });
+
+            nextPageButton.addEventListener('click', function() {
+                renderFaqPage(currentPage + 1);
+            });
+
+            renderFaqPage(1);
+            refreshSocialItems();
+            refreshContactItems();
+        })();
+    </script>
+{% endblock %}

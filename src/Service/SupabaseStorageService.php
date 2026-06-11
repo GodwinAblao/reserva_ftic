@@ -15,30 +15,37 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 class SupabaseStorageService
 {
     private string $bucketName;
-    private string $projectUrl;
-    private string $projectRef;
-    private string $apiKey;
+    private ?string $projectUrl = null;
+    private ?string $projectRef = null;
+    private ?string $apiKey = null;
+    private bool $configured = false;
 
     public function __construct()
     {
-        $this->apiKey = $_ENV['SUPABASE_STORAGE_KEY'] ?? '';
-        $this->projectRef = $_ENV['SUPABASE_PROJECT_REF'] ?? '';
+        $this->apiKey = $_ENV['SUPABASE_STORAGE_KEY'] ?? null;
+        $this->projectRef = $_ENV['SUPABASE_PROJECT_REF'] ?? null;
         $this->bucketName = $_ENV['SUPABASE_STORAGE_BUCKET'] ?? 'facility-images';
-        
-        // Log for debugging (will appear in Railway logs)
+
         if (empty($this->apiKey)) {
             error_log('ERROR: SUPABASE_STORAGE_KEY is not set');
         }
         if (empty($this->projectRef)) {
             error_log('ERROR: SUPABASE_PROJECT_REF is not set');
         }
-        
+
         if (empty($this->apiKey) || empty($this->projectRef)) {
-            throw new \RuntimeException('Supabase storage credentials not configured. Check SUPABASE_STORAGE_KEY and SUPABASE_PROJECT_REF environment variables');
+            error_log('Supabase storage is disabled because credentials are missing.');
+            return;
         }
-        
+
         $this->projectUrl = "https://{$this->projectRef}.supabase.co";
+        $this->configured = true;
         error_log('SupabaseStorageService initialized for project: ' . $this->projectRef);
+    }
+
+    public function isConfigured(): bool
+    {
+        return $this->configured;
     }
 
     /**
@@ -50,6 +57,15 @@ class SupabaseStorageService
      */
     public function uploadFile(UploadedFile $file, string $folder = ''): array
     {
+        if (!$this->configured || !$this->projectUrl || !$this->apiKey) {
+            return [
+                'success' => false,
+                'error' => 'Supabase storage is not configured in this environment.',
+                'path' => null,
+                'url' => null,
+            ];
+        }
+
         try {
             // Generate unique filename
             $ext = $file->guessExtension() ?? strtolower($file->getClientOriginalExtension()) ?: 'jpg';
@@ -129,6 +145,10 @@ class SupabaseStorageService
      */
     public function deleteFile(string $path): bool
     {
+        if (!$this->configured || !$this->projectUrl || !$this->apiKey) {
+            return false;
+        }
+
         try {
             $url = "{$this->projectUrl}/storage/v1/object/{$this->bucketName}/{$path}";
             
@@ -157,6 +177,10 @@ class SupabaseStorageService
      */
     public function getPublicUrl(string $path): string
     {
+        if (!$this->projectUrl) {
+            return $path;
+        }
+
         return "{$this->projectUrl}/storage/v1/object/public/{$this->bucketName}/{$path}";
     }
 }
