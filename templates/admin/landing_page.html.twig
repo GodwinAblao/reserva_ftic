@@ -683,6 +683,10 @@
                 return;
             }
 
+            if (discardModal.parentElement !== document.body) {
+                document.body.appendChild(discardModal);
+            }
+
             const pageSize = 5;
             let currentPage = 1;
             let editMode = false;
