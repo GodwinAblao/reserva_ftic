@@ -29,34 +29,10 @@ class ResearchController extends AbstractController
         $query = trim((string) $request->query->get('q', ''));
         $type = trim((string) $request->query->get('type', ''));
         $category = trim((string) $request->query->get('category', ''));
-
-        $qb = $em->createQueryBuilder()
-            ->select('r')
-            ->from(ResearchContent::class, 'r')
-            ->leftJoin('r.author', 'u')
-            ->addSelect('u')
-            ->orderBy('r.createdAt', 'DESC');
-
-        if (!$this->isGranted('ROLE_ADMIN')) {
-            $qb->andWhere('r.visibility = :public OR r.author = :author')
-                ->setParameter('public', 'Public')
-                ->setParameter('author', $this->getUser());
-        }
-
-        if ($query !== '') {
-            $qb->andWhere('r.title LIKE :query OR r.summary LIKE :query OR r.abstract LIKE :query OR r.body LIKE :query OR r.tags LIKE :query')
-                ->setParameter('query', '%' . $query . '%');
-        }
-
-        if ($category !== '') {
-            $qb->andWhere('r.category = :category')
-                ->setParameter('category', $category);
-        }
-
-        if ($type !== '') {
-            $qb->andWhere('r.type = :type')
-                ->setParameter('type', $type);
-        }
+        $articlePage = max(1, $request->query->getInt('articlesPage', 1));
+        $newsPage = max(1, $request->query->getInt('newsPage', 1));
+        $researchPage = max(1, $request->query->getInt('researchPage', 1));
+        $perPage = 6;
 
         $categoriesQb = $em->createQueryBuilder()
             ->select('DISTINCT r.category')
@@ -73,24 +49,23 @@ class ResearchController extends AbstractController
             ->getQuery()
             ->getSingleColumnResult();
 
-        $items = $qb->getQuery()->getResult();
-        $researchFileAvailabilityById = [];
-        $articleImageSrcById = [];
-        foreach ($items as $item) {
-            if ($item instanceof ResearchContent) {
-                $researchFileAvailabilityById[$item->getId()] = $this->isResearchFileAvailable($item->getFilePath());
-                $articleImageSrcById[$item->getId()] = $this->resolvePublicImageUrl($item->getFilePath());
-            }
-        }
+        $articleSection = $this->paginateResearchSection($em, 'Article', $query, $category, $type, $articlePage, $perPage);
+        $newsSection = $this->paginateResearchSection($em, 'News', $query, $category, $type, $newsPage, $perPage);
+        $researchSection = $this->paginateResearchSection($em, 'Research', $query, $category, $type, $researchPage, $perPage);
 
         return $this->render('research/index.html.twig', [
-            'items' => $items,
+            'articleItems' => $articleSection['items'],
+            'newsItems' => $newsSection['items'],
+            'researchItems' => $researchSection['items'],
             'query' => $query,
             'category' => $category,
             'type' => $type,
             'categories' => $categories,
-            'researchFileAvailabilityById' => $researchFileAvailabilityById,
-            'articleImageSrcById' => $articleImageSrcById,
+            'articlePagination' => $articleSection['pagination'],
+            'newsPagination' => $newsSection['pagination'],
+            'researchPagination' => $researchSection['pagination'],
+            'articleImageSrcById' => $articleSection['imageSrcById'],
+            'researchFileAvailabilityById' => $researchSection['fileAvailabilityById'],
         ]);
     }
 
@@ -259,8 +234,95 @@ class ResearchController extends AbstractController
             'researchFileAvailable' => $this->isResearchFileAvailable($item->getFilePath()),
             'researchMediaSrc' => $item->getType() === 'Article'
                 ? $this->resolvePublicImageUrl($item->getFilePath())
-                : $this->resolvePublicAssetUrl($item->getFilePath()),
+            : $this->resolvePublicAssetUrl($item->getFilePath()),
         ]);
+    }
+
+    private function paginateResearchSection(
+        EntityManagerInterface $em,
+        string $sectionType,
+        string $query,
+        string $category,
+        string $type,
+        int $page,
+        int $limit,
+    ): array {
+        $qb = $this->buildResearchListQueryBuilder($em, $query, $category, $type)
+            ->andWhere('r.type = :sectionType')
+            ->setParameter('sectionType', $sectionType)
+            ->orderBy('r.createdAt', 'DESC');
+
+        $countQb = clone $qb;
+        $countQb->resetDQLPart('orderBy');
+        $countQb->select('COUNT(r.id)');
+        $total = (int) $countQb->getQuery()->getSingleScalarResult();
+        $pages = (int) max(1, ceil($total / $limit));
+        $currentPage = min(max(1, $page), $pages);
+
+        $items = $qb
+            ->setFirstResult(($currentPage - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        $imageSrcById = [];
+        $fileAvailabilityById = [];
+        foreach ($items as $item) {
+            if (!$item instanceof ResearchContent) {
+                continue;
+            }
+
+            $imageSrcById[$item->getId()] = $this->resolvePublicImageUrl($item->getFilePath());
+            $fileAvailabilityById[$item->getId()] = $this->isResearchFileAvailable($item->getFilePath());
+        }
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'page' => $currentPage,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => $pages,
+            ],
+            'imageSrcById' => $imageSrcById,
+            'fileAvailabilityById' => $fileAvailabilityById,
+        ];
+    }
+
+    private function buildResearchListQueryBuilder(
+        EntityManagerInterface $em,
+        string $query,
+        string $category,
+        string $type,
+    ): \Doctrine\ORM\QueryBuilder {
+        $qb = $em->createQueryBuilder()
+            ->select('r')
+            ->from(ResearchContent::class, 'r')
+            ->leftJoin('r.author', 'u')
+            ->addSelect('u');
+
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            $qb->andWhere('r.visibility = :public OR r.author = :author')
+                ->setParameter('public', 'Public')
+                ->setParameter('author', $this->getUser());
+        }
+
+        if ($query !== '') {
+            $qb->andWhere('r.title LIKE :query OR r.summary LIKE :query OR r.abstract LIKE :query OR r.body LIKE :query OR r.tags LIKE :query')
+                ->setParameter('query', '%' . $query . '%');
+        }
+
+        if ($category !== '') {
+            $qb->andWhere('r.category = :category')
+                ->setParameter('category', $category);
+        }
+
+        if ($type !== '') {
+            $qb->andWhere('r.type = :type')
+                ->setParameter('type', $type);
+        }
+
+        return $qb;
     }
 
     private function isResearchFileAvailable(?string $filePath): bool

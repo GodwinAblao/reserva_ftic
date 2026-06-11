@@ -2,6 +2,8 @@
 
 {% block title %}Research Repository | Reserva FTIC{% endblock %}
 
+{% block body_class %}{{ parent() }} research-page-view{% endblock %}
+
 {% block content %}
 <style>
     /* Research page: make admin Add Content buttons use feu green */
@@ -13,6 +15,62 @@
     }
     .research-page-admin-actions .button-group .btn-primary:hover {
         background: #0a7d00 !important;
+    }
+    .research-create-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 20px;
+        border: 1px solid rgba(13, 155, 0, 0.14);
+        border-radius: 18px;
+        background: linear-gradient(135deg, #f7fff7 0%, #ffffff 55%, #f0f9f0 100%);
+        box-shadow: 0 10px 30px rgba(13, 155, 0, 0.08);
+        margin-bottom: 8px;
+    }
+    .research-create-card-copy h3 {
+        margin: 0 0 4px;
+        font-size: 18px;
+        font-weight: 800;
+        color: #111827;
+    }
+    .research-create-card-copy p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 14px;
+    }
+    .research-create-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .research-create-select {
+        min-width: 220px;
+        border: 1px solid #0d9b00;
+        border-radius: 12px;
+        padding: 0.85rem 0.95rem;
+        font: inherit;
+        color: #111827;
+        background: #fff;
+        box-shadow: 0 4px 14px rgba(13, 155, 0, 0.06);
+    }
+    .research-create-select:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.12);
+    }
+    .research-create-go {
+        border: none;
+        border-radius: 12px;
+        padding: 0.9rem 1.1rem;
+        font-weight: 800;
+        cursor: pointer;
+        background: #0d9b00;
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(13, 155, 0, 0.18);
+    }
+    .research-create-go:hover {
+        background: #0a7d00;
     }
     .research-delete-modal {
         position: fixed;
@@ -68,13 +126,56 @@
         background: #dc2626;
         color: #fff;
     }
+    .research-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 18px 0 42px;
+    }
+    .research-pagination-info {
+        font-size: 14px;
+        color: #6b7280;
+        font-weight: 600;
+    }
+    .research-pagination .btn-secondary,
+    .research-pagination .research-page-link {
+        border-radius: 999px;
+        border: 1px solid #0d9b00;
+        background: #fff;
+        color: #0d9b00;
+        font-weight: 700;
+        padding: 0.55rem 0.9rem;
+        text-decoration: none;
+        min-width: 42px;
+        text-align: center;
+    }
+    .research-pagination .btn-secondary:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+    .research-pagination .research-page-link.is-active {
+        background: #0d9b00;
+        color: #fff;
+    }
 </style>
 <div class="content-header research-page-admin-actions">
     {% if is_granted('ROLE_SUPER_ADMIN') %}
-        <div class="button-group">
-            <a href="{{ path('research_new', {'type': 'News'}) }}" class="btn-primary">Add Content News</a>
-            <a href="{{ path('research_new', {'type': 'Article'}) }}" class="btn-primary">Add Content Articles</a>
-            <a href="{{ path('research_new', {'type': 'Research'}) }}" class="btn-primary">Add Content Research</a>
+        <div class="research-create-card">
+            <div class="research-create-card-copy">
+                <h3>Add Research Content</h3>
+                <p>Select the content type you want to create, then continue to the matching editor.</p>
+            </div>
+            <div class="research-create-controls">
+                <select id="researchCreateType" class="research-create-select" aria-label="Select research content type">
+                    <option value="" selected>Select type</option>
+                    <option value="News">News</option>
+                    <option value="Article">Article</option>
+                    <option value="Research">Research</option>
+                </select>
+                <button type="button" class="research-create-go" id="researchCreateGo">Continue</button>
+            </div>
         </div>
     {% endif %}
 </div>
@@ -99,43 +200,41 @@
     </form>
 </section>
 
-<h2 class="research-section-title">Articles</h2>
+<h2 class="research-section-title" id="articles">Articles</h2>
 <section class="research-showcase-grid articles-grid">
     {% set articleCount = 0 %}
-    {% for item in items %}
-        {% if item.type == 'Article' %}
-            {% set articleCount = articleCount + 1 %}
-            <article class="research-showcase-card media-card">
-                {% if articleImageSrcById[item.id] ?? null %}
-                    <div class="research-card-media">
-                        <img src="{{ articleImageSrcById[item.id] }}" alt="{{ item.title }}">
-                    </div>
-                {% else %}
-                    <div class="research-card-media research-card-placeholder" aria-hidden="true"></div>
-                {% endif %}
-                <div class="research-card-content">
-                    <h3>{{ item.title }}</h3>
-                    <span>{{ item.category ?: 'Article' }}</span>
-                    {% if item.body %}
-                        <p>{{ item.body }}</p>
-                    {% endif %}
-                    <div class="research-card-actions">
-                        <a href="{{ item.externalLink ?: path('research_show', {'id': item.id}) }}" {% if item.externalLink %}target="_blank" rel="noopener"{% endif %} class="research-view-btn">View</a>
-                        {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
-                            <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
-                        {% endif %}
-                        {% if is_granted('ROLE_SUPER_ADMIN') %}
-                            <button
-                                type="button"
-                                class="research-edit-link"
-                                style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
-                                onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'article')"
-                            >Delete</button>
-                        {% endif %}
-                    </div>
+    {% for item in articleItems %}
+        {% set articleCount = articleCount + 1 %}
+        <article class="research-showcase-card media-card">
+            {% if articleImageSrcById[item.id] ?? null %}
+                <div class="research-card-media">
+                    <img src="{{ articleImageSrcById[item.id] }}" alt="{{ item.title }}">
                 </div>
-            </article>
-        {% endif %}
+            {% else %}
+                <div class="research-card-media research-card-placeholder" aria-hidden="true"></div>
+            {% endif %}
+            <div class="research-card-content">
+                <h3>{{ item.title }}</h3>
+                <span>{{ item.category ?: 'Article' }}</span>
+                {% if item.body %}
+                    <p>{{ item.body }}</p>
+                {% endif %}
+                <div class="research-card-actions">
+                    <a href="{{ item.externalLink ?: path('research_show', {'id': item.id}) }}" {% if item.externalLink %}target="_blank" rel="noopener"{% endif %} class="research-view-btn">View</a>
+                    {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
+                        <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
+                    {% endif %}
+                    {% if is_granted('ROLE_SUPER_ADMIN') %}
+                        <button
+                            type="button"
+                            class="research-edit-link"
+                            style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
+                            onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'article')"
+                        >Delete</button>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
     {% endfor %}
     {% if articleCount == 0 %}
         <div class="research-empty-card">
@@ -143,45 +242,76 @@
         </div>
     {% endif %}
 </section>
+{% if articlePagination.pages > 1 %}
+    <div class="research-pagination" aria-label="Articles pagination">
+        <button
+            type="button"
+            class="btn-secondary"
+            {% if articlePagination.page <= 1 %}disabled{% endif %}
+            onclick="window.location.href='{{ path('research_index', {
+                q: query,
+                type: type,
+                category: category,
+                articlesPage: articlePagination.page - 1,
+                newsPage: newsPagination.page,
+                researchPage: researchPagination.page
+            }) }}#articles'"
+        >Previous</button>
+        <div class="research-pagination-info">Page {{ articlePagination.page }} of {{ articlePagination.pages }}</div>
+        <button
+            type="button"
+            class="btn-secondary"
+            {% if articlePagination.page >= articlePagination.pages %}disabled{% endif %}
+            onclick="window.location.href='{{ path('research_index', {
+                q: query,
+                type: type,
+                category: category,
+                articlesPage: articlePagination.page + 1,
+                newsPage: newsPagination.page,
+                researchPage: researchPagination.page
+            }) }}#articles'"
+        >Next</button>
+    </div>
+{% else %}
+    <div class="research-pagination-info research-pagination-info--single">Page 1 of 1</div>
+{% endif %}
 
-<h2 class="research-section-title">News</h2>
+<h2 class="research-section-title" id="news">News</h2>
 <section class="research-showcase-grid news-grid">
     {% set newsCount = 0 %}
-    {% for item in items %}
-        {% if item.type == 'News' %}
-            {% set newsCount = newsCount + 1 %}
-            <article class="research-showcase-card media-card">
-                <div class="research-card-media video-media">
-                    {% if item.embeddedLink %}
-                        {{ item.embeddedLink|raw }}
-                    {% else %}
-                        <div class="research-card-placeholder">{{ item.title|first|upper }}</div>
+    {% for item in newsItems %}
+        {% set newsCount = newsCount + 1 %}
+        <article class="research-showcase-card media-card">
+            <div class="research-card-media video-media">
+                {% if item.embeddedLink %}
+                    {{ item.embeddedLink|raw }}
+                {% else %}
+                    <div class="research-card-placeholder">{{ item.title|first|upper }}</div>
+                {% endif %}
+                <span class="video-play-indicator">▶</span>
+            </div>
+            <div class="research-card-content">
+                <h3>{{ item.title }}</h3>
+                <span>{{ item.category ?: 'News' }}</span>
+                {% if item.body %}
+                    <p>{{ item.body }}</p>
+                {% endif %}
+                <div class="research-card-actions">
+                    <a href="{{ path('research_show', {'id': item.id}) }}" class="research-view-btn">View</a>
+                    {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
+                        <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
                     {% endif %}
-                    <span class="video-play-indicator">▶</span>
-                </div>
-                <div class="research-card-content">
-                    <h3>{{ item.title }}</h3>
-                    <span>{{ item.category ?: 'News' }}</span>
-                    {% if item.body %}
-                        <p>{{ item.body }}</p>
+                    {% if is_granted('ROLE_SUPER_ADMIN') %}
+                        <button
+                            type="button"
+                            class="research-edit-link"
+                            style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
+                            onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'news item')"
+                        >Delete</button>
                     {% endif %}
-                    <div class="research-card-actions">
-                        <a href="{{ path('research_show', {'id': item.id}) }}" class="research-view-btn">View</a>
-                        {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
-                            <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
-                        {% endif %}
-                        {% if is_granted('ROLE_SUPER_ADMIN') %}
-                            <button
-                                type="button"
-                                class="research-edit-link"
-                                style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
-                                onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'news item')"
-                            >Delete</button>
-                        {% endif %}
-                    </div>
                 </div>
-            </article>
-        {% endif %}
+            </div>
+        </article>
     {% endfor %}
     {% if newsCount == 0 %}
         <div class="research-empty-card">
@@ -189,43 +319,74 @@
         </div>
     {% endif %}
 </section>
+{% if newsPagination.pages > 1 %}
+    <div class="research-pagination" aria-label="News pagination">
+        <button
+            type="button"
+            class="btn-secondary"
+            {% if newsPagination.page <= 1 %}disabled{% endif %}
+            onclick="window.location.href='{{ path('research_index', {
+                q: query,
+                type: type,
+                category: category,
+                articlesPage: articlePagination.page,
+                newsPage: newsPagination.page - 1,
+                researchPage: researchPagination.page
+            }) }}#news'"
+        >Previous</button>
+        <div class="research-pagination-info">Page {{ newsPagination.page }} of {{ newsPagination.pages }}</div>
+        <button
+            type="button"
+            class="btn-secondary"
+            {% if newsPagination.page >= newsPagination.pages %}disabled{% endif %}
+            onclick="window.location.href='{{ path('research_index', {
+                q: query,
+                type: type,
+                category: category,
+                articlesPage: articlePagination.page,
+                newsPage: newsPagination.page + 1,
+                researchPage: researchPagination.page
+            }) }}#news'"
+        >Next</button>
+    </div>
+{% else %}
+    <div class="research-pagination-info research-pagination-info--single">Page 1 of 1</div>
+{% endif %}
 
-<h2 class="research-section-title">Research</h2>
+<h2 class="research-section-title" id="research">Research</h2>
 <section class="research-showcase-grid research-doc-grid">
     {% set researchCount = 0 %}
-    {% for item in items %}
-        {% if item.type == 'Research' %}
-            {% set researchCount = researchCount + 1 %}
-            <article class="research-showcase-card document-card">
-                <div class="research-card-content">
-                    <h3>
-                        <a href="{{ path('research_show', {'id': item.id}) }}">
-                            {{ item.title }}
-                        </a>
-                    </h3>
-                    <span>{{ item.authors ?: 'Author' }}</span>
-                    <strong>Abstract</strong>
-                    <p>{{ item.abstract ?: 'No abstract provided.' }}</p>
-                    <div class="research-card-actions">
-                        <a href="{{ path('research_show', {'id': item.id}) }}" class="research-view-btn">View</a>
-                        {% if researchFileAvailabilityById[item.id] ?? false %}
-                            <a href="{{ item.filePath }}" class="research-edit-link" title="Download PDF" target="_blank">PDF</a>
-                        {% endif %}
-                        {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
-                            <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
-                        {% endif %}
-                        {% if is_granted('ROLE_SUPER_ADMIN') %}
-                            <button
-                                type="button"
-                                class="research-edit-link"
-                                style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
-                                onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'research item')"
-                            >Delete</button>
-                        {% endif %}
-                    </div>
+    {% for item in researchItems %}
+        {% set researchCount = researchCount + 1 %}
+        <article class="research-showcase-card document-card">
+            <div class="research-card-content">
+                <h3>
+                    <a href="{{ path('research_show', {'id': item.id}) }}">
+                        {{ item.title }}
+                    </a>
+                </h3>
+                <span>{{ item.authors ?: 'Author' }}</span>
+                <strong>Abstract</strong>
+                <p>{{ item.abstract ?: 'No abstract provided.' }}</p>
+                <div class="research-card-actions">
+                    <a href="{{ path('research_show', {'id': item.id}) }}" class="research-view-btn">View</a>
+                    {% if researchFileAvailabilityById[item.id] ?? false %}
+                        <a href="{{ item.filePath }}" class="research-edit-link" title="Download PDF" target="_blank">PDF</a>
+                    {% endif %}
+                    {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
+                        <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
+                    {% endif %}
+                    {% if is_granted('ROLE_SUPER_ADMIN') %}
+                        <button
+                            type="button"
+                            class="research-edit-link"
+                            style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
+                            onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'research item')"
+                        >Delete</button>
+                    {% endif %}
                 </div>
-            </article>
-        {% endif %}
+            </div>
+        </article>
     {% endfor %}
     {% if researchCount == 0 %}
         <div class="research-empty-card">
@@ -233,6 +394,39 @@
         </div>
     {% endif %}
 </section>
+{% if researchPagination.pages > 1 %}
+    <div class="research-pagination" aria-label="Research pagination">
+        <button
+            type="button"
+            class="btn-secondary"
+            {% if researchPagination.page <= 1 %}disabled{% endif %}
+            onclick="window.location.href='{{ path('research_index', {
+                q: query,
+                type: type,
+                category: category,
+                articlesPage: articlePagination.page,
+                newsPage: newsPagination.page,
+                researchPage: researchPagination.page - 1
+            }) }}#research'"
+        >Previous</button>
+        <div class="research-pagination-info">Page {{ researchPagination.page }} of {{ researchPagination.pages }}</div>
+        <button
+            type="button"
+            class="btn-secondary"
+            {% if researchPagination.page >= researchPagination.pages %}disabled{% endif %}
+            onclick="window.location.href='{{ path('research_index', {
+                q: query,
+                type: type,
+                category: category,
+                articlesPage: articlePagination.page,
+                newsPage: newsPagination.page,
+                researchPage: researchPagination.page + 1
+            }) }}#research'"
+        >Next</button>
+    </div>
+{% else %}
+    <div class="research-pagination-info research-pagination-info--single">Page 1 of 1</div>
+{% endif %}
 
 <div id="researchDeleteModal" class="research-delete-modal" aria-hidden="true">
     <div class="research-delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="researchDeleteTitle">
@@ -246,13 +440,35 @@
     </div>
 </div>
 
-<script>
+    <script>
     (function () {
+        const createTypeSelect = document.getElementById('researchCreateType');
+        const createGoButton = document.getElementById('researchCreateGo');
+        const createTargets = {
+            News: "{{ path('research_new', {'type': 'News'}) }}",
+            Article: "{{ path('research_new', {'type': 'Article'}) }}",
+            Research: "{{ path('research_new', {'type': 'Research'}) }}"
+        };
         const modal = document.getElementById('researchDeleteModal');
         const form = document.getElementById('researchDeleteForm');
         const tokenInput = document.getElementById('researchDeleteToken');
         const title = document.getElementById('researchDeleteTitle');
         const text = document.getElementById('researchDeleteText');
+
+        if (createTypeSelect && createGoButton) {
+            createGoButton.addEventListener('click', function () {
+                const selectedType = createTypeSelect.value;
+                if (!selectedType) {
+                    createTypeSelect.focus();
+                    return;
+                }
+
+                const targetUrl = createTargets[selectedType];
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                }
+            });
+        }
 
         if (modal && modal.parentElement !== document.body) {
             document.body.appendChild(modal);

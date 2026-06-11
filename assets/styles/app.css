@@ -628,7 +628,8 @@ a {
 
 .content-area {
     padding: 36px 40px;
-    contain: layout;
+    min-width: 0;
+    overflow: visible;
 }
 
 .sidebar-hamburger {
