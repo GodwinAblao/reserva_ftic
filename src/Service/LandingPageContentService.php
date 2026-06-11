@@ -33,7 +33,7 @@ class LandingPageContentService
                     'description' => 'Access FTIC research publications, explore innovation content, and discover academic achievements',
                     'linkLabel' => 'Get Started',
                     'linkUrl' => '/register',
-                    'image' => '/uploads/innovation%20hub.jpg',
+                    'image' => '/uploads/innovation-hub.jpg',
                 ],
                 [
                     'key' => 'mentoring',
@@ -49,7 +49,7 @@ class LandingPageContentService
                     'description' => 'Earn recognition through mentoring participation and track engagement',
                     'linkLabel' => 'Get Started',
                     'linkUrl' => '/register',
-                    'image' => '/uploads/mentor%20leaderboard.jpg',
+                    'image' => '/uploads/mentor-leaderboard.jpg',
                 ],
             ],
             'aboutTitle' => 'About Reserva',
@@ -156,7 +156,7 @@ class LandingPageContentService
             'heroCtaUrl' => $content->getHeroCtaUrl() ?: $defaults['heroCtaUrl'],
             'offersTitle' => $content->getOffersTitle() ?: $defaults['offersTitle'],
             'offersSubtitle' => $content->getOffersSubtitle() ?: $defaults['offersSubtitle'],
-            'offers' => $this->decodeArray($content->getOffersJson(), $defaults['offers']),
+            'offers' => $this->normalizeOfferImages($this->decodeArray($content->getOffersJson(), $defaults['offers'])),
             'aboutTitle' => $content->getAboutTitle() ?: $defaults['aboutTitle'],
             'aboutSubtitle' => $content->getAboutSubtitle() ?: $defaults['aboutSubtitle'],
             'aboutImage' => $content->getAboutImage() ?: $defaults['aboutImage'],
@@ -217,5 +217,35 @@ class LandingPageContentService
         }
 
         return $result;
+    }
+
+    private function normalizeOfferImages(array $offers): array
+    {
+        return array_map(function (array $offer): array {
+            if (!isset($offer['image']) || !is_string($offer['image'])) {
+                return $offer;
+            }
+
+            $offer['image'] = $this->canonicalOfferImagePath($offer['image']);
+
+            return $offer;
+        }, $offers);
+    }
+
+    private function canonicalOfferImagePath(string $path): string
+    {
+        $normalized = trim($path);
+        $legacyMap = [
+            '/uploads/innovation%20hub.jpg' => '/uploads/innovation-hub.jpg',
+            '/uploads/innovation hub.jpg' => '/uploads/innovation-hub.jpg',
+            '/uploads/mentor%20leaderboard.jpg' => '/uploads/mentor-leaderboard.jpg',
+            '/uploads/mentor leaderboard.jpg' => '/uploads/mentor-leaderboard.jpg',
+        ];
+
+        if (isset($legacyMap[$normalized])) {
+            return $legacyMap[$normalized];
+        }
+
+        return $normalized;
     }
 }

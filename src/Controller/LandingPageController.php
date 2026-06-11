@@ -252,7 +252,9 @@ class LandingPageController extends AbstractController
                 'description' => $this->trimOrFallback((string) ($item['description'] ?? ''), (string) ($fallback['description'] ?? '')),
                 'linkLabel' => $this->trimOrFallback((string) ($item['linkLabel'] ?? ''), (string) ($fallback['linkLabel'] ?? 'Read more')),
                 'linkUrl' => $this->trimOrFallback((string) ($item['linkUrl'] ?? ''), (string) ($fallback['linkUrl'] ?? '#')),
-                'image' => $this->trimOrFallback((string) ($item['image'] ?? ''), (string) ($fallback['image'] ?? '')),
+                'image' => $this->normalizeOfferImagePath(
+                    $this->trimOrFallback((string) ($item['image'] ?? ''), (string) ($fallback['image'] ?? ''))
+                ),
             ];
         }
 
@@ -340,6 +342,19 @@ class LandingPageController extends AbstractController
                 'displayText' => $displayText !== '' ? $displayText : $this->deriveDisplayTextFromUrl($url),
             ];
         });
+    }
+
+    private function normalizeOfferImagePath(string $path): string
+    {
+        $normalized = trim($path);
+        $legacyMap = [
+            '/uploads/innovation%20hub.jpg' => '/uploads/innovation-hub.jpg',
+            '/uploads/innovation hub.jpg' => '/uploads/innovation-hub.jpg',
+            '/uploads/mentor%20leaderboard.jpg' => '/uploads/mentor-leaderboard.jpg',
+            '/uploads/mentor leaderboard.jpg' => '/uploads/mentor-leaderboard.jpg',
+        ];
+
+        return $legacyMap[$normalized] ?? $normalized;
     }
 
     private function trimOrFallback(string $value, string $fallback): string
