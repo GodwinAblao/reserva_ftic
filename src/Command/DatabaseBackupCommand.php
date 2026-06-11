@@ -43,6 +43,7 @@ class DatabaseBackupCommand extends Command
         $password = $parts['pass'] ?? '';
         $port = (string) ($parts['port'] ?? 3306);
         $backupDir = $this->projectDir . '/var/backups';
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
 
         if (!is_dir($backupDir) && !mkdir($backupDir, 0775, true) && !is_dir($backupDir)) {
             $io->error('Could not create backup directory.');
@@ -51,18 +52,43 @@ class DatabaseBackupCommand extends Command
         }
 
         $target = $backupDir . '/' . $database . '-' . date('Ymd-His') . '.sql';
-        $mysqldump = file_exists('C:/xampp/mysql/bin/mysqldump.exe') ? 'C:/xampp/mysql/bin/mysqldump.exe' : 'mysqldump';
+        $process = match ($scheme) {
+            'postgres', 'postgresql' => new Process([
+                'pg_dump',
+                '--host=' . $parts['host'],
+                '--port=' . $port,
+                '--username=' . $user,
+                '--format=plain',
+                '--no-owner',
+                '--no-privileges',
+                '--file=' . $target,
+                $database,
+            ]),
+            'mysql', 'mariadb' => new Process([
+                'mysqldump',
+                '--host=' . $parts['host'],
+                '--port=' . $port,
+                '--user=' . $user,
+                $password !== '' ? '--password=' . $password : '--password=',
+                '--databases',
+                $database,
+                '--result-file=' . $target,
+            ]),
+            default => null,
+        };
 
-        $process = new Process([
-            $mysqldump,
-            '--host=' . $parts['host'],
-            '--port=' . $port,
-            '--user=' . $user,
-            $password !== '' ? '--password=' . $password : '--password=',
-            '--databases',
-            $database,
-            '--result-file=' . $target,
-        ]);
+        if (!$process instanceof Process) {
+            $io->error('Unsupported database driver in DATABASE_URL. Use postgres/postgresql or mysql/mariadb.');
+
+            return Command::FAILURE;
+        }
+
+        if ($scheme === 'postgres' || $scheme === 'postgresql') {
+            $process->setEnv(array_merge($_ENV, $_SERVER, [
+                'PGPASSWORD' => $password,
+            ]));
+        }
+
         $process->setTimeout(120);
         $process->run();
 
