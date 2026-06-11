@@ -9,4 +9,4 @@ if ($path !== '/' && is_file($file)) {
     return false;
 }
 
-require __DIR__ . '/index.php';
+return require __DIR__ . '/index.php';
