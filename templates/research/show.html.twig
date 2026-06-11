@@ -65,12 +65,12 @@
     {% else %}
         <article class="research-detail-card">
             <div class="research-detail-media">
-                {% if item.filePath and item.type == 'Article' %}
-                    <img src="{{ item.filePath }}" alt="{{ item.title }}">
+                {% if researchMediaSrc and item.type == 'Article' %}
+                    <img src="{{ researchMediaSrc }}" alt="{{ item.title }}">
                 {% elseif item.embeddedLink %}
                     {{ item.embeddedLink|raw }}
                 {% else %}
-                    <div class="research-detail-placeholder">{{ item.title|first|upper }}</div>
+                    <div class="research-detail-placeholder" aria-hidden="true"></div>
                 {% endif %}
             </div>
 

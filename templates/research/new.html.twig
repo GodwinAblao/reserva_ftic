@@ -3,12 +3,38 @@
 {% block title %}Add {{ type }} | Reserva FTIC{% endblock %}
 
 {% block content %}
+<style>
+    .research-flash {
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .research-flash-success {
+        background: #e8f7ea;
+        color: #0b6b1a;
+        border: 1px solid #b7e5bf;
+    }
+    .research-flash-error {
+        background: #fdecec;
+        color: #9d1c1c;
+        border: 1px solid #f4bbbb;
+    }
+</style>
 <div class="content-header">
     <h2>Add {{ type }} Content</h2>
     <a href="{{ path('research_index') }}" class="btn-secondary">Back to Research</a>
 </div>
 
 <section class="card-panel">
+    {% for message in app.flashes('success') %}
+        <div class="research-flash research-flash-success">{{ message }}</div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="research-flash research-flash-error">{{ message }}</div>
+    {% endfor %}
+
     <form method="post" enctype="multipart/form-data" class="form-grid">
         <input type="hidden" name="_token" value="{{ csrf_token('research_new') }}">
         <input type="hidden" name="type" value="{{ type }}">

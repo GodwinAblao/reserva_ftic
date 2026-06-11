@@ -75,9 +75,11 @@ class ResearchController extends AbstractController
 
         $items = $qb->getQuery()->getResult();
         $researchFileAvailabilityById = [];
+        $articleImageSrcById = [];
         foreach ($items as $item) {
             if ($item instanceof ResearchContent) {
                 $researchFileAvailabilityById[$item->getId()] = $this->isResearchFileAvailable($item->getFilePath());
+                $articleImageSrcById[$item->getId()] = $this->resolvePublicImageUrl($item->getFilePath());
             }
         }
 
@@ -88,6 +90,7 @@ class ResearchController extends AbstractController
             'type' => $type,
             'categories' => $categories,
             'researchFileAvailabilityById' => $researchFileAvailabilityById,
+            'articleImageSrcById' => $articleImageSrcById,
         ]);
     }
 
@@ -129,7 +132,7 @@ class ResearchController extends AbstractController
             }
 
             if ($uploadedFile instanceof UploadedFile) {
-                $filePath = $this->uploadResearchFileToSupabase($uploadedFile, $type);
+                $filePath = $this->storeResearchFile($uploadedFile, $type);
                 if ($filePath === null) {
                     return $this->render('research/new.html.twig', ['type' => $type]);
                 }
@@ -188,9 +191,14 @@ class ResearchController extends AbstractController
 
             $uploadedFile = $request->files->get('file');
             if ($uploadedFile instanceof UploadedFile) {
-                $filePath = $this->uploadResearchFileToSupabase($uploadedFile, $item->getType());
+                $filePath = $this->storeResearchFile($uploadedFile, $item->getType());
                 if ($filePath === null) {
-                    return $this->render('research/edit.html.twig', ['item' => $item]);
+                    return $this->render('research/edit.html.twig', [
+                        'item' => $item,
+                        'researchMediaSrc' => $item->getType() === 'Article'
+                            ? $this->resolvePublicImageUrl($item->getFilePath())
+                            : $this->resolvePublicAssetUrl($item->getFilePath()),
+                    ]);
                 }
 
                 $item->setFilePath($filePath);
@@ -201,7 +209,12 @@ class ResearchController extends AbstractController
             return $this->redirectToRoute('research_index');
         }
 
-return $this->render('research/edit.html.twig', ['item' => $item]);
+        return $this->render('research/edit.html.twig', [
+            'item' => $item,
+            'researchMediaSrc' => $item->getType() === 'Article'
+                ? $this->resolvePublicImageUrl($item->getFilePath())
+                : $this->resolvePublicAssetUrl($item->getFilePath()),
+        ]);
     }
 
     #[Route('/{id}/delete', name: 'research_delete', methods: ['POST'])]
@@ -244,31 +257,85 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
         return $this->render('research/show.html.twig', [
             'item' => $item,
             'researchFileAvailable' => $this->isResearchFileAvailable($item->getFilePath()),
+            'researchMediaSrc' => $item->getType() === 'Article'
+                ? $this->resolvePublicImageUrl($item->getFilePath())
+                : $this->resolvePublicAssetUrl($item->getFilePath()),
         ]);
     }
 
     private function isResearchFileAvailable(?string $filePath): bool
     {
+        return $this->resolvePublicAssetUrl($filePath) !== null;
+    }
+
+    private function resolvePublicAssetUrl(?string $filePath): ?string
+    {
         if ($filePath === null || trim($filePath) === '') {
-            return false;
+            return null;
         }
 
         if (preg_match('#^https?://#i', $filePath) === 1 || str_starts_with($filePath, 'data:')) {
-            return true;
+            return $filePath;
         }
 
+        $projectDir = (string) $this->getParameter('kernel.project_dir');
         $path = parse_url($filePath, PHP_URL_PATH);
-        if (!is_string($path) || $path === '') {
-            return false;
+        $candidatePaths = [];
+
+        if (is_string($path) && $path !== '') {
+            $normalizedPath = ltrim(rawurldecode($path), '/');
+            $candidatePaths[] = $normalizedPath;
+            if (str_starts_with($normalizedPath, 'public/')) {
+                $candidatePaths[] = substr($normalizedPath, 7);
+            }
+            $candidatePaths[] = basename($normalizedPath);
+            $candidatePaths[] = 'uploads/' . basename($normalizedPath);
+            $candidatePaths[] = 'uploads/research/' . basename($normalizedPath);
+        } else {
+            $normalizedPath = ltrim(rawurldecode($filePath), '/');
+            $candidatePaths[] = $normalizedPath;
+            $candidatePaths[] = basename($normalizedPath);
+            $candidatePaths[] = 'uploads/' . basename($normalizedPath);
+            $candidatePaths[] = 'uploads/research/' . basename($normalizedPath);
         }
 
-        $relativePath = ltrim(rawurldecode($path), '/');
-        $fullPath = $this->getParameter('kernel.project_dir') . '/public/' . $relativePath;
+        $candidatePaths = array_values(array_unique(array_filter($candidatePaths, static fn ($value) => is_string($value) && $value !== '')));
 
-        return is_file($fullPath) && is_readable($fullPath);
+        foreach ($candidatePaths as $relativePath) {
+            $publicRelativePath = str_starts_with($relativePath, 'public/')
+                ? substr($relativePath, 7)
+                : $relativePath;
+
+            $fullPath = $projectDir . '/public/' . ltrim($publicRelativePath, '/');
+            if (is_file($fullPath) && is_readable($fullPath)) {
+                return '/' . ltrim($publicRelativePath, '/');
+            }
+        }
+
+        return null;
     }
 
-    private function uploadResearchFileToSupabase(UploadedFile $uploadedFile, string $type): ?string
+    private function resolvePublicImageUrl(?string $filePath): ?string
+    {
+        $assetUrl = $this->resolvePublicAssetUrl($filePath);
+        if ($assetUrl === null) {
+            return null;
+        }
+
+        $path = parse_url($assetUrl, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true)) {
+            return null;
+        }
+
+        return $assetUrl;
+    }
+
+    private function storeResearchFile(UploadedFile $uploadedFile, string $type): ?string
     {
         if ($type === 'Research' && strtolower($uploadedFile->getClientOriginalExtension()) !== 'pdf') {
             $this->addFlash('error', 'Only PDF files are allowed for Research content.');
@@ -277,12 +344,38 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
         }
 
         $result = $this->storageService->uploadFile($uploadedFile, 'research');
-        if (!($result['success'] ?? false) || empty($result['url'])) {
-            $this->addFlash('error', (string) ($result['error'] ?? 'Research file upload failed.'));
-
-            return null;
+        if (($result['success'] ?? false) && !empty($result['url'])) {
+            return (string) $result['url'];
         }
 
-        return (string) $result['url'];
+        if (!$this->storageService->isConfigured() || $this->getParameter('kernel.environment') === 'dev') {
+            $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/research';
+            if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+                $this->addFlash('error', 'Unable to create the research upload folder.');
+
+                return null;
+            }
+
+            $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $safeBaseName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $originalName) ?: 'research-file';
+            $extension = strtolower($uploadedFile->guessExtension() ?: $uploadedFile->getClientOriginalExtension() ?: 'bin');
+            $filename = $safeBaseName . '-' . uniqid() . '.' . $extension;
+
+            try {
+                $uploadedFile->move($uploadDir, $filename);
+            } catch (\Throwable $e) {
+                $this->addFlash('error', 'Research file upload failed locally: ' . $e->getMessage());
+
+                return null;
+            }
+
+            $this->addFlash('success', 'Supabase storage is not configured locally, so the file was saved to the local uploads folder for development.');
+
+            return '/uploads/research/' . $filename;
+        }
+
+        $this->addFlash('error', (string) ($result['error'] ?? 'Research file upload failed.'));
+
+        return null;
     }
 }

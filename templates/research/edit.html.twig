@@ -3,20 +3,40 @@
 {% block title %}Edit {{ item.type }} | Reserva FTIC{% endblock %}
 
 {% block content %}
+<style>
+    .research-flash {
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .research-flash-success {
+        background: #e8f7ea;
+        color: #0b6b1a;
+        border: 1px solid #b7e5bf;
+    }
+    .research-flash-error {
+        background: #fdecec;
+        color: #9d1c1c;
+        border: 1px solid #f4bbbb;
+    }
+</style>
 <div class="content-header">
     <h2>Edit {{ item.type }} Content</h2>
     <div class="button-group">
         <a href="{{ path('research_index') }}" class="btn-secondary">Back to Research</a>
-        {% if is_granted('ROLE_SUPER_ADMIN') %}
-            <form method="post" action="{{ path('research_delete', {'id': item.id}) }}" onsubmit="return confirm('Are you sure you want to delete this research content?');">
-                <input type="hidden" name="_token" value="{{ csrf_token('research_delete_' ~ item.id) }}">
-                <button class="btn-danger" type="submit">Delete</button>
-            </form>
-        {% endif %}
     </div>
 </div>
 
 <section class="card-panel">
+    {% for message in app.flashes('success') %}
+        <div class="research-flash research-flash-success">{{ message }}</div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="research-flash research-flash-error">{{ message }}</div>
+    {% endfor %}
+
     <form method="post" class="form-grid">
         <input type="hidden" name="_token" value="{{ csrf_token('research_edit_' ~ item.id) }}">
 
@@ -36,9 +56,17 @@
             <input type="hidden" name="visibility" value="{{ item.visibility }}">
 
             <input name="title" class="form-input" value="{{ item.title }}" required>
+            <div class="research-image-preview" style="display:flex; flex-direction:column; gap:10px;">
+                <label style="font-weight:700; color:#334155;">Current Article Image</label>
+                {% if researchMediaSrc %}
+                    <img src="{{ researchMediaSrc }}" alt="{{ item.title }}" style="max-width:260px; width:100%; height:auto; border-radius:14px; border:1px solid #dbe2e8; object-fit:cover;">
+                {% else %}
+                    <div style="width:260px; max-width:100%; height:160px; border-radius:14px; border:1px dashed #cbd5e1; background:linear-gradient(135deg, #f8fafc 0%, #eef4ef 100%);"></div>
+                {% endif %}
+            </div>
             <textarea name="body" class="form-input">{{ item.body }}</textarea>
             <input name="externalLink" class="form-input" placeholder="External article URL (e.g. https://...)" value="{{ item.externalLink }}">
-            <input type="file" name="file" class="form-input" accept="image/*" title="Upload article image">
+            <input type="file" name="file" class="form-input" accept="image/*" title="Replace article image">
         {% else %}
             <input type="hidden" name="type" value="{{ item.type }}">
             <input name="title" class="form-input" value="{{ item.title }}" required>

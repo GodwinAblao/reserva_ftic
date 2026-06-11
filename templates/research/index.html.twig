@@ -14,6 +14,60 @@
     .research-page-admin-actions .button-group .btn-primary:hover {
         background: #0a7d00 !important;
     }
+    .research-delete-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+    }
+    .research-delete-modal.is-open {
+        display: flex;
+    }
+    .research-delete-modal-card {
+        width: min(420px, 100%);
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+        padding: 24px;
+    }
+    .research-delete-modal-title {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .research-delete-modal-text {
+        margin: 0 0 20px;
+        color: #475569;
+        line-height: 1.5;
+        font-size: 14px;
+    }
+    .research-delete-modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+    .research-delete-modal-cancel,
+    .research-delete-modal-confirm {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 16px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .research-delete-modal-cancel {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .research-delete-modal-confirm {
+        background: #dc2626;
+        color: #fff;
+    }
 </style>
 <div class="content-header research-page-admin-actions">
     {% if is_granted('ROLE_SUPER_ADMIN') %}
@@ -52,12 +106,12 @@
         {% if item.type == 'Article' %}
             {% set articleCount = articleCount + 1 %}
             <article class="research-showcase-card media-card">
-                {% if item.filePath %}
+                {% if articleImageSrcById[item.id] ?? null %}
                     <div class="research-card-media">
-                        <img src="{{ item.filePath }}" alt="{{ item.title }}">
+                        <img src="{{ articleImageSrcById[item.id] }}" alt="{{ item.title }}">
                     </div>
                 {% else %}
-                    <div class="research-card-media research-card-placeholder">{{ item.title|first|upper }}</div>
+                    <div class="research-card-media research-card-placeholder" aria-hidden="true"></div>
                 {% endif %}
                 <div class="research-card-content">
                     <h3>{{ item.title }}</h3>
@@ -69,6 +123,14 @@
                         <a href="{{ item.externalLink ?: path('research_show', {'id': item.id}) }}" {% if item.externalLink %}target="_blank" rel="noopener"{% endif %} class="research-view-btn">View</a>
                         {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
                             <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
+                        {% endif %}
+                        {% if is_granted('ROLE_SUPER_ADMIN') %}
+                            <button
+                                type="button"
+                                class="research-edit-link"
+                                style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
+                                onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'article')"
+                            >Delete</button>
                         {% endif %}
                     </div>
                 </div>
@@ -108,6 +170,14 @@
                         {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
                             <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
                         {% endif %}
+                        {% if is_granted('ROLE_SUPER_ADMIN') %}
+                            <button
+                                type="button"
+                                class="research-edit-link"
+                                style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
+                                onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'news item')"
+                            >Delete</button>
+                        {% endif %}
                     </div>
                 </div>
             </article>
@@ -144,6 +214,14 @@
                         {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}
                             <a href="{{ path('research_edit', {'id': item.id}) }}" class="research-edit-link">Edit</a>
                         {% endif %}
+                        {% if is_granted('ROLE_SUPER_ADMIN') %}
+                            <button
+                                type="button"
+                                class="research-edit-link"
+                                style="border:none;background:none;padding:0;color:#dc2626;cursor:pointer;"
+                                onclick="openResearchDeleteModal('{{ path('research_delete', {'id': item.id}) }}', '{{ csrf_token('research_delete_' ~ item.id) }}', 'research item')"
+                            >Delete</button>
+                        {% endif %}
                     </div>
                 </div>
             </article>
@@ -155,5 +233,61 @@
         </div>
     {% endif %}
 </section>
+
+<div id="researchDeleteModal" class="research-delete-modal" aria-hidden="true">
+    <div class="research-delete-modal-card" role="dialog" aria-modal="true" aria-labelledby="researchDeleteTitle">
+        <h3 id="researchDeleteTitle" class="research-delete-modal-title">Delete content?</h3>
+        <p id="researchDeleteText" class="research-delete-modal-text">This item will be removed permanently.</p>
+        <form id="researchDeleteForm" method="post" class="research-delete-modal-actions">
+            <input type="hidden" name="_token" id="researchDeleteToken">
+            <button type="button" class="research-delete-modal-cancel" onclick="closeResearchDeleteModal()">Cancel</button>
+            <button type="submit" class="research-delete-modal-confirm">Delete</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const modal = document.getElementById('researchDeleteModal');
+        const form = document.getElementById('researchDeleteForm');
+        const tokenInput = document.getElementById('researchDeleteToken');
+        const title = document.getElementById('researchDeleteTitle');
+        const text = document.getElementById('researchDeleteText');
+
+        if (modal && modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        window.openResearchDeleteModal = function (action, token, kind) {
+            form.action = action;
+            tokenInput.value = token;
+            title.textContent = 'Delete ' + kind + '?';
+            text.textContent = 'This ' + kind + ' will be removed permanently and cannot be restored.';
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeResearchDeleteModal = function () {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            form.action = '';
+            tokenInput.value = '';
+            document.body.style.overflow = '';
+        };
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                closeResearchDeleteModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+                closeResearchDeleteModal();
+            }
+        });
+    })();
+</script>
 </section>
 {% endblock %}
