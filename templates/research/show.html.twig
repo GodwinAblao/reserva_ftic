@@ -30,7 +30,7 @@
                 <p>{{ item.abstract }}</p>
             </div>
 
-            {% if item.filePath %}
+            {% if researchFileAvailable and item.filePath %}
                 <div class="pdf-section">
                     <h3>Downloadable PDF</h3>
                     <div class="pdf-controls">
@@ -51,7 +51,7 @@
                 </div>
             {% else %}
                 <div class="alert-warning">
-                    <p>No PDF file attached to this research content.</p>
+                    <p>The PDF for this research content is not available right now.</p>
                 </div>
             {% endif %}
         </div>

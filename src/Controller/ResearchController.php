@@ -68,12 +68,21 @@ class ResearchController extends AbstractController
             ->getQuery()
             ->getSingleColumnResult();
 
+        $items = $qb->getQuery()->getResult();
+        $researchFileAvailabilityById = [];
+        foreach ($items as $item) {
+            if ($item instanceof ResearchContent) {
+                $researchFileAvailabilityById[$item->getId()] = $this->isResearchFileAvailable($item->getFilePath());
+            }
+        }
+
         return $this->render('research/index.html.twig', [
-            'items' => $qb->getQuery()->getResult(),
+            'items' => $items,
             'query' => $query,
             'category' => $category,
             'type' => $type,
             'categories' => $categories,
+            'researchFileAvailabilityById' => $researchFileAvailabilityById,
         ]);
     }
 
@@ -217,6 +226,30 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
             throw $this->createAccessDeniedException();
         }
 
-        return $this->render('research/show.html.twig', ['item' => $item]);
+        return $this->render('research/show.html.twig', [
+            'item' => $item,
+            'researchFileAvailable' => $this->isResearchFileAvailable($item->getFilePath()),
+        ]);
+    }
+
+    private function isResearchFileAvailable(?string $filePath): bool
+    {
+        if ($filePath === null || trim($filePath) === '') {
+            return false;
+        }
+
+        if (preg_match('#^https?://#i', $filePath) === 1 || str_starts_with($filePath, 'data:')) {
+            return true;
+        }
+
+        $path = parse_url($filePath, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return false;
+        }
+
+        $relativePath = ltrim(rawurldecode($path), '/');
+        $fullPath = $this->getParameter('kernel.project_dir') . '/public/' . $relativePath;
+
+        return is_file($fullPath) && is_readable($fullPath);
     }
 }

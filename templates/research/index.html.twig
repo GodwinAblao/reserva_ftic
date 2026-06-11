@@ -138,7 +138,7 @@
                     <p>{{ item.abstract ?: 'No abstract provided.' }}</p>
                     <div class="research-card-actions">
                         <a href="{{ path('research_show', {'id': item.id}) }}" class="research-view-btn">View</a>
-                        {% if item.filePath %}
+                        {% if researchFileAvailabilityById[item.id] ?? false %}
                             <a href="{{ item.filePath }}" class="research-edit-link" title="Download PDF" target="_blank">PDF</a>
                         {% endif %}
                         {% if is_granted('ROLE_SUPER_ADMIN') or item.author == app.user %}

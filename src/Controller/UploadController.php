@@ -5,7 +5,6 @@ namespace App\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 class UploadController extends AbstractController
@@ -27,7 +26,10 @@ class UploadController extends AbstractController
                     'X-Missing-File' => $filename,
                 ]);
             }
-            throw new NotFoundHttpException('File not found.');
+            return new Response('File not found.', 404, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+                'X-Missing-File' => $filename,
+            ]);
         }
 
         // Security: prevent directory traversal (only after confirming file exists)
@@ -35,7 +37,10 @@ class UploadController extends AbstractController
         $realFilePath = realpath($filePath);
 
         if ($realFilePath === false || $realUploadDir === false || !str_starts_with($realFilePath, $realUploadDir)) {
-            throw new NotFoundHttpException('File not found.');
+            return new Response('File not found.', 404, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+                'X-Missing-File' => $filename,
+            ]);
         }
 
         return new BinaryFileResponse($realFilePath);
@@ -56,7 +61,10 @@ class UploadController extends AbstractController
         }
 
         if (!file_exists($filePath) || !is_readable($filePath)) {
-            throw new NotFoundHttpException('File not found.');
+            return new Response('File not found.', 404, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+                'X-Missing-File' => $path,
+            ]);
         }
 
         return new BinaryFileResponse($filePath);
