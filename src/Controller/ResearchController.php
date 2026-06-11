@@ -135,8 +135,15 @@ class ResearchController extends AbstractController
     }
 
     #[Route('/{id}/edit', name: 'research_edit', methods: ['GET', 'POST'])]
-    public function edit(ResearchContent $item, Request $request, EntityManagerInterface $em): Response
+    public function edit(int $id, Request $request, EntityManagerInterface $em): Response
     {
+        $item = $em->getRepository(ResearchContent::class)->find($id);
+        if (!$item instanceof ResearchContent) {
+            $this->addFlash('error', 'Research content not found.');
+
+            return $this->redirectToRoute('research_index');
+        }
+
         if (!$this->isGranted('ROLE_ADMIN') && $item->getAuthor() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
@@ -175,8 +182,15 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
 
     #[Route('/{id}/delete', name: 'research_delete', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function delete(ResearchContent $item, Request $request, EntityManagerInterface $em): Response
+    public function delete(int $id, Request $request, EntityManagerInterface $em): Response
     {
+        $item = $em->getRepository(ResearchContent::class)->find($id);
+        if (!$item instanceof ResearchContent) {
+            $this->addFlash('error', 'Research content not found.');
+
+            return $this->redirectToRoute('research_index');
+        }
+
         if (!$this->isCsrfTokenValid('research_delete_' . $item->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
@@ -190,8 +204,15 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
     }
 
     #[Route('/{id}', name: 'research_show', methods: ['GET'])]
-    public function show(ResearchContent $item): Response
+    public function show(int $id, EntityManagerInterface $em): Response
     {
+        $item = $em->getRepository(ResearchContent::class)->find($id);
+        if (!$item instanceof ResearchContent) {
+            $this->addFlash('error', 'Research content not found.');
+
+            return $this->redirectToRoute('research_index');
+        }
+
         if (!$this->isGranted('ROLE_ADMIN') && $item->getVisibility() !== 'Public' && $item->getAuthor() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
