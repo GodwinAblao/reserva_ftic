@@ -12,12 +12,17 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\String\Slugger\SluggerInterface;
+use App\Service\SupabaseStorageService;
 
 #[Route('/research')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 class ResearchController extends AbstractController
 {
+    public function __construct(
+        private readonly SupabaseStorageService $storageService,
+    ) {
+    }
+
     #[Route('', name: 'research_index', methods: ['GET'])]
     public function index(Request $request, EntityManagerInterface $em): Response
     {
@@ -88,7 +93,7 @@ class ResearchController extends AbstractController
 
     #[Route('/new/{type}', name: 'research_new', methods: ['GET', 'POST'], defaults: ['type' => 'Article'], requirements: ['type' => 'Article|Research|News'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function new(Request $request, EntityManagerInterface $em, SluggerInterface $slugger, string $type = 'Article'): Response
+    public function new(Request $request, EntityManagerInterface $em, string $type = 'Article'): Response
     {
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('research_new', (string) $request->request->get('_token'))) {
@@ -118,18 +123,18 @@ class ResearchController extends AbstractController
             }
 
             $uploadedFile = $request->files->get('file');
+            if ($type === 'Research' && !$uploadedFile instanceof UploadedFile) {
+                $this->addFlash('error', 'Please upload a PDF file for Research content.');
+                return $this->render('research/new.html.twig', ['type' => $type]);
+            }
+
             if ($uploadedFile instanceof UploadedFile) {
-                // For Research type, only allow PDF
-                if ($type === 'Research' && $uploadedFile->getClientOriginalExtension() !== 'pdf') {
-                    $this->addFlash('error', 'Only PDF files are allowed for Research content.');
+                $filePath = $this->uploadResearchFileToSupabase($uploadedFile, $type);
+                if ($filePath === null) {
                     return $this->render('research/new.html.twig', ['type' => $type]);
                 }
-                
-                $name = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $ext = $type === 'Research' ? 'pdf' : $uploadedFile->guessExtension();
-                $filename = $slugger->slug($name) . '-' . uniqid() . '.' . $ext;
-                $uploadedFile->move($this->getParameter('kernel.project_dir') . '/public/uploads/research', $filename);
-                $item->setFilePath('/uploads/research/' . $filename);
+
+                $item->setFilePath($filePath);
             }
 
             $em->persist($item);
@@ -179,6 +184,16 @@ class ResearchController extends AbstractController
                     ->setEmbeddedLink($request->request->get('embeddedLink'))
                     ->setExternalLink($request->request->get('externalLink'))
                     ->setVisibility((string) $request->request->get('visibility', 'Public'));
+            }
+
+            $uploadedFile = $request->files->get('file');
+            if ($uploadedFile instanceof UploadedFile) {
+                $filePath = $this->uploadResearchFileToSupabase($uploadedFile, $item->getType());
+                if ($filePath === null) {
+                    return $this->render('research/edit.html.twig', ['item' => $item]);
+                }
+
+                $item->setFilePath($filePath);
             }
 
             $em->flush();
@@ -251,5 +266,23 @@ return $this->render('research/edit.html.twig', ['item' => $item]);
         $fullPath = $this->getParameter('kernel.project_dir') . '/public/' . $relativePath;
 
         return is_file($fullPath) && is_readable($fullPath);
+    }
+
+    private function uploadResearchFileToSupabase(UploadedFile $uploadedFile, string $type): ?string
+    {
+        if ($type === 'Research' && strtolower($uploadedFile->getClientOriginalExtension()) !== 'pdf') {
+            $this->addFlash('error', 'Only PDF files are allowed for Research content.');
+
+            return null;
+        }
+
+        $result = $this->storageService->uploadFile($uploadedFile, 'research');
+        if (!($result['success'] ?? false) || empty($result['url'])) {
+            $this->addFlash('error', (string) ($result['error'] ?? 'Research file upload failed.'));
+
+            return null;
+        }
+
+        return (string) $result['url'];
     }
 }
