@@ -77,6 +77,7 @@ class HomeController extends AbstractController
                 updated_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
                 PRIMARY KEY(id)
             )");
+            $connection->executeStatement('ALTER TABLE landing_page_content ENABLE ROW LEVEL SECURITY');
             return;
         }
 
@@ -87,5 +88,6 @@ class HomeController extends AbstractController
         $connection->executeStatement("ALTER TABLE landing_page_content ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255) NOT NULL DEFAULT 'innovate@fit.edu.ph'");
         $connection->executeStatement("ALTER TABLE landing_page_content ADD COLUMN IF NOT EXISTS social_links_json TEXT NOT NULL DEFAULT '[]'");
         $connection->executeStatement("ALTER TABLE landing_page_content ADD COLUMN IF NOT EXISTS contact_links_json TEXT NOT NULL DEFAULT '[]'");
+        $connection->executeStatement('ALTER TABLE landing_page_content ENABLE ROW LEVEL SECURITY');
     }
 }
