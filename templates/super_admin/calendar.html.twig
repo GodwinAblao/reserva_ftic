@@ -777,8 +777,25 @@
     .day-view .day-column .time-slot { height:60px; border-bottom:1px solid #e8ede6; background:white; }
 
     /* Modal */
-    .modal { display:none; position:fixed; z-index:9999; top:0; left:0; width:100vw; height:100vh; background:rgba(12,30,20,.6); backdrop-filter:blur(8px); animation:calFadeIn .2s; }
-    .modal.is-open { display:flex; align-items:center; justify-content:center; }
+    body.calendar-modal-open { overflow: hidden; }
+    .modal {
+        display: none;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw;
+        height: 100dvh;
+        z-index: 99999;
+        background: rgba(12,30,20,.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        animation: calFadeIn .2s;
+        padding: 24px;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.is-open { display:flex; }
+    .modal.is-open .modal-content { max-height: calc(100dvh - 48px); }
     @keyframes calFadeIn { from{opacity:0} to{opacity:1} }
     .modal-content { background:white; padding:2rem; border-radius:16px; max-width:600px; width:90%; max-height:90vh; overflow-y:auto; position:relative; animation:calSlideDown .28s; box-shadow:0 24px 60px rgba(12,30,20,.22); }
     @keyframes calSlideDown { from{transform:translateY(-40px);opacity:0} to{transform:translateY(0);opacity:1} }
@@ -877,8 +894,8 @@
 </div>
 
 <script>
-    // Move modals to body to ensure they're not constrained by parent containers
-    document.addEventListener('DOMContentLoaded', function() {
+    // Move modals to body to ensure they are never constrained by the calendar layout
+    function ensureCalendarModalsInBody() {
         const modals = ['eventModal', 'deleteScheduleModal', 'revertScheduleModal', 'deleteClassScheduleModal', 'deleteBlockModal'];
         modals.forEach(modalId => {
             const modal = document.getElementById(modalId);
@@ -886,7 +903,10 @@
                 document.body.appendChild(modal);
             }
         });
-    });
+    }
+    document.addEventListener('DOMContentLoaded', ensureCalendarModalsInBody);
+    document.addEventListener('turbo:load', ensureCalendarModalsInBody);
+    ensureCalendarModalsInBody();
 </script>
 
 <script>
@@ -936,6 +956,15 @@
         if (!el) return;
         el.addEventListener(type, fn);
         store.push({ el, type, fn });
+    }
+
+    function syncCalendarModalScrollLock() {
+        const openModalIds = ['eventModal', 'deleteScheduleModal', 'revertScheduleModal', 'deleteClassScheduleModal', 'deleteBlockModal'];
+        const anyOpen = openModalIds.some((id) => {
+            const modal = document.getElementById(id);
+            return modal && modal.classList.contains('is-open');
+        });
+        document.body.classList.toggle('calendar-modal-open', anyOpen);
     }
 
     function initializeFormRestrictions() {
@@ -1668,14 +1697,17 @@
 
     function openDeleteScheduleModal() {
         document.getElementById('deleteScheduleModal').classList.add('is-open');
+        syncCalendarModalScrollLock();
     }
 
     function closeDeleteScheduleModal() {
         document.getElementById('deleteScheduleModal').classList.remove('is-open');
+        syncCalendarModalScrollLock();
     }
 
     function closeRevertScheduleModal() {
         document.getElementById('revertScheduleModal').classList.remove('is-open');
+        syncCalendarModalScrollLock();
     }
 
     function confirmRevertSchedule() {
@@ -2298,6 +2330,7 @@
         document.getElementById('eventModal').dataset.activeStatus = data.status || 'Manual';
         document.getElementById('eventModal').dataset.activePurpose = data.purpose || '';
         document.getElementById('eventModal').classList.add('is-open');
+        syncCalendarModalScrollLock();
     }
 
     // editManualBlockFromModal function removed - manual block form deleted
@@ -2392,6 +2425,7 @@
         // Show the delete confirmation modal
         const deleteModal = document.getElementById('deleteClassScheduleModal');
         deleteModal.classList.add('is-open');
+        syncCalendarModalScrollLock();
         
         // Store the class ID for the confirm action
         deleteModal.dataset.classId = classId;
@@ -2438,6 +2472,7 @@
 
     function closeDeleteClassScheduleModal() {
         document.getElementById('deleteClassScheduleModal').classList.remove('is-open');
+        syncCalendarModalScrollLock();
     }
 
     // deleteManualBlockFromModal function removed - manual block form deleted
@@ -2501,6 +2536,7 @@
         // Show the revert confirmation modal
         const revertModal = document.getElementById('revertScheduleModal');
         revertModal.classList.add('is-open');
+        syncCalendarModalScrollLock();
         
         // Store the class ID for the confirm action
         revertModal.dataset.classId = classId;
@@ -2517,6 +2553,7 @@
         // Show the delete confirmation modal
         const deleteModal = document.getElementById('deleteBlockModal');
         deleteModal.classList.add('is-open');
+        syncCalendarModalScrollLock();
         
         // Store the block ID for the confirm action
         deleteModal.dataset.blockId = blockId;
@@ -2524,6 +2561,7 @@
 
     function closeDeleteBlockModal() {
         document.getElementById('deleteBlockModal').classList.remove('is-open');
+        syncCalendarModalScrollLock();
     }
 
     async function confirmDeleteBlock() {
@@ -2642,6 +2680,7 @@
         if (modal) {
             modal.classList.remove('is-open');
         }
+        syncCalendarModalScrollLock();
     }
 
     function formatHour(hour) {

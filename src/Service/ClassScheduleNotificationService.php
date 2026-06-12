@@ -45,6 +45,7 @@ class ClassScheduleNotificationService
         $emailSent = false;
         $inAppSent = false;
         $channels = [];
+        $inAppMessage = $this->buildInAppMessage($message, $additionalContext);
 
         try {
             $this->sendEmail($recipientEmail, $schedule, $message, $additionalContext);
@@ -63,7 +64,7 @@ class ClassScheduleNotificationService
                 $facultyUser,
                 'class_schedule',
                 'Class schedule update',
-                $message,
+                $inAppMessage,
                 'info',
                 $schedule->getId(),
             );
@@ -125,6 +126,64 @@ class ClassScheduleNotificationService
             'Your class %s%s is scheduled at %s on %s from %s to %s.',
             $course,
             $section,
+            $facility,
+            $date,
+            $start,
+            $end,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $additionalContext
+     */
+    private function buildInAppMessage(string $baseMessage, array $additionalContext = []): string
+    {
+        $previous = $additionalContext['previousSchedule'] ?? null;
+        $current = $additionalContext['currentSchedule'] ?? null;
+        $summary = $additionalContext['changeSummary'] ?? [];
+
+        if (!is_array($previous) || !is_array($current)) {
+            return $baseMessage;
+        }
+
+        $lines = [$baseMessage, '', 'Old Schedule'];
+        $lines[] = $this->formatScheduleSnapshot($previous);
+        $lines[] = '';
+        $lines[] = 'Updated Schedule';
+        $lines[] = $this->formatScheduleSnapshot($current);
+
+        if (is_array($summary) && $summary !== []) {
+            $lines[] = '';
+            $lines[] = 'Changes';
+            foreach ($summary as $change) {
+                if (!is_array($change)) {
+                    continue;
+                }
+
+                $label = (string) ($change['label'] ?? 'Field');
+                $old = (string) ($change['old'] ?? '');
+                $new = (string) ($change['new'] ?? '');
+                $lines[] = sprintf('%s: %s -> %s', $label, $old !== '' ? $old : '—', $new !== '' ? $new : '—');
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param array<string, string> $snapshot
+     */
+    private function formatScheduleSnapshot(array $snapshot): string
+    {
+        $course = trim(($snapshot['courseCode'] ?? '') . (($snapshot['section'] ?? '') !== '' ? ' · ' . ($snapshot['section'] ?? '') : ''));
+        $facility = $snapshot['facility'] ?? 'Unknown facility';
+        $date = $snapshot['date'] ?? '';
+        $start = $snapshot['start'] ?? '';
+        $end = $snapshot['end'] ?? '';
+
+        return sprintf(
+            '%s at %s on %s from %s to %s',
+            $course !== '' ? $course : 'Class schedule',
             $facility,
             $date,
             $start,

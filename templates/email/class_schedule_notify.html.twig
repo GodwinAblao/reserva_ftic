@@ -50,6 +50,34 @@
                 </table>
             </div>
 
+            {% if previousSchedule is defined and currentSchedule is defined %}
+            <div style="background-color: #eff6ff; border-left: 4px solid #2563eb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 16px 0; color: #1d4ed8; font-size: 18px; font-weight: 600;">What Changed</h3>
+                {% if changeSummary is defined and changeSummary %}
+                <table style="width: 100%; border-collapse: collapse;">
+                    {% for change in changeSummary %}
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">{{ change.label }}</td>
+                        <td style="padding: 8px 0; color: #991b1b; font-size: 14px; text-decoration: line-through;">{{ change.old ?: '—' }}</td>
+                        <td style="padding: 8px 0; color: #166534; font-size: 14px; font-weight: 600; padding-left: 12px;">{{ change.new ?: '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% else %}
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">Previous</td>
+                        <td style="padding: 8px 0; color: #991b1b; font-size: 14px;">{{ previousSchedule.courseCode }}{% if previousSchedule.section %} · {{ previousSchedule.section }}{% endif %} at {{ previousSchedule.facility }} on {{ previousSchedule.date }} from {{ previousSchedule.start }} to {{ previousSchedule.end }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Updated</td>
+                        <td style="padding: 8px 0; color: #166534; font-size: 14px; font-weight: 600;">{{ currentSchedule.courseCode }}{% if currentSchedule.section %} · {{ currentSchedule.section }}{% endif %} at {{ currentSchedule.facility }} on {{ currentSchedule.date }} from {{ currentSchedule.start }} to {{ currentSchedule.end }}</td>
+                    </tr>
+                </table>
+                {% endif %}
+            </div>
+            {% endif %}
+
             {% if blockType is defined %}
             <!-- Block Details Card -->
             <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 8px; padding: 24px; margin-bottom: 24px;">

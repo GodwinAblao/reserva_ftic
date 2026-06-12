@@ -556,17 +556,25 @@ class SuperAdminReservationController extends AbstractController
             return $err;
         }
 
+        $oldSnapshot = $this->buildClassScheduleSnapshot($schedule);
         $oldFacultyEmail = $schedule->getFacultyEmail();
         $facultyEmail    = $this->applyClassScheduleFields($schedule, $request, new ScheduleSlot($facility, $date, $start, $end), $facultyMatcher);
 
         $em->flush();
 
+        $newSnapshot = $this->buildClassScheduleSnapshot($schedule);
         $message = 'Class schedule updated successfully.';
         $notificationResult = null;
+        $scheduleChanged = $oldSnapshot !== $newSnapshot;
 
-        // Notify faculty if email was added or changed
-        if ($facultyEmail !== '' && $facultyEmail !== $oldFacultyEmail) {
-            $notificationResult = $notificationService->notifyFaculty($schedule);
+        // Notify faculty when the schedule details change or the faculty email changes
+        if ($scheduleChanged || ($facultyEmail !== '' && $facultyEmail !== $oldFacultyEmail)) {
+            $notificationResult = $notificationService->notifyFaculty($schedule, 'Your class schedule has been updated. Please review the old and new schedule details below.', [
+                'previousSchedule' => $oldSnapshot,
+                'currentSchedule' => $newSnapshot,
+                'changeSummary' => $this->buildScheduleChangeSummary($oldSnapshot, $newSnapshot),
+                'changeType' => 'modify',
+            ]);
             $message = $notificationResult['success']
                 ? 'Class schedule updated and faculty notified.'
                 : 'Class schedule updated, but notification failed: ' . $notificationResult['message'];
@@ -994,6 +1002,54 @@ class SuperAdminReservationController extends AbstractController
         $schedule->setFacultyUser($facultyMatcher->resolveFacultyUser($schedule->getFacultyEmail()));
 
         return $facultyEmail;
+    }
+
+    /**
+     * @return array{courseCode:string,section:string,facultyName:string,facultyEmail:string,facility:string,date:string,start:string,end:string}
+     */
+    private function buildClassScheduleSnapshot(ClassSchedule $schedule): array
+    {
+        return [
+            'courseCode' => $schedule->getCourseCode(),
+            'section' => $schedule->getSection() ?? '',
+            'facultyName' => $schedule->getFacultyName() ?? '',
+            'facultyEmail' => $schedule->getFacultyEmail() ?? '',
+            'facility' => $schedule->getFacility()?->getName() ?? '',
+            'date' => $schedule->getScheduleDate()?->format('F d, Y') ?? '',
+            'start' => $schedule->getStartTime()?->format('g:i A') ?? '',
+            'end' => $schedule->getEndTime()?->format('g:i A') ?? '',
+        ];
+    }
+
+    /**
+     * @param array<string, string> $oldSnapshot
+     * @param array<string, string> $newSnapshot
+     */
+    private function buildScheduleChangeSummary(array $oldSnapshot, array $newSnapshot): array
+    {
+        $labels = [
+            'facility' => 'Facility',
+            'date' => 'Date',
+            'start' => 'Start Time',
+            'end' => 'End Time',
+            'courseCode' => 'Course Code',
+            'section' => 'Section',
+            'facultyName' => 'Faculty Name',
+            'facultyEmail' => 'Faculty Email',
+        ];
+
+        $changes = [];
+        foreach ($labels as $key => $label) {
+            if (($oldSnapshot[$key] ?? '') !== ($newSnapshot[$key] ?? '')) {
+                $changes[] = [
+                    'label' => $label,
+                    'old' => $oldSnapshot[$key] ?? '',
+                    'new' => $newSnapshot[$key] ?? '',
+                ];
+            }
+        }
+
+        return $changes;
     }
 
     private function applyBlockFields(

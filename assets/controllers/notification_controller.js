@@ -191,13 +191,15 @@ export default class extends Controller {
         const icon        = isMentor ? 'bi-person-check' : 'bi-calendar-check';
         const href        = this._esc(n.link || '#');
 
+        const messageHtml = this._esc(n.message).replace(/\r?\n/g, '<br>');
+
         return `<a href="${href}" class="notification-item${unreadClass}" `
              + `data-action="click->notification#markAsRead" `
              + `data-id="${n.id}" data-href="${href}">`
              + `<div class="notification-icon"><i class="bi ${icon}"></i></div>`
              + `<div class="notification-content">`
              + `<div class="notification-title">${this._esc(n.title)}</div>`
-             + `<div class="notification-message">${this._esc(n.message)}</div>`
+             + `<div class="notification-message">${messageHtml}</div>`
              + `<div class="notification-meta">`
              + `<span class="notification-status ${statusClass}">${this._esc(n.status)}</span>`
              + `<span class="notification-time">${this._timeAgo(n.createdAt)}</span>`
