@@ -183,20 +183,13 @@
 <section class="research-page">
 <section class="research-filter-panel">
     <form method="get" action="{{ path('research_index') }}" class="research-filter-form">
-        <input name="q" value="{{ query }}" class="form-input" placeholder="title, summary or tags">
+        <input name="q" value="{{ query }}" class="form-input research-search-input" placeholder="Search by title">
         <select name="type" class="form-input">
             <option value="">All types</option>
             {% for option in ['News', 'Article', 'Research'] %}
                 <option value="{{ option }}" {% if option == type %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
-        <select name="category" class="form-input">
-            <option value="">All categories</option>
-            {% for itemCategory in categories %}
-                <option value="{{ itemCategory }}" {% if itemCategory == category %}selected{% endif %}>{{ itemCategory }}</option>
-            {% endfor %}
-        </select>
-        <button class="btn-secondary" type="submit">Search</button>
     </form>
 </section>
 
@@ -251,7 +244,6 @@
             onclick="window.location.href='{{ path('research_index', {
                 q: query,
                 type: type,
-                category: category,
                 articlesPage: articlePagination.page - 1,
                 newsPage: newsPagination.page,
                 researchPage: researchPagination.page
@@ -265,7 +257,6 @@
             onclick="window.location.href='{{ path('research_index', {
                 q: query,
                 type: type,
-                category: category,
                 articlesPage: articlePagination.page + 1,
                 newsPage: newsPagination.page,
                 researchPage: researchPagination.page
@@ -328,7 +319,6 @@
             onclick="window.location.href='{{ path('research_index', {
                 q: query,
                 type: type,
-                category: category,
                 articlesPage: articlePagination.page,
                 newsPage: newsPagination.page - 1,
                 researchPage: researchPagination.page
@@ -342,7 +332,6 @@
             onclick="window.location.href='{{ path('research_index', {
                 q: query,
                 type: type,
-                category: category,
                 articlesPage: articlePagination.page,
                 newsPage: newsPagination.page + 1,
                 researchPage: researchPagination.page
@@ -403,7 +392,6 @@
             onclick="window.location.href='{{ path('research_index', {
                 q: query,
                 type: type,
-                category: category,
                 articlesPage: articlePagination.page,
                 newsPage: newsPagination.page,
                 researchPage: researchPagination.page - 1
@@ -417,7 +405,6 @@
             onclick="window.location.href='{{ path('research_index', {
                 q: query,
                 type: type,
-                category: category,
                 articlesPage: articlePagination.page,
                 newsPage: newsPagination.page,
                 researchPage: researchPagination.page + 1
@@ -442,6 +429,9 @@
 
     <script>
     (function () {
+        const searchForm = document.querySelector('.research-filter-form');
+        const searchInput = document.querySelector('.research-search-input');
+        const typeSelect = searchForm ? searchForm.querySelector('select[name="type"]') : null;
         const createTypeSelect = document.getElementById('researchCreateType');
         const createGoButton = document.getElementById('researchCreateGo');
         const createTargets = {
@@ -454,6 +444,34 @@
         const tokenInput = document.getElementById('researchDeleteToken');
         const title = document.getElementById('researchDeleteTitle');
         const text = document.getElementById('researchDeleteText');
+        let searchTimer = null;
+
+        if (searchForm && searchInput) {
+            const submitSearch = function () {
+                if (typeof searchForm.requestSubmit === 'function') {
+                    searchForm.requestSubmit();
+                    return;
+                }
+
+                searchForm.submit();
+            };
+
+            searchInput.addEventListener('input', function () {
+                window.clearTimeout(searchTimer);
+                searchTimer = window.setTimeout(submitSearch, 300);
+            });
+        }
+
+        if (searchForm && typeSelect) {
+            typeSelect.addEventListener('change', function () {
+                if (typeof searchForm.requestSubmit === 'function') {
+                    searchForm.requestSubmit();
+                    return;
+                }
+
+                searchForm.submit();
+            });
+        }
 
         if (createTypeSelect && createGoButton) {
             createGoButton.addEventListener('click', function () {

@@ -28,39 +28,21 @@ class ResearchController extends AbstractController
     {
         $query = trim((string) $request->query->get('q', ''));
         $type = trim((string) $request->query->get('type', ''));
-        $category = trim((string) $request->query->get('category', ''));
         $articlePage = max(1, $request->query->getInt('articlesPage', 1));
         $newsPage = max(1, $request->query->getInt('newsPage', 1));
         $researchPage = max(1, $request->query->getInt('researchPage', 1));
         $perPage = 6;
 
-        $categoriesQb = $em->createQueryBuilder()
-            ->select('DISTINCT r.category')
-            ->from(ResearchContent::class, 'r');
-
-        if (!$this->isGranted('ROLE_ADMIN')) {
-            $categoriesQb->andWhere('r.visibility = :public OR r.author = :author')
-                ->setParameter('public', 'Public')
-                ->setParameter('author', $this->getUser());
-        }
-
-        $categories = $categoriesQb
-            ->orderBy('r.category', 'ASC')
-            ->getQuery()
-            ->getSingleColumnResult();
-
-        $articleSection = $this->paginateResearchSection($em, 'Article', $query, $category, $type, $articlePage, $perPage);
-        $newsSection = $this->paginateResearchSection($em, 'News', $query, $category, $type, $newsPage, $perPage);
-        $researchSection = $this->paginateResearchSection($em, 'Research', $query, $category, $type, $researchPage, $perPage);
+        $articleSection = $this->paginateResearchSection($em, 'Article', $query, $type, $articlePage, $perPage);
+        $newsSection = $this->paginateResearchSection($em, 'News', $query, $type, $newsPage, $perPage);
+        $researchSection = $this->paginateResearchSection($em, 'Research', $query, $type, $researchPage, $perPage);
 
         return $this->render('research/index.html.twig', [
             'articleItems' => $articleSection['items'],
             'newsItems' => $newsSection['items'],
             'researchItems' => $researchSection['items'],
             'query' => $query,
-            'category' => $category,
             'type' => $type,
-            'categories' => $categories,
             'articlePagination' => $articleSection['pagination'],
             'newsPagination' => $newsSection['pagination'],
             'researchPagination' => $researchSection['pagination'],
@@ -242,12 +224,11 @@ class ResearchController extends AbstractController
         EntityManagerInterface $em,
         string $sectionType,
         string $query,
-        string $category,
         string $type,
         int $page,
         int $limit,
     ): array {
-        $qb = $this->buildResearchListQueryBuilder($em, $query, $category, $type)
+        $qb = $this->buildResearchListQueryBuilder($em, $query, $type)
             ->andWhere('r.type = :sectionType')
             ->setParameter('sectionType', $sectionType)
             ->orderBy('r.createdAt', 'DESC');
@@ -292,7 +273,6 @@ class ResearchController extends AbstractController
     private function buildResearchListQueryBuilder(
         EntityManagerInterface $em,
         string $query,
-        string $category,
         string $type,
     ): \Doctrine\ORM\QueryBuilder {
         $qb = $em->createQueryBuilder()
@@ -308,13 +288,8 @@ class ResearchController extends AbstractController
         }
 
         if ($query !== '') {
-            $qb->andWhere('r.title LIKE :query OR r.summary LIKE :query OR r.abstract LIKE :query OR r.body LIKE :query OR r.tags LIKE :query')
+            $qb->andWhere('r.title LIKE :query')
                 ->setParameter('query', '%' . $query . '%');
-        }
-
-        if ($category !== '') {
-            $qb->andWhere('r.category = :category')
-                ->setParameter('category', $category);
         }
 
         if ($type !== '') {
