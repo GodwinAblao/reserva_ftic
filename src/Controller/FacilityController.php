@@ -157,8 +157,27 @@ class FacilityController extends AbstractController
     #[Route('/{id}/view', name: 'app_facility_view', methods: ['GET'])]
     public function view(Facility $facility): Response
     {
+        $galleryImages = [];
+        foreach ($facility->getImages() as $image) {
+            $galleryImages[] = [
+                'id' => $image->getId(),
+                'path' => $image->getPath(),
+                'position' => $image->getPosition(),
+                'createdAt' => $image->getCreatedAt(),
+            ];
+        }
+
+        usort($galleryImages, static function (array $left, array $right): int {
+            if ($left['position'] === $right['position']) {
+                return ($left['id'] ?? 0) <=> ($right['id'] ?? 0);
+            }
+
+            return $left['position'] <=> $right['position'];
+        });
+
         return $this->render('facility/view.html.twig', [
             'facility' => $facility,
+            'galleryImages' => $galleryImages,
         ]);
     }
 

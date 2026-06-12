@@ -20,19 +20,15 @@
 
         <!-- LEFT: Steam-like image gallery -->
         <div class="fv-gallery-col">
-            {% set allImages = [] %}
-            {% if facility.images|length > 0 %}
-                {% for image in facility.images %}
-                    {% set allImages = allImages|merge([image.path ~ '?v=' ~ image.createdAt|date('U')]) %}
-                {% endfor %}
-            {% elseif facility.image %}
-                {% set allImages = allImages|merge([facility.image ~ '?v=' ~ facility.updatedAt|date('U')]) %}
+            {% set allImages = galleryImages|default([])|map(image => image.path ~ '?v=' ~ (image.createdAt ? image.createdAt|date('U') : facility.updatedAt|date('U'))) %}
+            {% if allImages is empty and facility.image %}
+                {% set allImages = [facility.image ~ '?v=' ~ facility.updatedAt|date('U')] %}
             {% endif %}
 
             <div class="fv-media-viewer" id="mediaViewer" data-image-count="{{ allImages|length }}">
                 <div class="fv-media-stage">
                     {% if allImages|length > 0 %}
-                        <img src="{{ allImages[0] }}" alt="{{ facility.name }}" id="fvMainImage" class="fv-media-img">
+                        <img src="{{ allImages[0] }}" alt="{{ facility.name }}" id="fvMainImage" class="fv-media-img" data-fv-image-src="{{ allImages[0] }}">
                         
                         {% if allImages|length > 1 %}
                         <button class="fv-nav-btn fv-nav-prev" onclick="fvPrevImage()" aria-label="Previous image">
@@ -56,13 +52,13 @@
                 </div>
             </div>
 
-            {% if facility.images|length > 0 %}
+            {% if allImages|length > 0 %}
             <div class="fv-thumb-strip" id="thumbStrip">
-                {% for image in facility.images %}
+                {% for imageUrl in allImages %}
                     <div class="fv-thumb {% if loop.first %}fv-thumb-active{% endif %}"
                          data-index="{{ loop.index0 }}"
-                         onclick="fvGoToImage({{ loop.index0 }}, this)">
-                        <img src="{{ image.path ~ '?v=' ~ image.createdAt|date('U') }}" alt="{{ facility.name }} - {{ loop.index }}" loading="lazy">
+                         data-fv-image-src="{{ imageUrl }}">
+                        <img src="{{ imageUrl }}" alt="{{ facility.name }} - {{ loop.index }}" loading="lazy">
                     </div>
                 {% endfor %}
             </div>
@@ -101,18 +97,18 @@
                         {% endif %}
                     </span>
                 </div>
-                {% if facility.images|length > 0 %}
+                {% if allImages|length > 0 %}
                 <div class="fv-meta-row">
                     <span class="fv-meta-label">GALLERY</span>
-                    <span class="fv-meta-value">{{ facility.images|length }} image{{ facility.images|length > 1 ? 's' : '' }}</span>
+                    <span class="fv-meta-value">{{ allImages|length }} image{{ allImages|length > 1 ? 's' : '' }}</span>
                 </div>
                 {% endif %}
             </div>
 
             <div class="fv-tags-row">
                 <span class="fv-tag">{{ facility.capacity }} pax</span>
-                {% if facility.images|length > 0 %}
-                    <span class="fv-tag">{{ facility.images|length }} photo{{ facility.images|length > 1 ? 's' : '' }}</span>
+                {% if allImages|length > 0 %}
+                    <span class="fv-tag">{{ allImages|length }} photo{{ allImages|length > 1 ? 's' : '' }}</span>
                 {% endif %}
                 <span class="fv-tag">FTIC Facility</span>
             </div>
@@ -148,47 +144,143 @@
 </div>
 
 <script>
-// Gallery image URLs from Twig
-const fvImageList = {{ allImages|json_encode|raw }};
+let fvImageList = [];
 let fvCurrentIndex = 0;
+let fvThumbStripEl = null;
+let fvMediaStageEl = null;
+let fvThumbClickHandler = null;
+let fvTouchStartHandler = null;
+let fvTouchEndHandler = null;
+let fvKeydownHandler = null;
+let touchStartX = 0;
+let touchEndX = 0;
 
-// Move lightbox to body to ensure it covers header/sidebar and centers properly
-document.addEventListener('DOMContentLoaded', function() {
+function fvCollectGalleryImages() {
+    const thumbSources = Array.from(document.querySelectorAll('#thumbStrip .fv-thumb[data-fv-image-src]'))
+        .map((thumb) => thumb.dataset.fvImageSrc)
+        .filter(Boolean);
+
+    if (thumbSources.length > 0) {
+        return thumbSources;
+    }
+
+    const mainImage = document.getElementById('fvMainImage');
+    return mainImage && mainImage.dataset.fvImageSrc ? [mainImage.dataset.fvImageSrc] : [];
+}
+
+function fvAttachGallery() {
     const lightbox = document.getElementById('fvLightbox');
     if (lightbox && lightbox.parentElement !== document.body) {
         document.body.appendChild(lightbox);
     }
-});
+
+    fvDetachGallery();
+
+    fvImageList = fvCollectGalleryImages();
+    fvThumbStripEl = document.getElementById('thumbStrip');
+    fvMediaStageEl = document.querySelector('.fv-media-stage');
+
+    if (fvThumbStripEl) {
+        fvThumbClickHandler = function(event) {
+            const thumb = event.target.closest('.fv-thumb');
+            if (!thumb || !fvThumbStripEl.contains(thumb)) return;
+            fvGoToImageUrl(thumb.dataset.fvImageSrc);
+        };
+        fvThumbStripEl.addEventListener('click', fvThumbClickHandler);
+    }
+
+    if (fvMediaStageEl && fvImageList.length > 1) {
+        fvTouchStartHandler = function(event) {
+            touchStartX = event.changedTouches[0].screenX;
+        };
+        fvTouchEndHandler = function(event) {
+            touchEndX = event.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) fvNextImage();
+                else fvPrevImage();
+            }
+        };
+        fvMediaStageEl.addEventListener('touchstart', fvTouchStartHandler, { passive: true });
+        fvMediaStageEl.addEventListener('touchend', fvTouchEndHandler, { passive: true });
+    }
+
+    fvKeydownHandler = function(event) {
+        const lightboxEl = document.getElementById('fvLightbox');
+        const isLightboxOpen = lightboxEl && lightboxEl.classList.contains('is-open');
+
+        if (event.key === 'ArrowRight') fvNextImage();
+        if (event.key === 'ArrowLeft') fvPrevImage();
+        if (event.key === 'Escape' && isLightboxOpen) fvCloseLightbox();
+    };
+    document.addEventListener('keydown', fvKeydownHandler);
+
+    if (fvImageList.length > 0) {
+        fvUpdateImage(0);
+    }
+}
+
+function fvDetachGallery() {
+    const lightbox = document.getElementById('fvLightbox');
+    if (lightbox) {
+        lightbox.classList.remove('is-open');
+    }
+    document.body.style.overflow = '';
+
+    if (fvThumbStripEl && fvThumbClickHandler) {
+        fvThumbStripEl.removeEventListener('click', fvThumbClickHandler);
+    }
+    if (fvMediaStageEl && fvTouchStartHandler) {
+        fvMediaStageEl.removeEventListener('touchstart', fvTouchStartHandler);
+    }
+    if (fvMediaStageEl && fvTouchEndHandler) {
+        fvMediaStageEl.removeEventListener('touchend', fvTouchEndHandler);
+    }
+    if (fvKeydownHandler) {
+        document.removeEventListener('keydown', fvKeydownHandler);
+    }
+
+    fvThumbStripEl = null;
+    fvMediaStageEl = null;
+    fvThumbClickHandler = null;
+    fvTouchStartHandler = null;
+    fvTouchEndHandler = null;
+    fvKeydownHandler = null;
+}
+
+if (!window.__facilityGalleryBound) {
+    document.addEventListener('DOMContentLoaded', fvAttachGallery);
+    document.addEventListener('turbo:load', fvAttachGallery);
+    document.addEventListener('turbo:before-cache', fvDetachGallery);
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            fvAttachGallery();
+        }
+    });
+    window.__facilityGalleryBound = true;
+}
 
 function fvUpdateImage(index) {
     if (!fvImageList.length || index < 0 || index >= fvImageList.length) return;
     fvCurrentIndex = index;
-    
+
     const mainImg = document.getElementById('fvMainImage');
     const counter = document.getElementById('imageCounter');
     const lightboxImg = document.getElementById('lightboxImage');
     const lightboxCounter = document.getElementById('lightboxCounter');
-    
-    // Update main image with fade
+
     if (mainImg) {
-        mainImg.style.opacity = '0.7';
-        setTimeout(() => {
-            mainImg.src = fvImageList[index];
-            mainImg.style.opacity = '1';
-        }, 120);
+        mainImg.src = fvImageList[index];
     }
-    
-    // Update counter
+
     if (counter) counter.textContent = (index + 1) + ' / ' + fvImageList.length;
     if (lightboxCounter) lightboxCounter.textContent = (index + 1) + ' / ' + fvImageList.length;
     if (lightboxImg) lightboxImg.src = fvImageList[index];
-    
-    // Update thumbnails
-    document.querySelectorAll('.fv-thumb').forEach((t, i) => {
-        t.classList.toggle('fv-thumb-active', i === index);
+
+    document.querySelectorAll('.fv-thumb').forEach((thumb, thumbIndex) => {
+        thumb.classList.toggle('fv-thumb-active', thumbIndex === index);
     });
-    
-    // Scroll active thumb into view
+
     const activeThumb = document.querySelector('.fv-thumb-active');
     if (activeThumb && activeThumb.scrollIntoView) {
         activeThumb.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -205,8 +297,25 @@ function fvPrevImage() {
     fvUpdateImage((fvCurrentIndex - 1 + fvImageList.length) % fvImageList.length);
 }
 
-function fvGoToImage(index, thumb) {
-    fvUpdateImage(index);
+function fvGoToImageUrl(imageUrl) {
+    if (!imageUrl) return;
+
+    const index = fvImageList.indexOf(imageUrl);
+    if (index !== -1) {
+        fvUpdateImage(index);
+        return;
+    }
+
+    const mainImg = document.getElementById('fvMainImage');
+    const counter = document.getElementById('imageCounter');
+    const lightboxImg = document.getElementById('lightboxImage');
+    const lightboxCounter = document.getElementById('lightboxCounter');
+
+    fvCurrentIndex = 0;
+    if (mainImg) mainImg.src = imageUrl;
+    if (lightboxImg) lightboxImg.src = imageUrl;
+    if (counter) counter.textContent = '1 / 1';
+    if (lightboxCounter) lightboxCounter.textContent = '1 / 1';
 }
 
 function fvOpenLightbox() {
@@ -226,36 +335,6 @@ function fvCloseLightbox(e) {
         lightbox.classList.remove('is-open');
         document.body.style.overflow = '';
     }
-}
-
-// Keyboard navigation
-document.addEventListener('keydown', function(e) {
-    const lightbox = document.getElementById('fvLightbox');
-    const isLightboxOpen = lightbox && lightbox.classList.contains('is-open');
-    
-    if (e.key === 'ArrowRight') fvNextImage();
-    if (e.key === 'ArrowLeft') fvPrevImage();
-    if (e.key === 'Escape' && isLightboxOpen) fvCloseLightbox();
-});
-
-// Touch/swipe support for mobile
-let touchStartX = 0;
-let touchEndX = 0;
-
-const mediaStage = document.querySelector('.fv-media-stage');
-if (mediaStage && fvImageList.length > 1) {
-    mediaStage.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-    
-    mediaStage.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
-        const diff = touchStartX - touchEndX;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) fvNextImage();
-            else fvPrevImage();
-        }
-    }, { passive: true });
 }
 </script>
 
