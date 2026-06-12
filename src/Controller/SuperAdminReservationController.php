@@ -807,16 +807,19 @@ class SuperAdminReservationController extends AbstractController
             $day = $request->request->get('day');
             $startTime = $request->request->get('start_time');
             $endTime = $request->request->get('end_time');
+            $startDate = $request->request->get('start_date');
+            $endDate = $request->request->get('end_date');
+            $term = $request->request->get('term');
             $courseCode = $request->request->get('course_code');
             $section = $request->request->get('section');
             $facultyName = $request->request->get('faculty_name');
             $facultyEmail = $request->request->get('faculty_email');
 
             // Validate required fields
-            if (!$facility || !$day || !$startTime || !$endTime || !$courseCode || !$section || !$facultyName || !$facultyEmail) {
+            if (!$facility || !$day || !$startTime || !$endTime || !$startDate || !$endDate || !$courseCode || !$section || !$facultyName || !$facultyEmail) {
                 return $this->json([
                     'success' => false,
-                    'message' => 'All fields are required.',
+                    'message' => 'All fields are required, including start date and end date.',
                 ], Response::HTTP_BAD_REQUEST);
             }
 
@@ -830,7 +833,7 @@ class SuperAdminReservationController extends AbstractController
             $uploadedFile = new UploadedFile($tempFile, 'manual_schedule.csv', 'text/csv', null, true);
 
             // Import using the same service
-            $result = $importService->import($uploadedFile, '', 'Manual Entry', null, null, true);
+            $result = $importService->import($uploadedFile, '', 'Manual Entry', $startDate, $endDate, $term, true);
 
             unlink($tempFile);
 
