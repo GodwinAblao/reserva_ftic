@@ -12,6 +12,7 @@ use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\SpecializationRepository;
+use App\Repository\UserRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
@@ -617,7 +618,7 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
-    public function mentorshipCoordination(EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
+    public function mentorshipCoordination(EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository): Response
     {
         // Redirect Super Admin to the full-featured Super Admin interface
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
@@ -632,7 +633,7 @@ class AdminRoleController extends AbstractController
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
-            'users' => $em->getRepository(User::class)->findBy([], ['lastName' => 'ASC', 'firstName' => 'ASC'], 300),
+            'users' => $userRepository->findEligibleMentorCreationUsers(),
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
             'is_super_admin' => false,

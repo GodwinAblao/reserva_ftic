@@ -12,6 +12,7 @@ use App\Entity\MentoringAppointment;
 use App\Entity\MentoringAuditLog;
 use App\Entity\User;
 use App\Repository\SpecializationRepository;
+use App\Repository\UserRepository;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -46,7 +47,7 @@ class MentorAdminController extends AbstractController
 
     #[Route('/super-admin/mentor-requests', name: 'mentoring_superadmin_requests', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function adminMentorRequests(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
+    public function adminMentorRequests(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository): Response
     {
         $allRequests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
         $assistanceRequests = array_values(array_filter($allRequests, fn($r) => $r->isAssistanceRequest()));
@@ -72,7 +73,7 @@ class MentorAdminController extends AbstractController
             'allItems'           => $allItems,
             'mentors'            => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
             'leaderboard'        => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
-            'users'              => $em->getRepository(User::class)->findBy([], ['lastName' => 'ASC', 'firstName' => 'ASC'], 300),
+            'users'              => $userRepository->findEligibleMentorCreationUsers(),
             'applications'       => $applications,
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'is_super_admin'     => $this->isGranted('ROLE_SUPER_ADMIN'),
