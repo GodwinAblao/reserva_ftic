@@ -4,6 +4,13 @@
 
 {% block content %}
 <div class="reservation-container">
+    <div class="reservation-topbar">
+        <a href="{{ path('app_facility_view', {'id': facility.id}) }}" class="reservation-back-link" data-turbo="false">
+            <span class="reservation-back-icon">←</span>
+            <span>Back to Facility</span>
+        </a>
+    </div>
+
     <div class="content-header">
         <h2 class="room-name">{{ facility.name }}</h2>
         <p class="facility-capacity">Capacity: <strong>{{ facility.capacity }} people</strong></p>
@@ -183,6 +190,47 @@
         padding: 2rem 2rem 4rem 2rem;
         background: #ffffff;
         min-height: 100vh;
+    }
+
+    .reservation-topbar {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .reservation-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.75rem 1rem;
+        border-radius: 999px;
+        border: 1px solid rgba(13, 155, 0, 0.18);
+        background: linear-gradient(135deg, rgba(13, 155, 0, 0.08), rgba(13, 155, 0, 0.04));
+        color: var(--feu-green-dark);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .reservation-back-link:hover {
+        transform: translateY(-1px);
+        background: linear-gradient(135deg, rgba(13, 155, 0, 0.12), rgba(13, 155, 0, 0.06));
+        border-color: rgba(13, 155, 0, 0.28);
+    }
+
+    .reservation-back-icon {
+        display: inline-flex;
+        width: 1.5rem;
+        height: 1.5rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(13, 155, 0, 0.12);
+        color: var(--feu-green);
+        font-size: 1rem;
+        line-height: 1;
+        flex-shrink: 0;
     }
 
     .content-header {
@@ -737,6 +785,10 @@
             grid-template-columns: 1fr;
             padding-left: 1rem;
             padding-right: 1rem;
+        }
+
+        .reservation-topbar {
+            margin-bottom: 0.75rem;
         }
 
         .room-name {
