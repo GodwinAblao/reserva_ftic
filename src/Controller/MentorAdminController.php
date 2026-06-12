@@ -178,7 +178,7 @@ class MentorAdminController extends AbstractController
     public function reviewApplication(MentorApplication $application, string $decision, Request $request, EntityManagerInterface $em): Response
     {
         if (!$this->isGranted('ROLE_SUPER_ADMIN')) {
-            $this->addFlash('error', 'Only Super Admin can approve or decline mentor applications.');
+            $this->addFlash('mentor_error', 'Only Super Admin can approve or decline mentor applications.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -191,7 +191,7 @@ class MentorAdminController extends AbstractController
         }
 
         if (!in_array($application->getStatus(), ['Pending', 'Pending Review'], true)) {
-            $this->addFlash('error', 'Only pending applications can be reviewed.');
+            $this->addFlash('mentor_error', 'Only pending applications can be reviewed.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -217,13 +217,13 @@ class MentorAdminController extends AbstractController
                 }
             } catch (\Exception $e) {}
 
-            $this->addFlash('success', 'Mentor application rejected.');
+            $this->addFlash('mentor_success', 'Mentor application rejected.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         $validUntil = $request->request->get('valid_until');
         if (!$validUntil) {
-            $this->addFlash('error', 'Valid until date is required when approving a mentor application.');
+            $this->addFlash('mentor_error', 'Valid until date is required when approving a mentor application.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
         $validUntilDate = \DateTime::createFromFormat('Y-m-d', $validUntil);
@@ -265,7 +265,7 @@ class MentorAdminController extends AbstractController
             }
         } catch (\Exception $e) {}
 
-        $this->addFlash('success', 'Student approved as mentor.');
+        $this->addFlash('mentor_success', 'Student approved as mentor.');
         return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
@@ -283,7 +283,7 @@ class MentorAdminController extends AbstractController
         $em->flush();
 
         $this->notificationService->notifyMentorApplicationRejected($student, $applicationId, 'Your mentor application was deleted by Super Admin.');
-        $this->addFlash('success', 'Mentor application deleted and the user has been notified.');
+        $this->addFlash('mentor_success', 'Mentor application deleted and the user has been notified.');
         return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
@@ -297,13 +297,13 @@ class MentorAdminController extends AbstractController
 
         $user = $em->getRepository(User::class)->find((int) $request->request->get('user_id'));
         if (!$user) {
-            $this->addFlash('error', 'User not found.');
+            $this->addFlash('mentor_error', 'User not found.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
         $existing = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
         if ($existing) {
-            $this->addFlash('error', 'This user already has a mentor profile.');
+            $this->addFlash('mentor_error', 'This user already has a mentor profile.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -312,7 +312,7 @@ class MentorAdminController extends AbstractController
         $availEnd         = trim((string) $request->request->get('availability_end'));
 
         if (empty($availabilityDays) || !is_array($availabilityDays)) {
-            $this->addFlash('error', 'Please select at least one mentoring day.');
+            $this->addFlash('mentor_error', 'Please select at least one mentoring day.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -346,7 +346,7 @@ class MentorAdminController extends AbstractController
             }
         } catch (\Exception $e) {}
 
-        $this->addFlash('success', 'Mentor profile created.');
+        $this->addFlash('mentor_success', 'Mentor profile created.');
         return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
@@ -374,24 +374,24 @@ class MentorAdminController extends AbstractController
             $availEnd         = trim((string) $request->request->get('availability_end'));
 
             if ($displayName === '' || $specialization === '') {
-                $this->addFlash('error', 'Display name and specialization are required.');
+                $this->addFlash('mentor_error', 'Display name and specialization are required.');
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
             if (empty($availabilityDays) || !is_array($availabilityDays)) {
-                $this->addFlash('error', 'Please select at least one mentoring day.');
+                $this->addFlash('mentor_error', 'Please select at least one mentoring day.');
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
             if ($availStart !== '' && $availEnd !== '' && $availEnd <= $availStart) {
-                $this->addFlash('error', 'End time must be after start time.');
+                $this->addFlash('mentor_error', 'End time must be after start time.');
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
             $mentor->setDisplayName($displayName)->setSpecialization($specialization)->setBio($bio ?: null)->setEducation($education ?: null)->setAvailabilityDays($availabilityDays)->setAvailabilityStart($availStart !== '' ? $availStart : null)->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
             $em->flush();
 
-            $this->addFlash('success', 'Mentor profile updated successfully.');
+            $this->addFlash('mentor_success', 'Mentor profile updated successfully.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -423,7 +423,7 @@ class MentorAdminController extends AbstractController
         }
         $em->flush();
 
-        $this->addFlash('success', 'Mentor profile deleted successfully and user has been notified.');
+        $this->addFlash('mentor_success', 'Mentor profile deleted successfully and user has been notified.');
         return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 
@@ -440,7 +440,7 @@ class MentorAdminController extends AbstractController
         $end   = \DateTime::createFromFormat('H:i', (string) $request->request->get('end_time'));
 
         if (!$date || !$start || !$end || $end <= $start) {
-            $this->addFlash('error', 'Please enter a valid availability date and time range.');
+            $this->addFlash('mentor_error', 'Please enter a valid availability date and time range.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -448,7 +448,7 @@ class MentorAdminController extends AbstractController
         $em->persist($availability);
         $em->flush();
 
-        $this->addFlash('success', 'Availability added.');
+        $this->addFlash('mentor_success', 'Availability added.');
         return $this->redirectToRoute('mentoring_superadmin_requests');
     }
 

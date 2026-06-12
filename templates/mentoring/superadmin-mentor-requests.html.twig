@@ -125,6 +125,24 @@
 
 {% set pendingApplicationsCount = applications|filter(app => app.status in ['Pending', 'Pending Review'])|length %}
 
+{% for message in app.flashes('mentor_success') %}
+    <div class="flash-message flash-success" style="margin: 0 0 16px 0;">
+        <div class="flash-content">
+            <div class="flash-icon">✓</div>
+            <span>{{ message }}</span>
+        </div>
+    </div>
+{% endfor %}
+
+{% for message in app.flashes('mentor_error') %}
+    <div class="flash-message flash-error" style="margin: 0 0 16px 0;">
+        <div class="flash-content">
+            <div class="flash-icon">!</div>
+            <span>{{ message }}</span>
+        </div>
+    </div>
+{% endfor %}
+
 {# â”€â”€ Toolbar â”€â”€ #}
 <div class="sa-toolbar">
     <div class="sa-toolbar-search">
