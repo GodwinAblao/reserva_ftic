@@ -143,7 +143,18 @@
                                     </div>
                                 </div>
                                 <div class="card-actions">
-                                    <button type="button" class="btn-danger-small" style="width: auto !important; max-width: none !important; flex: 0 0 auto !important;" onclick="openCancelModal({{ reservation.id }}, 'approved', '{{ csrf_token('cancel_reservation_' ~ reservation.id) }}')">Cancel</button>
+                                    {% if cancellationBlocked[reservation.id] ?? false %}
+                                        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;">
+                                            <span class="status-badge status-approved" style="display:inline-flex;align-items:center;justify-content:center;width:auto;padding:10px 14px;font-size:12px;font-weight:700;">
+                                                Cancellation locked within 24 hours
+                                            </span>
+                                            <span style="font-size:12px;color:#6b7280;line-height:1.4;">
+                                                Approved reservations cannot be cancelled once they are within 24 hours of the scheduled start time.
+                                            </span>
+                                        </div>
+                                    {% else %}
+                                        <button type="button" class="btn-danger-small" style="width: auto !important; max-width: none !important; flex: 0 0 auto !important;" onclick="openCancelModal({{ reservation.id }}, 'approved', '{{ csrf_token('cancel_reservation_' ~ reservation.id) }}')">Cancel</button>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endfor %}

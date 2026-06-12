@@ -313,12 +313,15 @@ public function reserve(
             'Rejected' => [],
             'Cancelled' => [],
         ];
+        $cancellationBlocked = [];
 
         foreach ($reservations as $reservation) {
             $status = $reservation->getStatus();
             if (isset($categorized[$status])) {
                 $categorized[$status][] = $reservation;
             }
+
+            $cancellationBlocked[$reservation->getId()] = $this->isCancellationRestricted($reservation);
         }
 
         // Get most recent reservation for the modal (if any)
@@ -339,6 +342,7 @@ public function reserve(
         return $this->render('reservation/user_reservations.html.twig', [
             'reservations' => $categorized,
             'recentReservation' => $recentReservation,
+            'cancellationBlocked' => $cancellationBlocked,
         ]);
     }
 
@@ -358,6 +362,12 @@ public function reserve(
         // Verify user owns this reservation
         if ($reservation->getUser() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
+        }
+
+        if ($reservation->getStatus() === 'Approved' && $this->isCancellationRestricted($reservation)) {
+            $this->addFlash('error', 'This approved reservation can no longer be cancelled because it is within 24 hours of the scheduled time.');
+
+            return $this->redirectToRoute('user_reservations');
         }
 
         $reservation->setStatus('Cancelled');
@@ -616,6 +626,40 @@ public function reserve(
         $reservationMailer->notifyPending($reservation);
         $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
         return $this->redirectToRoute('user_reservations');
+    }
+
+    private function isCancellationRestricted(Reservation $reservation): bool
+    {
+        $startDateTime = $this->getReservationStartDateTime($reservation);
+        if (!$startDateTime) {
+            return false;
+        }
+
+        $now = new \DateTimeImmutable('now', $startDateTime->getTimezone());
+
+        return $startDateTime <= $now->modify('+24 hours');
+    }
+
+    private function getReservationStartDateTime(Reservation $reservation): ?\DateTimeImmutable
+    {
+        $reservationDate = $reservation->getReservationDate();
+        $reservationStartTime = $reservation->getReservationStartTime();
+
+        if (!$reservationDate || !$reservationStartTime) {
+            return null;
+        }
+
+        $timezone = $reservationDate->getTimezone() ?: $reservationStartTime->getTimezone();
+        $dateString = $reservationDate->format('Y-m-d') . ' ' . $reservationStartTime->format('H:i:s');
+        $startDateTime = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $dateString, $timezone);
+
+        if ($startDateTime instanceof \DateTimeImmutable) {
+            return $startDateTime;
+        }
+
+        $fallback = \DateTimeImmutable::createFromFormat('Y-m-d H:i', $reservationDate->format('Y-m-d') . ' ' . $reservationStartTime->format('H:i'), $timezone);
+
+        return $fallback instanceof \DateTimeImmutable ? $fallback : null;
     }
 
 private function notifyAdminNewReservation(Reservation $reservation, MailerInterface $mailer, EntityManagerInterface $em, UserRepository $userRepository): void
