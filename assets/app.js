@@ -1,5 +1,4 @@
 import './stimulus_bootstrap.js';
-import './styles/app.css';
 
 /* â”€â”€ Global: Reservation detail modal (used by both admin & user sidebars) â”€â”€ */
 window.showResvDetail = function(r) {
