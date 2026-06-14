@@ -1,0 +1,17 @@
+# CORS configuration for production API endpoints
+# This allows the frontend to make authenticated API calls
+nelmio_cors:
+    defaults:
+        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
+        allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'DELETE']
+        allow_headers: ['Content-Type', 'X-Requested-With', 'Authorization']
+        expose_headers: ['Link']
+        max_age: 3600
+        allow_credentials: true
+    paths:
+        '^/api/':
+            allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
+            allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'DELETE']
+            allow_headers: ['Content-Type', 'X-Requested-With', 'Authorization']
+            allow_credentials: true
+            max_age: 3600

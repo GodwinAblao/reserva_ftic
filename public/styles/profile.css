@@ -14,12 +14,18 @@
 .pf-flash--success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
 .pf-flash--error   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BOTTOM SPACING: Now handled centrally in regular_user_sidebar.css
+   - Shell has bottom: 80px (desktop) / auto (mobile)
+   - Content wrapper has padding-bottom: 100px (desktop) / 60px (mobile)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 /* Outer wrapper — balanced width, centered */
 .pf-wrap {
     background: transparent;
     border-radius: 0;
     box-shadow: none;
-    padding: 0 0 80px 0;
+    padding: 0;
     max-width: 1100px;
     width: 100%;
     margin: 0 auto;
@@ -413,7 +419,7 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
 
 /* ── Responsive ── */
 @media (max-width: 700px) {
-    .pf-wrap { padding: 18px 14px 24px; }
+    .pf-wrap { padding: 18px 14px 0; } /* Bottom spacing handled centrally by regular_user_sidebar.css */
     .pf-header-card { flex-wrap: wrap; gap: 14px; }
     .pf-row--3 > .pf-field,
     .pf-row--2 > .pf-field,

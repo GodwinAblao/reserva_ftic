@@ -1,5 +1,11 @@
 /* Leaderboard Page — Pro, Animated, Fun */
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BOTTOM SPACING: Now handled centrally in regular_user_sidebar.css
+   - Shell has bottom: 80px (desktop) / auto (mobile)
+   - Content wrapper has padding-bottom: 100px (desktop) / 60px (mobile)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 .leaderboard-page {
   --lb-gold: #f5b800;
   --lb-gold-light: #fff8e1;
@@ -18,7 +24,7 @@
   --lb-shadow-bronze: 0 8px 32px rgba(205,127,50,0.3);
   --lb-radius: 16px;
   --lb-radius-sm: 10px;
-  padding-bottom: 2rem;
+  /* Bottom spacing handled globally by content-bottom-spacer */
 }
 
 #lb-confetti {
@@ -598,3 +604,4 @@
   .lb-table .lb-cell-avatar { width: 36px; height: 36px; }
   .lb-stat-value { font-size: 1.4rem; }
 }
+

@@ -3,14 +3,12 @@
     background: #ffffff;
 }
 
-.dashboard-page .app-shell.regular-user-shell {
-    gap: 0;
-    padding: 0;
-}
-
-.dashboard-page .content-area.regular-user-content {
-    padding: 24px 28px 32px 28px;
-}
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BOTTOM SPACING: Now handled centrally in regular_user_sidebar.css
+   - Shell has bottom: 80px (desktop) / auto (mobile)
+   - Content wrapper has padding-bottom: 100px (desktop) / 60px (mobile)
+   - Bottom spacer ensures consistent spacing across all pages
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Shared dashboard SVG icon sprite */
 .dashboard-page .dashboard-icons {
@@ -427,11 +425,8 @@
         padding: 88px 0 0 0;
     }
 
-    .dashboard-page .content-area.regular-user-content {
-        padding: 10px 10px 28px;
-        height: auto;
-        overflow: visible;
-    }
+    /* Bottom spacing handled centrally by regular_user_sidebar.css */
+    /* DO NOT override height/overflow here - it breaks scroll container */
 
     .dashboard-page .dashboard-topbar {
         padding: 0 0 10px;
@@ -463,9 +458,7 @@
 }
 
 @media (max-width: 640px) {
-    .dashboard-page .content-area.regular-user-content {
-        padding: 16px 12px 28px;
-    }
+    /* Bottom spacing handled centrally by regular_user_sidebar.css */
 
     .dashboard-page .dashboard-topbar {
         align-items: flex-start;

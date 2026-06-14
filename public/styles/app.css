@@ -1915,3 +1915,11 @@ select:focus {
 }
 .ajax-flash-success::before { content: '✓ '; }
 .ajax-flash-error::before   { content: '✕ '; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   END-USER PAGES - Bottom spacing is handled globally by content-bottom-spacer
+   in regular_user_sidebar.css (80px desktop, 60px mobile)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Responsive adjustments for mobile */
+/* Bottom spacing handled centrally by regular_user_sidebar.css */

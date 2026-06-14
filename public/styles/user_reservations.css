@@ -1,9 +1,15 @@
 /* User Reservations Page Styles */
 /* Mobile-First Responsive Design */
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BOTTOM SPACING: Now handled centrally in regular_user_sidebar.css
+   - Shell has bottom: 80px (desktop) / auto (mobile)
+   - Content wrapper has padding-bottom: 100px (desktop) / 60px (mobile)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 /* ============================================
    TWO COLUMN LAYOUT - MOBILE FIRST
-   ============================================ */
+   ============================================
 
 /* Mobile - Single Column Layout (320px - 767px) */
 .reservations-page-layout {
@@ -1724,4 +1730,5 @@
         font-size: 10px;
     }
 }
+
 

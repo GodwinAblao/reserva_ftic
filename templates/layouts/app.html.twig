@@ -313,7 +313,11 @@
         </aside>
 
         <main class="content-area {{ is_regular_user ? 'regular-user-content' : '' }}">
-            {% block content %}{% endblock %}
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+            <!-- Bottom spacer to match sidebar bottom spacing -->
+            <div class="content-bottom-spacer"></div>
         </main>
 
         {% if not is_regular_user %}

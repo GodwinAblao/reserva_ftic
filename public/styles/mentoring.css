@@ -1,5 +1,11 @@
 /* Mentoring Page Enhancements - Elegant Academic Design */
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BOTTOM SPACING: Now handled centrally in regular_user_sidebar.css
+   - Shell has bottom: 80px (desktop) / auto (mobile)
+   - Content wrapper has padding-bottom: 100px (desktop) / 60px (mobile)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 .mentor-card-link {
   text-decoration: none;
   color: inherit;
@@ -4241,3 +4247,4 @@
     max-height: calc(100vh - 24px) !important;
   }
 }
+

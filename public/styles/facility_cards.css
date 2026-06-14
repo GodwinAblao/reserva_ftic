@@ -1,4 +1,10 @@
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   BOTTOM SPACING: Now handled centrally in regular_user_sidebar.css
+   - Shell has bottom: 80px (desktop) / auto (mobile)
+   - Content wrapper has padding-bottom: 100px (desktop) / 60px (mobile)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 /* End-user facility listing cards */
 .regular-user-theme .facility-top-row {
     display: flex;
