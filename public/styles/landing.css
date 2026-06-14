@@ -108,37 +108,7 @@ body.page-landing {
     background-color: #4a8d0c;
 }
 
-.page-loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.75);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 0.7rem;
-    z-index: 1200;
-}
-
-.page-loading-spinner {
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid #0D9B00;
-    border-right-color: transparent;
-    border-radius: 9999px;
-    animation: page-loading-spin 0.75s linear infinite;
-}
-
-.page-loading-text {
-    font-size: 0.9rem;
-    color: #0D9B00;
-    font-weight: 600;
-}
-
-@keyframes page-loading-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+/* Note: .page-loading-overlay styles moved to app.css for global use */
 
 .hero-section {
     background: #fff;

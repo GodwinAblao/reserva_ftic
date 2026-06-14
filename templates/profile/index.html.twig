@@ -4,8 +4,8 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="preload" href="{{ asset('styles/profile.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ asset('styles/profile.css') }}"></noscript>
+    <!-- Synchronous CSS loading to prevent FOUC -->
+    <link rel="stylesheet" href="{{ asset('styles/profile.css') }}" media="all">
     <style>
         .pf-checkbox-group {
             display: flex;

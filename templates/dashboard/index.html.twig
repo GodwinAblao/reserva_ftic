@@ -6,10 +6,9 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="preload" href="{{ asset('styles/facility_cards.css') }}?v=20260522-2" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260522-2"></noscript>
-    <link rel="preload" href="{{ asset('styles/end_user_dashboard.css') }}?v=20260522-2" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ asset('styles/end_user_dashboard.css') }}?v=20260522-2"></noscript>
+    <!-- Synchronous CSS loading to prevent FOUC -->
+    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260522-2" media="all">
+    <link rel="stylesheet" href="{{ asset('styles/end_user_dashboard.css') }}?v=20260522-2" media="all">
 {% endblock %}
 
 
@@ -59,7 +58,7 @@
             <section class="dashboard-main-column">
                 {# Reservation and mentoring summary cards. #}
                 <div class="dashboard-stats-grid">
-                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-green">
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-green" data-turbo="false">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
                             <span class="dashboard-stat-title">Total Reservations</span>
@@ -68,7 +67,7 @@
                         <div class="dashboard-stat-foot">Total Reservations</div>
                     </a>
 
-                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-success">
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-success" data-turbo="false">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
                             <span class="dashboard-stat-title">Approved Reservations</span>
@@ -77,7 +76,7 @@
                         <div class="dashboard-stat-foot">Reservations this week</div>
                     </a>
 
-                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-warning">
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-warning" data-turbo="false">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
                             <span class="dashboard-stat-title">Pending Reservation</span>
@@ -86,7 +85,7 @@
                         <div class="dashboard-stat-foot">Pending this week</div>
                     </a>
 
-                    <a href="{{ path('mentoring_index') }}" class="dashboard-stat-card stat-muted">
+                    <a href="{{ path('mentoring_index') }}" class="dashboard-stat-card stat-muted" data-turbo="false">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-mentoring" /></svg></span>
                             <span class="dashboard-stat-title">Mentoring</span>
@@ -100,7 +99,7 @@
                 <section class="dashboard-section dashboard-facility-carousel-section">
                     <div class="dashboard-section-head">
                         <h3>Facilities</h3>
-                        <a href="{{ path('app_facility_index') }}" class="dfc-view-all">View all →</a>
+                        <a href="{{ path('app_facility_index') }}" class="dfc-view-all" data-turbo="false">View all →</a>
                     </div>
 
                     {% if facilities is empty %}
@@ -130,7 +129,7 @@
                                                 {% if facility.description %}
                                                     <p class="description">{{ facility.description }}</p>
                                                 {% endif %}
-                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view">Reserve now</a>
+                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view" data-turbo="false">Reserve now</a>
                                             </div>
                                         </div>
                                     </div>
@@ -156,7 +155,7 @@
                                                 {% if facility.description %}
                                                     <p class="description">{{ facility.description }}</p>
                                                 {% endif %}
-                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view">Reserve now</a>
+                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view" data-turbo="false">Reserve now</a>
                                             </div>
                                         </div>
                                     </div>
@@ -170,7 +169,7 @@
                 <section class="dashboard-section">
                     <div class="dashboard-section-head">
                         <h3>Innovation Hub</h3>
-                        <a href="{{ path('research_index') }}" class="dfc-view-all">View all →</a>
+                        <a href="{{ path('research_index') }}" class="dfc-view-all" data-turbo="false">View all →</a>
                     </div>
 
                     {% if recentResearch is empty %}
@@ -203,7 +202,7 @@
                                             <p>{{ item.body }}</p>
                                         {% endif %}
                                         <div class="research-card-actions">
-                                            <a href="{{ path('research_show', {id: item.id}) }}" class="research-view-btn">View</a>
+                                            <a href="{{ path('research_show', {id: item.id}) }}" class="research-view-btn" data-turbo="false">View</a>
                                         </div>
                                     </div>
                                 </article>

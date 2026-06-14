@@ -6,9 +6,37 @@
         <title>{% block title %}Reserva FTIC{% endblock %}</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
 
-        <!-- Preload critical CSS -->
-        <link rel="preload" href="{{ asset('styles/app.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript><link rel="stylesheet" href="{{ asset('styles/app.css') }}"></noscript>
+        <!-- ═══════════════════════════════════════════════════════════════════════════════
+             CRITICAL CSS - Loaded synchronously (blocking) to prevent ANY FOUC
+             ═══════════════════════════════════════════════════════════════════════════════ -->
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}" media="all">
+        
+        <!-- Critical inline styles to hide body until CSS is fully applied -->
+        <style>
+            /* Prevent FOUC - body starts invisible and becomes visible once CSS loads */
+            html { visibility: hidden; opacity: 0; }
+            html.css-loaded { visibility: visible; opacity: 1; transition: opacity 0.05s ease; }
+        </style>
+        <script>
+            // Immediately show content once CSS is loaded
+            (function() {
+                var html = document.documentElement;
+                var checkReady = function() {
+                    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                        html.classList.add('css-loaded');
+                    } else {
+                        setTimeout(checkReady, 10);
+                    }
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        html.classList.add('css-loaded');
+                    });
+                } else {
+                    checkReady();
+                }
+            })();
+        </script>
 
         {% block stylesheets %}
         {% endblock %}

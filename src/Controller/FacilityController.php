@@ -55,12 +55,10 @@ class FacilityController extends AbstractController
         $facility = new Facility();
 
         if ($request->isMethod('POST')) {
-            error_log('NEW FACILITY: POST received');
             try {
                 $name = (string) $request->request->get('name');
                 $capacity = (int) $request->request->get('capacity');
                 $description = (string) $request->request->get('description');
-                error_log('NEW FACILITY: Data received - name=' . $name . ', capacity=' . $capacity);
 
                 $facility->setName($name);
                 $facility->setCapacity($capacity);
@@ -70,7 +68,6 @@ class FacilityController extends AbstractController
                 $uploadedFile = $request->files->get('image');
                 $mainImagePath = null;
                 if ($uploadedFile instanceof UploadedFile) {
-                    error_log('NEW FACILITY: Main image received - ' . $uploadedFile->getClientOriginalName());
                     $mainImagePath = $this->handleImageUpload($uploadedFile);
                     if ($mainImagePath) {
                         $facility->setImage($mainImagePath);
@@ -78,21 +75,15 @@ class FacilityController extends AbstractController
                 }
 
                 // Save facility FIRST before adding gallery images
-                error_log('NEW FACILITY: Saving facility first...');
                 $facilityRepository->save($facility, true);
-                error_log('NEW FACILITY: Facility saved with ID=' . $facility->getId());
 
                 // Now handle gallery images after facility is persisted
-                error_log('NEW FACILITY: Processing gallery images...');
                 $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
-                error_log('NEW FACILITY: Gallery processed - count=' . $galleryCount);
 
                 $this->addFlash('success', 'Facility created successfully!' . ($galleryCount > 0 ? ' (' . $galleryCount . ' gallery image(s) added)' : ''));
                 return $this->redirectToRoute('app_facility_management');
 
             } catch (\Exception $e) {
-                error_log('NEW ERROR - Exception: ' . $e->getMessage());
-                error_log('NEW ERROR - Stack: ' . $e->getTraceAsString());
                 $this->addFlash('error', 'Error creating facility: ' . $e->getMessage());
                 return $this->redirectToRoute('app_facility_new');
             }
@@ -113,11 +104,6 @@ class FacilityController extends AbstractController
                 $facility->setCapacity((int) $request->request->get('capacity'));
                 $facility->setDescription((string) $request->request->get('description'));
 
-                // Debug: Check what files are received
-                $allFiles = $request->files->all();
-                error_log('EDIT DEBUG - All files keys: ' . implode(', ', array_keys($allFiles)));
-                error_log('EDIT DEBUG - POST size: ' . ($request->server->get('CONTENT_LENGTH') ?? 'unknown') . ' bytes');
-
                 // Handle main image upload
                 $uploadedFile = $request->files->get('image');
                 if ($uploadedFile instanceof UploadedFile) {
@@ -134,7 +120,6 @@ class FacilityController extends AbstractController
 
                 // Handle gallery images
                 $galleryCount = $this->handleMultipleImageUploads($request, $facility, $entityManager);
-                error_log('EDIT DEBUG - Gallery images processed: ' . $galleryCount);
 
                 $facilityRepository->save($facility, true);
 
@@ -142,8 +127,6 @@ class FacilityController extends AbstractController
                 return $this->redirectToRoute('app_facility_management', ['success' => 'edited']);
 
             } catch (\Exception $e) {
-                error_log('EDIT ERROR - Exception: ' . $e->getMessage());
-                error_log('EDIT ERROR - Trace: ' . $e->getTraceAsString());
                 $this->addFlash('error', 'Error updating facility: ' . $e->getMessage());
                 return $this->redirectToRoute('app_facility_edit', ['id' => $facility->getId()]);
             }
@@ -301,7 +284,6 @@ class FacilityController extends AbstractController
     private function handleMultipleImageUploads(Request $request, Facility $facility, EntityManagerInterface $entityManager): int
     {
         $uploadedFiles = $request->files->get('images');
-        error_log('DEBUG - Gallery upload started. Raw files: ' . json_encode($uploadedFiles ? 'present' : 'null'));
 
         // Handle single file case (not in array)
         if ($uploadedFiles instanceof UploadedFile) {
@@ -315,13 +297,11 @@ class FacilityController extends AbstractController
             foreach ($uploadedFiles as $key => $file) {
                 if ($file instanceof UploadedFile) {
                     $flatFiles[] = $file;
-                    error_log('DEBUG - Found valid file at key ' . $key . ': ' . $file->getClientOriginalName());
                 } elseif (is_array($file)) {
                     // Handle nested array case
                     foreach ($file as $nestedFile) {
                         if ($nestedFile instanceof UploadedFile) {
                             $flatFiles[] = $nestedFile;
-                            error_log('DEBUG - Found nested file: ' . $nestedFile->getClientOriginalName());
                         }
                     }
                 }
@@ -331,31 +311,23 @@ class FacilityController extends AbstractController
 
         // Must be a non-empty array
         if (!is_array($uploadedFiles) || empty($uploadedFiles)) {
-            error_log('DEBUG - No gallery files to upload');
             return 0;
         }
 
-        error_log('DEBUG - Processing ' . count($uploadedFiles) . ' gallery files');
-        
         $position = $facility->getImages()->count();
         $uploadedCount = 0;
         
         foreach ($uploadedFiles as $uploadedFile) {
             // Skip if not a valid uploaded file
             if (!$uploadedFile instanceof UploadedFile) {
-                error_log('DEBUG - Skipping invalid uploaded file');
                 continue;
             }
-            
-            error_log('DEBUG - Processing gallery file: ' . $uploadedFile->getClientOriginalName());
             
             // Upload the file
             $imagePath = $this->handleImageUpload($uploadedFile);
             if (!$imagePath) {
-                error_log('DEBUG - Gallery upload failed for: ' . $uploadedFile->getClientOriginalName());
                 continue;
             }
-            error_log('DEBUG - Gallery upload success, URL: ' . $imagePath);
             
             // Create and configure the image entity
             $image = new FacilityImage();

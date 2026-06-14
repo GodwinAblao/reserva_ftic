@@ -4,8 +4,8 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="preload" href="{{ asset('styles/superadmin.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ asset('styles/superadmin.css') }}"></noscript>
+    <!-- Synchronous CSS loading to prevent FOUC -->
+    <link rel="stylesheet" href="{{ asset('styles/superadmin.css') }}" media="all">
     <style>
         :root {
             --primary: #0d9b00;

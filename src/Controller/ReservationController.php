@@ -49,14 +49,8 @@ public function reserve(
     ): Response {
         $user = $this->getUser();
         if (!$user) {
-            error_log('RESERVE DEBUG: No user - redirecting to login');
             return $this->redirectToRoute('app_login');
         }
-        
-        $userId = $user instanceof \App\Entity\User ? $user->getId() : 'unknown';
-        $userEmail = $user instanceof \App\Entity\User ? $user->getEmail() : 'unknown';
-        $isVerified = $user instanceof \App\Entity\User ? ($user->isVerified() ? 'yes' : 'no') : 'unknown';
-        error_log('RESERVE DEBUG: User ' . $userId . ' (' . $userEmail . ') - verified: ' . $isVerified . ', method: ' . $request->getMethod());
 
         // Check if facility is available for reservations
         if (!$facility->isAvailableForReservation()) {
@@ -69,18 +63,13 @@ public function reserve(
             $submittedToken = $request->request->get('csrf_token');
             $sessionToken = $request->getSession()->get('_csrf/reservation');
             
-            error_log('RESERVE DEBUG: CSRF validation - submitted: ' . ($submittedToken ? 'present' : 'missing') . ', session: ' . ($sessionToken ? 'present' : 'missing'));
-            
             if (!$this->isCsrfTokenValid('reservation', $submittedToken)) {
-                error_log('RESERVE DEBUG: CSRF validation FAILED for facility ' . $facility->getId());
                 // Return 200 with error message so client can handle it gracefully without logout
                 return $this->json(
                     ['error' => 'Invalid security token. Please refresh the page and try again.', 'message' => 'Invalid security token. Please refresh the page and try again.'],
                     Response::HTTP_OK
                 );
             }
-
-            error_log('RESERVE DEBUG: CSRF validation PASSED for facility ' . $facility->getId());
 
             try {
                 $name = $request->request->get('name');
