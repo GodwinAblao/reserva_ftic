@@ -2,6 +2,9 @@
 
 {% block stylesheets %}
     {{ parent() }}
+    {% if not is_granted('ROLE_SUPER_ADMIN') and not is_granted('ROLE_ADMIN') %}
+    <link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}" media="all">
+    {% endif %}
     <style>
         .flash-message {
             margin: 20px;

@@ -1,10 +1,5 @@
 {% set route = app.request.attributes.get('_route') %}
 
-{% block stylesheets %}
-    <!-- Synchronous CSS loading to prevent FOUC -->
-    <link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}" media="all">
-{% endblock %}
-
 <a class="nav-link {{ route == 'app_dashboard' ? 'active' : '' }}" href="{{ path('app_dashboard') }}" data-turbo="false">
     <span class="nav-link-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z" fill="currentColor"/></svg>

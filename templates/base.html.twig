@@ -7,6 +7,13 @@
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
 
         <!-- ═══════════════════════════════════════════════════════════════════════════════
+             FONTS - Preconnect so DNS/TLS is resolved before app.css even downloads
+             ═══════════════════════════════════════════════════════════════════════════════ -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@400;600;700&display=swap" media="all">
+
+        <!-- ═══════════════════════════════════════════════════════════════════════════════
              CRITICAL CSS - Loaded synchronously (blocking) to prevent ANY FOUC
              ═══════════════════════════════════════════════════════════════════════════════ -->
         <link rel="stylesheet" href="{{ asset('styles/app.css') }}" media="all">
@@ -18,22 +25,21 @@
             html.css-loaded { visibility: visible; opacity: 1; transition: opacity 0.05s ease; }
         </style>
         <script>
-            // Immediately show content once CSS is loaded
+            // Reveal content only once app.css is fully applied (probe --feu-green CSS variable).
+            // DOMContentLoaded fires before CSS @imports finish — this probe is reliable.
             (function() {
                 var html = document.documentElement;
-                var checkReady = function() {
-                    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                        html.classList.add('css-loaded');
-                    } else {
-                        setTimeout(checkReady, 10);
-                    }
-                };
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', function() {
-                        html.classList.add('css-loaded');
-                    });
+                function reveal() { html.classList.add('css-loaded'); }
+                function isCSSReady() {
+                    return getComputedStyle(html).getPropertyValue('--feu-green').trim() !== '';
+                }
+                function checkAndReveal() {
+                    if (isCSSReady()) { reveal(); } else { requestAnimationFrame(checkAndReveal); }
+                }
+                if (document.readyState !== 'loading') {
+                    checkAndReveal();
                 } else {
-                    checkReady();
+                    document.addEventListener('DOMContentLoaded', checkAndReveal);
                 }
             })();
         </script>
