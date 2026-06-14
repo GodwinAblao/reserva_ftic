@@ -49,6 +49,7 @@ security:
         - { path: ^/otp-reset, roles: PUBLIC_ACCESS }
         - { path: ^/facility, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/notifications, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/user, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/account-manager, roles: ROLE_SUPER_ADMIN }
         - { path: ^/account-management, roles: ROLE_ADMIN }
         - { path: ^/superadmin, roles: ROLE_ADMIN }
