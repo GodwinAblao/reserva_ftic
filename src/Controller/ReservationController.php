@@ -138,8 +138,6 @@ public function reserve(
 
                 $em->persist($reservation);
                 $em->flush();
-                
-                error_log('RESERVE DEBUG: Reservation created successfully - ID: ' . $reservation->getId());
 
                 // Always redirect to suggest alternatives to let user confirm facility choice
                 $alternatives = $reservationRepo->findAvailableAlternatives(
@@ -158,8 +156,6 @@ public function reserve(
                     'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
                 ]);
             } catch (\Throwable $exception) {
-                error_log('RESERVE DEBUG: EXCEPTION - ' . $exception->getMessage());
-                error_log('RESERVE DEBUG: Stack trace - ' . $exception->getTraceAsString());
                 // Do not expose internal errors to the user, but return a JSON-friendly message for AJAX requests.
                 return $this->json(
                     ['error' => 'An unexpected error occurred while submitting the reservation. Please try again later.', 'message' => 'An unexpected error occurred while submitting the reservation. Please try again later.'],
@@ -362,7 +358,6 @@ public function reserve(
         $reservation->setStatus('Cancelled');
         $cancellationReason = $request->request->get('cancellation_reason');
         $reservation->setCancellationReason($cancellationReason);
-        error_log('Cancellation reason being saved: ' . ($cancellationReason ?: 'NULL'));
         $em->flush();
 
         $reservationMailer->notifyCancelled($reservation);
@@ -653,9 +648,6 @@ public function reserve(
 
 private function notifyAdminNewReservation(Reservation $reservation, MailerInterface $mailer, EntityManagerInterface $em, UserRepository $userRepository): void
     {
-        // Log that we're trying to notify admin
-        error_log('notifyAdminNewReservation called for reservation: ' . $reservation->getId());
-
         // 1. Send email notification to admin
         try {
             $email = (new Email())
@@ -668,19 +660,14 @@ private function notifyAdminNewReservation(Reservation $reservation, MailerInter
             ;
 
             $mailer->send($email);
-            error_log('Email notification sent to admin');
         } catch (\Exception $e) {
-            // Log error but don't fail the reservation
-            \error_log('Failed to send admin notification: ' . $e->getMessage());
         }
 
         // 2. Create database notifications for all super admin users
         try {
             $admins = $userRepository->findAdmins();
-            error_log('Found ' . count($admins) . ' admin(s)');
 
             foreach ($admins as $admin) {
-                error_log('Creating notification for admin: ' . $admin->getEmail());
                 
                 $notification = new Notification();
                 $notification->setUser($admin);
@@ -701,10 +688,7 @@ private function notifyAdminNewReservation(Reservation $reservation, MailerInter
             }
 
             $em->flush();
-            error_log('Notifications created successfully');
         } catch (\Exception $e) {
-            // Log error but don't fail the reservation
-            \error_log('Failed to create admin notification: ' . $e->getMessage());
         }
     }
 }
