@@ -218,26 +218,21 @@
 
 .content-area.regular-user-content {
     min-width: 0;
-    padding: 0 0 100px 0 !important; /* 100px bottom padding creates scroll space */
-    min-height: 100%; /* Use min-height so padding adds to scrollable area */
+    padding: 0;
     overflow-y: auto;
     background: transparent;
-    display: flex;
-    flex-direction: column;
     box-sizing: border-box;
 }
 
-/* Content wrapper - holds all page content */
+/* Content wrapper - holds all page content at its natural height */
 .content-area.regular-user-content .content-wrapper {
-    flex: 1;
-    padding: 24px 28px 100px 28px; /* 100px bottom padding ensures spacing */
-    min-height: 0;
+    padding: 24px 28px 0 28px;
 }
 
-/* Bottom spacer - ensures content doesn't touch bottom edge */
+/* Bottom spacer - sits after content's natural height, creates scroll breathing room */
 .content-area.regular-user-content .content-bottom-spacer {
-    height: 100px;
-    flex-shrink: 0;
+    height: 80px;
+    display: block;
 }
 
 .regular-user-page-header {
