@@ -1,7 +1,8 @@
 {% set route = app.request.attributes.get('_route') %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}">
+    <link rel="preload" href="{{ asset('styles/regular_user_sidebar.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}"></noscript>
 {% endblock %}
 
 <a class="nav-link {{ route == 'app_dashboard' ? 'active' : '' }}" href="{{ path('app_dashboard') }}">

@@ -1,7 +1,8 @@
 {% extends 'layouts/app.html.twig' %}
 {% block title %}Mentors | Admin | Reserva FTIC{% endblock %}
 {% block stylesheets %}{{ parent() }}
-<link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
+<link rel="preload" href="{{ asset('styles/mentoring.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}"></noscript>
 <style>
 .ml-page { display:flex; flex-direction:column; gap:18px; }
 .ml-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }

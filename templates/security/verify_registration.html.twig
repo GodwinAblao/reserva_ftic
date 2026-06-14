@@ -3,7 +3,8 @@
 {% block title %}Verify Registration - Reserva{% endblock %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="/styles/login.css">
+    <link rel="preload" href="/styles/login.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/styles/login.css"></noscript>
 {% endblock %}
 
 {% block importmap %}{% endblock %}

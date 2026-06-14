@@ -6,8 +6,10 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/landing.css') }}?v=20260611-9">
-    <link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260611-9">
+    <link rel="preload" href="{{ asset('styles/landing.css') }}?v=20260611-9" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ asset('styles/landing.css') }}?v=20260611-9"></noscript>
+    <link rel="preload" href="{{ asset('styles/facility_cards.css') }}?v=20260611-9" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ asset('styles/facility_cards.css') }}?v=20260611-9"></noscript>
 {% endblock %}
 
 {% block javascripts %}{% endblock %}

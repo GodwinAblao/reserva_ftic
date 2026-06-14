@@ -4,7 +4,8 @@
 
 {% block stylesheets %}
     {{ parent() }}
-    <link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}">
+    <link rel="preload" href="{{ asset('styles/mentoring.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ asset('styles/mentoring.css') }}"></noscript>
 {% endblock %}
 
 {% block content %}

@@ -3,7 +3,8 @@
 {% block title %}Reserva - Sign Up{% endblock %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="/styles/register.css">
+    <link rel="preload" href="/styles/register.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/styles/register.css"></noscript>
 {% endblock %}
 
 {% block javascripts %}
