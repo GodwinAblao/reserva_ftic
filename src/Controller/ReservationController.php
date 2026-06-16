@@ -117,43 +117,28 @@ public function reserve(
                     );
                 }
 
-                // Create reservation
-                $reservation = new Reservation();
-                $reservation->setUser($this->getUser());
-                $reservation->setFacility($facility);
-                $reservation->setName($name);
-                $reservation->setEventName($eventName);
-                $reservation->setEmail($email);
-                $reservation->setContact($contact);
-                $reservation->setReservationDate($date);
-                $reservation->setReservationStartTime($startTime);
-                $reservation->setReservationEndTime($endTime);
-                $reservation->setCapacity($capacity);
-                $reservation->setPurpose($purpose);
-                $reservation->setEventPurpose($eventPurpose);
-                $reservation->setEventPurposeOther($eventPurposeOther);
-                $reservation->setInstitutionalEvent($institutionalEvent);
-                // Set initial status to Suggested - will become Pending after user confirms facility choice
-                $reservation->setStatus('Suggested');
+                // Store reservation data in session (do NOT persist to DB yet)
+                // The reservation will only be created when the user confirms their facility choice
+                $request->getSession()->set('pending_reservation', [
+                    'facility_id' => $facility->getId(),
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'email' => $email,
+                    'contact' => $contact,
+                    'date' => $dateStr,
+                    'start_time' => $startTimeStr,
+                    'end_time' => $endTimeStr,
+                    'capacity' => $capacity,
+                    'purpose' => $purpose,
+                    'event_purpose' => $eventPurpose,
+                    'event_purpose_other' => $eventPurposeOther,
+                    'institutional_event' => $institutionalEvent,
+                ]);
 
-                $em->persist($reservation);
-                $em->flush();
-
-                // Always redirect to suggest alternatives to let user confirm facility choice
-                $alternatives = $reservationRepo->findAvailableAlternatives(
-                    $capacity,
-                    $date,
-                    $startTime,
-                    $endTime,
-                    $facility
-                );
-
-                error_log('RESERVE DEBUG: Found ' . count($alternatives) . ' alternatives, redirecting to suggest page');
-
-                // Redirect to suggest alternatives page
+                // Redirect to suggest alternatives page (session-based, no DB record yet)
                 return $this->json([
                     'success' => true,
-                    'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $reservation->getId()]),
+                    'redirect' => $this->generateUrl('user_suggest_facility', ['id' => $facility->getId()]),
                 ]);
             } catch (\Throwable $exception) {
                 // Do not expose internal errors to the user, but return a JSON-friendly message for AJAX requests.
@@ -450,29 +435,52 @@ public function reserve(
     #[Route('/reservations/{id}/suggest-alternatives', name: 'user_suggest_facility', methods: ['GET'])]
     #[IsGranted('ROLE_USER')]
     public function suggestAlternativesUser(
-        Reservation $reservation,
+        int $id,
+        Request $request,
+        FacilityRepository $facilityRepo,
         ReservationRepository $reservationRepo
     ): Response {
-        // Verify user owns this reservation
-        if ($reservation->getUser() !== $this->getUser()) {
-            throw $this->createAccessDeniedException();
+        $sessionData = $request->getSession()->get('pending_reservation');
+        if (!$sessionData || (int)$sessionData['facility_id'] !== $id) {
+            $this->addFlash('error', 'No pending reservation found. Please submit a reservation first.');
+            return $this->redirectToRoute('app_facility_index');
         }
 
-        $date = $reservation->getReservationDate();
-        $startTime = $reservation->getReservationStartTime();
-        $endTime = $reservation->getReservationEndTime();
-        $capacity = $reservation->getCapacity();
+        $facility = $facilityRepo->find($id);
+        if (!$facility) {
+            $this->addFlash('error', 'Facility not found.');
+            return $this->redirectToRoute('app_facility_index');
+        }
+
+        $date = \DateTime::createFromFormat('Y-m-d', $sessionData['date']);
+        $startTime = \DateTime::createFromFormat('H:i', $sessionData['start_time']);
+        $endTime = \DateTime::createFromFormat('H:i', $sessionData['end_time']);
+        $capacity = (int)$sessionData['capacity'];
 
         $alternatives = $reservationRepo->findAvailableAlternatives(
             $capacity,
             $date,
             $startTime,
             $endTime,
-            $reservation->getFacility()
+            $facility
         );
 
+        // Build a data object for the template (not a DB entity)
+        $reservationData = [
+            'facility' => $facility,
+            'eventName' => $sessionData['event_name'],
+            'reservationDate' => $date,
+            'reservationStartTime' => $startTime,
+            'reservationEndTime' => $endTime,
+            'capacity' => $capacity,
+            'purpose' => $sessionData['purpose'],
+            'eventPurpose' => $sessionData['event_purpose'],
+            'eventPurposeOther' => $sessionData['event_purpose_other'],
+            'institutionalEvent' => $sessionData['institutional_event'],
+        ];
+
         return $this->render('reservation/suggest_alternatives.html.twig', [
-            'reservation' => $reservation,
+            'reservation' => $reservationData,
             'alternatives' => $alternatives,
         ]);
     }
@@ -480,44 +488,95 @@ public function reserve(
     #[Route('/reservations/{id}/select-alternative/{facilityId}', name: 'user_select_alternative', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
     public function selectAlternative(
-        Reservation $reservation,
+        int $id,
         int $facilityId,
         Request $request,
         EntityManagerInterface $em,
+        FacilityRepository $facilityRepo,
         MailerInterface $mailer,
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        if ($err = $this->guardReservationAccess($reservation, $request, 'select_alternative_' . $reservation->getId())) {
-            return $err;
+        $sessionData = $request->getSession()->get('pending_reservation');
+        if (!$sessionData) {
+            $this->addFlash('error', 'No pending reservation found.');
+            return $this->redirectToRoute('app_facility_index');
         }
-        $currentUser = $this->getUser();
 
-        $facility = $em->getRepository(Facility::class)->find($facilityId);
+        if (!$this->isCsrfTokenValid('select_alternative_' . $id, $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            return $this->redirectToRoute('app_facility_index');
+        }
+
+        $facility = $facilityRepo->find($facilityId);
         if (!$facility) {
             $this->addFlash('error', 'Facility not found.');
-            return $this->redirectToRoute('user_reservations');
+            return $this->redirectToRoute('app_facility_index');
         }
 
-        $reservation->setFacility($facility);
+        // Create the reservation now with the selected alternative facility
+        $reservation = $this->createReservationFromSession($sessionData, $facility, $em);
+        $request->getSession()->remove('pending_reservation');
+
         return $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
     }
 
     #[Route('/reservations/{id}/keep-original-facility', name: 'user_keep_original_facility', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
     public function keepOriginalFacility(
-        Reservation $reservation,
+        int $id,
         Request $request,
         EntityManagerInterface $em,
+        FacilityRepository $facilityRepo,
         MailerInterface $mailer,
         UserRepository $userRepository,
         ReservationMailer $reservationMailer
     ): Response {
-        if ($err = $this->guardReservationAccess($reservation, $request, 'keep_original_' . $reservation->getId())) {
-            return $err;
+        $sessionData = $request->getSession()->get('pending_reservation');
+        if (!$sessionData) {
+            $this->addFlash('error', 'No pending reservation found.');
+            return $this->redirectToRoute('app_facility_index');
         }
 
+        if (!$this->isCsrfTokenValid('keep_original_' . $id, $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            return $this->redirectToRoute('app_facility_index');
+        }
+
+        $facility = $facilityRepo->find($sessionData['facility_id']);
+        if (!$facility) {
+            $this->addFlash('error', 'Facility not found.');
+            return $this->redirectToRoute('app_facility_index');
+        }
+
+        // Create the reservation now with the original facility
+        $reservation = $this->createReservationFromSession($sessionData, $facility, $em);
+        $request->getSession()->remove('pending_reservation');
+
         return $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
+    }
+
+    private function createReservationFromSession(array $data, Facility $facility, EntityManagerInterface $em): Reservation
+    {
+        $reservation = new Reservation();
+        $reservation->setUser($this->getUser());
+        $reservation->setFacility($facility);
+        $reservation->setName($data['name']);
+        $reservation->setEventName($data['event_name']);
+        $reservation->setEmail($data['email']);
+        $reservation->setContact($data['contact']);
+        $reservation->setReservationDate(\DateTime::createFromFormat('Y-m-d', $data['date']));
+        $reservation->setReservationStartTime(\DateTime::createFromFormat('H:i', $data['start_time']));
+        $reservation->setReservationEndTime(\DateTime::createFromFormat('H:i', $data['end_time']));
+        $reservation->setCapacity((int)$data['capacity']);
+        $reservation->setPurpose($data['purpose']);
+        $reservation->setEventPurpose($data['event_purpose']);
+        $reservation->setEventPurposeOther($data['event_purpose_other']);
+        $reservation->setInstitutionalEvent($data['institutional_event']);
+
+        $em->persist($reservation);
+
+        return $reservation;
     }
 
     private function validateReservationInput(

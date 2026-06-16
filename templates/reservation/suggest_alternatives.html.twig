@@ -10,7 +10,7 @@
 {% block content %}
     <div class="suggest-alternatives-page">
         <div class="page-header" style="margin-bottom: 1.5rem;">
-            <a href="{{ path('facility_reserve', {'id': reservation.facility.id, 'restore': reservation.id}) }}" class="back-link" data-turbo="false" target="_self" style="display: inline-flex; align-items: center; gap: 0.5rem; color: #006633; text-decoration: none; font-weight: 600;">
+            <a href="{{ path('facility_reserve', {'id': reservation.facility.id}) }}" class="back-link" data-turbo="false" target="_self" style="display: inline-flex; align-items: center; gap: 0.5rem; color: #006633; text-decoration: none; font-weight: 600;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -67,8 +67,8 @@
                 </div>
 
                 <div class="keep-card">
-                    <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.id}) }}" data-turbo="false">
-                        <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.id) }}">
+                    <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.facility.id}) }}" data-turbo="false">
+                        <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.facility.id) }}">
                         <button type="submit" class="keep-button">Keep This Facility</button>
                     </form>
                 </div>
@@ -117,8 +117,8 @@
                                         </div>
                                     </div>
 
-                                    <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.id, 'facilityId': facility.id}) }}" data-turbo="false">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.id) }}">
+                                    <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.facility.id, 'facilityId': facility.id}) }}" data-turbo="false">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.facility.id) }}">
                                         <button type="submit" class="accept-button">Accept This Facility</button>
                                     </form>
                                 </div>
