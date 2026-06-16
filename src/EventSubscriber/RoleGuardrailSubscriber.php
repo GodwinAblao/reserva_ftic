@@ -140,7 +140,7 @@ class RoleGuardrailSubscriber implements EventSubscriberInterface
             if (str_starts_with($path, '/facility/management') ||
                 str_starts_with($path, '/facility/new') ||
                 str_starts_with($path, '/facility/schedule-revision') ||
-                preg_match('#^/facility/\d+/(edit|delete|toggle-reservation|images|delete-main-image)#', $path) ||
+                preg_match('#^/facility/\d+/(view|edit|delete|toggle-reservation|images|delete-main-image)#', $path) ||
                 preg_match('#^/facility/images/\d+/delete#', $path)
             ) {
                 return null;
