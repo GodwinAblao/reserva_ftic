@@ -163,6 +163,41 @@ class AccountManagementController extends AbstractController
                 return $this->redirectToRoute('app_account_management_new');
             }
 
+            // Block non-ASCII characters in email
+            if (preg_match('/[^\x20-\x7E]/', $email)) {
+                $this->addFlash('error', 'Email must contain only standard characters (no foreign scripts).');
+
+                return $this->redirectToRoute('app_account_management_new');
+            }
+
+            // Block email plus trick
+            $localPart = substr($email, 0, (int) strpos($email, '@'));
+            if (str_contains($localPart, '+')) {
+                $this->addFlash('error', 'Email addresses with "+" are not allowed.');
+
+                return $this->redirectToRoute('app_account_management_new');
+            }
+
+            // Validate names
+            $nameErrors = array_merge(
+                $this->validateName($firstName, 'First Name', true),
+                $this->validateName($middleName, 'Middle Name', false),
+                $this->validateName($lastName, 'Last Name', true),
+            );
+            if ($nameErrors) {
+                $this->addFlash('error', implode(' ', $nameErrors));
+
+                return $this->redirectToRoute('app_account_management_new');
+            }
+
+            // Validate password strength
+            $passwordErrors = $this->validatePasswordStrength($password);
+            if ($passwordErrors) {
+                $this->addFlash('error', implode(' ', $passwordErrors));
+
+                return $this->redirectToRoute('app_account_management_new');
+            }
+
             $user = new User();
             $user->setEmail($email);
             $hashedPassword = $passwordHasher->hashPassword($user, $password);
@@ -409,6 +444,49 @@ class AccountManagementController extends AbstractController
         $this->addFlash('success', 'Account and all related data deleted successfully.');
 
         return $this->redirectToRoute('app_account_management');
+    }
+
+    private function validateName(?string $value, string $fieldName, bool $required): array
+    {
+        $errors = [];
+        $value = trim((string) $value);
+        if ($value === '') {
+            return $errors;
+        }
+        if ($required && strlen($value) < 2) {
+            $errors[] = "$fieldName must be at least 2 characters.";
+        }
+        if (!preg_match('/^[A-Za-z][A-Za-z .\'\-]*$/', $value)) {
+            $errors[] = "$fieldName may only contain letters, spaces, hyphens, apostrophes, and periods.";
+        }
+        if (preg_match('/[^\x20-\x7E]/', $value)) {
+            $errors[] = "$fieldName must not contain foreign or special characters.";
+        }
+        return $errors;
+    }
+
+    private function validatePasswordStrength(string $password): array
+    {
+        $errors = [];
+        if (strlen($password) < 8) {
+            $errors[] = 'Password must be at least 8 characters.';
+        }
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = 'Password must contain at least one lowercase letter.';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = 'Password must contain at least one uppercase letter.';
+        }
+        if (!preg_match('/\d/', $password)) {
+            $errors[] = 'Password must contain at least one number.';
+        }
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one special character.';
+        }
+        if (preg_match('/[^A-Za-z0-9@$!%*?&#^_.\-~+=|\\\\\/\:;,\(\)\{\}\[\]<>"\']/', $password)) {
+            $errors[] = 'Password contains invalid characters.';
+        }
+        return $errors;
     }
 
 }
