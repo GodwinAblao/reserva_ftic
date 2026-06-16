@@ -606,6 +606,9 @@ public function register(Request $request, EntityManagerInterface $entityManager
         }
         if ($data['firstName'] === '') $errors[] = 'First name is required.';
         if ($data['lastName']  === '') $errors[] = 'Last name is required.';
+        array_push($errors, ...$this->validateName($data['firstName'], 'First Name', true));
+        array_push($errors, ...$this->validateName($data['middleName'], 'Middle Name', false));
+        array_push($errors, ...$this->validateName($data['lastName'], 'Last Name', true));
         [$roles, $emailErrors] = $this->resolveEmailRole($data['email']);
         array_push($errors, ...$emailErrors);
         if ($password === '') $errors[] = 'Password is required.';
@@ -781,8 +784,23 @@ public function register(Request $request, EntityManagerInterface $entityManager
         if (strlen($password) < 8) {
             $errors[] = 'Password must be at least 8 characters.';
         }
-        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $password)) {
-            $errors[] = 'Password must contain uppercase, lowercase, number, and special character.';
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = 'Password must contain at least one lowercase letter.';
+        }
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = 'Password must contain at least one uppercase letter.';
+        }
+        if (!preg_match('/\d/', $password)) {
+            $errors[] = 'Password must contain at least one number.';
+        }
+        // Allowed special characters: @ $ ! % * ? & # ^ _ - . ~ + = | \ / : ; , ( ) { } [ ] < > " '
+        $allowedSpecial = '@$!%*?&#^_-.~+=|\\/:;,(){}[]<>"\'';
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = 'Password must contain at least one special character.';
+        }
+        // Ensure only allowed characters are used (letters, digits, and specified special chars)
+        if (preg_match('/[^A-Za-z0-9@$!%*?&#^_.\-~+=|\\\\\/\:;,\(\)\{\}\[\]<>"\']/', $password)) {
+            $errors[] = 'Password contains invalid characters. Allowed special characters: @$!%*?&#^_-.~+=|\\/:;,(){}[]<>"\'';
         }
         $common = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'Password1', 'admin', 'letmein'];
         if (in_array(strtolower($password), $common, true)) {
@@ -791,10 +809,39 @@ public function register(Request $request, EntityManagerInterface $entityManager
         return $errors;
     }
 
+    private function validateName(string $value, string $fieldName, bool $required): array
+    {
+        $errors = [];
+        if ($value === '') {
+            return $errors; // Required check is handled separately
+        }
+        if ($required && strlen($value) < 2) {
+            $errors[] = "$fieldName must be at least 2 characters.";
+        }
+        // Only allow letters, spaces, hyphens, apostrophes, and periods
+        if (!preg_match('/^[A-Za-z][A-Za-z .\'\-]*$/', $value)) {
+            $errors[] = "$fieldName may only contain letters, spaces, hyphens, apostrophes, and periods.";
+        }
+        // Block non-ASCII / foreign characters
+        if (preg_match('/[^\x20-\x7E]/', $value)) {
+            $errors[] = "$fieldName must not contain foreign or special characters.";
+        }
+        return $errors;
+    }
+
     private function resolveEmailRole(string $email): array
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return [[], ['A valid email is required.']];
+        }
+        // Block non-ASCII characters (foreign scripts)
+        if (preg_match('/[^\x20-\x7E]/', $email)) {
+            return [[], ['Email must contain only standard characters (no foreign scripts).']];
+        }
+        // Block plus trick (e.g., gmablao+1@fit.edu.ph)
+        $localPart = substr($email, 0, (int) strpos($email, '@'));
+        if (str_contains($localPart, '+')) {
+            return [[], ['Email addresses with "+" are not allowed.']];
         }
         $lower = strtolower($email);
         if (str_ends_with($lower, '@fit.edu.ph')) {

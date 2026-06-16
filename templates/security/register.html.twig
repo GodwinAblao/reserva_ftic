@@ -87,18 +87,18 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName" class="form-label">First Name</label>
-                            <input type="text" id="firstName" name="firstName" class="form-input" value="{{ data.firstName ?? '' }}" required />
+                            <input type="text" id="firstName" name="firstName" class="form-input" value="{{ data.firstName ?? '' }}" required pattern="[A-Za-z][A-Za-z .'-]*" title="Letters, spaces, hyphens, apostrophes, and periods only" minlength="2" />
                         </div>
 
                         <div class="form-group">
                             <label for="middleName" class="form-label">Middle Name</label>
-                            <input type="text" id="middleName" name="middleName" class="form-input" value="{{ data.middleName ?? '' }}" />
+                            <input type="text" id="middleName" name="middleName" class="form-input" value="{{ data.middleName ?? '' }}" pattern="[A-Za-z][A-Za-z .'-]*" title="Letters, spaces, hyphens, apostrophes, and periods only" />
                         </div>
                     </div>
 
                     <div class="form-group-full">
                         <label for="lastName" class="form-label">Last Name</label>
-                        <input type="text" id="lastName" name="lastName" class="form-input" value="{{ data.lastName ?? '' }}" required />
+                        <input type="text" id="lastName" name="lastName" class="form-input" value="{{ data.lastName ?? '' }}" required pattern="[A-Za-z][A-Za-z .'-]*" title="Letters, spaces, hyphens, apostrophes, and periods only" minlength="2" />
                     </div>
 
                     <div class="form-group-full">
@@ -111,7 +111,7 @@
                         <div class="form-group">
                             <label for="password" class="form-label">Password</label>
                             <div class="password-input-wrapper">
-                                <input type="password" id="password" name="password" class="form-input" required />
+                                <input type="password" id="password" name="password" class="form-input" required minlength="8" onpaste="return false;" oncopy="return false;" oncut="return false;" />
                                 <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
                             </div>
                         </div>
@@ -119,7 +119,7 @@
                         <div class="form-group">
                             <label for="confirmPassword" class="form-label">Confirm Password</label>
                             <div class="password-input-wrapper">
-                                <input type="password" id="confirmPassword" name="passwordRepeat" class="form-input" required />
+                                <input type="password" id="confirmPassword" name="passwordRepeat" class="form-input" required onpaste="return false;" oncopy="return false;" oncut="return false;" />
                                 <button type="button" class="password-toggle" data-password-toggle="confirmPassword" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
                             </div>
                         </div>
