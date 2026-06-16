@@ -27,7 +27,7 @@ use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/superadmin')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_SUPER_ADMIN')]
 class AdminController extends AbstractController
 {
     private array $connectedClients = [];

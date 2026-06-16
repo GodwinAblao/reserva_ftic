@@ -28,7 +28,7 @@ use App\DTO\ScheduleSlot;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/super-admin')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_SUPER_ADMIN')]
 class SuperAdminReservationController extends AbstractController
 {
     #[Route('/reservations', name: 'admin_reservations')]

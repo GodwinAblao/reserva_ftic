@@ -52,7 +52,7 @@ class ResearchController extends AbstractController
     }
 
     #[Route('/new/{type}', name: 'research_new', methods: ['GET', 'POST'], defaults: ['type' => 'Article'], requirements: ['type' => 'Article|Research|News'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function new(Request $request, EntityManagerInterface $em, string $type = 'Article'): Response
     {
         if ($request->isMethod('POST')) {
@@ -118,7 +118,7 @@ class ResearchController extends AbstractController
             return $this->redirectToRoute('research_index');
         }
 
-        if (!$this->isGranted('ROLE_ADMIN') && $item->getAuthor() !== $this->getUser()) {
+        if (!$this->isGranted('ROLE_SUPER_ADMIN') && $item->getAuthor() !== $this->getUser()) {
             throw $this->createAccessDeniedException();
         }
 
@@ -175,7 +175,7 @@ class ResearchController extends AbstractController
     }
 
     #[Route('/{id}/delete', name: 'research_delete', methods: ['POST'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function delete(int $id, Request $request, EntityManagerInterface $em): Response
     {
         $item = $em->getRepository(ResearchContent::class)->find($id);

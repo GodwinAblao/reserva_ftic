@@ -50,12 +50,14 @@ security:
         - { path: ^/facility, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/notifications, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/user, roles: IS_AUTHENTICATED_FULLY }
-        - { path: ^/account-manager, roles: ROLE_SUPER_ADMIN }
-        - { path: ^/account-management, roles: ROLE_ADMIN }
-        - { path: ^/superadmin, roles: ROLE_ADMIN }
-        - { path: ^/admin, roles: ROLE_ADMIN }
-        - { path: ^/super-admin, roles: ROLE_ADMIN }
-        - { path: ^/analytics, roles: ROLE_ADMIN }
+        # All protected paths require authentication; role enforcement is handled by RoleGuardrailSubscriber
+        - { path: ^/account-manager, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/superadmin, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/super-admin, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/account-management, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/admin, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/analytics, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/mentoring, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/dashboard, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/profile, roles: IS_AUTHENTICATED_FULLY }
 

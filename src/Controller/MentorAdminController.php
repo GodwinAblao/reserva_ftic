@@ -29,14 +29,14 @@ class MentorAdminController extends AbstractController
     public function __construct(private readonly NotificationService $notificationService) {}
 
     #[Route('/super-admin', name: 'mentoring_super-admin', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function admin(): Response
     {
         return $this->redirectToRoute('mentoring_superadmin_requests', [], Response::HTTP_MOVED_PERMANENTLY);
     }
 
     #[Route('/super-admin/mentors', name: 'mentoring_mentors_list', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function mentorsList(EntityManagerInterface $em): Response
     {
         return $this->render('mentoring/mentors-list.html.twig', [
@@ -46,7 +46,7 @@ class MentorAdminController extends AbstractController
     }
 
     #[Route('/super-admin/mentor-requests', name: 'mentoring_superadmin_requests', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function adminMentorRequests(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository): Response
     {
         $allRequests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
@@ -83,7 +83,7 @@ class MentorAdminController extends AbstractController
     }
 
     #[Route('/super-admin/mentor-requests/data', name: 'mentoring_superadmin_requests_data', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function adminMentorRequestsData(EntityManagerInterface $em): JsonResponse
     {
         $allRequests    = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
@@ -133,7 +133,7 @@ class MentorAdminController extends AbstractController
     }
 
     #[Route('/super-admin/audit-log/data', name: 'mentoring_audit_log_data', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
     public function auditLogData(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $page    = max(1, (int) $request->query->get('page', 1));
