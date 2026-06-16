@@ -896,7 +896,7 @@
             <div class="mentor-list">
                 {% for mentor in leaderboard|slice(0, 3) %}
                     <div class="mentor-item">
-                        <div class="mentor-rank-icon">{{ loop.index == 1 ? 'â™•' : 'â™™' }}</div>
+                        <div class="mentor-rank-icon">{{ loop.index == 1 ? '♕' : '♙' }}</div>
                         <div class="mentor-avatar">
                             <span>{{ mentor.displayName|first|upper }}</span>
                         </div>
