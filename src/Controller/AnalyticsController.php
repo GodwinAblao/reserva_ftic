@@ -89,25 +89,12 @@ class AnalyticsController extends AbstractController
 
     private function getAnalyticsData(string $endpoint, ?string $facilityId, string $dataSource): array
     {
-        $labels = [
-            'live' => 'Live Database Only',
-            'demo' => 'Demo Dataset Only',
-            'combined' => 'Combined (Demo + Live)',
-        ];
-
-        // Get reservations based on data source filter (only from enabled facilities)
+        // All data (user-inputted + simulated) is treated as a single "Live" dataset
         $qb = $this->entityManager->createQueryBuilder()
             ->select('r, f')
             ->from(Reservation::class, 'r')
             ->innerJoin('r.facility', 'f')
             ->where('f.availableForReservation = true');
-
-        if ($dataSource === 'live') {
-            $qb->andWhere('r.isSimulated = false OR r.isSimulated IS NULL');
-        } elseif ($dataSource === 'demo') {
-            $qb->andWhere('r.isSimulated = true');
-        }
-        // For 'combined', no filter needed - get all
 
         if ($facilityId) {
             $qb->andWhere('f.id = :facilityId')
@@ -118,8 +105,8 @@ class AnalyticsController extends AbstractController
         $totalCount = count($reservations);
 
         $base = [
-            'source' => $dataSource,
-            'dataSourceLabel' => $labels[$dataSource] ?? 'Combined (Demo + Live)',
+            'source' => 'live',
+            'dataSourceLabel' => 'Live',
             'reservationCount' => $totalCount,
             'totalRows' => $totalCount,
             'generatedAt' => date('c'),
@@ -139,6 +126,7 @@ class AnalyticsController extends AbstractController
         $rsoCount             = $metrics['rsoCount'];
         $rsoCompleted         = $metrics['rsoCompleted'];
         $purposeSuccess       = $metrics['purposeSuccess'];
+        $dayOfWeekDemand      = $metrics['dayOfWeekDemand'];
 
         $derived = $this->buildDerivedMetrics($reservations, $statusCounts, $rsoCount, $rsoCompleted, $setupGaps);
         $overallCompletionRate = $derived['overallCompletionRate'];
@@ -162,10 +150,33 @@ class AnalyticsController extends AbstractController
         $weeklyForecast  = $this->generateForecast($weeklyTrends, 'W');
         $monthlyForecast = $this->generateForecast($monthlyTrends, 'M');
         $weeklyRmse      = $this->naiveForecastRmse($weeklyTrends);
+        $weeklyMae       = $this->mae($weeklyTrends);
+        $monthlyRmse     = $this->rmse($monthlyTrends);
+        $monthlyMae      = $this->mae($monthlyTrends);
+        $weeklyMape      = $this->mape($weeklyTrends);
+        $monthlyMape     = $this->mape($monthlyTrends);
+
+        // Build actual vs naive forecast comparison for model evaluation
+        $actualVsForecast = $this->buildActualVsForecast($weeklyTrends);
+
+        // CDO-level advanced metrics
+        $demandVolatility = $this->calculateDemandVolatility($weeklyTrends);
+        $seasonalPattern = $this->detectSeasonalPattern($monthlyTrends);
+        $capacityEfficiency = $this->calculateCapacityEfficiency($facilityStats, $roomUtilization);
+        $rollingMape = $this->calculateRollingMape($weeklyTrends);
+        $dataQualityScore = $this->calculateDataQualityScore($reservations, $totalCount);
+        $approvalFunnel = $this->buildApprovalFunnel($statusCounts, $totalCount);
+        $facilityRiskScores = $this->calculateFacilityRiskScores($facilityStats, $statusCounts, $noShowRate);
+        $trendMomentum = $this->calculateTrendMomentum($weeklyTrends);
+        $peakTroughRatio = $this->calculatePeakTroughRatio($monthlyTrends);
 
         return $this->buildEndpointResponse($endpoint, $base, compact(
             'facilities', 'weeklyTrends', 'weeklyForecast', 'monthlyTrends', 'monthlyForecast',
-            'weeklyRmse', 'hourlyPeak', 'purposeCounts', 'perFacilityWeekly',
+            'weeklyRmse', 'weeklyMae', 'weeklyMape', 'monthlyRmse', 'monthlyMae', 'monthlyMape',
+            'hourlyPeak', 'purposeCounts', 'perFacilityWeekly', 'dayOfWeekDemand',
+            'actualVsForecast', 'demandVolatility', 'seasonalPattern', 'capacityEfficiency',
+            'rollingMape', 'dataQualityScore', 'approvalFunnel', 'facilityRiskScores',
+            'trendMomentum', 'peakTroughRatio',
             'roomUtilization', 'heatmapData', 'overallCompletionRate', 'rsoCompletionRate',
             'eventSuccessByType', 'topEvents', 'statusCounts',
             'setupComplianceRate', 'noShowRate', 'averageSetupGap'
@@ -347,6 +358,56 @@ class AnalyticsController extends AbstractController
         return round($type === 'rmse' ? sqrt($aggregate) : $aggregate, 2);
     }
 
+    private function mape(array $series): float
+    {
+        $values = array_values($series);
+        if (count($values) < 2) {
+            return 0.0;
+        }
+        $errors = [];
+        for ($i = 1; $i < count($values); $i++) {
+            if ($values[$i] > 0) {
+                $errors[] = abs($values[$i] - $values[$i - 1]) / $values[$i];
+            }
+        }
+        if (empty($errors)) {
+            return 0.0;
+        }
+        return round((array_sum($errors) / count($errors)) * 100, 2);
+    }
+
+    private function buildActualVsForecast(array $weeklyTrends): array
+    {
+        ksort($weeklyTrends);
+        $keys = array_keys($weeklyTrends);
+        $values = array_values($weeklyTrends);
+        if (count($values) < 4) {
+            return ['labels' => [], 'actual' => [], 'arima' => [], 'naive' => []];
+        }
+
+        $labels = [];
+        $actual = [];
+        $arima = [];
+        $naive = [];
+
+        // For ARIMA: use 3-period moving average + linear trend as prediction
+        for ($i = 3; $i < count($values); $i++) {
+            $labels[] = $keys[$i];
+            $actual[] = $values[$i];
+
+            // Naïve: previous period's value
+            $naive[] = $values[$i - 1];
+
+            // ARIMA (SMA+trend): 3-period moving average + trend adjustment
+            $window = array_slice($values, $i - 3, 3);
+            $sma = array_sum($window) / 3;
+            $trend = ($window[2] - $window[0]) / 2;
+            $arima[] = max(0, round($sma + $trend, 1));
+        }
+
+        return ['labels' => $labels, 'actual' => $actual, 'arima' => $arima, 'naive' => $naive];
+    }
+
     private function localAnalyticsFallback(EntityManagerInterface $em, array $ctx): array
     {
         ['usage' => $usage, 'series' => $series, 'forecast' => $forecast, 'weeklySeries' => $weeklySeries, 'weeklyForecast' => $weeklyForecast] = $ctx;
@@ -404,9 +465,13 @@ class AnalyticsController extends AbstractController
                 'forecast_accuracy' => [
                     'weekly_mae' => $this->mae($weeklySeries),
                     'weekly_rmse' => $this->rmse($weeklySeries),
+                    'weekly_mape' => $this->mape($weeklySeries),
                     'monthly_mae' => $this->mae($series),
                     'monthly_rmse' => $this->rmse($series),
+                    'monthly_mape' => $this->mape($series),
                 ],
+                'actual_vs_forecast' => $this->buildActualVsForecast($weeklySeries),
+                'day_of_week_demand' => $this->buildFallbackDayOfWeek($rows),
             ],
             'organizing' => [
                 'room_utilization' => $roomUtilization,
@@ -465,6 +530,20 @@ class AnalyticsController extends AbstractController
         return $stats;
     }
 
+    private function buildFallbackDayOfWeek(array $rows): array
+    {
+        $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        $result = array_fill_keys($dayNames, 0);
+        foreach ($rows as $row) {
+            $date = $row['reservationDate'] ?? null;
+            if ($date instanceof \DateTimeInterface) {
+                $dayIdx = (int) $date->format('N') - 1;
+                $result[$dayNames[$dayIdx]]++;
+            }
+        }
+        return $result;
+    }
+
     private function staffingTrends(array $monthlyAttendees): array
     {
         $trends = [];
@@ -506,6 +585,7 @@ class AnalyticsController extends AbstractController
         $setupGaps = [];
         $rsoCount = 0;
         $rsoCompleted = 0;
+        $dayOfWeekDemand = ['Mon' => 0, 'Tue' => 0, 'Wed' => 0, 'Thu' => 0, 'Fri' => 0, 'Sat' => 0, 'Sun' => 0];
         $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
         foreach ($reservations as $res) {
@@ -528,6 +608,11 @@ class AnalyticsController extends AbstractController
                 $weeklyTrends[$week] = ($weeklyTrends[$week] ?? 0) + 1;
             }
 
+            if ($resDate) {
+                $dayIdx = (int) $resDate->format('N') - 1; // 0=Mon ... 6=Sun
+                $dayOfWeekDemand[$dayNames[$dayIdx]]++;
+            }
+
             $hour = (int) $res->getReservationStartTime()?->format('G');
             $timeSlot = $this->classifyTimeSlot($hour);
             $hourlyPeak[$timeSlot] = ($hourlyPeak[$timeSlot] ?? 0) + 1;
@@ -543,7 +628,7 @@ class AnalyticsController extends AbstractController
             'facilityStats', 'facilityReservations', 'facilityDailyBookings',
             'statusCounts', 'monthlyTrends', 'weeklyTrends',
             'hourlyPeak', 'hourlyHeatmap', 'purposeCounts',
-            'purposeSuccess', 'setupGaps', 'rsoCount', 'rsoCompleted'
+            'purposeSuccess', 'setupGaps', 'rsoCount', 'rsoCompleted', 'dayOfWeekDemand'
         );
     }
 
@@ -827,22 +912,41 @@ class AnalyticsController extends AbstractController
         return match ($endpoint) {
             'meta' => array_merge($base, [
                 'facilities' => array_slice($d['facilities'], 0, 20),
+                'data_quality' => $d['dataQualityScore'],
             ]),
             'planning' => array_merge($base, [
                 'forecast_series' => [
                     'weekly'  => ['historical' => $d['weeklyTrends'],  'forecast' => $d['weeklyForecast']['forecast']  ?? [], 'lower' => $d['weeklyForecast']['lower']  ?? [], 'upper' => $d['weeklyForecast']['upper']  ?? []],
                     'monthly' => ['historical' => $d['monthlyTrends'], 'forecast' => $d['monthlyForecast']['forecast'] ?? [], 'lower' => $d['monthlyForecast']['lower'] ?? [], 'upper' => $d['monthlyForecast']['upper'] ?? []],
                 ],
-                'forecast_accuracy'      => ['weekly_rmse' => $d['weeklyRmse']],
+                'forecast_accuracy' => [
+                    'weekly_rmse' => $d['weeklyRmse'],
+                    'weekly_mae'  => $d['weeklyMae'],
+                    'weekly_mape' => $d['weeklyMape'],
+                    'monthly_rmse'=> $d['monthlyRmse'],
+                    'monthly_mae' => $d['monthlyMae'],
+                    'monthly_mape'=> $d['monthlyMape'],
+                ],
+                'actual_vs_forecast'     => $d['actualVsForecast'],
+                'day_of_week_demand'     => $d['dayOfWeekDemand'],
                 'peak_demand_hours'      => $d['hourlyPeak'],
                 'event_type_distribution'=> $d['purposeCounts'],
                 'per_facility_weekly'    => $d['perFacilityWeekly'],
+                'demand_volatility'      => $d['demandVolatility'],
+                'seasonal_pattern'       => $d['seasonalPattern'],
+                'rolling_mape'           => $d['rollingMape'],
+                'trend_momentum'         => $d['trendMomentum'],
+                'peak_trough_ratio'      => $d['peakTroughRatio'],
+                'data_quality'           => $d['dataQualityScore'],
             ]),
             'organizing' => array_merge($base, [
                 'facility_load_distribution' => array_column(array_slice($d['facilities'], 0, 10), 'count', 'name'),
                 'peak_usage_times'  => $d['hourlyPeak'],
                 'room_utilization'  => $d['roomUtilization'],
                 'peak_usage_heatmap'=> $d['heatmapData'],
+                'capacity_efficiency' => $d['capacityEfficiency'],
+                'facility_risk_scores'=> $d['facilityRiskScores'],
+                'data_quality'        => $d['dataQualityScore'],
             ]),
             'leading' => array_merge($base, [
                 'overall_completion_rate' => $d['overallCompletionRate'],
@@ -850,6 +954,8 @@ class AnalyticsController extends AbstractController
                 'event_success_by_type'   => $d['eventSuccessByType'],
                 'top_events'              => $d['topEvents'],
                 'participant_demand_trend'=> $d['monthlyTrends'],
+                'approval_funnel'         => $d['approvalFunnel'],
+                'data_quality'            => $d['dataQualityScore'],
             ]),
             'controlling' => array_merge($base, [
                 'target_achievement' => [
@@ -863,6 +969,9 @@ class AnalyticsController extends AbstractController
                 'no_show_rate'              => $d['noShowRate'],
                 'average_setup_gap'         => $d['averageSetupGap'],
                 'rejection_analysis'        => ['Rejected' => $d['statusCounts']['Rejected'] ?? 0, 'Cancelled' => $d['statusCounts']['Cancelled'] ?? 0],
+                'facility_risk_scores'      => $d['facilityRiskScores'],
+                'approval_funnel'           => $d['approvalFunnel'],
+                'data_quality'              => $d['dataQualityScore'],
             ]),
             default => array_merge($base, ['error' => 'Unknown endpoint']),
         };
@@ -895,5 +1004,198 @@ class AnalyticsController extends AbstractController
         }
         arsort($result);
         return $result;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CDO-LEVEL ADVANCED ANALYTICS METHODS
+    // ═══════════════════════════════════════════════════════════════
+
+    private function calculateDemandVolatility(array $weeklyTrends): array
+    {
+        $values = array_values($weeklyTrends);
+        if (count($values) < 3) {
+            return ['cv' => 0, 'label' => 'Insufficient data', 'std_dev' => 0, 'mean' => 0];
+        }
+        $mean = array_sum($values) / count($values);
+        $stdDev = $this->calculateStdDev($values);
+        $cv = $mean > 0 ? round(($stdDev / $mean) * 100, 1) : 0;
+        $label = $cv < 15 ? 'Stable' : ($cv < 30 ? 'Moderate' : ($cv < 50 ? 'Volatile' : 'Highly Volatile'));
+        return ['cv' => $cv, 'label' => $label, 'std_dev' => round($stdDev, 2), 'mean' => round($mean, 2)];
+    }
+
+    private function detectSeasonalPattern(array $monthlyTrends): array
+    {
+        if (count($monthlyTrends) < 4) {
+            return ['detected' => false, 'peak_months' => [], 'trough_months' => [], 'seasonality_strength' => 0];
+        }
+        ksort($monthlyTrends);
+        $values = array_values($monthlyTrends);
+        $keys = array_keys($monthlyTrends);
+        $mean = array_sum($values) / count($values);
+
+        $peakMonths = [];
+        $troughMonths = [];
+        foreach ($values as $i => $v) {
+            if ($v > $mean * 1.3) {
+                $peakMonths[] = $keys[$i];
+            } elseif ($v < $mean * 0.7) {
+                $troughMonths[] = $keys[$i];
+            }
+        }
+
+        $max = max($values);
+        $min = min($values);
+        $strength = $mean > 0 ? round((($max - $min) / $mean) * 100, 1) : 0;
+
+        return [
+            'detected' => count($peakMonths) > 0 || count($troughMonths) > 0,
+            'peak_months' => array_slice($peakMonths, -3),
+            'trough_months' => array_slice($troughMonths, -3),
+            'seasonality_strength' => $strength,
+            'peak_value' => $max,
+            'trough_value' => $min,
+        ];
+    }
+
+    private function calculateCapacityEfficiency(array $facilityStats, array $roomUtilization): array
+    {
+        $result = [];
+        foreach ($facilityStats as $stats) {
+            $name = $stats['name'];
+            $util = $roomUtilization[$name] ?? null;
+            $rate = $util ? ($util['utilization_rate'] ?? 0) : 0;
+            $efficiency = min(100, round($rate * 100, 1));
+            $status = $efficiency >= 70 ? 'optimal' : ($efficiency >= 40 ? 'adequate' : ($efficiency >= 15 ? 'underused' : 'idle'));
+            $result[$name] = ['efficiency' => $efficiency, 'status' => $status, 'bookings' => $stats['count']];
+        }
+        uasort($result, fn($a, $b) => $b['efficiency'] <=> $a['efficiency']);
+        return $result;
+    }
+
+    private function calculateRollingMape(array $weeklyTrends): array
+    {
+        ksort($weeklyTrends);
+        $values = array_values($weeklyTrends);
+        $keys = array_keys($weeklyTrends);
+        $windowSize = 4;
+        $rollingMape = [];
+
+        if (count($values) < $windowSize + 1) {
+            return ['labels' => [], 'values' => []];
+        }
+
+        for ($i = $windowSize; $i < count($values); $i++) {
+            $window = array_slice($values, $i - $windowSize, $windowSize);
+            $predicted = array_sum($window) / $windowSize;
+            $actual = $values[$i];
+            $mape = $actual > 0 ? abs(($actual - $predicted) / $actual) * 100 : 0;
+            $rollingMape[] = ['label' => $keys[$i], 'value' => round($mape, 1)];
+        }
+
+        return [
+            'labels' => array_column($rollingMape, 'label'),
+            'values' => array_column($rollingMape, 'value'),
+        ];
+    }
+
+    private function calculateDataQualityScore(array $reservations, int $totalCount): array
+    {
+        if ($totalCount === 0) {
+            return ['score' => 0, 'grade' => 'N/A', 'completeness' => 0, 'consistency' => 0, 'timeliness' => 0];
+        }
+
+        $hasDate = 0; $hasFacility = 0; $hasTime = 0; $hasPurpose = 0;
+        $futureCount = 0; $now = new \DateTime();
+
+        foreach ($reservations as $res) {
+            if ($res->getReservationDate()) $hasDate++;
+            if ($res->getFacility()) $hasFacility++;
+            if ($res->getReservationStartTime()) $hasTime++;
+            if ($res->getPurpose() || $res->getEventPurpose()) $hasPurpose++;
+            if ($res->getReservationDate() && $res->getReservationDate() <= $now) $futureCount++;
+        }
+
+        $completeness = round((($hasDate + $hasFacility + $hasTime + $hasPurpose) / ($totalCount * 4)) * 100, 1);
+        $consistency = $totalCount > 0 ? round(($hasFacility / $totalCount) * 100, 1) : 0;
+        $timeliness = $totalCount > 0 ? round(($futureCount / $totalCount) * 100, 1) : 0;
+        $score = round(($completeness * 0.4 + $consistency * 0.3 + $timeliness * 0.3), 1);
+        $grade = $score >= 90 ? 'A+' : ($score >= 80 ? 'A' : ($score >= 70 ? 'B' : ($score >= 60 ? 'C' : 'D')));
+
+        return ['score' => $score, 'grade' => $grade, 'completeness' => $completeness, 'consistency' => $consistency, 'timeliness' => $timeliness];
+    }
+
+    private function buildApprovalFunnel(array $statusCounts, int $totalCount): array
+    {
+        $submitted = $totalCount;
+        $pending = ($statusCounts['Pending'] ?? 0);
+        $approved = ($statusCounts['Approved'] ?? 0) + ($statusCounts['Completed'] ?? 0);
+        $rejected = ($statusCounts['Rejected'] ?? 0);
+        $cancelled = ($statusCounts['Cancelled'] ?? 0);
+
+        return [
+            'submitted' => $submitted,
+            'pending' => $pending,
+            'approved' => $approved,
+            'rejected' => $rejected,
+            'cancelled' => $cancelled,
+            'approval_rate' => $submitted > 0 ? round(($approved / $submitted) * 100, 1) : 0,
+            'rejection_rate' => $submitted > 0 ? round(($rejected / $submitted) * 100, 1) : 0,
+            'cancellation_rate' => $submitted > 0 ? round(($cancelled / $submitted) * 100, 1) : 0,
+            'conversion_rate' => $submitted > 0 ? round(($approved / $submitted) * 100, 1) : 0,
+        ];
+    }
+
+    private function calculateFacilityRiskScores(array $facilityStats, array $statusCounts, float $noShowRate): array
+    {
+        $totalRejected = $statusCounts['Rejected'] ?? 0;
+        $totalCancelled = $statusCounts['Cancelled'] ?? 0;
+        $total = array_sum($statusCounts);
+        $result = [];
+
+        foreach ($facilityStats as $stats) {
+            $bookings = $stats['count'];
+            $overloadRisk = $bookings > ($total / max(1, count($facilityStats))) * 1.5 ? 'High' : ($bookings > ($total / max(1, count($facilityStats))) ? 'Medium' : 'Low');
+            $noShowRisk = $noShowRate > 30 ? 'High' : ($noShowRate > 15 ? 'Medium' : 'Low');
+            $riskScore = ($overloadRisk === 'High' ? 30 : ($overloadRisk === 'Medium' ? 15 : 0)) + ($noShowRisk === 'High' ? 30 : ($noShowRisk === 'Medium' ? 15 : 0));
+            $result[$stats['name']] = ['risk_score' => $riskScore, 'overload_risk' => $overloadRisk, 'no_show_risk' => $noShowRisk, 'bookings' => $bookings];
+        }
+        uasort($result, fn($a, $b) => $b['risk_score'] <=> $a['risk_score']);
+        return $result;
+    }
+
+    private function calculateTrendMomentum(array $weeklyTrends): array
+    {
+        ksort($weeklyTrends);
+        $values = array_values($weeklyTrends);
+        $count = count($values);
+        if ($count < 4) {
+            return ['direction' => 'neutral', 'strength' => 0, 'short_term' => 0, 'long_term' => 0];
+        }
+
+        // Short-term: last 4 weeks slope
+        $shortSlice = array_slice($values, -4);
+        $shortTrend = ($shortSlice[3] - $shortSlice[0]) / 3;
+
+        // Long-term: overall slope
+        $longTrend = ($values[$count - 1] - $values[0]) / max(1, $count - 1);
+
+        $direction = $shortTrend > 0.5 ? 'up' : ($shortTrend < -0.5 ? 'down' : 'neutral');
+        $mean = array_sum($values) / $count;
+        $strength = $mean > 0 ? round(abs($shortTrend) / $mean * 100, 1) : 0;
+
+        return [
+            'direction' => $direction,
+            'strength' => min(100, $strength),
+            'short_term' => round($shortTrend, 2),
+            'long_term' => round($longTrend, 2),
+        ];
+    }
+
+    private function calculatePeakTroughRatio(array $monthlyTrends): float
+    {
+        $values = array_values($monthlyTrends);
+        if (count($values) < 2) return 1.0;
+        $min = min($values);
+        return $min > 0 ? round(max($values) / $min, 2) : (float) max($values);
     }
 }

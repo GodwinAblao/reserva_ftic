@@ -232,3 +232,282 @@
 .sa-chart-container.an-pro-chart-card {
     min-height: 380px;
 }
+
+.an-pro-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.an-pro-summary-table th {
+    background: #f0fdf4;
+    color: #004d26;
+    font-weight: 700;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid #006633;
+}
+
+.an-pro-summary-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+}
+
+.an-pro-summary-table tr:hover td {
+    background: #f9fafb;
+}
+
+/* Trend indicators */
+.trend-good {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+    background: #d1fae5;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.trend-warn {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #dc2626;
+    background: #fee2e2;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* Confidence Interval Legend */
+.an-pro-ci-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 6px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.ci-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.ci-dot.ci-hist {
+    background: #006633;
+}
+
+.ci-dot.ci-fc {
+    background: #f59e0b;
+    border: 2px dashed #f59e0b;
+    background: transparent;
+}
+
+.ci-dot.ci-ci {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* Insight annotations */
+.an-pro-insight {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+    border-left: 4px solid #006633;
+    border-radius: 0 8px 8px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #1f2937;
+    box-shadow: 0 1px 4px rgba(0,102,51,0.06);
+}
+
+.an-pro-insight strong {
+    color: #006633;
+}
+
+.an-pro-insight:empty {
+    display: none;
+}
+
+/* Model Accuracy Panel */
+.sa-chart-container.an-pro-accuracy-panel,
+.an-pro-chart-card.an-pro-accuracy-panel,
+.an-pro-accuracy-panel {
+    background: #fff !important;
+    border: 2px solid #006633 !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    min-height: auto !important;
+}
+
+.an-pro-accuracy-panel h4 {
+    color: #006633 !important;
+    font-size: 18px !important;
+    margin-bottom: 4px !important;
+}
+
+.an-pro-accuracy-panel .an-pro-metrics-grid,
+.an-pro-metrics-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 14px !important;
+    margin: 20px 0 !important;
+}
+
+@media (max-width: 768px) {
+    .an-pro-accuracy-panel .an-pro-metrics-grid,
+    .an-pro-metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+.an-pro-accuracy-panel .metric-card,
+.an-pro-metrics-grid .metric-card,
+.metric-card {
+    background: #f8fafc !important;
+    border-radius: 12px !important;
+    padding: 18px 16px !important;
+    text-align: center !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+    border: 1px solid #e5e7eb !important;
+    position: relative !important;
+    transition: transform 0.15s, box-shadow 0.15s !important;
+    min-height: auto !important;
+    display: block !important;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08) !important;
+}
+
+.metric-card .metric-icon {
+    position: absolute !important;
+    top: 10px !important;
+    right: 12px !important;
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    background: #006633 !important;
+    color: #fff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.metric-card .metric-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.6px !important;
+    color: #6b7280 !important;
+    margin-bottom: 6px !important;
+}
+
+.metric-card .metric-value {
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    color: #1f2937 !important;
+    line-height: 1.2 !important;
+}
+
+.metric-card .metric-desc {
+    font-size: 11px !important;
+    color: #9ca3af !important;
+    margin-top: 6px !important;
+}
+
+/* MAPE quality color coding */
+.metric-card.mq-excellent {
+    border-color: #059669;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+}
+.metric-card.mq-excellent .metric-value { color: #059669; }
+
+.metric-card.mq-good {
+    border-color: #2563eb;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+.metric-card.mq-good .metric-value { color: #2563eb; }
+
+.metric-card.mq-fair {
+    border-color: #d97706;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+}
+.metric-card.mq-fair .metric-value { color: #d97706; }
+
+.metric-card.mq-poor {
+    border-color: #dc2626;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+}
+.metric-card.mq-poor .metric-value { color: #dc2626; }
+
+/* MAPE quality tags */
+.mq-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 4px;
+}
+.mq-tag.excellent { background: #d1fae5; color: #059669; }
+.mq-tag.good { background: #dbeafe; color: #2563eb; }
+.mq-tag.fair { background: #fef3c7; color: #d97706; }
+.mq-tag.poor { background: #fee2e2; color: #dc2626; }
+
+/* Legend box */
+.an-pro-legend-box {
+    margin-top: 18px;
+    padding: 14px 18px;
+    background: #f9fafb;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+}
+
+.an-pro-legend-box h5 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 10px;
+}
+
+.an-pro-legend-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.an-pro-legend-box li {
+    font-size: 12.5px;
+    color: #4b5563;
+    margin-bottom: 6px;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.6;
+}
+
+.an-pro-legend-box li::before {
+    content: "\2022";
+    position: absolute;
+    left: 0;
+    color: #006633;
+    font-weight: bold;
+    font-size: 14px;
+}

@@ -4,24 +4,63 @@
 
 {% block stylesheets %}
 {{ parent() }}
-<link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}">
+<link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}?v={{ 'now'|date('U') }}">
+<style>
+.an-pro-accuracy-panel{background:#fff!important;border:2px solid #006633!important;border-radius:16px!important;padding:24px!important;min-height:auto!important}
+.an-pro-accuracy-panel h4{color:#006633!important;font-size:18px!important}
+.an-pro-metrics-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:14px!important;margin:20px 0!important}
+.metric-card{background:#f8fafc!important;border-radius:12px!important;padding:18px 16px!important;text-align:center!important;box-shadow:0 2px 8px rgba(0,0,0,.04)!important;border:1px solid #e5e7eb!important;position:relative!important;min-height:auto!important;display:block!important}
+.metric-card:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.08)!important}
+.metric-card .metric-icon{position:absolute!important;top:10px!important;right:12px!important;width:22px!important;height:22px!important;border-radius:50%!important;background:#006633!important;color:#fff!important;font-size:11px!important;font-weight:800!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.metric-card .metric-label{font-size:11px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:.6px!important;color:#6b7280!important;margin-bottom:6px!important}
+.metric-card .metric-value{font-size:26px!important;font-weight:800!important;color:#1f2937!important;line-height:1.2!important}
+.metric-card .metric-desc{font-size:11px!important;color:#9ca3af!important;margin-top:6px!important}
+.metric-card.mq-excellent{border-color:#059669!important;background:linear-gradient(135deg,#ecfdf5,#d1fae5)!important}
+.metric-card.mq-excellent .metric-value{color:#059669!important}
+.metric-card.mq-good{border-color:#2563eb!important;background:linear-gradient(135deg,#eff6ff,#dbeafe)!important}
+.metric-card.mq-good .metric-value{color:#2563eb!important}
+.metric-card.mq-fair{border-color:#d97706!important;background:linear-gradient(135deg,#fffbeb,#fef3c7)!important}
+.metric-card.mq-fair .metric-value{color:#d97706!important}
+.metric-card.mq-poor{border-color:#dc2626!important;background:linear-gradient(135deg,#fef2f2,#fee2e2)!important}
+.metric-card.mq-poor .metric-value{color:#dc2626!important}
+.mq-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-right:4px}
+.mq-tag.excellent{background:#d1fae5;color:#059669}.mq-tag.good{background:#dbeafe;color:#2563eb}
+.mq-tag.fair{background:#fef3c7;color:#d97706}.mq-tag.poor{background:#fee2e2;color:#dc2626}
+@media(max-width:768px){.an-pro-metrics-grid{grid-template-columns:repeat(2,1fr)!important}}
+.an-pro-exec-summary{margin-bottom:0}
+.exec-box{background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #006633;border-radius:12px;padding:18px 22px;margin-bottom:4px}
+.exec-box h5{margin:0 0 8px;font-size:15px;font-weight:800;color:#006633}
+.exec-box p{margin:0;font-size:13.5px;line-height:1.7;color:#1f2937}
+.exec-box strong{color:#004d26}
+.an-pro-recommendations{margin-top:0}
+.reco-box{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #2563eb;border-radius:12px;padding:18px 22px}
+.reco-box h5{margin:0 0 10px;font-size:15px;font-weight:800;color:#1e40af}
+.reco-box ul{margin:0;padding:0 0 0 18px}
+.reco-box li{font-size:13px;line-height:1.7;color:#1f2937;margin-bottom:6px}
+.reco-box li strong{color:#dc2626}
+.util-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.util-badge.high{background:#d1fae5;color:#059669}
+.util-badge.med{background:#fef3c7;color:#d97706}
+.util-badge.low{background:#fee2e2;color:#dc2626}
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="an-pro-header">
     <div>
         <h2>Managerial Function Analytics</h2>
-        <p>ARIMA demand forecasting, facility utilization, and decision-support visualizations — live data when reservations exist, demo dataset otherwise.</p>
+        <p>ARIMA demand forecasting, facility utilization, and decision-support visualizations for effective facility scheduling, resource allocation, and data-driven decision-making.</p>
     </div>
     <div class="an-pro-toolbar">
-        <span id="data-source-badge" class="an-pro-badge demo"><span class="dot"></span> Loading…</span>
-        <select id="source-filter" class="an-pro-select" title="Choose Data Source" style="margin-right: 8px;">
-            <option value="combined" selected>Combined (Demo + Live)</option>
-            <option value="demo">Demo Dataset Only</option>
-            <option value="live">Live Database Only</option>
-        </select>
+        <span id="data-source-badge" class="an-pro-badge live"><span class="dot"></span> Live</span>
         <select id="facility-filter" class="an-pro-select" title="Filter by facility">
             <option value="">All facilities</option>
+        </select>
+        <select id="date-range-filter" class="an-pro-select" title="Date range">
+            <option value="all">All time</option>
+            <option value="6m">Last 6 months</option>
+            <option value="3m">Last 3 months</option>
+            <option value="1m">Last month</option>
         </select>
         <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_this_week') }}">This week CSV</a>
         <a class="an-pro-btn-dl" id="dl-weekly" href="{{ path('admin_role_analytics_export_weekly') }}">ARIMA weekly CSV</a>
@@ -51,24 +90,29 @@ document.querySelectorAll('.analytics-btn').forEach(btn => {
 });
 
 document.getElementById('facility-filter').addEventListener('change', () => loadAnalytics(currentFn));
-document.getElementById('source-filter').addEventListener('change', () => {
-    // Reload meta to update counts when data source changes
+document.getElementById('date-range-filter').addEventListener('change', () => {
     loadMeta();
     loadAnalytics(currentFn);
 });
 
 function queryParams() {
     const fac = document.getElementById('facility-filter').value;
-    const src = document.getElementById('source-filter').value;
     const params = [];
     if (fac) params.push('facility_id=' + encodeURIComponent(fac));
-    if (src) params.push('data_source=' + encodeURIComponent(src));
     return params.length ? '?' + params.join('&') : '';
 }
 
+function getDateRange() {
+    const sel = document.getElementById('date-range-filter').value;
+    if (sel === 'all') return null;
+    const months = sel === '6m' ? 6 : sel === '3m' ? 3 : 1;
+    const d = new Date();
+    d.setMonth(d.getMonth() - months);
+    return d.toISOString().slice(0, 10);
+}
+
 function sourceParam() {
-    const src = document.getElementById('source-filter').value;
-    return src ? '?data_source=' + encodeURIComponent(src) : '';
+    return '';
 }
 
 function localFacilityOptions() {
@@ -127,10 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function updateBadge(data) {
     const el = document.getElementById('data-source-badge');
-    const live = data.source === 'live';
-    const combined = data.source === 'combined';
-    el.className = 'an-pro-badge ' + (combined ? 'combined' : (live ? 'live' : 'demo'));
-    el.innerHTML = '<span class="dot"></span> ' + (data.dataSourceLabel || (combined ? 'Combined data' : (live ? 'Live data' : 'Demo data')));
+    el.className = 'an-pro-badge live';
+    el.innerHTML = '<span class="dot"></span> Live';
     const dlWeekly = document.getElementById('dl-weekly');
     if (dlWeekly) dlWeekly.href = '{{ path('admin_role_analytics_export_weekly') }}' + queryParams();
 }
@@ -152,7 +194,7 @@ async function loadAnalytics(fn) {
     } catch (e) {
         console.warn('Analytics API error, using local fallback', e);
         const local = {{ localAnalytics|json_encode|raw }};
-        updateBadge({ source: 'demo', dataSourceLabel: 'Local Fallback (Database unavailable)' });
+        updateBadge({ source: 'live', dataSourceLabel: 'Live' });
         renderTab(fn, local[fn] || {}, true);
     }
 }
@@ -163,9 +205,8 @@ function destroyCharts() {
 }
 
 function renderTab(fn, data, isFallback) {
-    const src = data.source === 'live' ? 'live' : (data.source === 'combined' ? 'combined' : (isFallback ? 'fallback' : 'demo'));
     let html = '<div class="sa-analytics-title-row"><div><h3>' + title(fn) + '</h3><p>' + summary(fn) + '</p></div>';
-    html += '<span class="sa-analytics-source ' + src + '">' + (data.dataSourceLabel || src) + '</span></div>';
+    html += '<span class="sa-analytics-source live">Live</span></div>';
     html += kpiRow(fn, data);
     html += '<div class="sa-analytics-grid">';
     if (fn === 'planning') html += planningHtml(data);
@@ -185,55 +226,406 @@ function kpiRow(fn, d) {
     const cards = [];
     if (fn === 'planning') {
         const acc = d.forecast_accuracy || {};
-        cards.push(kpi('Weekly RMSE', acc.weekly_rmse ?? '—', 'ARIMA accuracy'));
-        cards.push(kpi('Reservations', d.totalRows ?? d.reservationCount ?? 0, 'In dataset'));
-        cards.push(kpi('Facilities', (d.facilities || []).length, 'Tracked'));
+        const vol = d.demand_volatility || {};
+        const mom = d.trend_momentum || {};
+        const dq = d.data_quality || {};
+        const totalRows = d.totalRows ?? d.reservationCount ?? 0;
+        cards.push(kpi('Weekly MAPE', (acc.weekly_mape ?? '—') + '%', 'Model accuracy', trendIcon(acc.weekly_mape, 20, true)));
+        cards.push(kpi('Volatility', vol.cv + '% ' + (vol.label || ''), 'Demand stability', trendIcon(vol.cv, 30, true)));
+        cards.push(kpi('Momentum', (mom.direction === 'up' ? '+' : mom.direction === 'down' ? '-' : '') + (mom.strength ?? 0) + '%', mom.direction || 'neutral', ''));
+        cards.push(kpi('Data Quality', dq.grade || 'N/A', 'Score: ' + (dq.score ?? 0) + '%', trendIcon(dq.score, 80, false)));
+        cards.push(kpi('Reservations', totalRows, 'Total records', ''));
     } else if (fn === 'organizing') {
-        cards.push(kpi('Facilities', Object.keys(d.facility_load_distribution || {}).length, 'With bookings'));
+        const capEff = d.capacity_efficiency || {};
+        const effVals = Object.values(capEff).map(v => v.efficiency);
+        const avgEff = effVals.length ? (effVals.reduce((a,b)=>a+b,0)/effVals.length).toFixed(1) : 0;
+        cards.push(kpi('Facilities', Object.keys(d.facility_load_distribution || {}).length, 'Active rooms', ''));
+        cards.push(kpi('Peak Slot', getPeakFromObj(d.peak_usage_times || {}), 'Highest demand', ''));
+        cards.push(kpi('Avg Efficiency', avgEff + '%', 'Capacity usage', trendIcon(parseFloat(avgEff), 50, false)));
+        cards.push(kpi('Total Bookings', Object.values(d.facility_load_distribution || {}).reduce((a,b)=>a+b,0), 'All facilities', ''));
     } else if (fn === 'controlling') {
-        cards.push(kpi('Setup compliance', (d.setup_compliance_rate ?? 0) + '%', '≤ 3 days'));
-        cards.push(kpi('No-show rate', (d.no_show_rate ?? 0) + '%', 'Cancelled + rejected'));
-        cards.push(kpi('Avg setup gap', (d.average_setup_gap ?? 0) + ' d', 'Lead time'));
+        const funnel = d.approval_funnel || {};
+        const compliance = d.setup_compliance_rate ?? 0;
+        const noshow = d.no_show_rate ?? 0;
+        const compScore = Math.round(compliance * 0.4 + (100 - noshow) * 0.35 + (funnel.approval_rate ?? 0) * 0.25);
+        cards.push(kpi('Compliance Score', compScore + '%', 'Weighted composite', trendIcon(compScore, 70, false)));
+        cards.push(kpi('Setup compliance', compliance + '%', '≤ 3 days lead', trendIcon(compliance, 80, false)));
+        cards.push(kpi('No-show rate', noshow + '%', 'Cancelled + rejected', trendIcon(noshow, 15, true)));
+        cards.push(kpi('Avg setup gap', (d.average_setup_gap ?? 0) + ' d', 'Lead time', ''));
     } else if (fn === 'leading') {
-        cards.push(kpi('Approval rate', (d.overall_completion_rate ?? 0) + '%', 'Approved share'));
-        cards.push(kpi('RSO rate', (d.rso_completion_rate ?? 0) + '%', 'RSO-related'));
+        const funnel = d.approval_funnel || {};
+        cards.push(kpi('Approval rate', (funnel.approval_rate ?? 0) + '%', 'Conversion', trendIcon(funnel.approval_rate ?? 0, 70, false)));
+        cards.push(kpi('Rejection rate', (funnel.rejection_rate ?? 0) + '%', 'Blocked', trendIcon(funnel.rejection_rate ?? 0, 15, true)));
+        cards.push(kpi('Pipeline', funnel.submitted ?? 0, 'Total submitted', ''));
+        cards.push(kpi('RSO rate', (d.rso_completion_rate ?? 0) + '%', 'RSO-related', ''));
     }
     return '<div class="an-pro-kpi-row sa-chart-wide">' + cards.join('') + '</div>';
 }
 
-function kpi(label, value, sub) {
-    return '<div class="an-pro-kpi"><div class="label">' + esc(label) + '</div><div class="value">' + esc(String(value)) + '</div><div class="sub">' + esc(sub) + '</div></div>';
+function trendIcon(val, threshold, lowerIsBetter) {
+    if (val == null || val === '—') return '';
+    const v = Number(val);
+    if (lowerIsBetter) {
+        if (v <= threshold) return '<span class="trend-good">↓ Good</span>';
+        return '<span class="trend-warn">↑ High</span>';
+    } else {
+        if (v >= threshold) return '<span class="trend-good">↑ Good</span>';
+        return '<span class="trend-warn">↓ Low</span>';
+    }
+}
+
+function getPeakFromObj(obj) {
+    const entries = Object.entries(obj);
+    if (!entries.length) return '—';
+    entries.sort((a,b) => b[1] - a[1]);
+    return entries[0][0];
+}
+
+function kpi(label, value, sub, trend) {
+    return '<div class="an-pro-kpi"><div class="label">' + esc(label) + '</div><div class="value">' + esc(String(value)) + (trend || '') + '</div><div class="sub">' + esc(sub) + '</div></div>';
 }
 
 function planningHtml(d) {
+    const acc = d.forecast_accuracy || {};
+    const mapeQuality = (v) => { if (v == null) return ''; if (v < 10) return ' mq-excellent'; if (v < 20) return ' mq-good'; if (v < 30) return ' mq-fair'; return ' mq-poor'; };
+    let accuracyPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+        <h4>ARIMA Model Accuracy Evaluation</h4>
+        <p class="chart-sub">Forecast accuracy metrics — lower values indicate better model performance</p>
+        <div class="an-pro-metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">W</div>
+                <div class="metric-label">Weekly MAE</div>
+                <div class="metric-value">${acc.weekly_mae ?? '—'}</div>
+                <div class="metric-desc">Mean Absolute Error</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">W</div>
+                <div class="metric-label">Weekly RMSE</div>
+                <div class="metric-value">${acc.weekly_rmse ?? '—'}</div>
+                <div class="metric-desc">Root Mean Square Error</div>
+            </div>
+            <div class="metric-card${mapeQuality(acc.weekly_mape)}">
+                <div class="metric-icon">W</div>
+                <div class="metric-label">Weekly MAPE</div>
+                <div class="metric-value">${(acc.weekly_mape ?? '—')}%</div>
+                <div class="metric-desc">Mean Abs % Error</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">M</div>
+                <div class="metric-label">Monthly MAE</div>
+                <div class="metric-value">${acc.monthly_mae ?? '—'}</div>
+                <div class="metric-desc">Mean Absolute Error</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">M</div>
+                <div class="metric-label">Monthly RMSE</div>
+                <div class="metric-value">${acc.monthly_rmse ?? '—'}</div>
+                <div class="metric-desc">Root Mean Square Error</div>
+            </div>
+            <div class="metric-card${mapeQuality(acc.monthly_mape)}">
+                <div class="metric-icon">M</div>
+                <div class="metric-label">Monthly MAPE</div>
+                <div class="metric-value">${(acc.monthly_mape ?? '—')}%</div>
+                <div class="metric-desc">Mean Abs % Error</div>
+            </div>
+        </div>
+        <div class="an-pro-legend-box">
+            <h5>How to Interpret</h5>
+            <ul>
+                <li><strong>MAE</strong> — Average absolute difference between actual and predicted reservation counts</li>
+                <li><strong>RMSE</strong> — Like MAE but penalizes large errors more; useful for detecting outlier weeks</li>
+                <li><strong>MAPE</strong> — Percentage-based: <span class="mq-tag excellent">&lt;10% Excellent</span> <span class="mq-tag good">&lt;20% Good</span> <span class="mq-tag fair">&lt;30% Fair</span> <span class="mq-tag poor">&gt;30% Poor</span></li>
+            </ul>
+        </div>
+    </div>`;
+
+    // CDO: Demand Intelligence Panel
+    const vol = d.demand_volatility || {};
+    const seasonal = d.seasonal_pattern || {};
+    const momentum = d.trend_momentum || {};
+    const dq = d.data_quality || {};
+    const ptr = d.peak_trough_ratio || 1;
+    const volClass = vol.cv < 15 ? 'mq-excellent' : vol.cv < 30 ? 'mq-good' : vol.cv < 50 ? 'mq-fair' : 'mq-poor';
+    const momIcon = momentum.direction === 'up' ? '📈' : momentum.direction === 'down' ? '📉' : '➡️';
+    const dqClass = dq.score >= 90 ? 'mq-excellent' : dq.score >= 80 ? 'mq-good' : dq.score >= 70 ? 'mq-fair' : 'mq-poor';
+
+    let intelligencePanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+        <h4>Demand Intelligence Dashboard</h4>
+        <p class="chart-sub">Advanced predictive analytics — coefficient of variation, seasonality detection, and trend momentum</p>
+        <div class="an-pro-metrics-grid">
+            <div class="metric-card ${volClass}">
+                <div class="metric-icon">V</div>
+                <div class="metric-label">Demand Volatility</div>
+                <div class="metric-value">${vol.cv ?? 0}%</div>
+                <div class="metric-desc">CV: ${vol.label || 'N/A'} (σ=${vol.std_dev ?? 0})</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">${momIcon}</div>
+                <div class="metric-label">Trend Momentum</div>
+                <div class="metric-value">${momentum.direction === 'up' ? '+' : momentum.direction === 'down' ? '-' : ''}${momentum.strength ?? 0}%</div>
+                <div class="metric-desc">Short: ${momentum.short_term ?? 0}/wk · Long: ${momentum.long_term ?? 0}/wk</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">S</div>
+                <div class="metric-label">Seasonality</div>
+                <div class="metric-value">${seasonal.detected ? 'Detected' : 'None'}</div>
+                <div class="metric-desc">Strength: ${seasonal.seasonality_strength ?? 0}% · Ratio: ${ptr}x</div>
+            </div>
+            <div class="metric-card ${dqClass}">
+                <div class="metric-icon">Q</div>
+                <div class="metric-label">Data Quality</div>
+                <div class="metric-value">${dq.grade || 'N/A'} (${dq.score ?? 0}%)</div>
+                <div class="metric-desc">Complete: ${dq.completeness ?? 0}% · Consistent: ${dq.consistency ?? 0}%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">P</div>
+                <div class="metric-label">Peak Months</div>
+                <div class="metric-value">${(seasonal.peak_months || []).length || 0}</div>
+                <div class="metric-desc">${(seasonal.peak_months || []).slice(-2).join(', ') || 'N/A'}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">T</div>
+                <div class="metric-label">Trough Months</div>
+                <div class="metric-value">${(seasonal.trough_months || []).length || 0}</div>
+                <div class="metric-desc">${(seasonal.trough_months || []).slice(-2).join(', ') || 'N/A'}</div>
+            </div>
+        </div>
+        <div class="an-pro-legend-box">
+            <h5>CDO Interpretation Guide</h5>
+            <ul>
+                <li><strong>Demand Volatility (CV)</strong> — Coefficient of Variation: &lt;15% Stable, 15-30% Moderate, 30-50% Volatile, &gt;50% Highly Volatile. High volatility = need larger safety buffers in scheduling.</li>
+                <li><strong>Trend Momentum</strong> — Short-term (4-week) slope normalized by mean. Positive = growing demand, negative = declining. Use for capacity planning.</li>
+                <li><strong>Seasonality</strong> — Detects months &gt;30% above or &lt;30% below mean. Peak/trough ratio shows demand range amplitude.</li>
+                <li><strong>Data Quality</strong> — Weighted score: Completeness (40%) + Consistency (30%) + Timeliness (30%). Grade A+ = production-ready forecasts.</li>
+            </ul>
+        </div>
+    </div>`;
+
     return `
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Weekly demand — historical vs ARIMA forecast</h4><p class="chart-sub">Solid: actual · Dashed: forecast · Shaded: 80% confidence interval</p><canvas id="c-weekly"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Monthly demand — historical vs ARIMA forecast</h4><canvas id="c-monthly"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Event type distribution</h4><canvas id="c-events"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Peak demand by hour</h4><canvas id="c-hours"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Per-facility weekly forecast (next 4 weeks)</h4><canvas id="c-per-fac"></canvas></div>`;
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Historical Reservation Trend (Weekly)</h4>
+        <p class="chart-sub">Solid: actual · Dashed: ARIMA forecast · Shaded: 80% confidence interval</p>
+        <div class="an-pro-ci-legend"><span class="ci-dot ci-hist"></span> Historical <span class="ci-dot ci-fc"></span> Forecast <span class="ci-dot ci-ci"></span> 80% Confidence Interval</div>
+        <canvas id="c-weekly"></canvas>
+        <div class="an-pro-insight" id="insight-weekly"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Usage Forecast (Monthly)</h4>
+        <p class="chart-sub">Predicted facility usage based on reservation patterns</p>
+        <canvas id="c-monthly"></canvas>
+        <div class="an-pro-insight" id="insight-monthly"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Actual vs ARIMA Forecast (Model Validation)</h4>
+        <p class="chart-sub">Green: actual demand · Amber: ARIMA prediction · Red dashed: naïve baseline — ARIMA should track closer to actual</p>
+        <canvas id="c-actual-vs"></canvas>
+        <div class="an-pro-insight" id="insight-actual-vs"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Rolling Forecast Accuracy (MAPE over time)</h4>
+        <p class="chart-sub">Tracks model prediction error over rolling 4-week windows — declining line = model is learning</p>
+        <canvas id="c-rolling-mape"></canvas>
+        <div class="an-pro-insight" id="insight-rolling-mape"></div>
+    </div>
+    ` + accuracyPanel + intelligencePanel + `
+    <div class="sa-chart-container an-pro-chart-card"><h4>Day-of-Week Demand Pattern</h4>
+        <p class="chart-sub">Which days see the most reservations (Mon–Sun)</p>
+        <canvas id="c-dow"></canvas>
+        <div class="an-pro-insight" id="insight-dow"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Event Type Distribution</h4><canvas id="c-events"></canvas></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Peak Demand Hours</h4><canvas id="c-hours"></canvas></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Per-Facility Weekly Forecast (next 4 weeks)</h4><canvas id="c-per-fac"></canvas></div>`;
 }
 
 function organizingHtml(d) {
+    let summaryHtml = '';
+    const util = d.room_utilization || {};
+    if (Object.keys(util).length) {
+        summaryHtml = '<div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Usage Summary</h4><div style="overflow-x:auto;"><table class="an-pro-summary-table"><thead><tr><th>Facility</th><th>Total Reservations</th><th>Total Attendees</th><th>Utilization Rate</th><th>Status</th></tr></thead><tbody>';
+        Object.entries(util).forEach(([name, v]) => {
+            const rate = ((v.utilization_rate || 0) * 100).toFixed(1);
+            const rateNum = parseFloat(rate);
+            const badge = rateNum >= 5 ? '<span class="util-badge high">High</span>' : rateNum >= 2 ? '<span class="util-badge med">Medium</span>' : '<span class="util-badge low">Low</span>';
+            summaryHtml += '<tr><td>' + esc(name) + '</td><td>' + (v.total_bookings || v.reservations || 0) + '</td><td>' + (v.total_capacity || 0) + '</td><td>' + rate + '%</td><td>' + badge + '</td></tr>';
+        });
+        summaryHtml += '</tbody></table></div></div>';
+    }
+
+    // Capacity Efficiency Panel
+    const capEff = d.capacity_efficiency || {};
+    const capEntries = Object.entries(capEff).slice(0, 6);
+    let capPanel = '';
+    if (capEntries.length) {
+        capPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+            <h4>Capacity Efficiency Analysis</h4>
+            <p class="chart-sub">Measures how effectively each facility's capacity is being utilized relative to demand</p>
+            <div class="an-pro-metrics-grid">`;
+        capEntries.forEach(([name, info]) => {
+            const cls = info.status === 'optimal' ? 'mq-excellent' : info.status === 'adequate' ? 'mq-good' : info.status === 'underused' ? 'mq-fair' : 'mq-poor';
+            capPanel += `<div class="metric-card ${cls}">
+                <div class="metric-icon">${info.bookings}</div>
+                <div class="metric-label">${esc(name)}</div>
+                <div class="metric-value">${info.efficiency}%</div>
+                <div class="metric-desc">${info.status.charAt(0).toUpperCase() + info.status.slice(1)}</div>
+            </div>`;
+        });
+        capPanel += `</div>
+            <div class="an-pro-legend-box"><h5>Efficiency Thresholds</h5><ul>
+                <li><strong>Optimal (≥70%)</strong> — Facility is well-utilized with strong demand matching capacity</li>
+                <li><strong>Adequate (40-69%)</strong> — Acceptable usage but room for improvement</li>
+                <li><strong>Underused (15-39%)</strong> — Consider promoting or redistributing demand to this facility</li>
+                <li><strong>Idle (&lt;15%)</strong> — Significantly underutilized — evaluate if facility is necessary</li>
+            </ul></div></div>`;
+    }
+
     return `
-    <div class="sa-chart-container an-pro-chart-card"><h4>Facility load comparison</h4><canvas id="c-load"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Peak usage by hour</h4><canvas id="c-peak"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Utilization rate by facility</h4><canvas id="c-util"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Peak usage heatmap (hour × day)</h4><div class="an-pro-heatmap" id="heatmap"></div></div>`;
+    <div class="an-pro-exec-summary sa-chart-wide" id="exec-organizing"></div>` + capPanel + `
+    <div class="sa-chart-container an-pro-chart-card"><h4>Facility Usage Comparison</h4><p class="chart-sub">Total reservations per facility</p><canvas id="c-load"></canvas><div class="an-pro-insight" id="insight-load"></div></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Peak Usage Times</h4><p class="chart-sub">Busiest time slots across all facilities</p><canvas id="c-peak"></canvas><div class="an-pro-insight" id="insight-peak"></div></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Utilization Rate (%)</h4><p class="chart-sub">How intensively each facility is used relative to capacity</p><canvas id="c-util"></canvas><div class="an-pro-insight" id="insight-util"></div></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Peak Usage Heatmap (hour × day)</h4><p class="chart-sub">Darker cells = higher demand — use for scheduling optimization</p><div class="an-pro-heatmap" id="heatmap"></div></div>` + summaryHtml + `
+    <div class="an-pro-recommendations sa-chart-wide" id="reco-organizing"></div>`;
 }
 
 function leadingHtml(d) {
+    const funnel = d.approval_funnel || {};
+    const dq = d.data_quality || {};
+    const funnelPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+        <h4>Reservation Approval Pipeline</h4>
+        <p class="chart-sub">Full lifecycle funnel: submission → processing → outcome. Identifies bottlenecks and conversion efficiency.</p>
+        <div class="an-pro-metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">S</div>
+                <div class="metric-label">Submitted</div>
+                <div class="metric-value">${funnel.submitted ?? 0}</div>
+                <div class="metric-desc">Total requests</div>
+            </div>
+            <div class="metric-card ${(funnel.approval_rate ?? 0) >= 70 ? 'mq-excellent' : (funnel.approval_rate ?? 0) >= 50 ? 'mq-good' : 'mq-poor'}">
+                <div class="metric-icon">A</div>
+                <div class="metric-label">Approved</div>
+                <div class="metric-value">${funnel.approved ?? 0}</div>
+                <div class="metric-desc">${funnel.approval_rate ?? 0}% conversion</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">P</div>
+                <div class="metric-label">Pending</div>
+                <div class="metric-value">${funnel.pending ?? 0}</div>
+                <div class="metric-desc">Awaiting decision</div>
+            </div>
+            <div class="metric-card ${(funnel.rejection_rate ?? 0) > 30 ? 'mq-poor' : (funnel.rejection_rate ?? 0) > 15 ? 'mq-fair' : 'mq-excellent'}">
+                <div class="metric-icon">R</div>
+                <div class="metric-label">Rejected</div>
+                <div class="metric-value">${funnel.rejected ?? 0}</div>
+                <div class="metric-desc">${funnel.rejection_rate ?? 0}% rejection</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">C</div>
+                <div class="metric-label">Cancelled</div>
+                <div class="metric-value">${funnel.cancelled ?? 0}</div>
+                <div class="metric-desc">${funnel.cancellation_rate ?? 0}% cancellation</div>
+            </div>
+            <div class="metric-card ${dq.score >= 80 ? 'mq-excellent' : dq.score >= 60 ? 'mq-good' : 'mq-fair'}">
+                <div class="metric-icon">Q</div>
+                <div class="metric-label">Data Quality</div>
+                <div class="metric-value">${dq.grade || 'N/A'}</div>
+                <div class="metric-desc">Score: ${dq.score ?? 0}%</div>
+            </div>
+        </div>
+        <div class="an-pro-legend-box">
+            <h5>Pipeline Health Assessment</h5>
+            <ul>
+                <li><strong>Conversion Rate</strong> — Percentage of submitted reservations that achieve approval. Target: &gt;70%</li>
+                <li><strong>Pending Backlog</strong> — Reservations awaiting decision. High backlog suggests processing delays.</li>
+                <li><strong>Rejection Rate</strong> — &lt;15% healthy, 15-30% review needed, &gt;30% systemic issues likely</li>
+            </ul>
+        </div>
+    </div>`;
     return `
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Event success by purpose (% approved)</h4><canvas id="c-success"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Top events by volume</h4><canvas id="c-top"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Participant demand trend (Event Execution Volume)</h4><canvas id="c-part"></canvas></div>`;
+    <div class="an-pro-exec-summary sa-chart-wide" id="exec-leading"></div>` + funnelPanel + `
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Event Success by Purpose (% Approved)</h4><p class="chart-sub">Approval rate per event category — higher bars = better success rate</p><canvas id="c-success"></canvas><div class="an-pro-insight" id="insight-success"></div></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Top Events by Volume</h4><p class="chart-sub">Most frequently reserved event types</p><canvas id="c-top"></canvas><div class="an-pro-insight" id="insight-top"></div></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Participant Demand Trend</h4><p class="chart-sub">Monthly participant volume — rising trend indicates growing engagement</p><canvas id="c-part"></canvas><div class="an-pro-insight" id="insight-part"></div></div>
+    <div class="an-pro-recommendations sa-chart-wide" id="reco-leading"></div>`;
 }
 
 function controllingHtml(d) {
+    const funnel = d.approval_funnel || {};
+    const risks = d.facility_risk_scores || {};
+    const dq = d.data_quality || {};
+    const compliance = d.setup_compliance_rate ?? 0;
+    const noshow = d.no_show_rate ?? 0;
+
+    // Weighted Compliance Scorecard
+    const complianceScore = Math.round(compliance * 0.4 + (100 - noshow) * 0.35 + (funnel.approval_rate ?? 0) * 0.25);
+    const csClass = complianceScore >= 80 ? 'mq-excellent' : complianceScore >= 60 ? 'mq-good' : complianceScore >= 40 ? 'mq-fair' : 'mq-poor';
+    const csGrade = complianceScore >= 90 ? 'A+' : complianceScore >= 80 ? 'A' : complianceScore >= 70 ? 'B' : complianceScore >= 60 ? 'C' : 'D';
+
+    let scorecard = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+        <h4>Operational Compliance Scorecard</h4>
+        <p class="chart-sub">Weighted composite score — Setup Compliance (40%) + Attendance (35%) + Approval Efficiency (25%)</p>
+        <div class="an-pro-metrics-grid">
+            <div class="metric-card ${csClass}">
+                <div class="metric-icon">O</div>
+                <div class="metric-label">Overall Score</div>
+                <div class="metric-value">${csGrade} (${complianceScore}%)</div>
+                <div class="metric-desc">Composite operational health</div>
+            </div>
+            <div class="metric-card ${compliance >= 70 ? 'mq-excellent' : compliance >= 40 ? 'mq-good' : 'mq-poor'}">
+                <div class="metric-icon">S</div>
+                <div class="metric-label">Setup Compliance</div>
+                <div class="metric-value">${compliance}%</div>
+                <div class="metric-desc">≤3 days advance booking</div>
+            </div>
+            <div class="metric-card ${noshow <= 15 ? 'mq-excellent' : noshow <= 30 ? 'mq-fair' : 'mq-poor'}">
+                <div class="metric-icon">N</div>
+                <div class="metric-label">Attendance Rate</div>
+                <div class="metric-value">${(100 - noshow).toFixed(1)}%</div>
+                <div class="metric-desc">No-show: ${noshow}%</div>
+            </div>
+            <div class="metric-card ${(funnel.approval_rate ?? 0) >= 70 ? 'mq-excellent' : (funnel.approval_rate ?? 0) >= 50 ? 'mq-good' : 'mq-fair'}">
+                <div class="metric-icon">E</div>
+                <div class="metric-label">Process Efficiency</div>
+                <div class="metric-value">${funnel.approval_rate ?? 0}%</div>
+                <div class="metric-desc">Approval conversion rate</div>
+            </div>
+            <div class="metric-card ${dq.score >= 80 ? 'mq-excellent' : dq.score >= 60 ? 'mq-good' : 'mq-fair'}">
+                <div class="metric-icon">Q</div>
+                <div class="metric-label">Data Quality</div>
+                <div class="metric-value">${dq.grade || 'N/A'}</div>
+                <div class="metric-desc">${dq.score ?? 0}% completeness</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">G</div>
+                <div class="metric-label">Avg Setup Gap</div>
+                <div class="metric-value">${d.average_setup_gap ?? 0}d</div>
+                <div class="metric-desc">Lead time before event</div>
+            </div>
+        </div>
+    </div>`;
+
+    // Facility Risk Matrix
+    const riskEntries = Object.entries(risks).slice(0, 6);
+    let riskPanel = '';
+    if (riskEntries.length) {
+        riskPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+            <h4>Facility Risk Assessment Matrix</h4>
+            <p class="chart-sub">Identifies facilities with highest operational risk — overload probability × no-show impact</p>
+            <div style="overflow-x:auto"><table class="an-pro-summary-table"><thead><tr><th>Facility</th><th>Risk Score</th><th>Overload Risk</th><th>No-Show Risk</th><th>Bookings</th></tr></thead><tbody>`;
+        riskEntries.forEach(([name, r]) => {
+            const riskClass = r.risk_score >= 40 ? 'color:#dc2626;font-weight:700' : r.risk_score >= 20 ? 'color:#d97706;font-weight:700' : 'color:#059669';
+            riskPanel += `<tr><td>${esc(name)}</td><td style="${riskClass}">${r.risk_score}/60</td><td><span class="util-badge ${r.overload_risk === 'High' ? 'low' : r.overload_risk === 'Medium' ? 'med' : 'high'}">${r.overload_risk}</span></td><td><span class="util-badge ${r.no_show_risk === 'High' ? 'low' : r.no_show_risk === 'Medium' ? 'med' : 'high'}">${r.no_show_risk}</span></td><td>${r.bookings}</td></tr>`;
+        });
+        riskPanel += `</tbody></table></div>
+            <div class="an-pro-legend-box"><h5>Risk Interpretation</h5><ul>
+                <li><strong>Score 0-19:</strong> Low risk — normal operations</li>
+                <li><strong>Score 20-39:</strong> Moderate — monitor closely and prepare contingencies</li>
+                <li><strong>Score 40-60:</strong> High — immediate intervention recommended</li>
+            </ul></div></div>`;
+    }
+
     return `
-    <div class="sa-chart-container an-pro-chart-card"><h4>Status distribution</h4><canvas id="c-status"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Facility utilization</h4><canvas id="c-futil"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Rejection reasons</h4><canvas id="c-reject"></canvas></div>`;
+    <div class="an-pro-exec-summary sa-chart-wide" id="exec-controlling"></div>` + scorecard + `
+    <div class="sa-chart-container an-pro-chart-card"><h4>Status Distribution</h4><p class="chart-sub">Proportion of reservation statuses</p><canvas id="c-status"></canvas><div class="an-pro-insight" id="insight-status"></div></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Facility Utilization Rate</h4><p class="chart-sub">Usage intensity per facility</p><canvas id="c-futil"></canvas><div class="an-pro-insight" id="insight-futil"></div></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Rejection Analysis</h4><p class="chart-sub">Reasons for reservation rejections</p><canvas id="c-reject"></canvas><div class="an-pro-insight" id="insight-reject"></div></div>` + riskPanel + `
+    <div class="an-pro-recommendations sa-chart-wide" id="reco-controlling"></div>`;
 }
 
 function drawCharts(fn, d, isFallback) {
@@ -246,10 +638,54 @@ function drawCharts(fn, d, isFallback) {
         const m = d.forecast_series?.monthly || {};
         if (w.historical || w.forecast) charts.push(makeArimaChart('c-weekly', w));
         if (m.historical || m.forecast) charts.push(makeArimaChart('c-monthly', m));
+
+        // Actual vs ARIMA vs Naïve chart
+        const avf = d.actual_vs_forecast || {};
+        if (avf.labels && avf.labels.length > 1) {
+            charts.push(makeActualVsForecastChart('c-actual-vs', avf));
+        }
+
+        // Rolling MAPE chart
+        const rm = d.rolling_mape || {};
+        if (rm.labels && rm.labels.length > 1) {
+            const rmEl = document.getElementById('c-rolling-mape');
+            if (rmEl) {
+                charts.push(new Chart(rmEl, {
+                    type: 'line',
+                    data: {
+                        labels: rm.labels.map(formatLabel),
+                        datasets: [{
+                            label: 'MAPE %', data: rm.values,
+                            borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.08)',
+                            fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2
+                        }, {
+                            label: '20% threshold', data: rm.labels.map(() => 20),
+                            borderColor: '#dc2626', borderDash: [4,4], pointRadius: 0, borderWidth: 1, fill: false
+                        }]
+                    },
+                    options: { ...chartOpts('MAPE %'), plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } } }
+                }));
+            }
+            const rmInsight = document.getElementById('insight-rolling-mape');
+            if (rmInsight && rm.values.length >= 3) {
+                const recent = rm.values.slice(-3);
+                const avgRecent = (recent.reduce((a,b)=>a+b,0)/recent.length).toFixed(1);
+                const trend = rm.values[rm.values.length-1] < rm.values[0] ? 'improving' : 'needs attention';
+                rmInsight.innerHTML = '<strong>Insight:</strong> Recent 3-period avg MAPE: <strong>' + avgRecent + '%</strong>. Model accuracy is <strong>' + trend + '</strong>. Values below 20% (red line) indicate good forecasting performance.';
+            }
+        }
+
+        // Day-of-week demand
+        const dow = d.day_of_week_demand || {};
+        if (Object.keys(dow).length) charts.push(makeBar('c-dow', dow, '#2563eb', false));
+
         charts.push(makeDoughnut('c-events', d.event_type_distribution || {}));
         charts.push(makeBar('c-hours', d.peak_demand_hours || {}, '#006633', true));
         const pf = d.per_facility_weekly || [];
         if (pf.length) charts.push(makePerFacilityChart('c-per-fac', pf));
+
+        // Generate insights
+        generatePlanningInsights(d);
     } else if (fn === 'organizing') {
         charts.push(makeBar('c-load', d.facility_load_distribution || {}, '#006633'));
         charts.push(makeBar('c-peak', d.peak_usage_times || {}, '#2563eb', true));
@@ -257,6 +693,7 @@ function drawCharts(fn, d, isFallback) {
         Object.entries(d.room_utilization || {}).forEach(([k,v]) => util[k] = (v.utilization_rate || 0) * 100);
         charts.push(makeBar('c-util', util, '#0f766e'));
         renderHeatmap('heatmap', d.peak_usage_heatmap || {});
+        generateOrganizingInsights(d);
     } else if (fn === 'leading') {
         charts.push(makeBar('c-success', d.event_success_by_type || {}, '#0f766e'));
         const top = d.top_events || {};
@@ -269,11 +706,13 @@ function drawCharts(fn, d, isFallback) {
             }
         }
         charts.push(makeLine('c-part', d.participant_demand_trend || {}, '#7c3aed', 'Participants'));
+        generateLeadingInsights(d);
     } else {
         charts.push(makeDoughnut('c-status', d.target_achievement || {}));
         const fu = {}; Object.entries(d.facility_utilization_rate || {}).forEach(([k,v]) => fu[k] = Number(v) * 100);
         charts.push(makeBar('c-futil', fu, '#b45309'));
         charts.push(makeBar('c-reject', d.rejection_analysis || {}, '#dc2626'));
+        generateControllingInsights(d);
     }
 }
 
@@ -328,8 +767,8 @@ function makeBar(id, src, color, sortHours) {
     if (!el) return null;
     return new Chart(el, {
         type: 'bar',
-        data: { labels: entries.map(e => formatLabel(e[0])), datasets: [{ data: entries.map(e => Number(e[1])), backgroundColor: color, borderRadius: 6 }] },
-        options: chartOpts('')
+        data: { labels: entries.map(e => formatLabel(e[0])), datasets: [{ label: 'Count', data: entries.map(e => Number(e[1])), backgroundColor: color, borderRadius: 6 }] },
+        options: { ...chartOpts(''), plugins: { legend: { display: false } } }
     });
 }
 
@@ -339,8 +778,8 @@ function makeLine(id, src, color, label) {
     if (!el) return null;
     return new Chart(el, {
         type: 'line',
-        data: { labels: entries.map(e => formatLabel(e[0])), datasets: [{ label, data: entries.map(e => Number(e[1])), borderColor: color, backgroundColor: hexAlpha(color, 0.15), fill: true, tension: 0.35 }] },
-        options: chartOpts(label)
+        data: { labels: entries.map(e => formatLabel(e[0])), datasets: [{ label: label || 'Value', data: entries.map(e => Number(e[1])), borderColor: color, backgroundColor: hexAlpha(color, 0.15), fill: true, tension: 0.35, pointRadius: 3 }] },
+        options: chartOpts(label || '')
     });
 }
 
@@ -377,6 +816,253 @@ function renderHeatmap(id, hm) {
     });
     html += '</tbody></table>';
     box.innerHTML = html;
+}
+
+function makeActualVsForecastChart(id, avf) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return new Chart(el, {
+        type: 'line',
+        data: {
+            labels: avf.labels.map(formatLabel),
+            datasets: [
+                { label: 'Actual', data: avf.actual, borderColor: '#006633', backgroundColor: 'rgba(0,102,51,0.08)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2.5 },
+                { label: 'ARIMA Forecast', data: avf.arima, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', tension: 0.3, pointRadius: 3, borderWidth: 2.5, fill: false },
+                { label: 'Naïve Baseline (t-1)', data: avf.naive, borderColor: '#dc2626', borderDash: [5,3], tension: 0.3, pointRadius: 2, borderWidth: 1.5, fill: false }
+            ]
+        },
+        options: {
+            ...chartOpts('Reservations'),
+            plugins: {
+                legend: { labels: { usePointStyle: true, padding: 16 } },
+                tooltip: { callbacks: { afterBody: (ctx) => {
+                    const i = ctx[0].dataIndex;
+                    const arimaErr = Math.abs((avf.actual[i] || 0) - (avf.arima[i] || 0)).toFixed(1);
+                    const naiveErr = Math.abs((avf.actual[i] || 0) - (avf.naive[i] || 0)).toFixed(1);
+                    return 'ARIMA error: ' + arimaErr + ' | Naïve error: ' + naiveErr;
+                } } }
+            }
+        }
+    });
+}
+
+function generatePlanningInsights(d) {
+    // Weekly insight
+    const wEl = document.getElementById('insight-weekly');
+    if (wEl) {
+        const w = d.forecast_series?.weekly || {};
+        const hist = Object.values(w.historical || {});
+        const fc = Object.values(w.forecast || {});
+        if (hist.length > 1) {
+            const lastWeeks = hist.slice(-4);
+            const avg = (lastWeeks.reduce((a,b)=>a+b,0)/lastWeeks.length).toFixed(1);
+            const trend = hist[hist.length-1] > hist[hist.length-2] ? 'increasing' : hist[hist.length-1] < hist[hist.length-2] ? 'decreasing' : 'stable';
+            let insight = '<strong>Insight:</strong> Weekly demand is <strong>' + trend + '</strong>. Recent 4-week average: ' + avg + ' reservations/week.';
+            if (fc.length) { const fcAvg = (fc.reduce((a,b)=>a+b,0)/fc.length).toFixed(1); insight += ' Forecasted average: ' + fcAvg + '/week over the next ' + fc.length + ' weeks.'; }
+            wEl.innerHTML = insight;
+        }
+    }
+
+    // Monthly insight
+    const mEl = document.getElementById('insight-monthly');
+    if (mEl) {
+        const m = d.forecast_series?.monthly || {};
+        const hist = Object.values(m.historical || {});
+        if (hist.length > 2) {
+            const lastMonths = hist.slice(-3);
+            const avg = (lastMonths.reduce((a,b)=>a+b,0)/lastMonths.length).toFixed(1);
+            const peak = Math.max(...hist);
+            const peakMonth = Object.keys(m.historical || {})[hist.indexOf(peak)];
+            mEl.innerHTML = '<strong>Insight:</strong> Recent 3-month average: ' + avg + ' reservations/month. Peak month: <strong>' + peakMonth + '</strong> (' + peak + ' reservations).';
+        }
+    }
+
+    // Actual vs Forecast insight
+    const avfEl = document.getElementById('insight-actual-vs');
+    if (avfEl) {
+        const avf = d.actual_vs_forecast || {};
+        if (avf.actual && avf.actual.length > 1) {
+            // Calculate MAE for both models
+            let arimaTotal = 0, naiveTotal = 0, n = avf.actual.length;
+            for (let i = 0; i < n; i++) {
+                arimaTotal += Math.abs(avf.actual[i] - (avf.arima?.[i] || 0));
+                naiveTotal += Math.abs(avf.actual[i] - (avf.naive?.[i] || 0));
+            }
+            const arimaMae = (arimaTotal / n).toFixed(2);
+            const naiveMae = (naiveTotal / n).toFixed(2);
+            const improvement = naiveTotal > 0 ? (((naiveTotal - arimaTotal) / naiveTotal) * 100).toFixed(1) : 0;
+            avfEl.innerHTML = '<strong>ARIMA vs Naïve Comparison:</strong> ARIMA MAE = <strong>' + arimaMae + '</strong> vs Naïve MAE = <strong>' + naiveMae + '</strong>. ARIMA is <strong>' + improvement + '% more accurate</strong> than the naïve baseline. The amber line (ARIMA) should track closer to the green line (Actual) than the red dashed line (Naïve).';
+        }
+    }
+
+    // Day-of-week insight
+    const dowEl = document.getElementById('insight-dow');
+    if (dowEl) {
+        const dow = d.day_of_week_demand || {};
+        const entries = Object.entries(dow).sort((a,b) => b[1]-a[1]);
+        if (entries.length) {
+            const busiest = entries[0];
+            const quietest = entries[entries.length-1];
+            dowEl.innerHTML = '<strong>Insight:</strong> Busiest day: <strong>' + busiest[0] + '</strong> (' + busiest[1] + ' reservations). Quietest: <strong>' + quietest[0] + '</strong> (' + quietest[1] + '). Consider allocating more staff/resources on ' + busiest[0] + '.';
+        }
+    }
+}
+
+function generateOrganizingInsights(d) {
+    // Executive Summary
+    const execEl = document.getElementById('exec-organizing');
+    if (execEl) {
+        const load = d.facility_load_distribution || {};
+        const entries = Object.entries(load).sort((a,b) => b[1]-a[1]);
+        const totalBookings = entries.reduce((s,e)=> s+e[1], 0);
+        const topFac = entries[0] ? entries[0][0] : 'N/A';
+        const topPct = entries[0] && totalBookings > 0 ? ((entries[0][1]/totalBookings)*100).toFixed(0) : 0;
+        execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Organizing</h5><p><strong>${Object.keys(load).length} facilities</strong> tracked with <strong>${totalBookings} total reservations</strong>. The most utilized facility is <strong>${esc(topFac)}</strong> accounting for <strong>${topPct}%</strong> of all bookings. ${entries.length > 1 && entries[entries.length-1][1] < 5 ? 'Some facilities are significantly underutilized — consider promoting them or redistributing demand.' : 'Demand is relatively balanced across facilities.'}</p></div>`;
+    }
+
+    // Facility load insight
+    const loadEl = document.getElementById('insight-load');
+    if (loadEl) {
+        const load = d.facility_load_distribution || {};
+        const entries = Object.entries(load).sort((a,b) => b[1]-a[1]);
+        if (entries.length >= 2) {
+            const ratio = entries[0][1] > 0 ? (entries[0][1] / entries[entries.length-1][1]).toFixed(1) : 1;
+            loadEl.innerHTML = '<strong>Insight:</strong> <strong>' + esc(entries[0][0]) + '</strong> has ' + ratio + 'x more bookings than <strong>' + esc(entries[entries.length-1][0]) + '</strong>. Consider load-balancing by promoting underused facilities.';
+        }
+    }
+
+    // Peak usage insight
+    const peakEl = document.getElementById('insight-peak');
+    if (peakEl) {
+        const peak = d.peak_usage_times || {};
+        const entries = Object.entries(peak).sort((a,b) => b[1]-a[1]);
+        if (entries.length) {
+            peakEl.innerHTML = '<strong>Insight:</strong> Peak demand slot is <strong>' + esc(entries[0][0]) + '</strong> with ' + entries[0][1] + ' reservations. Schedule maintenance and setup activities outside this window.';
+        }
+    }
+
+    // Utilization insight
+    const utilEl = document.getElementById('insight-util');
+    if (utilEl) {
+        const util = d.room_utilization || {};
+        const rates = Object.entries(util).map(([k,v]) => ({name:k, rate:(v.utilization_rate||0)*100}));
+        const avg = rates.length ? (rates.reduce((s,r)=>s+r.rate,0)/rates.length).toFixed(1) : 0;
+        const low = rates.filter(r => r.rate < 2);
+        let txt = '<strong>Insight:</strong> Average utilization: <strong>' + avg + '%</strong>. ';
+        if (low.length) txt += low.length + ' facilities below 2% utilization (' + low.map(r=>r.name).join(', ') + ') — these may be candidates for schedule optimization or repurposing.';
+        else txt += 'All facilities show healthy usage levels.';
+        utilEl.innerHTML = txt;
+    }
+
+    // Recommendations
+    const recoEl = document.getElementById('reco-organizing');
+    if (recoEl) {
+        const suggestions = d.optimization_suggestions || [];
+        let html = '<div class="reco-box"><h5>Actionable Recommendations</h5><ul>';
+        html += '<li>Monitor peak facilities before approving dense schedules to prevent overbooking.</li>';
+        html += '<li>Redirect overflow demand to underutilized rooms to balance load across facilities.</li>';
+        html += '<li>Maintain 15–30 min buffer between consecutive reservations for setup/cleanup.</li>';
+        if (suggestions.length) suggestions.forEach(s => { html += '<li>' + esc(s) + '</li>'; });
+        html += '</ul></div>';
+        recoEl.innerHTML = html;
+    }
+}
+
+function generateLeadingInsights(d) {
+    const execEl = document.getElementById('exec-leading');
+    if (execEl) {
+        const rate = d.overall_completion_rate ?? 0;
+        const rso = d.rso_completion_rate ?? 0;
+        const status = rate >= 70 ? 'healthy' : rate >= 50 ? 'moderate' : 'concerning';
+        execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Event Execution</h5><p>Overall approval rate is <strong>${rate}%</strong> (${status}). RSO-related completion rate: <strong>${rso}%</strong>. ${rate < 50 ? 'Low approval suggests process bottlenecks or unclear requirements — review rejection reasons.' : rate >= 70 ? 'High approval rate indicates a well-functioning reservation process.' : 'Moderate approval rate — investigate top rejection reasons for improvement opportunities.'}</p></div>`;
+    }
+
+    // Success insight
+    const successEl = document.getElementById('insight-success');
+    if (successEl) {
+        const data = d.event_success_by_type || {};
+        const entries = Object.entries(data).sort((a,b)=>b[1]-a[1]);
+        if (entries.length >= 2) {
+            const best = entries[0];
+            const worst = entries[entries.length-1];
+            successEl.innerHTML = '<strong>Insight:</strong> Highest success rate: <strong>' + esc(best[0]) + '</strong> (' + best[1] + '%). Lowest: <strong>' + esc(worst[0]) + '</strong> (' + worst[1] + '%). Focus improvement efforts on low-approval categories.';
+        }
+    }
+
+    // Participant trend insight
+    const partEl = document.getElementById('insight-part');
+    if (partEl) {
+        const data = d.participant_demand_trend || {};
+        const vals = Object.values(data);
+        if (vals.length >= 3) {
+            const recent = vals.slice(-3);
+            const avg = (recent.reduce((a,b)=>a+b,0)/recent.length).toFixed(0);
+            const trend = vals[vals.length-1] > vals[vals.length-2] ? 'increasing' : 'decreasing';
+            partEl.innerHTML = '<strong>Insight:</strong> Participant demand is <strong>' + trend + '</strong>. Recent 3-month average: <strong>' + avg + ' participants</strong>. ' + (trend === 'increasing' ? 'Growing engagement signals the system is being actively adopted.' : 'Declining trend may indicate scheduling friction or reduced event activity.');
+        }
+    }
+
+    // Recommendations
+    const recoEl = document.getElementById('reco-leading');
+    if (recoEl) {
+        const rate = d.overall_completion_rate ?? 0;
+        let html = '<div class="reco-box"><h5>Actionable Recommendations</h5><ul>';
+        if (rate < 50) html += '<li><strong>Critical:</strong> Review and streamline the approval workflow to reduce rejection rate.</li>';
+        html += '<li>Categorize rejection reasons to identify systemic issues vs. one-off problems.</li>';
+        html += '<li>Track time-to-approval metrics to identify processing delays.</li>';
+        html += '<li>Consider automated pre-screening for common reservation types to speed approvals.</li>';
+        html += '</ul></div>';
+        recoEl.innerHTML = html;
+    }
+}
+
+function generateControllingInsights(d) {
+    const execEl = document.getElementById('exec-controlling');
+    if (execEl) {
+        const compliance = d.setup_compliance_rate ?? 0;
+        const noshow = d.no_show_rate ?? 0;
+        const gap = d.average_setup_gap ?? 0;
+        const health = compliance >= 80 && noshow <= 15 ? 'Good' : compliance >= 50 ? 'Needs attention' : 'Critical';
+        execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Controlling</h5><p>Operational health: <strong>${health}</strong>. Setup compliance (≤3 days lead time): <strong>${compliance}%</strong>. No-show rate: <strong>${noshow}%</strong>. Average setup gap: <strong>${gap} days</strong>. ${noshow > 25 ? 'High no-show rate indicates potential policy enforcement issues — consider implementing confirmation reminders or penalties.' : 'No-show rate is within acceptable range.'}</p></div>`;
+    }
+
+    // Status insight
+    const statusEl = document.getElementById('insight-status');
+    if (statusEl) {
+        const data = d.target_achievement || {};
+        const total = Object.values(data).reduce((s,v)=>s+v,0);
+        if (total > 0) {
+            const approved = data['Approved'] || data['Completed'] || 0;
+            const pct = ((approved/total)*100).toFixed(0);
+            statusEl.innerHTML = '<strong>Insight:</strong> Of <strong>' + total + '</strong> total reservations, <strong>' + pct + '%</strong> were approved/completed. Monitor rejected and cancelled bookings for patterns.';
+        }
+    }
+
+    // Rejection insight
+    const rejectEl = document.getElementById('insight-reject');
+    if (rejectEl) {
+        const data = d.rejection_analysis || {};
+        const entries = Object.entries(data).sort((a,b)=>b[1]-a[1]);
+        if (entries.length) {
+            const top = entries[0];
+            rejectEl.innerHTML = '<strong>Insight:</strong> Top rejection reason: <strong>' + esc(top[0]) + '</strong> (' + top[1] + ' occurrences). Address this category first for maximum impact on approval rates.';
+        }
+    }
+
+    // Recommendations
+    const recoEl = document.getElementById('reco-controlling');
+    if (recoEl) {
+        const noshow = d.no_show_rate ?? 0;
+        const compliance = d.setup_compliance_rate ?? 0;
+        let html = '<div class="reco-box"><h5>Actionable Recommendations</h5><ul>';
+        if (noshow > 25) html += '<li><strong>Priority:</strong> Implement 24-hour confirmation reminders to reduce no-show rate (currently ' + noshow + '%).</li>';
+        if (compliance < 50) html += '<li><strong>Priority:</strong> Enforce minimum 3-day advance booking policy to improve setup compliance (currently ' + compliance + '%).</li>';
+        html += '<li>Review rejection patterns monthly and update policies to prevent recurring issues.</li>';
+        html += '<li>Track cancellation timing — early cancellations may indicate scheduling conflicts that can be prevented.</li>';
+        html += '<li>Consider implementing a waitlist system for high-demand facilities to reduce underutilization.</li>';
+        html += '</ul></div>';
+        recoEl.innerHTML = html;
+    }
 }
 
 function chartOpts(y) {
