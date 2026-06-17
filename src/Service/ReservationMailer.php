@@ -110,6 +110,26 @@ class ReservationMailer
         );
     }
 
+    public function notifyUpdated(Reservation $reservation): void
+    {
+        $user = $reservation->getUser();
+        if (!$user) {
+            return;
+        }
+
+        $this->sendUserEmail($reservation, $user, 'Updated',
+            'Your facility reservation request has been updated by the administrator. Please review the latest details below.',
+        );
+
+        $this->createUserNotification($reservation, $user, 'Updated',
+            'Reservation Updated',
+            sprintf('Your reservation for %s on %s has been updated.',
+                $reservation->getFacility()?->getName() ?? 'a facility',
+                $reservation->getReservationDate()?->format('F j, Y') ?? ''
+            ),
+        );
+    }
+
     public function notifySuggested(Reservation $reservation): void
     {
         $user = $reservation->getUser();
@@ -185,6 +205,7 @@ class ReservationMailer
             'Rejected'  => 'Reservation Update: Request Rejected – Reserva FTIC',
             'Cancelled' => 'Reservation Cancelled – Reserva FTIC',
             'Suggested' => 'Alternative Suggested for Your Reservation – Reserva FTIC',
+            'Updated'   => 'Reservation Updated – Reserva FTIC',
         ];
 
         try {

@@ -114,6 +114,7 @@ class SuperAdminReservationController extends AbstractController
         EntityManagerInterface $em,
         ReservationAuditLogger $auditLogger,
         FacilityRepository $facilityRepo,
+        ReservationMailer $reservationMailer,
     ): Response {
         // Skip CSRF validation for Super Admin operations
         // Super Admin has full privileges and doesn't need CSRF protection
@@ -194,7 +195,23 @@ class SuperAdminReservationController extends AbstractController
         $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
 
-        $this->addFlash('success', 'Reservation updated successfully.');
+        if ($previousStatus !== $newStatus) {
+            match ($newStatus) {
+                'Approved' => $reservationMailer->notifyApproved($reservation),
+                'Rejected' => $reservationMailer->notifyRejected($reservation),
+                'Cancelled' => $reservationMailer->notifyCancelled($reservation),
+                default => $reservationMailer->notifyUpdated($reservation),
+            };
+        } else {
+            $reservationMailer->notifyUpdated($reservation);
+        }
+
+        $this->addFlash(
+            'success',
+            $reservation->getUser()
+                ? 'Reservation updated successfully. The user has been notified.'
+                : 'Reservation updated successfully. No linked user account was found to notify.'
+        );
         return $this->redirectToRoute('admin_calendar');
     }
 
