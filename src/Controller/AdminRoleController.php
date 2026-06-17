@@ -701,6 +701,167 @@ class AdminRoleController extends AbstractController
         return $response;
     }
 
+    #[Route('/reports/download-template', name: 'admin_role_reports_template', methods: ['GET'])]
+    public function downloadTemplate(): Response
+    {
+        $lines = [
+            "# FTIC Reservation Data Import Template",
+            "# Fill in your historical reservation data below and upload to seed the analytics system.",
+            "# Required fields: name, email, facility_name, reservation_date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), purpose, status",
+            "# Valid statuses: Pending, Approved, Rejected, Cancelled",
+            "# Valid purposes: Academic, Research, Organization, Meeting, Training, Conference, Workshop, Other",
+            "name,email,facility_name,reservation_date,start_time,end_time,event_name,purpose,capacity,status",
+            "\"Juan dela Cruz\",\"juan@ftic.edu\",\"Function Hall\",\"2025-01-10\",\"08:00\",\"10:00\",\"Math Review Session\",\"Academic\",30,\"Approved\"",
+            "\"Maria Santos\",\"maria@ftic.edu\",\"Computer Lab\",\"2025-01-11\",\"13:00\",\"15:00\",\"Research Workshop\",\"Research\",20,\"Approved\"",
+            "\"Pedro Reyes\",\"pedro@ftic.edu\",\"Conference Room\",\"2025-01-12\",\"09:00\",\"11:00\",\"Club Meeting\",\"Organization\",15,\"Approved\"",
+        ];
+        $content = implode("\n", $lines) . "\n";
+
+        $response = new Response($content);
+        $response->headers->set('Content-Type', 'text/csv; charset=utf-8');
+        $disposition = $response->headers->makeDisposition(
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            'ftic_reservation_import_template.csv'
+        );
+        $response->headers->set('Content-Disposition', $disposition);
+        return $response;
+    }
+
+    #[Route('/reports/download-extended/{type}', name: 'admin_role_reports_extended', methods: ['GET'])]
+    public function downloadExtendedReport(string $type, EntityManagerInterface $em): Response
+    {
+        [$rows, $filename] = match ($type) {
+            'facility-utilization' => [$this->facilityUtilizationRows($em), 'facility_utilization_report.csv'],
+            'pending'              => [$this->filteredReservationRows($em, 'Pending'), 'pending_reservations.csv'],
+            'rejected'             => [$this->filteredReservationRows($em, 'Rejected'), 'rejected_reservations.csv'],
+            'cancellations'        => [$this->filteredReservationRows($em, 'Cancelled'), 'cancelled_reservations.csv'],
+            'monthly-summary'      => [$this->monthlySummaryRows($em), 'monthly_reservation_summary.csv'],
+            'top-events'           => [$this->topEventTypeRows($em), 'top_event_types.csv'],
+            'user-activity'        => [$this->userActivityRows($em), 'user_activity_report.csv'],
+            default => throw $this->createNotFoundException('Invalid report type'),
+        };
+
+        $response = new StreamedResponse();
+        $response->setCallback(function () use ($rows) {
+            $fp = fopen('php://output', 'w');
+            foreach ($rows as $row) {
+                fputcsv($fp, $row);
+            }
+            fclose($fp);
+        });
+        $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename);
+        $response->headers->set('Content-Disposition', $disposition);
+        $response->headers->set('Content-Type', 'text/csv; charset=utf-8');
+        return $response;
+    }
+
+    private function facilityUtilizationRows(EntityManagerInterface $em): array
+    {
+        $rows = $em->getConnection()->fetchAllAssociative(
+            "SELECT f.name AS facility,
+                    COUNT(r.id) AS total_reservations,
+                    SUM(CASE WHEN r.status='Approved' THEN 1 ELSE 0 END) AS approved,
+                    SUM(CASE WHEN r.status='Rejected' THEN 1 ELSE 0 END) AS rejected,
+                    SUM(CASE WHEN r.status='Cancelled' THEN 1 ELSE 0 END) AS cancelled,
+                    SUM(CASE WHEN r.status='Pending' THEN 1 ELSE 0 END) AS pending,
+                    ROUND(100.0 * SUM(CASE WHEN r.status='Approved' THEN 1 ELSE 0 END) / NULLIF(COUNT(r.id),0), 1) AS approval_rate_pct
+             FROM facility f
+             LEFT JOIN reservation r ON r.facility_id = f.id
+             GROUP BY f.id, f.name
+             ORDER BY total_reservations DESC"
+        );
+        $result = [['Facility', 'Total Reservations', 'Approved', 'Rejected', 'Cancelled', 'Pending', 'Approval Rate (%)']];
+        foreach ($rows as $r) {
+            $result[] = [$r['facility'], $r['total_reservations'], $r['approved'], $r['rejected'], $r['cancelled'], $r['pending'], $r['approval_rate_pct'] ?? 0];
+        }
+        return $result;
+    }
+
+    private function filteredReservationRows(EntityManagerInterface $em, string $status): array
+    {
+        $reservations = $em->getRepository(Reservation::class)->findBy(['status' => $status], ['reservationDate' => 'DESC']);
+        $rows = [['ID', 'Name', 'Email', 'Facility', 'Date', 'Start Time', 'End Time', 'Event Name', 'Purpose', 'Capacity', 'Status', 'Created At']];
+        foreach ($reservations as $r) {
+            $rows[] = [
+                $r->getId(),
+                $r->getName(),
+                $r->getEmail(),
+                $r->getFacility()?->getName() ?? '',
+                $r->getReservationDate()?->format('Y-m-d') ?? '',
+                $r->getReservationStartTime()?->format('H:i') ?? '',
+                $r->getReservationEndTime()?->format('H:i') ?? '',
+                $r->getEventName() ?? '',
+                $r->getPurpose() ?? '',
+                $r->getCapacity() ?? '',
+                $r->getStatus(),
+                $r->getCreatedAt()?->format('Y-m-d H:i:s') ?? '',
+            ];
+        }
+        return $rows;
+    }
+
+    private function monthlySummaryRows(EntityManagerInterface $em): array
+    {
+        $data = $em->getConnection()->fetchAllAssociative(
+            "SELECT TO_CHAR(r.reservation_date, 'YYYY-MM') AS month,
+                    f.name AS facility,
+                    COUNT(r.id) AS total,
+                    SUM(CASE WHEN r.status='Approved' THEN 1 ELSE 0 END) AS approved,
+                    SUM(CASE WHEN r.status='Rejected' THEN 1 ELSE 0 END) AS rejected,
+                    SUM(CASE WHEN r.status='Cancelled' THEN 1 ELSE 0 END) AS cancelled
+             FROM reservation r
+             INNER JOIN facility f ON r.facility_id = f.id
+             GROUP BY TO_CHAR(r.reservation_date, 'YYYY-MM'), f.id, f.name
+             ORDER BY month DESC, total DESC"
+        );
+        $rows = [['Month', 'Facility', 'Total', 'Approved', 'Rejected', 'Cancelled']];
+        foreach ($data as $d) {
+            $rows[] = [$d['month'], $d['facility'], $d['total'], $d['approved'], $d['rejected'], $d['cancelled']];
+        }
+        return $rows;
+    }
+
+    private function topEventTypeRows(EntityManagerInterface $em): array
+    {
+        $data = $em->getConnection()->fetchAllAssociative(
+            "SELECT r.purpose AS event_type,
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN r.status='Approved' THEN 1 ELSE 0 END) AS approved,
+                    ROUND(100.0 * SUM(CASE WHEN r.status='Approved' THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 1) AS approval_rate_pct
+             FROM reservation r
+             WHERE r.purpose IS NOT NULL
+             GROUP BY r.purpose
+             ORDER BY total DESC"
+        );
+        $rows = [['Event Type / Purpose', 'Total Reservations', 'Approved', 'Approval Rate (%)']];
+        foreach ($data as $d) {
+            $rows[] = [$d['event_type'], $d['total'], $d['approved'], $d['approval_rate_pct']];
+        }
+        return $rows;
+    }
+
+    private function userActivityRows(EntityManagerInterface $em): array
+    {
+        $data = $em->getConnection()->fetchAllAssociative(
+            "SELECT r.name AS user_name,
+                    r.email,
+                    COUNT(*) AS total_reservations,
+                    SUM(CASE WHEN r.status='Approved' THEN 1 ELSE 0 END) AS approved,
+                    SUM(CASE WHEN r.status='Rejected' THEN 1 ELSE 0 END) AS rejected,
+                    SUM(CASE WHEN r.status='Cancelled' THEN 1 ELSE 0 END) AS cancelled,
+                    MAX(r.reservation_date) AS last_booking_date
+             FROM reservation r
+             GROUP BY r.name, r.email
+             ORDER BY total_reservations DESC
+             LIMIT 100"
+        );
+        $rows = [['Name', 'Email', 'Total Reservations', 'Approved', 'Rejected', 'Cancelled', 'Last Booking Date']];
+        foreach ($data as $d) {
+            $rows[] = [$d['user_name'], $d['email'], $d['total_reservations'], $d['approved'], $d['rejected'], $d['cancelled'], $d['last_booking_date']];
+        }
+        return $rows;
+    }
+
     private function getDashboardData(EntityManagerInterface $em): array
     {
         $conn = $em->getConnection();

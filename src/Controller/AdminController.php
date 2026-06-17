@@ -1046,6 +1046,211 @@ class AdminController extends AbstractController
         ];
     }
 
+    #[Route('/analytics/ledger', name: 'admin_role_ledger', methods: ['GET'])]
+    public function transactionLedger(EntityManagerInterface $em): Response
+    {
+        $conn = $em->getConnection();
+        $kpi = $conn->fetchAssociative(
+            "SELECT
+                (SELECT COUNT(*) FROM reservation WHERE status != 'Suggested') AS total_reservations,
+                (SELECT COUNT(*) FROM reservation WHERE status != 'Suggested' AND created_at::date = CURRENT_DATE) AS today_reservations,
+                (SELECT COUNT(*) FROM mentoring_audit_log WHERE logged_at::date = CURRENT_DATE) AS today_mentoring_actions,
+                (SELECT COUNT(*) FROM mentor_application WHERE created_at::date = CURRENT_DATE) AS today_applications,
+                (SELECT COUNT(*) FROM \"user\") AS total_users,
+                (SELECT COUNT(*) FROM reservation WHERE status != 'Suggested' AND created_at >= NOW() - INTERVAL '7 days') AS week_reservations,
+                (SELECT COUNT(*) FROM mentoring_audit_log WHERE logged_at >= NOW() - INTERVAL '7 days') AS week_mentoring,
+                (SELECT COUNT(*) FROM mentoring_appointment WHERE created_at >= NOW() - INTERVAL '7 days') AS week_sessions"
+        );
+        return $this->render('analytics/transaction_ledger.html.twig', ['kpi' => $kpi]);
+    }
+
+    #[Route('/analytics/ledger/api', name: 'admin_role_ledger_api', methods: ['GET'])]
+    public function transactionLedgerApi(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $module = $request->query->get('module', 'all');
+        $search = trim((string) $request->query->get('q', ''));
+        $from   = $request->query->get('from', '');
+        $to     = $request->query->get('to', '');
+        $page   = max(1, (int) $request->query->get('page', 1));
+        $limit  = 60;
+        $offset = ($page - 1) * $limit;
+
+        $rows  = $this->buildLedgerRows($em->getConnection(), $module, $search, $from, $to, $limit, $offset);
+        $total = $this->countLedgerRows($em->getConnection(), $module, $search, $from, $to);
+
+        return $this->json(['rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => (int) ceil($total / $limit)]);
+    }
+
+    #[Route('/analytics/ledger/export', name: 'admin_role_ledger_export', methods: ['GET'])]
+    public function transactionLedgerExport(Request $request, EntityManagerInterface $em): Response
+    {
+        $module = $request->query->get('module', 'all');
+        $from   = $request->query->get('from', '');
+        $to     = $request->query->get('to', '');
+
+        $rows = $this->buildLedgerRows($em->getConnection(), $module, '', $from, $to, 10000, 0);
+        $moduleLabel = match ($module) {
+            'reservations' => 'Reservation_Transactions',
+            'mentoring'    => 'Mentoring_Audit',
+            'applications' => 'Mentor_Applications',
+            'sessions'     => 'Mentoring_Sessions',
+            'users'        => 'User_Registrations',
+            default        => 'All_Transactions',
+        };
+
+        $response = new StreamedResponse();
+        $response->setCallback(function () use ($rows) {
+            $fp = fopen('php://output', 'w');
+            fputcsv($fp, ['Timestamp', 'Module', 'Action', 'Actor', 'Actor Role', 'Subject', 'Detail', 'Status Before', 'Status After']);
+            foreach ($rows as $r) {
+                fputcsv($fp, [$r['ts'], $r['module'], $r['action'], $r['actor'], $r['actor_role'], $r['subject'], $r['detail'], $r['status_before'], $r['status_after']]);
+            }
+            fclose($fp);
+        });
+        $filename = 'ftic_ledger_' . $moduleLabel . '_' . date('Ymd_His') . '.csv';
+        $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename);
+        $response->headers->set('Content-Disposition', $disposition);
+        $response->headers->set('Content-Type', 'text/csv; charset=utf-8');
+        return $response;
+    }
+
+    private function buildLedgerRows(\Doctrine\DBAL\Connection $conn, string $module, string $search, string $from, string $to, int $limit, int $offset): array
+    {
+        $streams = [];
+        $like = 'ILIKE';
+
+        if ($module === 'all' || $module === 'reservations') {
+            $sql = "SELECT
+                        r.created_at AS ts,
+                        'Reservation' AS module,
+                        'Reservation Created' AS action,
+                        r.name AS actor,
+                        'Requester' AS actor_role,
+                        COALESCE(f.name, '') || ' — ' || COALESCE(r.event_name, '') AS subject,
+                        'Capacity: ' || r.capacity || ' · Purpose: ' || COALESCE(r.purpose, '—') AS detail,
+                        '' AS status_before,
+                        r.status AS status_after
+                    FROM reservation r
+                    INNER JOIN facility f ON f.id = r.facility_id
+                    WHERE r.status != 'Suggested'";
+            if ($search) $sql .= " AND (r.name $like :q OR r.email $like :q OR f.name $like :q OR r.event_name $like :q)";
+            if ($from)   $sql .= " AND r.created_at::date >= :from::date";
+            if ($to)     $sql .= " AND r.created_at::date <= :to::date";
+            $streams[] = $sql;
+        }
+
+        if ($module === 'all' || $module === 'mentoring') {
+            $sql = "SELECT
+                        mal.logged_at AS ts,
+                        'Mentoring Audit' AS module,
+                        mal.action AS action,
+                        COALESCE(mal.performed_by_name, 'System') AS actor,
+                        COALESCE(mal.performed_by_role, '—') AS actor_role,
+                        mal.subject_label AS subject,
+                        COALESCE(mal.note, '') AS detail,
+                        COALESCE(mal.previous_status, '') AS status_before,
+                        COALESCE(mal.new_status, '') AS status_after
+                    FROM mentoring_audit_log mal
+                    WHERE 1=1";
+            if ($search) $sql .= " AND (mal.performed_by_name $like :q OR mal.subject_label $like :q OR mal.action $like :q)";
+            if ($from)   $sql .= " AND mal.logged_at::date >= :from::date";
+            if ($to)     $sql .= " AND mal.logged_at::date <= :to::date";
+            $streams[] = $sql;
+        }
+
+        if ($module === 'all' || $module === 'applications') {
+            $sql = "SELECT
+                        ma.created_at AS ts,
+                        'Mentor Application' AS module,
+                        'Application ' || ma.status AS action,
+                        COALESCE(ma.first_name, '') || ' ' || COALESCE(ma.last_name, '') AS actor,
+                        'Applicant' AS actor_role,
+                        ma.specialization AS subject,
+                        COALESCE(ma.admin_note, '') AS detail,
+                        'Pending' AS status_before,
+                        ma.status AS status_after
+                    FROM mentor_application ma
+                    WHERE 1=1";
+            if ($search) $sql .= " AND (ma.first_name $like :q OR ma.last_name $like :q OR ma.email $like :q OR ma.specialization $like :q)";
+            if ($from)   $sql .= " AND ma.created_at::date >= :from::date";
+            if ($to)     $sql .= " AND ma.created_at::date <= :to::date";
+            $streams[] = $sql;
+        }
+
+        if ($module === 'all' || $module === 'sessions') {
+            $sql = "SELECT
+                        apt.created_at AS ts,
+                        'Mentoring Session' AS module,
+                        'Session ' || apt.status AS action,
+                        COALESCE(su.first_name, '') || ' ' || COALESCE(su.last_name, '') AS actor,
+                        'Student' AS actor_role,
+                        mp.display_name || ' (' || mp.specialization || ')' AS subject,
+                        COALESCE(apt.topic, '') AS detail,
+                        '' AS status_before,
+                        apt.status AS status_after
+                    FROM mentoring_appointment apt
+                    INNER JOIN \"user\" su ON su.id = apt.student_id
+                    INNER JOIN mentor_profile mp ON mp.id = apt.mentor_id
+                    WHERE 1=1";
+            if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR mp.display_name $like :q OR apt.topic $like :q)";
+            if ($from)   $sql .= " AND apt.created_at::date >= :from::date";
+            if ($to)     $sql .= " AND apt.created_at::date <= :to::date";
+            $streams[] = $sql;
+        }
+
+        if ($module === 'all' || $module === 'users') {
+            $sql = "SELECT
+                        NOW() AS ts,
+                        'User' AS module,
+                        'Account Registered' AS action,
+                        COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') AS actor,
+                        CASE
+                            WHEN u.roles::jsonb @> '[\"ROLE_SUPER_ADMIN\"]' THEN 'Super Admin'
+                            WHEN u.roles::jsonb @> '[\"ROLE_ADMIN\"]' THEN 'Admin'
+                            WHEN u.roles::jsonb @> '[\"ROLE_MENTOR\"]' THEN 'Mentor'
+                            ELSE 'User'
+                        END AS actor_role,
+                        u.email AS subject,
+                        COALESCE(u.degree, '') AS detail,
+                        '' AS status_before,
+                        CASE WHEN u.is_verified THEN 'Verified' ELSE 'Unverified' END AS status_after
+                    FROM \"user\" u
+                    WHERE 1=1";
+            if ($search) $sql .= " AND (u.first_name $like :q OR u.last_name $like :q OR u.email $like :q)";
+            $streams[] = $sql;
+        }
+
+        if (empty($streams)) return [];
+
+        $union = implode("\n UNION ALL \n", array_map(fn($s) => "($s)", $streams));
+        $final = "SELECT * FROM ($union) AS ledger ORDER BY ts DESC LIMIT :lim OFFSET :off";
+
+        $params = ['lim' => $limit, 'off' => $offset];
+        $types  = ['lim' => \Doctrine\DBAL\ParameterType::INTEGER, 'off' => \Doctrine\DBAL\ParameterType::INTEGER];
+        if ($search) { $params['q'] = '%' . $search . '%'; }
+        if ($from)   { $params['from'] = $from; }
+        if ($to)     { $params['to']   = $to; }
+
+        $data = $conn->fetchAllAssociative($final, $params, $types);
+
+        return array_map(fn($r) => [
+            'ts'           => $r['ts'] ?? '',
+            'module'       => $r['module'],
+            'action'       => $r['action'],
+            'actor'        => trim((string) ($r['actor'] ?? '')),
+            'actor_role'   => $r['actor_role'] ?? '',
+            'subject'      => $r['subject'] ?? '',
+            'detail'       => $r['detail'] ?? '',
+            'status_before'=> $r['status_before'] ?? '',
+            'status_after' => $r['status_after'] ?? '',
+        ], $data);
+    }
+
+    private function countLedgerRows(\Doctrine\DBAL\Connection $conn, string $module, string $search, string $from, string $to): int
+    {
+        return count($this->buildLedgerRows($conn, $module, $search, $from, $to, 100000, 0));
+    }
+
     private function buildDateRange(\DateTime $today, int $days): array
     {
         $dates = [];
