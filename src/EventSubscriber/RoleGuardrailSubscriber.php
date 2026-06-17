@@ -68,6 +68,12 @@ class RoleGuardrailSubscriber implements EventSubscriberInterface
         $isSuperAdmin = $this->authChecker->isGranted('ROLE_SUPER_ADMIN');
         $isAdmin = $this->authChecker->isGranted('ROLE_ADMIN');
 
+        if (str_starts_with($path, '/superadmin/analytics/ledger') && !$isSuperAdmin) {
+            $targetRoute = $isAdmin ? 'admin_role_home' : 'app_dashboard';
+            $event->setResponse(new RedirectResponse($this->urlGenerator->generate($targetRoute)));
+            return;
+        }
+
         // Determine redirect based on role vs path mismatch
         $redirect = null;
 

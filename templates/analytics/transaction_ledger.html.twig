@@ -42,7 +42,6 @@
 .ldg-table tr:hover td { background:#f9fafb; }
 .ldg-badge { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:8px; white-space:nowrap; }
 .ldg-badge.Reservation      { background:#d1fae5; color:#065f46; }
-.ldg-badge.Reservation-Audit{ background:#fef9c3; color:#854d0e; }
 .ldg-badge.Mentoring-Audit  { background:#ede9fe; color:#4c1d95; }
 .ldg-badge.Mentor-Application{ background:#dbeafe; color:#1e40af; }
 .ldg-badge.Mentoring-Session { background:#fce7f3; color:#9d174d; }
@@ -76,7 +75,7 @@
         <p class="muted">Complete audit trail of every user action across all modules — reservations, mentoring, applications, and user registrations. Super Admin only.</p>
     </div>
     <div class="an-pro-toolbar">
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports') }}">Reports</a>
+        <a class="an-pro-btn-dl" href="{{ path('admin_reports') }}">Reports</a>
         <a class="an-pro-btn-dl" href="{{ path('analytics_dashboard') }}">Analytics</a>
     </div>
 </div>
@@ -86,10 +85,6 @@
     <div class="ldg-kpi today">
         <div class="val">{{ kpi.today_reservations ?? 0 }}</div>
         <div class="lbl">Reservations Today</div>
-    </div>
-    <div class="ldg-kpi today">
-        <div class="val">{{ kpi.today_status_changes ?? 0 }}</div>
-        <div class="lbl">Status Changes Today</div>
     </div>
     <div class="ldg-kpi today">
         <div class="val">{{ kpi.today_mentoring_actions ?? 0 }}</div>
@@ -107,6 +102,10 @@
         <div class="val">{{ kpi.week_mentoring ?? 0 }}</div>
         <div class="lbl">Mentoring Events This Week</div>
     </div>
+    <div class="ldg-kpi week">
+        <div class="val">{{ kpi.week_sessions ?? 0 }}</div>
+        <div class="lbl">Mentoring Sessions This Week</div>
+    </div>
     <div class="ldg-kpi">
         <div class="val">{{ kpi.total_reservations ?? 0 }}</div>
         <div class="lbl">Total Reservations (All Time)</div>
@@ -121,7 +120,6 @@
 <div class="ldg-tabs" id="ldgTabs">
     <button class="ldg-tab active" data-module="all">All Activity</button>
     <button class="ldg-tab" data-module="reservations">📋 Reservations</button>
-    <button class="ldg-tab" data-module="status_log">🔄 Reservation Audit</button>
     <button class="ldg-tab" data-module="mentoring">🎓 Mentoring Audit</button>
     <button class="ldg-tab" data-module="applications">📝 Mentor Applications</button>
     <button class="ldg-tab" data-module="sessions">👥 Mentoring Sessions</button>
@@ -168,8 +166,8 @@
 
 <script>
 (function () {
-    const apiBase = '{{ path('admin_role_ledger_api') }}';
-    const exportBase = '{{ path('admin_role_ledger_export') }}';
+    const apiBase = '{{ path('admin_ledger_api') }}';
+    const exportBase = '{{ path('admin_ledger_export') }}';
 
     let state = { module: 'all', q: '', from: '', to: '', page: 1 };
 

@@ -1046,7 +1046,7 @@ class AdminController extends AbstractController
         ];
     }
 
-    #[Route('/analytics/ledger', name: 'admin_role_ledger', methods: ['GET'])]
+    #[Route('/analytics/ledger', name: 'admin_ledger', methods: ['GET'])]
     public function transactionLedger(EntityManagerInterface $em): Response
     {
         $conn = $em->getConnection();
@@ -1064,7 +1064,7 @@ class AdminController extends AbstractController
         return $this->render('analytics/transaction_ledger.html.twig', ['kpi' => $kpi]);
     }
 
-    #[Route('/analytics/ledger/api', name: 'admin_role_ledger_api', methods: ['GET'])]
+    #[Route('/analytics/ledger/api', name: 'admin_ledger_api', methods: ['GET'])]
     public function transactionLedgerApi(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $module = $request->query->get('module', 'all');
@@ -1081,7 +1081,7 @@ class AdminController extends AbstractController
         return $this->json(['rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => (int) ceil($total / $limit)]);
     }
 
-    #[Route('/analytics/ledger/export', name: 'admin_role_ledger_export', methods: ['GET'])]
+    #[Route('/analytics/ledger/export', name: 'admin_ledger_export', methods: ['GET'])]
     public function transactionLedgerExport(Request $request, EntityManagerInterface $em): Response
     {
         $module = $request->query->get('module', 'all');
@@ -1134,8 +1134,8 @@ class AdminController extends AbstractController
                     INNER JOIN facility f ON f.id = r.facility_id
                     WHERE r.status != 'Suggested'";
             if ($search) $sql .= " AND (r.name $like :q OR r.email $like :q OR f.name $like :q OR r.event_name $like :q)";
-            if ($from)   $sql .= " AND r.created_at::date >= :from::date";
-            if ($to)     $sql .= " AND r.created_at::date <= :to::date";
+            if ($from)   $sql .= " AND r.created_at::date >= CAST(:from AS date)";
+            if ($to)     $sql .= " AND r.created_at::date <= CAST(:to AS date)";
             $streams[] = $sql;
         }
 
@@ -1153,8 +1153,8 @@ class AdminController extends AbstractController
                     FROM mentoring_audit_log mal
                     WHERE 1=1";
             if ($search) $sql .= " AND (mal.performed_by_name $like :q OR mal.subject_label $like :q OR mal.action $like :q)";
-            if ($from)   $sql .= " AND mal.logged_at::date >= :from::date";
-            if ($to)     $sql .= " AND mal.logged_at::date <= :to::date";
+            if ($from)   $sql .= " AND mal.logged_at::date >= CAST(:from AS date)";
+            if ($to)     $sql .= " AND mal.logged_at::date <= CAST(:to AS date)";
             $streams[] = $sql;
         }
 
@@ -1172,8 +1172,8 @@ class AdminController extends AbstractController
                     FROM mentor_application ma
                     WHERE 1=1";
             if ($search) $sql .= " AND (ma.first_name $like :q OR ma.last_name $like :q OR ma.email $like :q OR ma.specialization $like :q)";
-            if ($from)   $sql .= " AND ma.created_at::date >= :from::date";
-            if ($to)     $sql .= " AND ma.created_at::date <= :to::date";
+            if ($from)   $sql .= " AND ma.created_at::date >= CAST(:from AS date)";
+            if ($to)     $sql .= " AND ma.created_at::date <= CAST(:to AS date)";
             $streams[] = $sql;
         }
 
@@ -1193,8 +1193,8 @@ class AdminController extends AbstractController
                     INNER JOIN mentor_profile mp ON mp.id = apt.mentor_id
                     WHERE 1=1";
             if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR mp.display_name $like :q OR apt.topic $like :q)";
-            if ($from)   $sql .= " AND apt.created_at::date >= :from::date";
-            if ($to)     $sql .= " AND apt.created_at::date <= :to::date";
+            if ($from)   $sql .= " AND apt.created_at::date >= CAST(:from AS date)";
+            if ($to)     $sql .= " AND apt.created_at::date <= CAST(:to AS date)";
             $streams[] = $sql;
         }
 

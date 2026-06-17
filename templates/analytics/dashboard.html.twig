@@ -57,8 +57,8 @@
             <option value="">All facilities</option>
         </select>
         <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_this_week') }}" title="Download this week's reservation snapshot as CSV">This Week Snapshot</a>
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports') }}" title="View all operational reports and downloads">All Reports</a>
-        {% if is_granted('ROLE_SUPER_ADMIN') %}<a class="an-pro-btn-dl" href="{{ path('admin_role_ledger') }}" title="Full system transaction audit trail">Transaction Ledger</a>{% endif %}
+        <a class="an-pro-btn-dl" href="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_reports') : path('admin_role_reports') }}" title="View all operational reports and downloads">All Reports</a>
+        {% if is_granted('ROLE_SUPER_ADMIN') %}<a class="an-pro-btn-dl" href="{{ path('admin_ledger') }}" title="Full system transaction audit trail">Transaction Ledger</a>{% endif %}
     </div>
 </div>
 
