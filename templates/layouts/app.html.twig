@@ -275,9 +275,13 @@
                     <span>Landing Page</span>
                 </a>
                 <span class="nav-section-label">Reports and Analytics</span>
-                <a class="nav-link {{ route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">
+                <a class="nav-link {{ route starts with 'analytics_' and route != 'admin_role_ledger' ? 'active' : '' }}" href="{{ path('analytics_dashboard') }}">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg></span>
                     <span>Managerial Function</span>
+                </a>
+                <a class="nav-link {{ route == 'admin_role_ledger' ? 'active' : '' }}" href="{{ path('admin_role_ledger') }}">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v2H3V3Zm0 4h18v2H3V7Zm0 4h12v2H3v-2Zm0 4h12v2H3v-2Zm0 4h8v2H3v-2Z" fill="currentColor"/></svg></span>
+                    <span>Transaction Ledger</span>
                 </a>
                 {% elseif is_granted('ROLE_ADMIN') %}
                 <span class="nav-section-label">General</span>

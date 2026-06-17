@@ -604,7 +604,7 @@ class AnalyticsController extends AbstractController
             if ($month = $resDate?->format('Y-m')) {
                 $monthlyTrends[$month] = ($monthlyTrends[$month] ?? 0) + 1;
             }
-            if ($week = $resDate?->format('Y-W')) {
+            if ($week = $resDate?->format('o-\WW')) {
                 $weeklyTrends[$week] = ($weeklyTrends[$week] ?? 0) + 1;
             }
 

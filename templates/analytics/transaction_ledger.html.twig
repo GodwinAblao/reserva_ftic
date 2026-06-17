@@ -1,0 +1,307 @@
+{% extends 'layouts/app.html.twig' %}
+
+{% block title %}System Transaction Ledger | Reserva FTIC{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}">
+<style>
+/* ── KPI strip ── */
+.ldg-kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
+.ldg-kpi { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; }
+.ldg-kpi .val { font-size:24px; font-weight:800; color:#006633; line-height:1; }
+.ldg-kpi .lbl { font-size:11.5px; color:#6b7280; margin-top:4px; }
+.ldg-kpi.today { border-left:4px solid #f59e0b; }
+.ldg-kpi.week  { border-left:4px solid #3b82f6; }
+
+/* ── Toolbar ── */
+.ldg-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.ldg-search { flex:1; min-width:200px; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; }
+.ldg-select { padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; background:#fff; }
+.ldg-date   { padding:7px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; }
+.ldg-btn    { padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer; border:none; }
+.ldg-btn.primary   { background:#006633; color:#fff; }
+.ldg-btn.primary:hover { background:#004d26; }
+.ldg-btn.export    { background:#1e40af; color:#fff; }
+.ldg-btn.export:hover  { background:#1e3a8a; }
+.ldg-btn.reset     { background:#f3f4f6; color:#374151; border:1px solid #d1d5db; }
+
+/* ── Module tab strip ── */
+.ldg-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.ldg-tab { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #e5e7eb; background:#f9fafb; color:#374151; transition:all .15s; }
+.ldg-tab.active { background:#006633; color:#fff; border-color:#006633; }
+.ldg-tab:hover:not(.active) { background:#e5e7eb; }
+
+/* ── Table ── */
+.ldg-wrap { overflow-x:auto; border:1px solid #e5e7eb; border-radius:10px; }
+.ldg-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.ldg-table thead tr { background:#f9fafb; }
+.ldg-table th { padding:10px 12px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+.ldg-table td { padding:9px 12px; border-bottom:1px solid #f3f4f6; color:#1f2937; vertical-align:top; }
+.ldg-table tr:last-child td { border-bottom:none; }
+.ldg-table tr:hover td { background:#f9fafb; }
+.ldg-badge { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:8px; white-space:nowrap; }
+.ldg-badge.Reservation      { background:#d1fae5; color:#065f46; }
+.ldg-badge.Reservation-Audit{ background:#fef9c3; color:#854d0e; }
+.ldg-badge.Mentoring-Audit  { background:#ede9fe; color:#4c1d95; }
+.ldg-badge.Mentor-Application{ background:#dbeafe; color:#1e40af; }
+.ldg-badge.Mentoring-Session { background:#fce7f3; color:#9d174d; }
+.ldg-badge.User             { background:#e0f2fe; color:#0369a1; }
+.ldg-status { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:8px; }
+.ldg-status.Approved   { background:#d1fae5; color:#065f46; }
+.ldg-status.Pending    { background:#fef9c3; color:#854d0e; }
+.ldg-status.Rejected   { background:#fee2e2; color:#991b1b; }
+.ldg-status.Cancelled  { background:#f3f4f6; color:#6b7280; }
+.ldg-status.Completed  { background:#dbeafe; color:#1e40af; }
+.ldg-status.Scheduled  { background:#e0f2fe; color:#0369a1; }
+.ldg-status.Verified   { background:#d1fae5; color:#065f46; }
+.ldg-status.Unverified { background:#fef3c7; color:#92400e; }
+
+/* ── Pagination ── */
+.ldg-pager { display:flex; align-items:center; justify-content:space-between; margin-top:14px; font-size:12.5px; color:#6b7280; flex-wrap:wrap; gap:8px; }
+.ldg-pager-btns { display:flex; gap:6px; }
+.ldg-pager-btn { padding:5px 14px; border:1px solid #d1d5db; border-radius:6px; background:#fff; font-size:12px; cursor:pointer; }
+.ldg-pager-btn:disabled { opacity:.4; cursor:default; }
+.ldg-pager-btn.active { background:#006633; color:#fff; border-color:#006633; }
+
+/* ── Loading / empty ── */
+.ldg-loading { text-align:center; padding:40px; color:#9ca3af; font-size:13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-header an-pro-header">
+    <div>
+        <h2>System Transaction Ledger</h2>
+        <p class="muted">Complete audit trail of every user action across all modules — reservations, mentoring, applications, and user registrations. Super Admin only.</p>
+    </div>
+    <div class="an-pro-toolbar">
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports') }}">Reports</a>
+        <a class="an-pro-btn-dl" href="{{ path('analytics_dashboard') }}">Analytics</a>
+    </div>
+</div>
+
+{# ── KPI Summary ── #}
+<div class="ldg-kpi-strip">
+    <div class="ldg-kpi today">
+        <div class="val">{{ kpi.today_reservations ?? 0 }}</div>
+        <div class="lbl">Reservations Today</div>
+    </div>
+    <div class="ldg-kpi today">
+        <div class="val">{{ kpi.today_status_changes ?? 0 }}</div>
+        <div class="lbl">Status Changes Today</div>
+    </div>
+    <div class="ldg-kpi today">
+        <div class="val">{{ kpi.today_mentoring_actions ?? 0 }}</div>
+        <div class="lbl">Mentoring Actions Today</div>
+    </div>
+    <div class="ldg-kpi today">
+        <div class="val">{{ kpi.today_applications ?? 0 }}</div>
+        <div class="lbl">Applications Today</div>
+    </div>
+    <div class="ldg-kpi week">
+        <div class="val">{{ kpi.week_reservations ?? 0 }}</div>
+        <div class="lbl">Reservations This Week</div>
+    </div>
+    <div class="ldg-kpi week">
+        <div class="val">{{ kpi.week_mentoring ?? 0 }}</div>
+        <div class="lbl">Mentoring Events This Week</div>
+    </div>
+    <div class="ldg-kpi">
+        <div class="val">{{ kpi.total_reservations ?? 0 }}</div>
+        <div class="lbl">Total Reservations (All Time)</div>
+    </div>
+    <div class="ldg-kpi">
+        <div class="val">{{ kpi.total_users ?? 0 }}</div>
+        <div class="lbl">Registered Users</div>
+    </div>
+</div>
+
+{# ── Module Tabs ── #}
+<div class="ldg-tabs" id="ldgTabs">
+    <button class="ldg-tab active" data-module="all">All Activity</button>
+    <button class="ldg-tab" data-module="reservations">📋 Reservations</button>
+    <button class="ldg-tab" data-module="status_log">🔄 Reservation Audit</button>
+    <button class="ldg-tab" data-module="mentoring">🎓 Mentoring Audit</button>
+    <button class="ldg-tab" data-module="applications">📝 Mentor Applications</button>
+    <button class="ldg-tab" data-module="sessions">👥 Mentoring Sessions</button>
+    <button class="ldg-tab" data-module="users">👤 User Registrations</button>
+</div>
+
+{# ── Search + Filter Toolbar ── #}
+<div class="ldg-toolbar">
+    <input type="search" class="ldg-search" id="ldgSearch" placeholder="Search by name, email, facility, action…">
+    <input type="date" class="ldg-date" id="ldgFrom" title="From date">
+    <input type="date" class="ldg-date" id="ldgTo" title="To date">
+    <button class="ldg-btn primary" id="ldgApply">Apply</button>
+    <button class="ldg-btn reset" id="ldgReset">Reset</button>
+    <button class="ldg-btn export" id="ldgExport">⬇ Export CSV</button>
+</div>
+
+{# ── Table ── #}
+<div class="ldg-wrap">
+    <table class="ldg-table" id="ldgTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Module</th>
+                <th>Action</th>
+                <th>Actor</th>
+                <th>Role</th>
+                <th>Subject</th>
+                <th>Detail</th>
+                <th>Before</th>
+                <th>After</th>
+            </tr>
+        </thead>
+        <tbody id="ldgBody">
+            <tr><td colspan="9" class="ldg-loading">Loading transactions…</td></tr>
+        </tbody>
+    </table>
+</div>
+
+{# ── Pagination ── #}
+<div class="ldg-pager" id="ldgPager">
+    <span id="ldgCount"></span>
+    <div class="ldg-pager-btns" id="ldgBtns"></div>
+</div>
+
+<script>
+(function () {
+    const apiBase = '{{ path('admin_role_ledger_api') }}';
+    const exportBase = '{{ path('admin_role_ledger_export') }}';
+
+    let state = { module: 'all', q: '', from: '', to: '', page: 1 };
+
+    const body    = document.getElementById('ldgBody');
+    const count   = document.getElementById('ldgCount');
+    const btns    = document.getElementById('ldgBtns');
+    const search  = document.getElementById('ldgSearch');
+    const fromEl  = document.getElementById('ldgFrom');
+    const toEl    = document.getElementById('ldgTo');
+
+    // Module tabs
+    document.getElementById('ldgTabs').addEventListener('click', e => {
+        const tab = e.target.closest('.ldg-tab');
+        if (!tab) return;
+        document.querySelectorAll('.ldg-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        state.module = tab.dataset.module;
+        state.page = 1;
+        load();
+    });
+
+    document.getElementById('ldgApply').addEventListener('click', () => {
+        state.q    = search.value.trim();
+        state.from = fromEl.value;
+        state.to   = toEl.value;
+        state.page = 1;
+        load();
+    });
+
+    search.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('ldgApply').click(); });
+
+    document.getElementById('ldgReset').addEventListener('click', () => {
+        search.value = ''; fromEl.value = ''; toEl.value = '';
+        state = { module: state.module, q: '', from: '', to: '', page: 1 };
+        load();
+    });
+
+    document.getElementById('ldgExport').addEventListener('click', () => {
+        const p = new URLSearchParams({ module: state.module });
+        if (state.from) p.set('from', state.from);
+        if (state.to)   p.set('to', state.to);
+        window.location.href = exportBase + '?' + p.toString();
+    });
+
+    function load() {
+        body.innerHTML = '<tr><td colspan="9" class="ldg-loading">Loading…</td></tr>';
+        const p = new URLSearchParams({
+            module: state.module, page: state.page,
+            ...(state.q    ? { q: state.q }       : {}),
+            ...(state.from ? { from: state.from }  : {}),
+            ...(state.to   ? { to: state.to }      : {}),
+        });
+        fetch(apiBase + '?' + p.toString())
+            .then(r => r.json())
+            .then(data => render(data))
+            .catch(() => { body.innerHTML = '<tr><td colspan="9" class="ldg-loading" style="color:#ef4444;">Error loading data. Please refresh.</td></tr>'; });
+    }
+
+    function statusBadge(s) {
+        if (!s) return '<span style="color:#9ca3af">—</span>';
+        return '<span class="ldg-status ' + esc(s) + '">' + esc(s) + '</span>';
+    }
+
+    function moduleBadge(m) {
+        const cls = m.replace(/\s/g, '-');
+        return '<span class="ldg-badge ' + cls + '">' + esc(m) + '</span>';
+    }
+
+    function esc(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function fmtTs(ts) {
+        if (!ts) return '<span style="color:#9ca3af">—</span>';
+        const d = new Date(ts);
+        if (isNaN(d)) return esc(ts);
+        const pad = n => String(n).padStart(2,'0');
+        return `<span style="color:#374151;white-space:nowrap">${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}</span><br><span style="color:#6b7280;font-size:11px">${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}</span>`;
+    }
+
+    function render(data) {
+        if (!data.rows || data.rows.length === 0) {
+            body.innerHTML = '<tr><td colspan="9" class="ldg-loading">No transactions found for the selected filter.</td></tr>';
+            count.textContent = '0 results';
+            btns.innerHTML = '';
+            return;
+        }
+        body.innerHTML = data.rows.map(r => `
+            <tr>
+                <td>${fmtTs(r.ts)}</td>
+                <td>${moduleBadge(r.module)}</td>
+                <td style="font-weight:600;color:#111827;white-space:nowrap">${esc(r.action)}</td>
+                <td>${esc(r.actor) || '<span style="color:#9ca3af">System</span>'}</td>
+                <td><span style="font-size:11px;color:#6b7280">${esc(r.actor_role)}</span></td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.subject)}">${esc(r.subject)}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280" title="${esc(r.detail)}">${esc(r.detail) || '—'}</td>
+                <td>${statusBadge(r.status_before)}</td>
+                <td>${statusBadge(r.status_after)}</td>
+            </tr>`).join('');
+
+        count.textContent = data.total.toLocaleString() + ' total transaction' + (data.total !== 1 ? 's' : '') + ' · page ' + data.page + ' of ' + data.pages;
+
+        // Pagination
+        btns.innerHTML = '';
+        const prev = document.createElement('button');
+        prev.className = 'ldg-pager-btn';
+        prev.textContent = '← Prev';
+        prev.disabled = data.page <= 1;
+        prev.onclick = () => { state.page--; load(); };
+        btns.appendChild(prev);
+
+        const window_size = 5;
+        const start = Math.max(1, data.page - 2);
+        const end   = Math.min(data.pages, start + window_size - 1);
+        for (let p = start; p <= end; p++) {
+            const btn = document.createElement('button');
+            btn.className = 'ldg-pager-btn' + (p === data.page ? ' active' : '');
+            btn.textContent = p;
+            btn.onclick = (pg => () => { state.page = pg; load(); })(p);
+            btns.appendChild(btn);
+        }
+
+        const next = document.createElement('button');
+        next.className = 'ldg-pager-btn';
+        next.textContent = 'Next →';
+        next.disabled = data.page >= data.pages;
+        next.onclick = () => { state.page++; load(); };
+        btns.appendChild(next);
+    }
+
+    load();
+})();
+</script>
+{% endblock %}

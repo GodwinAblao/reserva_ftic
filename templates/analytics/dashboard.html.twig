@@ -56,18 +56,14 @@
         <select id="facility-filter" class="an-pro-select" title="Filter by facility">
             <option value="">All facilities</option>
         </select>
-        <select id="date-range-filter" class="an-pro-select" title="Date range">
-            <option value="all">All time</option>
-            <option value="6m">Last 6 months</option>
-            <option value="3m">Last 3 months</option>
-            <option value="1m">Last month</option>
-        </select>
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_this_week') }}">This week CSV</a>
-        <a class="an-pro-btn-dl" id="dl-weekly" href="{{ path('admin_role_analytics_export_weekly') }}">ARIMA weekly CSV</a>
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_this_week') }}" title="Download this week's reservation snapshot as CSV">This Week Snapshot</a>
+        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports') }}" title="View all operational reports and downloads">All Reports</a>
+        {% if is_granted('ROLE_SUPER_ADMIN') %}<a class="an-pro-btn-dl" href="{{ path('admin_role_ledger') }}" title="Full system transaction audit trail">Transaction Ledger</a>{% endif %}
     </div>
 </div>
 
 <div class="sa-analytics-nav">
+    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Forecasting</button>
     <button class="sa-analytics-btn active analytics-btn" type="button" data-fn="planning">Planning</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="organizing">Organizing</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Event Execution</button>
@@ -84,31 +80,19 @@ const API = '/analytics/proxy';
 let charts = [];
 let currentFn = 'planning';
 let facilities = [];
+let lastData = null;
 
 document.querySelectorAll('.analytics-btn').forEach(btn => {
     btn.addEventListener('click', () => loadAnalytics(btn.dataset.fn));
 });
 
 document.getElementById('facility-filter').addEventListener('change', () => loadAnalytics(currentFn));
-document.getElementById('date-range-filter').addEventListener('change', () => {
-    loadMeta();
-    loadAnalytics(currentFn);
-});
 
 function queryParams() {
     const fac = document.getElementById('facility-filter').value;
     const params = [];
     if (fac) params.push('facility_id=' + encodeURIComponent(fac));
     return params.length ? '?' + params.join('&') : '';
-}
-
-function getDateRange() {
-    const sel = document.getElementById('date-range-filter').value;
-    if (sel === 'all') return null;
-    const months = sel === '6m' ? 6 : sel === '3m' ? 3 : 1;
-    const d = new Date();
-    d.setMonth(d.getMonth() - months);
-    return d.toISOString().slice(0, 10);
 }
 
 function sourceParam() {
@@ -183,19 +167,23 @@ async function loadAnalytics(fn) {
         b.classList.toggle('active', b.dataset.fn === fn);
     });
     const box = document.getElementById('analytics-content');
-    box.innerHTML = '<div class="sa-loading">Loading ' + fn + '…</div>';
+    box.innerHTML = '<div class="sa-loading">Loading ' + fn + '\u2026</div>';
     destroyCharts();
+    // Forecasting tab uses the planning endpoint
+    const apiEndpoint = fn === 'forecasting' ? 'planning' : fn;
     try {
-        const res = await fetch(API + '/' + fn + queryParams());
+        const res = await fetch(API + '/' + apiEndpoint + queryParams());
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
+        lastData = data;
         updateBadge(data);
         renderTab(fn, data);
     } catch (e) {
         console.warn('Analytics API error, using local fallback', e);
         const local = {{ localAnalytics|json_encode|raw }};
+        lastData = local[apiEndpoint] || local[fn] || {};
         updateBadge({ source: 'live', dataSourceLabel: 'Live' });
-        renderTab(fn, local[fn] || {}, true);
+        renderTab(fn, lastData, true);
     }
 }
 
@@ -204,12 +192,108 @@ function destroyCharts() {
     charts = [];
 }
 
+// ─── X-AXIS VIEW MODE (Weekly / Day-of-Week / Monthly) ────────────────────
+
+function getXAxisView() {
+    return 'weekly';
+}
+
+/**
+ * Collapses weekly key→value series into DOW buckets (Mon..Sun).
+ * e.g. { "2024-W05": 12, "2024-W06": 8 } → { "Mon":20, "Tue":0, ... }
+ * Since weekly keys map to the whole week (Mon start), we sum by week-start DOW.
+ * For actual per-day grouping we use the existing day_of_week_demand data.
+ */
+function regroupByDow(weeklyObj, dowDemand) {
+    // Use the pre-aggregated day_of_week_demand from backend (already Mon-Sun counts)
+    const order = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const out = {};
+    order.forEach(d => { out[d] = dowDemand[d] ?? 0; });
+    return out;
+}
+
+/**
+ * Collapses weekly or daily data into monthly buckets Jan..Dec.
+ * Uses monthlyTrends which is already { "2024-01": N, ... }
+ * Re-keys to short month names for display.
+ */
+function regroupByMonth(monthlyHistorical) {
+    const monthNames = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun',
+                         '07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec' };
+    // Sum across years — e.g. "2024-01" + "2025-01" both contribute to "Jan"
+    const out = { Jan:0,Feb:0,Mar:0,Apr:0,May:0,Jun:0,Jul:0,Aug:0,Sep:0,Oct:0,Nov:0,Dec:0 };
+    Object.entries(monthlyHistorical || {}).forEach(([k, v]) => {
+        const mm = k.slice(5, 7); // "2024-03" → "03"
+        const label = monthNames[mm];
+        if (label) out[label] = (out[label] || 0) + Number(v);
+    });
+    return out;
+}
+
+/**
+ * Returns a transformed copy of data with X-axis regrouped.
+ * Only chart-driving series are changed; KPIs/scorecards untouched.
+ */
+function applyAggregateFilters(d) {
+    const view = getXAxisView();
+    if (view === 'weekly') return d; // default — no transformation
+
+    const transformed = Object.assign({}, d);
+    const dowDemand = d.day_of_week_demand || {};
+    const monthlyHistorical = d.forecast_series?.monthly?.historical || {};
+
+    if (view === 'dow') {
+        // Build DOW series for trend charts
+        const dowSeries = regroupByDow(d.forecast_series?.weekly?.historical || {}, dowDemand);
+        transformed.forecast_series = {
+            weekly: { historical: dowSeries, forecast: {}, lower: {}, upper: {} },
+            monthly: d.forecast_series?.monthly,
+        };
+        transformed.actual_vs_forecast = null; // not meaningful in DOW view
+        transformed.rolling_mape = null;        // not meaningful in DOW view
+        transformed.participant_demand_trend = dowSeries;
+        transformed.facility_load_distribution = d.facility_load_distribution; // keep as-is
+        transformed._xaxis_label = 'Reservations by Day of Week';
+        transformed._xaxis_view = 'dow';
+
+    } else if (view === 'monthly') {
+        // Build Monthly series for trend charts
+        const monthlySeries = regroupByMonth(monthlyHistorical);
+        transformed.forecast_series = {
+            weekly: { historical: monthlySeries, forecast: {}, lower: {}, upper: {} },
+            monthly: { historical: monthlySeries, forecast: {}, lower: {}, upper: {} },
+        };
+        transformed.actual_vs_forecast = null; // not meaningful in month view
+        transformed.rolling_mape = null;
+        transformed.participant_demand_trend = monthlySeries;
+        transformed._xaxis_label = 'Reservations by Month';
+        transformed._xaxis_view = 'monthly';
+    }
+
+    return transformed;
+}
+
+function updateFilterBadge() {
+    const existing = document.getElementById('filter-active-badge');
+    if (existing) existing.remove();
+}
+
+function redrawChartsWithFilter() {
+    if (!lastData) return;
+    updateFilterBadge();
+    destroyCharts();
+    drawCharts(currentFn, applyAggregateFilters(lastData));
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+
 function renderTab(fn, data, isFallback) {
     let html = '<div class="sa-analytics-title-row"><div><h3>' + title(fn) + '</h3><p>' + summary(fn) + '</p></div>';
     html += '<span class="sa-analytics-source live">Live</span></div>';
     html += kpiRow(fn, data);
     html += '<div class="sa-analytics-grid">';
-    if (fn === 'planning') html += planningHtml(data);
+    if (fn === 'forecasting') html += forecastingHtml(data);
+    else if (fn === 'planning') html += planningHtml(data);
     else if (fn === 'organizing') html += organizingHtml(data);
     else if (fn === 'leading') html += leadingHtml(data);
     else html += controllingHtml(data);
@@ -219,12 +303,23 @@ function renderTab(fn, data, isFallback) {
         html += '<div class="an-pro-insights sa-chart-wide"><h5>Managerial insights</h5><ul>' + tips.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>';
     }
     document.getElementById('analytics-content').innerHTML = html;
-    drawCharts(fn, data, isFallback);
+    updateFilterBadge();
+    drawCharts(fn, applyAggregateFilters(data), isFallback);
 }
 
 function kpiRow(fn, d) {
     const cards = [];
-    if (fn === 'planning') {
+    if (fn === 'forecasting') {
+        const acc = d.forecast_accuracy || {};
+        const vol = d.demand_volatility || {};
+        const mom = d.trend_momentum || {};
+        const dq = d.data_quality || {};
+        cards.push(kpi('Weekly MAPE', (acc.weekly_mape ?? '—') + '%', 'Model accuracy', trendIcon(acc.weekly_mape, 20, true)));
+        cards.push(kpi('Monthly MAPE', (acc.monthly_mape ?? '—') + '%', 'Model accuracy', trendIcon(acc.monthly_mape, 20, true)));
+        cards.push(kpi('Volatility', (vol.cv ?? 0) + '%', vol.label || 'N/A', trendIcon(vol.cv, 30, true)));
+        cards.push(kpi('Momentum', (mom.direction === 'up' ? '+' : mom.direction === 'down' ? '-' : '') + (mom.strength ?? 0) + '%', mom.direction || 'neutral', ''));
+        cards.push(kpi('Data Quality', dq.grade || 'N/A', 'Score: ' + (dq.score ?? 0) + '%', trendIcon(dq.score, 80, false)));
+    } else if (fn === 'planning') {
         const acc = d.forecast_accuracy || {};
         const vol = d.demand_volatility || {};
         const mom = d.trend_momentum || {};
@@ -285,7 +380,7 @@ function kpi(label, value, sub, trend) {
     return '<div class="an-pro-kpi"><div class="label">' + esc(label) + '</div><div class="value">' + esc(String(value)) + (trend || '') + '</div><div class="sub">' + esc(sub) + '</div></div>';
 }
 
-function planningHtml(d) {
+function forecastingHtml(d) {
     const acc = d.forecast_accuracy || {};
     const mapeQuality = (v) => { if (v == null) return ''; if (v < 10) return ' mq-excellent'; if (v < 20) return ' mq-good'; if (v < 30) return ' mq-fair'; return ' mq-poor'; };
     let accuracyPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
@@ -339,14 +434,13 @@ function planningHtml(d) {
         </div>
     </div>`;
 
-    // CDO: Demand Intelligence Panel
     const vol = d.demand_volatility || {};
     const seasonal = d.seasonal_pattern || {};
     const momentum = d.trend_momentum || {};
     const dq = d.data_quality || {};
     const ptr = d.peak_trough_ratio || 1;
     const volClass = vol.cv < 15 ? 'mq-excellent' : vol.cv < 30 ? 'mq-good' : vol.cv < 50 ? 'mq-fair' : 'mq-poor';
-    const momIcon = momentum.direction === 'up' ? '📈' : momentum.direction === 'down' ? '📉' : '➡️';
+    const momIcon = momentum.direction === 'up' ? '▲' : momentum.direction === 'down' ? '▼' : '→';
     const dqClass = dq.score >= 90 ? 'mq-excellent' : dq.score >= 80 ? 'mq-good' : dq.score >= 70 ? 'mq-fair' : 'mq-poor';
 
     let intelligencePanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
@@ -393,45 +487,67 @@ function planningHtml(d) {
         <div class="an-pro-legend-box">
             <h5>CDO Interpretation Guide</h5>
             <ul>
-                <li><strong>Demand Volatility (CV)</strong> — Coefficient of Variation: &lt;15% Stable, 15-30% Moderate, 30-50% Volatile, &gt;50% Highly Volatile. High volatility = need larger safety buffers in scheduling.</li>
-                <li><strong>Trend Momentum</strong> — Short-term (4-week) slope normalized by mean. Positive = growing demand, negative = declining. Use for capacity planning.</li>
-                <li><strong>Seasonality</strong> — Detects months &gt;30% above or &lt;30% below mean. Peak/trough ratio shows demand range amplitude.</li>
-                <li><strong>Data Quality</strong> — Weighted score: Completeness (40%) + Consistency (30%) + Timeliness (30%). Grade A+ = production-ready forecasts.</li>
+                <li><strong>Demand Volatility (CV)</strong> — &lt;15% Stable, 15-30% Moderate, 30-50% Volatile, &gt;50% Highly Volatile.</li>
+                <li><strong>Trend Momentum</strong> — Short-term (4-week) slope. Positive = growing demand.</li>
+                <li><strong>Seasonality</strong> — Detects months &gt;30% above or &lt;30% below mean.</li>
+                <li><strong>Data Quality</strong> — Completeness (40%) + Consistency (30%) + Timeliness (30%).</li>
             </ul>
         </div>
     </div>`;
 
     return `
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Historical Reservation Trend (Weekly)</h4>
-        <p class="chart-sub">Solid: actual · Dashed: ARIMA forecast · Shaded: 80% confidence interval</p>
-        <div class="an-pro-ci-legend"><span class="ci-dot ci-hist"></span> Historical <span class="ci-dot ci-fc"></span> Forecast <span class="ci-dot ci-ci"></span> 80% Confidence Interval</div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+            <div>
+                <h4 id="wrd-title" style="margin:0;">Weekly Reservation Demand</h4>
+                <p class="chart-sub" style="margin:2px 0 0;">Weekly reservation counts for the selected month · X-axis shows date ranges</p>
+            </div>
+            <select id="wrd-month-picker" class="an-pro-select" title="Select month" style="min-width:140px;"></select>
+        </div>
+        <canvas id="c-wrd"></canvas>
+        <div class="an-pro-insight" id="insight-wrd"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <h4>Weekly Reservation Demand (All Time)</h4>
+        <p class="chart-sub">Solid: actual · Dashed: ARIMA forecast · Shaded: 80% confidence interval · X-axis: weekly date ranges</p>
+        <div class="an-pro-ci-legend"><span class="ci-dot ci-hist"></span> Historical <span class="ci-dot ci-fc"></span> Forecast <span class="ci-dot ci-ci"></span> 80% CI</div>
         <canvas id="c-weekly"></canvas>
         <div class="an-pro-insight" id="insight-weekly"></div>
     </div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Usage Forecast (Monthly)</h4>
-        <p class="chart-sub">Predicted facility usage based on reservation patterns</p>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <h4>Monthly Reservation Demand</h4>
+        <p class="chart-sub">Monthly historical trends and ARIMA monthly forecast</p>
         <canvas id="c-monthly"></canvas>
         <div class="an-pro-insight" id="insight-monthly"></div>
     </div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Actual vs ARIMA Forecast (Model Validation)</h4>
-        <p class="chart-sub">Green: actual demand · Amber: ARIMA prediction · Red dashed: naïve baseline — ARIMA should track closer to actual</p>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <h4>Actual vs ARIMA Forecast (Model Validation)</h4>
+        <p class="chart-sub">Green: actual · Amber: ARIMA · Red dashed: naïve baseline — ARIMA should track closer to actual</p>
         <canvas id="c-actual-vs"></canvas>
         <div class="an-pro-insight" id="insight-actual-vs"></div>
     </div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Rolling Forecast Accuracy (MAPE over time)</h4>
-        <p class="chart-sub">Tracks model prediction error over rolling 4-week windows — declining line = model is learning</p>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <h4>Rolling Forecast Accuracy (MAPE over time)</h4>
+        <p class="chart-sub">Tracks model prediction error per rolling 4-week window — declining = model improving</p>
         <canvas id="c-rolling-mape"></canvas>
         <div class="an-pro-insight" id="insight-rolling-mape"></div>
     </div>
     ` + accuracyPanel + intelligencePanel + `
+    <div class="an-pro-recommendations sa-chart-wide" id="reco-forecasting"></div>`;
+}
+
+function planningHtml(d) {
+    const acc = d.forecast_accuracy || {};
+    return `
     <div class="sa-chart-container an-pro-chart-card"><h4>Day-of-Week Demand Pattern</h4>
         <p class="chart-sub">Which days see the most reservations (Mon–Sun)</p>
         <canvas id="c-dow"></canvas>
         <div class="an-pro-insight" id="insight-dow"></div>
     </div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Event Type Distribution</h4><canvas id="c-events"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Peak Demand Hours</h4><canvas id="c-hours"></canvas></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Per-Facility Weekly Forecast (next 4 weeks)</h4><canvas id="c-per-fac"></canvas></div>`;
+    <div class="sa-chart-container an-pro-chart-card"><h4>Event Type Distribution</h4><p class="chart-sub">Reservation volume by event purpose</p><canvas id="c-events"></canvas><div class="an-pro-insight" id="insight-events"></div></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Peak Demand Hours</h4><p class="chart-sub">Busiest time slots by reservation count</p><canvas id="c-hours"></canvas><div class="an-pro-insight" id="insight-hours"></div></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Per-Facility Weekly Forecast (next 4 weeks)</h4><p class="chart-sub">ARIMA-projected demand per facility</p><canvas id="c-per-fac"></canvas><div class="an-pro-insight" id="insight-per-fac"></div></div>
+    <div class="an-pro-recommendations sa-chart-wide" id="reco-planning"></div>`;
 }
 
 function organizingHtml(d) {
@@ -480,7 +596,7 @@ function organizingHtml(d) {
     <div class="sa-chart-container an-pro-chart-card"><h4>Facility Usage Comparison</h4><p class="chart-sub">Total reservations per facility</p><canvas id="c-load"></canvas><div class="an-pro-insight" id="insight-load"></div></div>
     <div class="sa-chart-container an-pro-chart-card"><h4>Peak Usage Times</h4><p class="chart-sub">Busiest time slots across all facilities</p><canvas id="c-peak"></canvas><div class="an-pro-insight" id="insight-peak"></div></div>
     <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Utilization Rate (%)</h4><p class="chart-sub">How intensively each facility is used relative to capacity</p><canvas id="c-util"></canvas><div class="an-pro-insight" id="insight-util"></div></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Peak Usage Heatmap (hour × day)</h4><p class="chart-sub">Darker cells = higher demand — use for scheduling optimization</p><div class="an-pro-heatmap" id="heatmap"></div></div>` + summaryHtml + `
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Peak Usage by Time of Day</h4><p class="chart-sub">Reservation demand across 24 hours \u00b7 one line per day of week \u2014 identify your busiest hours and scheduling patterns</p><canvas id="heatmap" style="min-height:320px;"></canvas><div class="an-pro-insight" id="insight-heatmap"></div></div>` + summaryHtml + `
     <div class="an-pro-recommendations sa-chart-wide" id="reco-organizing"></div>`;
 }
 
@@ -633,60 +749,166 @@ function drawCharts(fn, d, isFallback) {
     Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
     Chart.defaults.color = '#4b5563';
 
-    if (fn === 'planning') {
-        const w = d.forecast_series?.weekly || (isFallback ? d.forecast_series?.weekly : null) || {};
+    if (fn === 'forecasting' || fn === 'planning') {
+        const view = d._xaxis_view || 'weekly';
+        const w = d.forecast_series?.weekly || {};
         const m = d.forecast_series?.monthly || {};
-        if (w.historical || w.forecast) charts.push(makeArimaChart('c-weekly', w));
-        if (m.historical || m.forecast) charts.push(makeArimaChart('c-monthly', m));
 
-        // Actual vs ARIMA vs Naïve chart
-        const avf = d.actual_vs_forecast || {};
-        if (avf.labels && avf.labels.length > 1) {
-            charts.push(makeActualVsForecastChart('c-actual-vs', avf));
-        }
+        if (fn === 'forecasting') {
+            // ── Monthly-scoped Weekly Demand chart (c-wrd) ──────────────────
+            const weeklyHistorical = w.historical || {};
+            const allWeekKeys = Object.keys(weeklyHistorical).sort();
 
-        // Rolling MAPE chart
-        const rm = d.rolling_mape || {};
-        if (rm.labels && rm.labels.length > 1) {
-            const rmEl = document.getElementById('c-rolling-mape');
-            if (rmEl) {
-                charts.push(new Chart(rmEl, {
+            // Build unique YYYY-MM list from week keys
+            const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const monthSet = new Set();
+            allWeekKeys.forEach(k => {
+                const wm2 = k.match(/^(\d{4})-(\d{2})$/);
+                if (wm2) { monthSet.add(k.slice(0,7)); return; }
+                const ww = k.match(/^(\d{4})-W(\d{2})$/);
+                if (ww) {
+                    const yr = parseInt(ww[1]), wk = parseInt(ww[2]);
+                    const j4 = new Date(yr, 0, 4);
+                    const mo = new Date(j4);
+                    mo.setDate(j4.getDate() - ((j4.getDay()+6)%7) + (wk-1)*7);
+                    monthSet.add(mo.getFullYear() + '-' + String(mo.getMonth()+1).padStart(2,'0'));
+                }
+            });
+            const monthList = [...monthSet].sort();
+
+            // Populate picker
+            const picker = document.getElementById('wrd-month-picker');
+            if (picker && monthList.length) {
+                picker.innerHTML = monthList.map(ym => {
+                    const [yr, mo] = ym.split('-');
+                    const label = mNames[parseInt(mo)-1] + ' ' + yr;
+                    return '<option value="' + ym + '">' + label + '</option>';
+                }).join('');
+                // Default to the latest month
+                picker.value = monthList[monthList.length - 1];
+            }
+
+            let wrdChart = null;
+
+            function drawWrdChart(ym) {
+                if (wrdChart) { wrdChart.destroy(); wrdChart = null; }
+                const [yr, mo] = ym.split('-');
+                const moLabel = mNames[parseInt(mo)-1] + ' ' + yr;
+                const titleEl = document.getElementById('wrd-title');
+                if (titleEl) titleEl.textContent = 'Weekly Reservation Demand (' + moLabel + ')';
+
+                // Filter weeks whose Monday falls in this YYYY-MM
+                const filteredKeys = allWeekKeys.filter(k => {
+                    const ww = k.match(/^(\d{4})-W(\d{2})$/);
+                    if (!ww) return k.startsWith(ym);
+                    const year2 = parseInt(ww[1]), wk2 = parseInt(ww[2]);
+                    const j4b = new Date(year2, 0, 4);
+                    const mob = new Date(j4b);
+                    mob.setDate(j4b.getDate() - ((j4b.getDay()+6)%7) + (wk2-1)*7);
+                    return mob.getFullYear() + '-' + String(mob.getMonth()+1).padStart(2,'0') === ym;
+                });
+
+                const wrdEl = document.getElementById('c-wrd');
+                if (!wrdEl) return;
+
+                if (!filteredKeys.length) {
+                    wrdEl.parentElement.querySelector('#insight-wrd').textContent = 'No data for ' + moLabel + '.';
+                    return;
+                }
+
+                const labels = filteredKeys.map(formatLabel);
+                const vals = filteredKeys.map(k => Number(weeklyHistorical[k] || 0));
+
+                wrdChart = new Chart(wrdEl, {
                     type: 'line',
                     data: {
-                        labels: rm.labels.map(formatLabel),
+                        labels,
                         datasets: [{
-                            label: 'MAPE %', data: rm.values,
-                            borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.08)',
-                            fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2
-                        }, {
-                            label: '20% threshold', data: rm.labels.map(() => 20),
-                            borderColor: '#dc2626', borderDash: [4,4], pointRadius: 0, borderWidth: 1, fill: false
+                            label: 'Reservations',
+                            data: vals,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37,99,235,0.10)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#2563eb',
+                            borderWidth: 2.5
                         }]
                     },
-                    options: { ...chartOpts('MAPE %'), plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } } }
-                }));
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+                            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' }, title: { display: true, text: 'Reservations' } }
+                        }
+                    }
+                });
+                charts.push(wrdChart);
+
+                const total = vals.reduce((a,b)=>a+b,0);
+                const peak = Math.max(...vals);
+                const peakWeek = labels[vals.indexOf(peak)];
+                const insightEl = document.getElementById('insight-wrd');
+                if (insightEl) insightEl.innerHTML = '<strong>Total:</strong> ' + total + ' reservations · <strong>Peak week:</strong> ' + peakWeek + ' (' + peak + ')';
             }
-            const rmInsight = document.getElementById('insight-rolling-mape');
-            if (rmInsight && rm.values.length >= 3) {
-                const recent = rm.values.slice(-3);
-                const avgRecent = (recent.reduce((a,b)=>a+b,0)/recent.length).toFixed(1);
-                const trend = rm.values[rm.values.length-1] < rm.values[0] ? 'improving' : 'needs attention';
-                rmInsight.innerHTML = '<strong>Insight:</strong> Recent 3-period avg MAPE: <strong>' + avgRecent + '%</strong>. Model accuracy is <strong>' + trend + '</strong>. Values below 20% (red line) indicate good forecasting performance.';
+
+            if (picker && monthList.length) {
+                drawWrdChart(picker.value);
+                picker.addEventListener('change', () => drawWrdChart(picker.value));
             }
+            // ────────────────────────────────────────────────────────────────
+
+            if (w.historical || w.forecast) charts.push(makeArimaChart('c-weekly', w, 'Reservations'));
+            if (m.historical || m.forecast) charts.push(makeArimaChart('c-monthly', m, 'Reservations'));
+
+            // Actual vs ARIMA vs Naïve
+            const avf = d.actual_vs_forecast || {};
+            if (avf.labels && avf.labels.length > 1) charts.push(makeActualVsForecastChart('c-actual-vs', avf));
+
+            // Rolling MAPE
+            const rm = d.rolling_mape || {};
+            if (rm.labels && rm.labels.length > 1) {
+                const rmEl = document.getElementById('c-rolling-mape');
+                if (rmEl) {
+                    charts.push(new Chart(rmEl, {
+                        type: 'line',
+                        data: { labels: rm.labels.map(formatLabel), datasets: [{ label: 'MAPE %', data: rm.values, borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.08)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }, { label: '20% threshold', data: rm.labels.map(() => 20), borderColor: '#dc2626', borderDash: [4,4], pointRadius: 0, borderWidth: 1, fill: false }] },
+                        options: { ...chartOpts('MAPE %'), plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } } }
+                    }));
+                }
+                const rmInsight = document.getElementById('insight-rolling-mape');
+                if (rmInsight && rm.values.length >= 3) {
+                    const recent = rm.values.slice(-3);
+                    const avgRecent = (recent.reduce((a,b)=>a+b,0)/recent.length).toFixed(1);
+                    const trend = rm.values[rm.values.length-1] < rm.values[0] ? 'improving' : 'needs attention';
+                    rmInsight.innerHTML = '<strong>Insight:</strong> Recent 3-period avg MAPE: <strong>' + avgRecent + '%</strong>. Model is <strong>' + trend + '</strong>.';
+                }
+            }
+            generatePlanningInsights(d);
         }
 
-        // Day-of-week demand
-        const dow = d.day_of_week_demand || {};
-        if (Object.keys(dow).length) charts.push(makeBar('c-dow', dow, '#2563eb', false));
-
-        charts.push(makeDoughnut('c-events', d.event_type_distribution || {}));
-        charts.push(makeBar('c-hours', d.peak_demand_hours || {}, '#006633', true));
-        const pf = d.per_facility_weekly || [];
-        if (pf.length) charts.push(makePerFacilityChart('c-per-fac', pf));
-
-        // Generate insights
-        generatePlanningInsights(d);
+        if (fn === 'planning') {
+            // Planning tab: DOW, events, hours, per-facility only
+            const dow = d.day_of_week_demand || {};
+            if (Object.keys(dow).length) charts.push(makeBar('c-dow', dow, '#2563eb', false));
+            charts.push(makeDoughnut('c-events', d.event_type_distribution || {}));
+            charts.push(makeBar('c-hours', d.peak_demand_hours || {}, '#006633', true));
+            const pf = d.per_facility_weekly || [];
+            if (pf.length) charts.push(makePerFacilityChart('c-per-fac', pf));
+            generatePlanningInsights(d);
+        }
     } else if (fn === 'organizing') {
+        const view = d._xaxis_view || 'weekly';
+        const loadCard = document.querySelector('#c-load')?.closest('.an-pro-chart-card');
+        if (view === 'dow' && loadCard) {
+            loadCard.querySelector('h4').textContent = 'Facility Usage by Day of Week';
+            loadCard.querySelector('.chart-sub').textContent = 'Reservation counts per facility grouped by day of week';
+        } else if (view === 'monthly' && loadCard) {
+            loadCard.querySelector('h4').textContent = 'Facility Usage by Month';
+            loadCard.querySelector('.chart-sub').textContent = 'Reservation counts per facility grouped by month';
+        }
         charts.push(makeBar('c-load', d.facility_load_distribution || {}, '#006633'));
         charts.push(makeBar('c-peak', d.peak_usage_times || {}, '#2563eb', true));
         const util = {};
@@ -695,6 +917,15 @@ function drawCharts(fn, d, isFallback) {
         renderHeatmap('heatmap', d.peak_usage_heatmap || {});
         generateOrganizingInsights(d);
     } else if (fn === 'leading') {
+        const view = d._xaxis_view || 'weekly';
+        const partCard = document.querySelector('#c-part')?.closest('.an-pro-chart-card');
+        if (view === 'dow' && partCard) {
+            partCard.querySelector('h4').textContent = 'Demand Trend by Day of Week';
+            partCard.querySelector('.chart-sub').textContent = 'Reservation volume distributed across Mon–Sun';
+        } else if (view === 'monthly' && partCard) {
+            partCard.querySelector('h4').textContent = 'Demand Trend by Month';
+            partCard.querySelector('.chart-sub').textContent = 'Reservation volume distributed across Jan–Dec';
+        }
         charts.push(makeBar('c-success', d.event_success_by_type || {}, '#0f766e'));
         const top = d.top_events || {};
         const topChart = makeBar('c-top', top, '#006633');
@@ -716,23 +947,42 @@ function drawCharts(fn, d, isFallback) {
     }
 }
 
-function makeArimaChart(id, series) {
-    const labels = [...new Set([...Object.keys(series.historical || {}), ...Object.keys(series.forecast || {})])].sort();
+// Natural sort order for DOW and Month labels
+const DOW_ORDER  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MON_ORDER  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function sortedLabels(rawLabels) {
+    const first = rawLabels[0] || '';
+    if (DOW_ORDER.includes(first)) {
+        return DOW_ORDER.filter(d => rawLabels.includes(d));
+    }
+    if (MON_ORDER.includes(first)) {
+        return MON_ORDER.filter(m => rawLabels.includes(m));
+    }
+    return [...rawLabels].sort();
+}
+
+function makeArimaChart(id, series, titleOverride) {
+    const rawKeys = [...new Set([...Object.keys(series.historical || {}), ...Object.keys(series.forecast || {})])];
+    const labels = sortedLabels(rawKeys);
     const hist = labels.map(l => series.historical?.[l] ?? null);
     const fc = labels.map(l => series.forecast?.[l] ?? null);
     const lo = labels.map(l => series.lower?.[l] ?? null);
     const hi = labels.map(l => series.upper?.[l] ?? null);
     const el = document.getElementById(id);
     if (!el) return null;
+    const hasForecasts = fc.some(v => v !== null);
     return new Chart(el, {
         type: 'line',
         data: {
             labels: labels.map(formatLabel),
             datasets: [
-                { label: 'Historical', data: hist, borderColor: '#006633', backgroundColor: 'rgba(0,102,51,0.12)', fill: true, tension: 0.35, pointRadius: 2, spanGaps: false },
-                { label: 'ARIMA forecast', data: fc, borderColor: '#f59e0b', borderDash: [6,4], tension: 0.35, pointRadius: 3, spanGaps: false },
-                { label: 'Lower bound', data: lo, borderColor: 'transparent', backgroundColor: 'rgba(245,158,11,0.08)', fill: '+1', pointRadius: 0, tension: 0.35 },
-                { label: 'Upper bound', data: hi, borderColor: 'transparent', backgroundColor: 'rgba(245,158,11,0.08)', fill: false, pointRadius: 0, tension: 0.35 }
+                { label: titleOverride || 'Historical', data: hist, borderColor: '#006633', backgroundColor: 'rgba(0,102,51,0.12)', fill: true, tension: 0.35, pointRadius: 3, spanGaps: false },
+                ...(hasForecasts ? [
+                    { label: 'ARIMA forecast', data: fc, borderColor: '#f59e0b', borderDash: [6,4], tension: 0.35, pointRadius: 3, spanGaps: false },
+                    { label: 'Lower bound', data: lo, borderColor: 'transparent', backgroundColor: 'rgba(245,158,11,0.08)', fill: '+1', pointRadius: 0, tension: 0.35 },
+                    { label: 'Upper bound', data: hi, borderColor: 'transparent', backgroundColor: 'rgba(245,158,11,0.08)', fill: false, pointRadius: 0, tension: 0.35 }
+                ] : [])
             ]
         },
         options: chartOpts('Reservations')
@@ -773,7 +1023,9 @@ function makeBar(id, src, color, sortHours) {
 }
 
 function makeLine(id, src, color, label) {
-    const entries = Object.entries(src).sort();
+    const rawKeys = Object.keys(src || {});
+    const orderedKeys = sortedLabels(rawKeys);
+    const entries = orderedKeys.map(k => [k, src[k]]);
     const el = document.getElementById(id);
     if (!el) return null;
     return new Chart(el, {
@@ -795,27 +1047,76 @@ function makeDoughnut(id, src) {
 }
 
 function renderHeatmap(id, hm) {
-    const box = document.getElementById(id);
-    if (!box) return;
+    const el = document.getElementById(id);
+    if (!el) return;
     if (!hm.hours?.length || !hm.days?.length || !hm.values?.length) {
-        box.innerHTML = '<p class="chart-sub" style="color:#6b7280;">No peak-hour pattern yet. Heatmap fills in as approved reservations accumulate.</p>';
+        el.insertAdjacentHTML('afterend', '<p class="chart-sub" style="color:#6b7280;margin-top:8px;">No peak-hour pattern yet. Chart fills in as reservations accumulate.</p>');
         return;
     }
-    const max = Math.max(1, ...hm.values.flat().map(Number));
-    let html = '<table><thead><tr><th>Hour</th>';
-    (hm.days || []).forEach(d => html += '<th>' + esc(String(d).slice(5)) + '</th>');
-    html += '</tr></thead><tbody>';
-    hm.hours.forEach((h, i) => {
-        html += '<tr><th>' + esc(h) + ':00</th>';
-        (hm.values[i] || []).forEach(v => {
-            const n = Number(v);
-            const intensity = Math.round((n / max) * 180 + 40);
-            html += '<td><span class="cell" style="background:rgb(0,' + intensity + ',80)">' + n + '</span></td>';
-        });
-        html += '</tr>';
+
+    const days = hm.days; // ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
+    // X-axis: hours formatted as time strings
+    const timeLabels = hm.hours.map(h => {
+        if (h === 0)  return '12:00 AM';
+        if (h < 12)   return h + ':00 AM';
+        if (h === 12) return '12:00 PM';
+        return (h - 12) + ':00 PM';
     });
-    html += '</tbody></table>';
-    box.innerHTML = html;
+
+    // One dataset per day — values[hourIndex][dayIndex]
+    const dayColors = ['#006633','#2563eb','#f59e0b','#0f766e','#7c3aed','#dc2626','#0891b2'];
+    const datasets = days.map((day, di) => ({
+        label: day,
+        data: hm.hours.map((h, hi) => Number(hm.values[hi]?.[di] || 0)),
+        borderColor: dayColors[di % dayColors.length],
+        backgroundColor: dayColors[di % dayColors.length] + '18',
+        fill: false,
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2
+    }));
+
+    const chart = new Chart(el, {
+        type: 'line',
+        data: { labels: timeLabels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 16, boxWidth: 10 }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: ctx => 'Time: ' + ctx[0].label,
+                        label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + ' reservation' + (ctx.parsed.y !== 1 ? 's' : '')
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        maxTicksLimit: 12,
+                        maxRotation: 45,
+                        callback: (val, i) => timeLabels[i]
+                    },
+                    title: { display: true, text: 'Time of Day' }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0,0,0,0.06)' },
+                    title: { display: true, text: 'Reservations' },
+                    ticks: { stepSize: 1, precision: 0 }
+                }
+            }
+        }
+    });
+    charts.push(chart);
 }
 
 function makeActualVsForecastChart(id, avf) {
@@ -895,6 +1196,61 @@ function generatePlanningInsights(d) {
         }
     }
 
+    // Recommendations — Forecasting (data-driven)
+    const recoFcEl = document.getElementById('reco-forecasting');
+    if (recoFcEl) {
+        const acc = d.forecast_accuracy || {};
+        const vol = d.demand_volatility || {};
+        const mom = d.trend_momentum || {};
+        const dq = d.data_quality || {};
+        const seasonal = d.seasonal_pattern || {};
+        const items = [];
+
+        if ((acc.weekly_mape ?? 0) > 20) items.push('<strong>Poor Forecast Accuracy (Weekly MAPE ' + acc.weekly_mape + '%):</strong> Model error exceeds 20%. Collect more historical data and ensure reservation records are consistent. Consider retraining the ARIMA model once 52+ weeks of data are available.');
+        else if ((acc.weekly_mape ?? 0) > 10) items.push('<strong>Moderate Forecast Accuracy (Weekly MAPE ' + acc.weekly_mape + '%):</strong> Forecast is serviceable but can improve. Ensure no data gaps or outlier weeks are distorting the model.');
+        else if (acc.weekly_mape != null) items.push('<strong>Excellent Forecast Accuracy (Weekly MAPE ' + acc.weekly_mape + '%):</strong> Model is reliable for operational planning. Use forecasts confidently for staffing and resource allocation decisions.');
+
+        if ((vol.cv ?? 0) > 30) items.push('<strong>High Demand Volatility (CV ' + vol.cv + '%):</strong> Reservation counts fluctuate significantly week to week. Build capacity buffers of at least 20% above forecast to absorb demand spikes.');
+        if (mom.direction === 'down' && (mom.strength ?? 0) > 5) items.push('<strong>Declining Demand Trend (' + mom.strength + '% drop):</strong> Short-term momentum is negative. Investigate whether this is seasonal or structural — if structural, review accessibility, promotion, and booking policies.');
+        if (mom.direction === 'up' && (mom.strength ?? 0) > 10) items.push('<strong>Strong Growth Trend (+' + mom.strength + '%):</strong> Demand is accelerating. Pre-emptively expand facility availability, staffing coverage, and system capacity to prevent bottlenecks.');
+        if ((dq.score ?? 100) < 80) items.push('<strong>Data Quality Risk (Score ' + dq.score + '%):</strong> Incomplete or inconsistent records are degrading forecast reliability. Audit data entry practices and ensure all reservation outcomes are recorded promptly.');
+        if (seasonal.detected && seasonal.peak_months?.length) items.push('<strong>Seasonal Peak Detected:</strong> Historically high demand in <strong>' + seasonal.peak_months.slice(-2).join(', ') + '</strong>. Pre-allocate resources and increase facility availability during these months.');
+        items.push('Review forecast vs actual every 4 weeks to detect model drift early and recalibrate if MAPE rises above 20%.');
+
+        recoFcEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Forecasting</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
+    }
+
+    // Recommendations — Planning (data-driven)
+    const recoPlanEl = document.getElementById('reco-planning');
+    if (recoPlanEl) {
+        const dow = d.day_of_week_demand || {};
+        const dowEntries = Object.entries(dow).sort((a,b)=>b[1]-a[1]);
+        const dowTotal = dowEntries.reduce((s,e)=>s+e[1],0);
+        const events = d.event_type_distribution || {};
+        const eventEntries = Object.entries(events).sort((a,b)=>b[1]-a[1]);
+        const eventTotal = eventEntries.reduce((s,e)=>s+e[1],0);
+        const hours = d.peak_demand_hours || {};
+        const hourEntries = Object.entries(hours).sort((a,b)=>b[1]-a[1]);
+        const items = [];
+
+        if (dowEntries.length && dowTotal > 0) {
+            const topDayPct = ((dowEntries[0][1]/dowTotal)*100).toFixed(0);
+            if (topDayPct >= 40) items.push('<strong>Day Concentration Risk:</strong> <strong>' + esc(dowEntries[0][0]) + '</strong> accounts for <strong>' + topDayPct + '%</strong> of all weekly reservations. Ensure adequate staffing and consider capping bookings on this day to avoid overload.');
+        }
+        if (eventEntries.length && eventTotal > 0) {
+            const topEventPct = ((eventEntries[0][1]/eventTotal)*100).toFixed(0);
+            if (topEventPct >= 50) items.push('<strong>Event Type Concentration:</strong> <strong>' + esc(eventEntries[0][0]) + '</strong> events make up <strong>' + topEventPct + '%</strong> of demand. Diversify promotional efforts to attract other event types and reduce reliance on a single category.');
+        }
+        if (hourEntries.length >= 2) {
+            const ratio = hourEntries[0][1] > 0 ? (hourEntries[0][1]/hourEntries[hourEntries.length-1][1]).toFixed(1) : 1;
+            if (ratio >= 3) items.push('<strong>Peak Hour Bottleneck:</strong> <strong>' + esc(hourEntries[0][0]) + '</strong> is <strong>' + ratio + 'x</strong> busier than the quietest slot. Introduce staggered booking windows or time-slot incentives to spread demand more evenly across the day.');
+        }
+        items.push('Use DOW demand patterns to create targeted scheduling policies — e.g. requiring 48h advance notice for the busiest day.');
+        items.push('Align facility configuration (room layouts, AV setup, seating) with the top 3 event types to reduce turnaround time.');
+
+        recoPlanEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Planning</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
+    }
+
     // Day-of-week insight
     const dowEl = document.getElementById('insight-dow');
     if (dowEl) {
@@ -904,6 +1260,46 @@ function generatePlanningInsights(d) {
             const busiest = entries[0];
             const quietest = entries[entries.length-1];
             dowEl.innerHTML = '<strong>Insight:</strong> Busiest day: <strong>' + busiest[0] + '</strong> (' + busiest[1] + ' reservations). Quietest: <strong>' + quietest[0] + '</strong> (' + quietest[1] + '). Consider allocating more staff/resources on ' + busiest[0] + '.';
+        }
+    }
+
+    // Event type distribution insight
+    const eventsEl = document.getElementById('insight-events');
+    if (eventsEl) {
+        const events = d.event_type_distribution || {};
+        const entries = Object.entries(events).sort((a,b) => b[1]-a[1]);
+        if (entries.length) {
+            const total = entries.reduce((s,e) => s + e[1], 0);
+            const top = entries[0];
+            const topPct = total > 0 ? ((top[1]/total)*100).toFixed(0) : 0;
+            const msg = entries.length >= 2
+                ? '<strong>Insight:</strong> <strong>' + esc(top[0]) + '</strong> is the dominant event type at <strong>' + topPct + '%</strong> of all reservations (' + top[1] + '). ' + (entries.length >= 3 ? 'Top 3 types account for ' + ((entries.slice(0,3).reduce((s,e)=>s+e[1],0)/total)*100).toFixed(0) + '% of demand.' : '')
+                : '<strong>Insight:</strong> All reservations are of type <strong>' + esc(top[0]) + '</strong>.';
+            eventsEl.innerHTML = msg;
+        }
+    }
+
+    // Peak demand hours insight
+    const hoursEl = document.getElementById('insight-hours');
+    if (hoursEl) {
+        const hours = d.peak_demand_hours || {};
+        const entries = Object.entries(hours).sort((a,b) => b[1]-a[1]);
+        if (entries.length) {
+            const peak = entries[0];
+            const offPeak = entries[entries.length-1];
+            hoursEl.innerHTML = '<strong>Insight:</strong> Peak demand slot: <strong>' + esc(peak[0]) + '</strong> (' + peak[1] + ' reservations). Lowest: <strong>' + esc(offPeak[0]) + '</strong> (' + offPeak[1] + '). Schedule facility maintenance and staff breaks during off-peak windows.';
+        }
+    }
+
+    // Per-facility forecast insight
+    const perFacEl = document.getElementById('insight-per-fac');
+    if (perFacEl) {
+        const pf = d.per_facility_weekly || [];
+        if (pf.length) {
+            const sorted = [...pf].sort((a,b) => (b.chart_value||0) - (a.chart_value||0));
+            const top = sorted[0];
+            const low = sorted[sorted.length-1];
+            perFacEl.innerHTML = '<strong>Insight:</strong> Highest projected demand: <strong>' + esc(top.facility) + '</strong> (~' + (top.chart_value||0).toFixed(1) + ' reservations/week). Lowest: <strong>' + esc(low.facility) + '</strong> (~' + (low.chart_value||0).toFixed(1) + '). Allocate support staff proportionally to these forecasts.';
         }
     }
 }
@@ -954,17 +1350,57 @@ function generateOrganizingInsights(d) {
         utilEl.innerHTML = txt;
     }
 
-    // Recommendations
+    // Time-of-day heatmap insight
+    const hmEl = document.getElementById('insight-heatmap');
+    if (hmEl) {
+        const hm = d.peak_usage_heatmap || {};
+        if (hm.hours && hm.values) {
+            // Find peak hour across all days
+            let peakHour = 0, peakVal = 0;
+            hm.hours.forEach((h, hi) => {
+                const total = (hm.values[hi] || []).reduce((s,v)=>s+Number(v),0);
+                if (total > peakVal) { peakVal = total; peakHour = h; }
+            });
+            const fmt = h => h === 0 ? '12:00 AM' : h < 12 ? h+':00 AM' : h === 12 ? '12:00 PM' : (h-12)+':00 PM';
+            // Find busiest day overall
+            const days = hm.days || [];
+            const dayTotals = days.map((day,di) => ({ day, total: hm.hours.reduce((s,h,hi)=>s+Number(hm.values[hi]?.[di]||0),0) }));
+            dayTotals.sort((a,b)=>b.total-a.total);
+            const busiestDay = dayTotals[0];
+            hmEl.innerHTML = '<strong>Insight:</strong> Peak hour across all days: <strong>' + fmt(peakHour) + '</strong> (' + peakVal + ' total reservations). Busiest day: <strong>' + esc(busiestDay?.day||'N/A') + '</strong> (' + (busiestDay?.total||0) + ' reservations). Use this to schedule staff deployment and set facility availability windows.';
+        }
+    }
+
+    // Recommendations — Organizing (data-driven)
     const recoEl = document.getElementById('reco-organizing');
     if (recoEl) {
+        const load = d.facility_load_distribution || {};
+        const loadEntries = Object.entries(load).sort((a,b)=>b[1]-a[1]);
+        const totalLoad = loadEntries.reduce((s,e)=>s+e[1],0);
+        const util = d.room_utilization || {};
+        const utilRates = Object.entries(util).map(([k,v])=>({name:k,rate:(v.utilization_rate||0)*100}));
+        const avgUtil = utilRates.length ? utilRates.reduce((s,r)=>s+r.rate,0)/utilRates.length : 0;
+        const peak = d.peak_usage_times || {};
+        const peakEntries = Object.entries(peak).sort((a,b)=>b[1]-a[1]);
         const suggestions = d.optimization_suggestions || [];
-        let html = '<div class="reco-box"><h5>Actionable Recommendations</h5><ul>';
-        html += '<li>Monitor peak facilities before approving dense schedules to prevent overbooking.</li>';
-        html += '<li>Redirect overflow demand to underutilized rooms to balance load across facilities.</li>';
-        html += '<li>Maintain 15–30 min buffer between consecutive reservations for setup/cleanup.</li>';
-        if (suggestions.length) suggestions.forEach(s => { html += '<li>' + esc(s) + '</li>'; });
-        html += '</ul></div>';
-        recoEl.innerHTML = html;
+        const items = [];
+
+        if (loadEntries.length && totalLoad > 0) {
+            const topPct = (loadEntries[0][1]/totalLoad*100).toFixed(0);
+            if (topPct >= 60) items.push('<strong>High Concentration Risk:</strong> <strong>' + esc(loadEntries[0][0]) + '</strong> handles ' + topPct + '% of all bookings. Actively promote underused facilities to redistribute demand and reduce single-facility failure risk.');
+        }
+        if (avgUtil < 30 && utilRates.length) items.push('<strong>Systemwide Underutilization:</strong> Average utilization is only <strong>' + avgUtil.toFixed(1) + '%</strong>. Review facility availability policies, operating hours, and promotion strategies to drive higher usage.');
+        const idleFacs = utilRates.filter(r=>r.rate===0);
+        if (idleFacs.length) items.push('<strong>Idle Assets:</strong> ' + idleFacs.map(r=>esc(r.name)).join(', ') + ' have zero recorded reservations. Evaluate whether these facilities are properly listed, accessible, and visible in the booking system.');
+        if (peakEntries.length >= 2) {
+            const ratio = peakEntries[0][1] > 0 ? (peakEntries[0][1]/peakEntries[peakEntries.length-1][1]).toFixed(1) : 1;
+            if (ratio >= 3) items.push('<strong>Scheduling Concentration:</strong> Peak slot <strong>' + esc(peakEntries[0][0]) + '</strong> has ' + ratio + 'x more reservations than the quietest slot. Consider incentivising off-peak bookings to flatten demand curves.');
+        }
+        items.push('Maintain a minimum 15–30 minute buffer between consecutive reservations for setup, cleanup, and turnaround.');
+        items.push('Run a quarterly facility audit to align available room configurations with the most common event types.');
+        if (suggestions.length) suggestions.forEach(s => items.push(esc(s)));
+
+        recoEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations — Organizing</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
     }
 }
 
@@ -975,6 +1411,19 @@ function generateLeadingInsights(d) {
         const rso = d.rso_completion_rate ?? 0;
         const status = rate >= 70 ? 'healthy' : rate >= 50 ? 'moderate' : 'concerning';
         execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Event Execution</h5><p>Overall approval rate is <strong>${rate}%</strong> (${status}). RSO-related completion rate: <strong>${rso}%</strong>. ${rate < 50 ? 'Low approval suggests process bottlenecks or unclear requirements — review rejection reasons.' : rate >= 70 ? 'High approval rate indicates a well-functioning reservation process.' : 'Moderate approval rate — investigate top rejection reasons for improvement opportunities.'}</p></div>`;
+    }
+
+    // Top events insight
+    const topEl = document.getElementById('insight-top');
+    if (topEl) {
+        const top = d.top_events || {};
+        const entries = Object.entries(top).sort((a,b)=>b[1]-a[1]);
+        if (entries.length) {
+            const total = entries.reduce((s,e)=>s+e[1],0);
+            const dominant = entries[0];
+            const pct = total > 0 ? ((dominant[1]/total)*100).toFixed(0) : 0;
+            topEl.innerHTML = '<strong>Insight:</strong> <strong>' + esc(dominant[0]) + '</strong> is the most requested event type with ' + dominant[1] + ' reservations (' + pct + '% of tracked volume). Ensure facility availability is prioritised for this category.';
+        }
     }
 
     // Success insight
@@ -1002,17 +1451,35 @@ function generateLeadingInsights(d) {
         }
     }
 
-    // Recommendations
+    // Recommendations — Event Execution (data-driven)
     const recoEl = document.getElementById('reco-leading');
     if (recoEl) {
         const rate = d.overall_completion_rate ?? 0;
-        let html = '<div class="reco-box"><h5>Actionable Recommendations</h5><ul>';
-        if (rate < 50) html += '<li><strong>Critical:</strong> Review and streamline the approval workflow to reduce rejection rate.</li>';
-        html += '<li>Categorize rejection reasons to identify systemic issues vs. one-off problems.</li>';
-        html += '<li>Track time-to-approval metrics to identify processing delays.</li>';
-        html += '<li>Consider automated pre-screening for common reservation types to speed approvals.</li>';
-        html += '</ul></div>';
-        recoEl.innerHTML = html;
+        const rso = d.rso_completion_rate ?? 0;
+        const successData = d.event_success_by_type || {};
+        const successEntries = Object.entries(successData).sort((a,b)=>a[1]-b[1]);
+        const partData = d.participant_demand_trend || {};
+        const partVals = Object.values(partData);
+        const items = [];
+
+        if (rate < 50) items.push('<strong>Critical — Low Approval Rate (' + rate + '%):</strong> Fewer than half of reservations are being approved. Immediately audit the rejection workflow, identify top blockers, and consider streamlining submission requirements.');
+        else if (rate < 70) items.push('<strong>Moderate Approval Rate (' + rate + '%):</strong> Room for improvement. Analyse which event categories face the most rejections and provide targeted guidance to requesters.');
+        else items.push('<strong>Healthy Approval Rate (' + rate + '%):</strong> System is running well. Maintain current standards and document best practices for staff onboarding.');
+
+        if (successEntries.length && successEntries[0][1] < 30) items.push('<strong>Low-Performing Category:</strong> <strong>' + esc(successEntries[0][0]) + '</strong> has only <strong>' + successEntries[0][1] + '%</strong> approval rate. Investigate root causes — unclear requirements, capacity conflicts, or policy misalignment.');
+
+        if (Math.abs(rso - rate) > 20) items.push('<strong>RSO vs Overall Gap:</strong> RSO completion rate (' + rso + '%) diverges significantly from overall rate (' + rate + '%). Review RSO-specific requirements and provide targeted support or training.');
+
+        if (partVals.length >= 3) {
+            const last3 = partVals.slice(-3);
+            const declining = last3[2] < last3[1] && last3[1] < last3[0];
+            if (declining) items.push('<strong>Declining Participant Engagement:</strong> Participant volume has dropped for 3 consecutive months. Survey users for scheduling friction, awareness gaps, or competing alternatives.');
+        }
+
+        items.push('Publish a monthly approval report to help requesters understand expectations and reduce avoidable rejections.');
+        items.push('Track time-to-approval and flag any reservation pending for more than 48 hours.');
+
+        recoEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations — Event Execution</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
     }
 }
 
@@ -1024,6 +1491,23 @@ function generateControllingInsights(d) {
         const gap = d.average_setup_gap ?? 0;
         const health = compliance >= 80 && noshow <= 15 ? 'Good' : compliance >= 50 ? 'Needs attention' : 'Critical';
         execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Controlling</h5><p>Operational health: <strong>${health}</strong>. Setup compliance (≤3 days lead time): <strong>${compliance}%</strong>. No-show rate: <strong>${noshow}%</strong>. Average setup gap: <strong>${gap} days</strong>. ${noshow > 25 ? 'High no-show rate indicates potential policy enforcement issues — consider implementing confirmation reminders or penalties.' : 'No-show rate is within acceptable range.'}</p></div>`;
+    }
+
+    // Facility utilization rate insight (controlling)
+    const futilEl = document.getElementById('insight-futil');
+    if (futilEl) {
+        const util = d.facility_utilization_rate || {};
+        const rates = Object.entries(util).map(([k,v]) => ({ name:k, rate:((v.utilization_rate||0)*100) }));
+        if (rates.length) {
+            rates.sort((a,b)=>b.rate-a.rate);
+            const avg = (rates.reduce((s,r)=>s+r.rate,0)/rates.length).toFixed(1);
+            const overloaded = rates.filter(r=>r.rate>=5);
+            const idle = rates.filter(r=>r.rate<2);
+            let txt = '<strong>Insight:</strong> Average facility utilization: <strong>' + avg + '%</strong>. ';
+            if (overloaded.length) txt += '<strong>' + overloaded.map(r=>esc(r.name)).join(', ') + '</strong> ' + (overloaded.length===1?'is':'are') + ' at high load — monitor capacity closely. ';
+            if (idle.length) txt += idle.map(r=>esc(r.name)).join(', ') + ' ' + (idle.length===1?'is':'are') + ' underutilized — consider repurposing or promoting.';
+            futilEl.innerHTML = txt;
+        }
     }
 
     // Status insight
@@ -1049,19 +1533,38 @@ function generateControllingInsights(d) {
         }
     }
 
-    // Recommendations
+    // Recommendations — Controlling (data-driven)
     const recoEl = document.getElementById('reco-controlling');
     if (recoEl) {
         const noshow = d.no_show_rate ?? 0;
         const compliance = d.setup_compliance_rate ?? 0;
-        let html = '<div class="reco-box"><h5>Actionable Recommendations</h5><ul>';
-        if (noshow > 25) html += '<li><strong>Priority:</strong> Implement 24-hour confirmation reminders to reduce no-show rate (currently ' + noshow + '%).</li>';
-        if (compliance < 50) html += '<li><strong>Priority:</strong> Enforce minimum 3-day advance booking policy to improve setup compliance (currently ' + compliance + '%).</li>';
-        html += '<li>Review rejection patterns monthly and update policies to prevent recurring issues.</li>';
-        html += '<li>Track cancellation timing — early cancellations may indicate scheduling conflicts that can be prevented.</li>';
-        html += '<li>Consider implementing a waitlist system for high-demand facilities to reduce underutilization.</li>';
-        html += '</ul></div>';
-        recoEl.innerHTML = html;
+        const rejection = d.rejection_analysis || {};
+        const rejEntries = Object.entries(rejection).sort((a,b)=>b[1]-a[1]);
+        const rejTotal = rejEntries.reduce((s,e)=>s+e[1],0);
+        const target = d.target_achievement || {};
+        const totalRes = Object.values(target).reduce((s,v)=>s+v,0);
+        const cancelled = target['Cancelled'] || 0;
+        const cancelPct = totalRes > 0 ? ((cancelled/totalRes)*100).toFixed(1) : 0;
+        const items = [];
+
+        if (noshow > 25) items.push('<strong>Priority — High No-Show Rate (' + noshow + '%):</strong> More than 1 in 4 approved reservations result in no-shows. Implement 24-hour and 1-hour automated confirmation reminders. Consider a strike policy after repeated no-shows.');
+        else if (noshow > 10) items.push('<strong>Moderate No-Show Rate (' + noshow + '%):</strong> Send confirmation reminders at 24h before and follow up with a post-no-show survey to understand root causes.');
+
+        if (compliance < 50) items.push('<strong>Priority — Poor Setup Compliance (' + compliance + '%):</strong> Majority of reservations are submitted with less than 3 days lead time. Enforce minimum advance booking requirements and educate users on setup preparation timelines.');
+        else if (compliance < 80) items.push('<strong>Setup Compliance Needs Improvement (' + compliance + '%):</strong> Encourage earlier submissions by offering priority access to facilities for reservations made 5+ days in advance.');
+
+        if (rejEntries.length && rejTotal > 0) {
+            const topRejPct = ((rejEntries[0][1]/rejTotal)*100).toFixed(0);
+            if (topRejPct >= 50) items.push('<strong>Single Root Cause Dominates Rejections:</strong> <strong>' + esc(rejEntries[0][0]) + '</strong> accounts for <strong>' + topRejPct + '%</strong> of all rejections. This single issue is the highest-leverage fix — resolve it to significantly improve approval rates.');
+            else items.push('Top rejection reason is <strong>' + esc(rejEntries[0][0]) + '</strong> (' + rejEntries[0][1] + ' cases). Address this first for maximum impact.');
+        }
+
+        if (parseFloat(cancelPct) > 15) items.push('<strong>High Cancellation Rate (' + cancelPct + '%):</strong> Review the timing of cancellations — late cancellations block other users from booking. Introduce a cancellation window policy (e.g. no cancellation within 24h of event).');
+
+        items.push('Review rejection patterns monthly and update policies to prevent recurring issues.');
+        items.push('Implement a waitlist system for peak-demand facilities to recover cancelled slots immediately.');
+
+        recoEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations — Controlling</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
     }
 }
 
@@ -1081,15 +1584,49 @@ function palette() {
     return ['#006633','#2563eb','#f59e0b','#0f766e','#7c3aed','#dc2626','#0891b2','#65a30d'];
 }
 
-function title(fn) { 
+function title(fn) {
     if (fn === 'leading') return 'Event Execution';
-    return fn.charAt(0).toUpperCase() + fn.slice(1); 
+    if (fn === 'forecasting') return 'Forecasting';
+    return fn.charAt(0).toUpperCase() + fn.slice(1);
 }
 function summary(fn) {
-    const m = { planning: 'ARIMA weekly/monthly demand forecasts and event mix.', organizing: 'Facility allocation, peak times, and utilization.', leading: 'Approval and purpose-based success metrics.', controlling: 'Compliance, status mix, and utilization control.' };
+    const m = {
+        forecasting: 'ARIMA time-series forecasts, model accuracy evaluation, demand intelligence, and rolling MAPE tracking.',
+        planning: 'Demand patterns by day of week, event type distribution, peak hours, and per-facility forecasts.',
+        organizing: 'Facility allocation, peak times, and utilization.',
+        leading: 'Approval and purpose-based success metrics.',
+        controlling: 'Compliance, status mix, and utilization control.'
+    };
     return m[fn] || '';
 }
-function formatLabel(l) { return String(l); }
+function formatLabel(l) {
+    const s = String(l);
+    // Convert ISO week key "YYYY-Www" → "Jun 1–7" style
+    const wm = s.match(/^(\d{4})-W(\d{2})$/);
+    if (wm) {
+        const year = parseInt(wm[1]);
+        const week = parseInt(wm[2]);
+        // Monday of that ISO week
+        const jan4 = new Date(year, 0, 4);
+        const mon = new Date(jan4);
+        mon.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (week - 1) * 7);
+        const sun = new Date(mon);
+        sun.setDate(mon.getDate() + 6);
+        const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (mon.getMonth() === sun.getMonth()) {
+            return mNames[mon.getMonth()] + ' ' + mon.getDate() + '\u2013' + sun.getDate();
+        } else {
+            return mNames[mon.getMonth()] + ' ' + mon.getDate() + '\u2013' + mNames[sun.getMonth()] + ' ' + sun.getDate();
+        }
+    }
+    // Convert "YYYY-MM" → "Jan 2024" style
+    const mm = s.match(/^(\d{4})-(\d{2})$/);
+    if (mm) {
+        const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return mNames[parseInt(mm[2]) - 1] + ' ' + mm[1];
+    }
+    return s;
+}
 function hexAlpha(hex, a) {
     const h = hex.replace('#','');
     const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);

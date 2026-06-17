@@ -5,79 +5,278 @@
 {% block stylesheets %}
 {{ parent() }}
 <link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}">
+<style>
+.rpt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; margin-top: 24px; }
+.rpt-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; transition: box-shadow .15s; }
+.rpt-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.09); }
+.rpt-card-head { display: flex; align-items: flex-start; gap: 12px; }
+.rpt-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.rpt-card h4 { margin: 0 0 3px; font-size: 14.5px; font-weight: 700; color: #111827; }
+.rpt-card p { margin: 0; font-size: 12.5px; color: #6b7280; line-height: 1.55; }
+.rpt-meta { font-size: 11.5px; color: #9ca3af; }
+.rpt-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .4px; }
+.rpt-badge.operational { background: #d1fae5; color: #065f46; }
+.rpt-badge.analytical  { background: #dbeafe; color: #1e40af; }
+.rpt-badge.template    { background: #fef3c7; color: #92400e; }
+.rpt-btn { display: inline-block; margin-top: auto; padding: 8px 16px; background: #006633; color: #fff; border-radius: 8px; font-size: 12.5px; font-weight: 600; text-decoration: none; text-align: center; transition: background .15s; }
+.rpt-btn:hover { background: #004d26; color: #fff; }
+.rpt-btn.secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.rpt-btn.secondary:hover { background: #e5e7eb; }
+.rpt-section-title { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #9ca3af; margin: 28px 0 8px; }
+.rpt-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.rpt-kpi { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+.rpt-kpi .val { font-size: 22px; font-weight: 800; color: #006633; }
+.rpt-kpi .lbl { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="content-header an-pro-header">
     <div>
         <h2>Reports &amp; Downloads</h2>
-        <p class="muted">Operational CSV exports and ARIMA managerial reports for FTIC scheduling decisions.</p>
+        <p class="muted">10 operational and analytical CSV reports for CDO-level decision-making — facility management, mentoring, and system health.</p>
     </div>
     <div class="an-pro-toolbar">
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports_download', {type: 'reservations'}) }}">Reservations CSV</a>
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_reports_download', {type: 'mentoring'}) }}">Mentoring CSV</a>
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_this_week') }}">This week snapshot</a>
-        <a class="an-pro-btn-dl" href="{{ path('admin_role_analytics_export_weekly') }}">ARIMA weekly forecast</a>
-        <a class="btn-secondary" href="{{ path('analytics_dashboard') }}">Open Analytics</a>
+        <a class="an-pro-btn-dl" href="{{ path('analytics_dashboard') }}">Open Analytics Dashboard</a>
     </div>
 </div>
 
-<div class="module-grid">
-    <section class="card-panel">
-        <h3>Reservation Summaries</h3>
-        <table class="accounts-table">
-            <thead><tr><th>Status</th><th>Total</th></tr></thead>
-            <tbody>
-                {% for status, total in reservationStatusCounts %}
-                    <tr><td>{{ status }}</td><td>{{ total }}</td></tr>
-                {% else %}
-                    <tr><td colspan="2">No reservation data yet.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+{# ── KPI Summary Row ── #}
+{% set totalRes = reservationStatusCounts.Pending + reservationStatusCounts.Approved + reservationStatusCounts.Rejected + reservationStatusCounts.Cancelled %}
+{% set approvedRes = reservationStatusCounts.Approved %}
+{% set pendingRes = reservationStatusCounts.Pending %}
+{% set approvalRate = totalRes > 0 ? ((approvedRes / totalRes) * 100)|round : 0 %}
 
-    <section class="card-panel">
-        <h3>Mentoring</h3>
-        <table class="accounts-table">
-            <thead><tr><th>Record</th><th>Status</th><th>Total</th></tr></thead>
-            <tbody>
-                {% for status, total in mentoringStatusCounts.appointments %}
-                    <tr><td>Session</td><td>{{ status }}</td><td>{{ total }}</td></tr>
-                {% endfor %}
-                {% for status, total in mentoringStatusCounts.requests %}
-                    <tr><td>Request</td><td>{{ status }}</td><td>{{ total }}</td></tr>
-                {% else %}
-                    {% if mentoringStatusCounts.appointments is empty %}
-                        <tr><td colspan="3">No mentoring data yet.</td></tr>
-                    {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+<div class="rpt-summary-grid">
+    <div class="rpt-kpi"><div class="val">{{ totalRes }}</div><div class="lbl">Total Reservations</div></div>
+    <div class="rpt-kpi"><div class="val">{{ approvedRes }}</div><div class="lbl">Approved</div></div>
+    <div class="rpt-kpi"><div class="val">{{ pendingRes }}</div><div class="lbl">Pending (Action Required)</div></div>
+    <div class="rpt-kpi"><div class="val">{{ approvalRate }}%</div><div class="lbl">Overall Approval Rate</div></div>
+    <div class="rpt-kpi"><div class="val">{{ (mentoringStatusCounts.appointments.Scheduled ?? 0) + (mentoringStatusCounts.appointments.Completed ?? 0) }}</div><div class="lbl">Mentoring Sessions</div></div>
+    <div class="rpt-kpi"><div class="val">{{ topExpertise|length }}</div><div class="lbl">Mentor Expertise Areas</div></div>
 </div>
 
-<div class="module-grid">
-    <section class="card-panel">
-        <h3>Most Requested Expertise</h3>
-        <table class="accounts-table">
-            <thead><tr><th>Expertise</th><th>Total</th></tr></thead>
+{# ── No Data Notice ── #}
+{% if totalRes == 0 %}
+<div class="reco-box" style="margin-bottom:20px;">
+    <h5 style="color:#92400e;">⚠ No Reservation Data Found</h5>
+    <p style="margin:4px 0 10px;font-size:13px;color:#374151;">Your system has no reservation records yet. Download the <strong>Data Import Template</strong> below, fill it in with your historical data, and use it to seed the analytics system so ARIMA forecasting and all charts have meaningful data to work with.</p>
+    <a class="rpt-btn" href="{{ path('admin_role_reports_template') }}" style="display:inline-block;width:auto;">⬇ Download Import Template CSV</a>
+</div>
+{% endif %}
+
+{# ── Reservation Reports ── #}
+<div class="rpt-section-title">Reservation Reports</div>
+<div class="rpt-grid">
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">📋</div>
+            <div>
+                <h4>Full Reservations Export</h4>
+                <span class="rpt-badge operational">Operational</span>
+            </div>
+        </div>
+        <p>All reservation records — ID, name, email, facility, date, time, event, purpose, capacity, status, created date. Use for audits, compliance review, and data migration.</p>
+        <div class="rpt-meta">Columns: 12 · Sorted: newest first · All statuses</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_download', {type: 'reservations'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">⏳</div>
+            <div>
+                <h4>Pending Reservations</h4>
+                <span class="rpt-badge operational">Operational</span>
+            </div>
+        </div>
+        <p>All reservations currently awaiting approval. Use this as your action backlog — identify how many requests need response and prioritise by date.</p>
+        <div class="rpt-meta">Filter: Status = Pending · {{ pendingRes }} records</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'pending'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">❌</div>
+            <div>
+                <h4>Rejected Reservations</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>All rejected reservations with full details. Analyse patterns — which facilities, purposes, or users have the highest rejection rates to improve policy clarity.</p>
+        <div class="rpt-meta">Filter: Status = Rejected · Sorted by date</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'rejected'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">🚫</div>
+            <div>
+                <h4>Cancellation Log</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>All cancelled reservations. Identify late-cancellation patterns that block other users from booking, and inform cancellation window policy decisions.</p>
+        <div class="rpt-meta">Filter: Status = Cancelled · Sorted by date</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'cancellations'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">📅</div>
+            <div>
+                <h4>This Week Snapshot</h4>
+                <span class="rpt-badge operational">Operational</span>
+            </div>
+        </div>
+        <p>Current week's approved and pending reservations per facility. Daily operational check — use every morning to confirm facility readiness and staffing needs.</p>
+        <div class="rpt-meta">Scope: Current ISO week · Per-facility breakdown</div>
+        <a class="rpt-btn" href="{{ path('admin_role_analytics_export_this_week') }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">📆</div>
+            <div>
+                <h4>Monthly Reservation Summary</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>Month-by-month reservation counts per facility — approved, rejected, cancelled. Identify seasonal patterns and plan ahead for high-demand periods.</p>
+        <div class="rpt-meta">Grouped by: Month × Facility · All time</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'monthly-summary'}) }}">⬇ Download CSV</a>
+    </div>
+
+</div>
+
+{# ── Analytical Reports ── #}
+<div class="rpt-section-title">Facility &amp; Usage Analytics</div>
+<div class="rpt-grid">
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">🏢</div>
+            <div>
+                <h4>Facility Utilization Report</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>Per-facility totals: reservations, approvals, rejections, cancellations, and approval rate %. Identify underperforming or overloaded facilities for resource reallocation decisions.</p>
+        <div class="rpt-meta">Columns: Facility, Total, Approved, Rejected, Cancelled, Approval Rate</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'facility-utilization'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">🎯</div>
+            <div>
+                <h4>Top Event Types Report</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>Reservation volume and approval rate per event purpose (Academic, Research, Organization, etc.). Align facility configurations and staffing with the most common event categories.</p>
+        <div class="rpt-meta">Grouped by: Purpose · Includes approval rate %</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'top-events'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">👤</div>
+            <div>
+                <h4>User Activity Report</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>Top 100 users by reservation volume — approved, rejected, cancelled counts and last booking date. Identify power users, frequent cancellers, and users with low approval rates.</p>
+        <div class="rpt-meta">Top 100 users · Sorted by total reservations</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_extended', {type: 'user-activity'}) }}">⬇ Download CSV</a>
+    </div>
+
+</div>
+
+{# ── Mentoring Reports ── #}
+<div class="rpt-section-title">Mentoring Reports</div>
+<div class="rpt-grid">
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">🧑‍🏫</div>
+            <div>
+                <h4>Mentoring Sessions Export</h4>
+                <span class="rpt-badge operational">Operational</span>
+            </div>
+        </div>
+        <p>All mentoring appointment records — mentor name, student email, scheduled time, and status. Use for compliance reporting, session audits, and mentor performance reviews.</p>
+        <div class="rpt-meta">Columns: ID, Mentor, Student, Scheduled At, Status</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_download', {type: 'mentoring'}) }}">⬇ Download CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">🔬</div>
+            <div>
+                <h4>Most Requested Expertise</h4>
+                <span class="rpt-badge analytical">Analytical</span>
+            </div>
+        </div>
+        <p>Top mentor specialisations by demand. Use to identify expertise gaps and prioritise mentor recruitment to match student needs.</p>
+        <table class="accounts-table" style="margin-top:8px;font-size:12.5px;">
+            <thead><tr><th>Expertise</th><th>Mentors</th></tr></thead>
             <tbody>
                 {% for expertise, total in topExpertise %}
                     <tr><td>{{ expertise }}</td><td>{{ total }}</td></tr>
                 {% else %}
-                    <tr><td colspan="2">No expertise data yet.</td></tr>
+                    <tr><td colspan="2" style="color:#9ca3af;">No expertise data yet.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
-    </section>
+    </div>
 
-    <section class="card-panel">
-        <h3>Analytics data mode</h3>
-        <p class="muted" style="font-size:13px;line-height:1.6;">
-            Charts use <strong>live SQL data</strong> when reservations exist. If the database is empty, the system automatically shows the <strong>demo dataset</strong> so panelists can still evaluate ARIMA and managerial functions.
-        </p>
-        <p class="muted" style="font-size:13px;">Start the analytics server: <code>cd analytics && .venv\Scripts\python main.py</code></p>
-    </section>
+</div>
+
+{# ── Template / Seed Data ── #}
+<div class="rpt-section-title">Data Management</div>
+<div class="rpt-grid">
+
+    {% if is_granted('ROLE_SUPER_ADMIN') %}
+    <div class="rpt-card" style="border-color:#6d28d9;background:#f5f3ff;">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">🔍</div>
+            <div>
+                <h4>System Transaction Ledger</h4>
+                <span class="rpt-badge analytical" style="background:#ede9fe;color:#4c1d95;">Super Admin</span>
+            </div>
+        </div>
+        <p>Complete audit trail of every user action — reservation lifecycle, status changes, mentoring events, applications, and user registrations. Searchable, filterable, paginated, and CSV-exportable per module.</p>
+        <div class="rpt-meta">6 streams · Real-time · Date range filter · Per-module CSV export</div>
+        <a class="rpt-btn" href="{{ path('admin_role_ledger') }}" style="background:#6d28d9;">Open Transaction Ledger →</a>
+    </div>
+    {% endif %}
+    <div class="rpt-card" style="border-color:#f59e0b;background:#fffbeb;">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">📥</div>
+            <div>
+                <h4>Reservation Import Template</h4>
+                <span class="rpt-badge template">Template</span>
+            </div>
+        </div>
+        <p>No historical data yet? Download this CSV template, fill it with your past reservation records, and use it to seed the system. This powers ARIMA forecasting and all analytics charts.</p>
+        <div class="rpt-meta">Format: CSV · Includes 3 sample rows · Instructions in comments</div>
+        <a class="rpt-btn" href="{{ path('admin_role_reports_template') }}">⬇ Download Template CSV</a>
+    </div>
+
+    <div class="rpt-card">
+        <div class="rpt-card-head">
+            <div class="rpt-icon">📊</div>
+            <div>
+                <h4>Analytics Data Mode</h4>
+                <span class="rpt-badge operational">System Info</span>
+            </div>
+        </div>
+        <p>Charts use <strong>live SQL data</strong> when reservations exist. With no data, the system shows a <strong>demo dataset</strong> so ARIMA and managerial functions can still be evaluated.</p>
+        <p style="margin-top:8px;">ARIMA server command: <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11.5px;">cd analytics &amp;&amp; .venv\Scripts\python main.py</code></p>
+        <a class="rpt-btn secondary" href="{{ path('analytics_dashboard') }}">Open Analytics Dashboard →</a>
+    </div>
+
 </div>
 {% endblock %}
