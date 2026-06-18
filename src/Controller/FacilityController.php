@@ -6,8 +6,10 @@ namespace App\Controller;
 
 use App\Entity\Facility;
 use App\Entity\FacilityImage;
+use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityImageRepository;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use App\Service\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -182,21 +184,58 @@ class FacilityController extends AbstractController
 
     #[Route('/{id}/delete', name: 'app_facility_delete', methods: ['POST'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
-    public function delete(Request $request, Facility $facility, FacilityRepository $facilityRepository): Response
+    public function delete(Request $request, Facility $facility, FacilityRepository $facilityRepository, EntityManagerInterface $entityManager): Response
     {
-        if ($this->isCsrfTokenValid('delete' . $facility->getId(), $request->request->get('_token'))) {
-            // Delete main image file
-            $this->deleteImageFile($facility->getImage());
-            
-            // Delete all gallery image files
-            foreach ($facility->getImages() as $image) {
-                $this->deleteImageFile($image->getPath());
-            }
-            
+        if (!$this->isCsrfTokenValid('delete' . $facility->getId(), (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid delete request. Please try again.');
+
+            return $this->redirectToRoute('app_facility_management');
+        }
+
+        $reservationCount = $this->countReservationsReferencingFacility($facility, $entityManager);
+        if ($reservationCount > 0) {
+            $this->addFlash(
+                'error',
+                sprintf(
+                    'Cannot delete "%s" because it is linked to %d reservation%s. Disable reservations for this facility instead, or move/archive those reservations first.',
+                    $facility->getName(),
+                    $reservationCount,
+                    $reservationCount === 1 ? '' : 's'
+                )
+            );
+
+            return $this->redirectToRoute('app_facility_management');
+        }
+
+        $imagePaths = array_filter([$facility->getImage()]);
+        foreach ($facility->getImages() as $image) {
+            $imagePaths[] = $image->getPath();
+        }
+
+        try {
             $facilityRepository->remove($facility, true);
+        } catch (ForeignKeyConstraintViolationException) {
+            $this->addFlash('error', sprintf('Cannot delete "%s" because other records still reference it.', $facility->getName()));
+
+            return $this->redirectToRoute('app_facility_management');
+        }
+
+        foreach (array_unique($imagePaths) as $imagePath) {
+            $this->deleteImageFile($imagePath);
         }
 
         return $this->redirectToRoute('app_facility_management', ['success' => 'deleted']);
+    }
+
+    private function countReservationsReferencingFacility(Facility $facility, EntityManagerInterface $entityManager): int
+    {
+        return (int) $entityManager->getRepository(Reservation::class)
+            ->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->andWhere('r.facility = :facility OR r.suggestedFacility = :facility')
+            ->setParameter('facility', $facility)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     #[Route('/{id}/images/reorder', name: 'app_facility_images_reorder', methods: ['POST'])]

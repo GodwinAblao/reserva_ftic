@@ -34,6 +34,17 @@
     const successMessage = '{{ success|default('') }}';
 </script>
 
+{% for label, messages in app.flashes %}
+    {% for message in messages %}
+        <div class="flash-message flash-{{ label }}">
+            <div class="flash-content">
+                <span class="flash-icon">{{ label == 'error' ? '!' : 'OK' }}</span>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+    {% endfor %}
+{% endfor %}
+
 {% if facilities is empty %}
     <div class="no-facilities">
         <p>No facilities found. <a href="{{ path('app_facility_new') }}">Create one now</a></p>
