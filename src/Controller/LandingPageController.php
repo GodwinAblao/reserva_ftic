@@ -198,7 +198,8 @@ class LandingPageController extends AbstractController
         }
 
         $offersInput = $request->request->all('offers');
-        $content->setOffersJson($this->landingPageContentService->encodeArray($this->normalizeCards($offersInput, $this->landingPageContentService->defaults()['offers'])));
+        $offerImageUploads = $this->uploadOfferImages($request);
+        $content->setOffersJson($this->landingPageContentService->encodeArray($this->normalizeCards($offersInput, $this->landingPageContentService->defaults()['offers'], $offerImageUploads)));
 
         $aboutParagraphs = $request->request->all('about_paragraphs');
         $content->setAboutParagraphsJson($this->landingPageContentService->encodeArray($this->normalizeTextList($aboutParagraphs, $this->landingPageContentService->defaults()['aboutParagraphs'])));
@@ -241,20 +242,40 @@ class LandingPageController extends AbstractController
         return (string) ($result['url'] ?? '');
     }
 
-    private function normalizeCards(array $items, array $defaults): array
+    /**
+     * @return array<int, string>
+     */
+    private function uploadOfferImages(Request $request): array
+    {
+        $uploadedImages = [];
+        $files = $request->files->all('offer_image_files');
+
+        foreach ($files as $index => $file) {
+            $image = $this->handleUploadedImage($file, 'landing-page');
+            if ($image !== null && $image !== '') {
+                $uploadedImages[(int) $index] = $image;
+            }
+        }
+
+        return $uploadedImages;
+    }
+
+    /**
+     * @param array<int, string> $uploadedImages
+     */
+    private function normalizeCards(array $items, array $defaults, array $uploadedImages = []): array
     {
         $normalized = [];
         foreach (array_values($defaults) as $index => $fallback) {
             $item = is_array($items[$index] ?? null) ? $items[$index] : [];
+            $image = $uploadedImages[$index] ?? $this->trimOrFallback((string) ($item['image'] ?? ''), (string) ($fallback['image'] ?? ''));
             $normalized[] = [
                 'key' => (string) ($fallback['key'] ?? ('card-' . $index)),
                 'title' => $this->trimOrFallback((string) ($item['title'] ?? ''), (string) ($fallback['title'] ?? '')),
                 'description' => $this->trimOrFallback((string) ($item['description'] ?? ''), (string) ($fallback['description'] ?? '')),
                 'linkLabel' => $this->trimOrFallback((string) ($item['linkLabel'] ?? ''), (string) ($fallback['linkLabel'] ?? 'Read more')),
                 'linkUrl' => $this->trimOrFallback((string) ($item['linkUrl'] ?? ''), (string) ($fallback['linkUrl'] ?? '#')),
-                'image' => $this->normalizeOfferImagePath(
-                    $this->trimOrFallback((string) ($item['image'] ?? ''), (string) ($fallback['image'] ?? ''))
-                ),
+                'image' => $this->normalizeOfferImagePath($image),
             ];
         }
 

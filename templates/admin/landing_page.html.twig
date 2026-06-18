@@ -52,20 +52,23 @@
                     <span>CTA URL</span>
                     <input type="text" name="hero_cta_url" value="{{ landing.heroCtaUrl }}">
                 </label>
-                <label>
-                    <span>Hero Image URL</span>
-                    <input type="text" name="hero_image_url" value="{{ landing.heroImage }}">
-                </label>
             </div>
 
-            <label>
-                <span>Upload New Hero Image</span>
-                <input type="file" name="hero_image_file" accept="image/*">
-            </label>
-
-            <div class="image-preview">
-                {% set heroImageSrc = landing.heroImage starts with('http') ? landing.heroImage : asset(landing.heroImage|trim('/')) %}
-                <img src="{{ heroImageSrc }}" alt="Hero image preview">
+            {% set heroImageSrc = landing.heroImage starts with('http') ? landing.heroImage : asset(landing.heroImage|trim('/')) %}
+            <div class="landing-image-uploader" data-image-upload>
+                <input type="hidden" name="hero_image_url" value="{{ landing.heroImage }}" data-image-path>
+                <input type="file" name="hero_image_file" accept="image/*" class="landing-image-input" data-image-input>
+                <div class="landing-upload-preview">
+                    <img src="{{ heroImageSrc }}" alt="Hero image preview" data-image-preview>
+                </div>
+                <div class="landing-upload-details">
+                    <span class="landing-upload-label">Hero Image</span>
+                    <strong data-image-filename>{{ landing.heroImage ? landing.heroImage|split('/')|last : 'No image selected' }}</strong>
+                    <div class="landing-upload-actions">
+                        <button type="button" class="btn-secondary landing-upload-button" data-image-button>Upload Image</button>
+                        <span>JPG, PNG, WebP, or GIF</span>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -111,10 +114,22 @@
                                 <input type="text" name="offers[{{ loop.index0 }}][linkUrl]" value="{{ offer.linkUrl }}">
                             </label>
                         </div>
-                        <label>
-                            <span>Image URL</span>
-                            <input type="text" name="offers[{{ loop.index0 }}][image]" value="{{ offer.image }}">
-                        </label>
+                        {% set offerImageSrc = offer.image starts with('http') ? offer.image : asset(offer.image|trim('/')) %}
+                        <div class="landing-image-uploader compact" data-image-upload>
+                            <input type="hidden" name="offers[{{ loop.index0 }}][image]" value="{{ offer.image }}" data-image-path>
+                            <input type="file" name="offer_image_files[{{ loop.index0 }}]" accept="image/*" class="landing-image-input" data-image-input>
+                            <div class="landing-upload-preview">
+                                <img src="{{ offerImageSrc }}" alt="{{ offer.title }} image preview" data-image-preview>
+                            </div>
+                            <div class="landing-upload-details">
+                                <span class="landing-upload-label">Image</span>
+                                <strong data-image-filename>{{ offer.image ? offer.image|split('/')|last : 'No image selected' }}</strong>
+                                <div class="landing-upload-actions">
+                                    <button type="button" class="btn-secondary landing-upload-button" data-image-button>Upload Image</button>
+                                    <span>Replaces on save</span>
+                                </div>
+                            </div>
+                        </div>
                     </article>
                 {% endfor %}
             </div>
@@ -139,20 +154,21 @@
                 </label>
             </div>
 
-            <div class="grid-2">
-                <label>
-                    <span>About Image URL</span>
-                    <input type="text" name="about_image_url" value="{{ landing.aboutImage }}">
-                </label>
-                <label>
-                    <span>Upload New About Image</span>
-                    <input type="file" name="about_image_file" accept="image/*">
-                </label>
-            </div>
-
-            <div class="image-preview">
-                {% set aboutImageSrc = landing.aboutImage starts with('http') ? landing.aboutImage : asset(landing.aboutImage|trim('/')) %}
-                <img src="{{ aboutImageSrc }}" alt="About image preview">
+            {% set aboutImageSrc = landing.aboutImage starts with('http') ? landing.aboutImage : asset(landing.aboutImage|trim('/')) %}
+            <div class="landing-image-uploader" data-image-upload>
+                <input type="hidden" name="about_image_url" value="{{ landing.aboutImage }}" data-image-path>
+                <input type="file" name="about_image_file" accept="image/*" class="landing-image-input" data-image-input>
+                <div class="landing-upload-preview">
+                    <img src="{{ aboutImageSrc }}" alt="About image preview" data-image-preview>
+                </div>
+                <div class="landing-upload-details">
+                    <span class="landing-upload-label">About Image</span>
+                    <strong data-image-filename>{{ landing.aboutImage ? landing.aboutImage|split('/')|last : 'No image selected' }}</strong>
+                    <div class="landing-upload-actions">
+                        <button type="button" class="btn-secondary landing-upload-button" data-image-button>Upload Image</button>
+                        <span>JPG, PNG, WebP, or GIF</span>
+                    </div>
+                </div>
             </div>
 
             <div class="grid-2">
@@ -411,15 +427,37 @@
     </template>
 
     <style>
+        :root {
+            --lp-green: #0d7a3a;
+            --lp-green-strong: #006633;
+            --lp-green-soft: #ecfdf3;
+            --lp-amber: #b7791f;
+            --lp-ink: #111827;
+            --lp-muted: #6b7280;
+            --lp-line: #e5e7eb;
+            --lp-panel: #ffffff;
+            --lp-page: #f8fafc;
+        }
         .landing-page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 1rem;
+            padding: 1rem 1.15rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--lp-line);
+            border-radius: 8px;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        .landing-page-header h2 {
+            margin: 0;
+            color: var(--lp-ink);
+            letter-spacing: 0;
         }
         .landing-page-header p {
             margin: .35rem 0 0;
-            color: #6b7280;
+            color: var(--lp-muted);
         }
         .landing-edit-toggle {
             min-width: 110px;
@@ -427,27 +465,42 @@
         .landing-page-form {
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 1rem;
+            max-width: 1180px;
         }
         .landing-page-form.is-locked input:not([type="hidden"]),
         .landing-page-form.is-locked textarea,
         .landing-page-form.is-locked select {
             background: #f9fafb;
+            color: #4b5563;
             cursor: not-allowed;
         }
         .landing-page-form.is-locked .btn-secondary,
         .landing-page-form.is-locked .btn-primary {
             opacity: .95;
         }
+        .landing-page-form.is-locked .landing-image-uploader {
+            background: #f9fafb;
+            cursor: not-allowed;
+        }
         .landing-section-card,
         .editor-card {
-            background: white;
-            border: 1px solid rgba(0, 102, 51, 0.08);
-            border-radius: 18px;
-            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+            background: var(--lp-panel);
+            border: 1px solid var(--lp-line);
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
         .landing-section-card {
+            position: relative;
             padding: 1.25rem;
+            overflow: hidden;
+        }
+        .landing-section-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: linear-gradient(180deg, var(--lp-green) 0%, #f5b942 100%);
         }
         .section-title-row,
         .faq-editor-header {
@@ -455,16 +508,23 @@
             justify-content: space-between;
             gap: 1rem;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 1.1rem;
+            padding-bottom: .9rem;
+            border-bottom: 1px solid #eef2f7;
         }
         .section-title-row h3,
         .editor-card h4 {
             margin: 0;
-            color: #111827;
+            color: var(--lp-ink);
+            letter-spacing: 0;
+        }
+        .section-title-row h3 {
+            font-size: 1.05rem;
         }
         .section-title-row p {
             margin: .35rem 0 0;
-            color: #6b7280;
+            color: var(--lp-muted);
+            line-height: 1.45;
         }
         .grid-2 {
             display: grid;
@@ -472,34 +532,36 @@
             gap: 1rem;
             margin-bottom: 1rem;
         }
-        label {
+        .landing-page-form label {
             display: flex;
             flex-direction: column;
             gap: .35rem;
         }
-        label span {
+        .landing-page-form label span {
             font-size: .82rem;
-            font-weight: 700;
+            font-weight: 800;
             color: #374151;
         }
-        input[type="text"],
-        textarea {
+        .landing-page-form input[type="text"],
+        .landing-page-form textarea {
             width: 100%;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            padding: .8rem .9rem;
+            border: 1px solid #d8dee8;
+            border-radius: 8px;
+            padding: .72rem .85rem;
             font: inherit;
-            color: #111827;
+            color: var(--lp-ink);
             background: #fff;
+            transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
         }
-        textarea {
+        .landing-page-form textarea {
             resize: vertical;
+            line-height: 1.5;
         }
-        input[type="text"]:focus,
-        textarea:focus {
+        .landing-page-form input[type="text"]:focus,
+        .landing-page-form textarea:focus {
             outline: none;
-            border-color: #0d9b00;
-            box-shadow: 0 0 0 3px rgba(13, 155, 0, 0.12);
+            border-color: var(--lp-green);
+            box-shadow: 0 0 0 3px rgba(13, 122, 58, 0.12);
         }
         .cards-grid {
             display: grid;
@@ -514,19 +576,93 @@
             display: flex;
             flex-direction: column;
             gap: .85rem;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
-        .image-preview {
+        .editor-card:hover {
+            border-color: #cfd8e3;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        }
+        .landing-image-uploader {
+            display: grid;
+            grid-template-columns: minmax(220px, 320px) 1fr;
+            gap: 1rem;
+            align-items: center;
             margin-bottom: 1rem;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid #e5e7eb;
-            background: #f9fafb;
+            padding: .75rem;
+            border: 1px dashed #a8cdb8;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #fbfefc 0%, #f7fbf8 100%);
+            transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
         }
-        .image-preview img {
+        .landing-image-uploader.compact {
+            grid-template-columns: 132px 1fr;
+            margin-bottom: 0;
+        }
+        .landing-image-uploader.is-dragging {
+            border-color: var(--lp-green);
+            background: var(--lp-green-soft);
+            box-shadow: 0 0 0 3px rgba(13, 122, 58, 0.12);
+        }
+        .landing-image-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .landing-upload-preview {
+            aspect-ratio: 16 / 9;
+            min-height: 154px;
+            overflow: hidden;
+            border: 1px solid var(--lp-line);
+            border-radius: 8px;
+            background: #f3f4f6;
+        }
+        .landing-image-uploader.compact .landing-upload-preview {
+            aspect-ratio: 4 / 3;
+            min-height: 98px;
+        }
+        .landing-upload-preview img {
             display: block;
             width: 100%;
-            max-height: 260px;
+            height: 100%;
+            max-height: 220px;
             object-fit: cover;
+        }
+        .landing-image-uploader.compact .landing-upload-preview img {
+            max-height: 120px;
+        }
+        .landing-upload-details {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: .4rem;
+        }
+        .landing-upload-label {
+            font-size: .82rem;
+            font-weight: 800;
+            color: var(--lp-green-strong);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .landing-upload-details strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--lp-ink);
+            font-size: .95rem;
+        }
+        .landing-upload-actions {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+        .landing-upload-actions span {
+            color: var(--lp-muted);
+            font-size: .82rem;
+            font-weight: 600;
         }
         .faq-editor-list {
             display: flex;
@@ -557,9 +693,18 @@
             width: 100%;
         }
         .form-footer {
+            position: sticky;
+            bottom: .75rem;
+            z-index: 20;
             display: flex;
             justify-content: flex-end;
             margin-top: .25rem;
+            padding: .75rem;
+            border: 1px solid var(--lp-line);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
         }
         .flash-message {
             margin: 0 0 1rem;
@@ -577,23 +722,35 @@
         .btn-primary,
         .btn-secondary {
             border: none;
-            border-radius: 12px;
-            padding: .85rem 1.1rem;
+            border-radius: 8px;
+            padding: .72rem 1rem;
             font-weight: 800;
             cursor: pointer;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
         }
         .btn-primary {
-            background: linear-gradient(130deg, #0d9b00 0%, #0d9b00 100%);
+            background: var(--lp-green-strong);
             color: white;
+            box-shadow: 0 6px 14px rgba(0, 102, 51, 0.18);
         }
         .btn-secondary {
             background: white;
-            border: 1px solid #0d9b00;
-            color: #0d9b00;
+            border: 1px solid #b9d5c5;
+            color: var(--lp-green-strong);
+        }
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+        }
+        .btn-primary:disabled,
+        .btn-secondary:disabled {
+            transform: none;
+            box-shadow: none;
         }
         .landing-discard-modal {
             position: fixed;
@@ -620,7 +777,7 @@
             width: min(100%, 420px);
             max-height: calc(100vh - 2rem);
             overflow: auto;
-            border-radius: 20px;
+            border-radius: 8px;
             background: #fff;
             border: 1px solid rgba(13, 155, 0, 0.12);
             box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
@@ -652,6 +809,10 @@
             .faq-editor-header {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+            .landing-image-uploader,
+            .landing-image-uploader.compact {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -842,7 +1003,82 @@
                 document.body.style.overflow = '';
             }
 
+            function initializeImageUploaders() {
+                form.querySelectorAll('[data-image-upload]').forEach(function(uploader) {
+                    const input = uploader.querySelector('[data-image-input]');
+                    const button = uploader.querySelector('[data-image-button]');
+                    const preview = uploader.querySelector('[data-image-preview]');
+                    const filename = uploader.querySelector('[data-image-filename]');
+
+                    if (!input || !button || !preview || !filename) {
+                        return;
+                    }
+
+                    function applyFile(file) {
+                        if (!file || !file.type || !file.type.startsWith('image/')) {
+                            return;
+                        }
+
+                        const previewUrl = URL.createObjectURL(file);
+                        preview.onload = function() {
+                            URL.revokeObjectURL(previewUrl);
+                        };
+                        preview.src = previewUrl;
+                        filename.textContent = file.name;
+                        button.textContent = 'Replace Image';
+                        updateDirtyState();
+                    }
+
+                    button.addEventListener('click', function() {
+                        if (!editMode || input.disabled) {
+                            return;
+                        }
+
+                        input.click();
+                    });
+
+                    input.addEventListener('change', function() {
+                        applyFile(input.files && input.files[0]);
+                    });
+
+                    uploader.addEventListener('dragover', function(event) {
+                        if (!editMode || input.disabled) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        uploader.classList.add('is-dragging');
+                    });
+
+                    uploader.addEventListener('dragleave', function(event) {
+                        if (!uploader.contains(event.relatedTarget)) {
+                            uploader.classList.remove('is-dragging');
+                        }
+                    });
+
+                    uploader.addEventListener('drop', function(event) {
+                        if (!editMode || input.disabled) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        uploader.classList.remove('is-dragging');
+
+                        const file = event.dataTransfer.files && event.dataTransfer.files[0];
+                        if (!file || !file.type.startsWith('image/')) {
+                            return;
+                        }
+
+                        const transfer = new DataTransfer();
+                        transfer.items.add(file);
+                        input.files = transfer.files;
+                        applyFile(file);
+                    });
+                });
+            }
+
             setEditingState(false);
+            initializeImageUploaders();
 
             editToggle.addEventListener('click', function() {
                 if (editMode) {
