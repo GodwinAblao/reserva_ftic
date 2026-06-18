@@ -51,6 +51,7 @@ class MentorRequestController extends AbstractController
                 'availableTime'           => $r->getAvailableTime() ?? '',
                 'meetingMethod'           => $r->getMeetingMethod() ?? '',
                 'adminInstructions'       => $r->getAdminInstructions() ?? '',
+                'externalMentorEmail'     => $r->getExternalMentorEmail() ?? '',
                 'message'                 => $r->getMessage() ?? '',
                 'status'                  => $r->getStatus(),
                 'createdAt'               => $r->getCreatedAt()->format('M d, Y'),
@@ -352,9 +353,16 @@ class MentorRequestController extends AbstractController
         $meetingLink     = trim((string) $request->request->get('meeting_link'));
         $meetingLocation = trim((string) $request->request->get('meeting_location'));
         $instructions    = trim((string) $request->request->get('instructions'));
+        $isExternalPanel = $mentorId <= 0 && $mentorName !== '';
 
         if (in_array($status, ['Assigned', 'Completed'], true) && ($mentorName === '' || $expertise === '' || $availableDates === '' || $availableTime === '' || $meetingMethod === '')) {
             $this->addFlash('error', 'Mentor name, expertise, dates, time, and meeting method are required before assigning a request.');
+            $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') ? 'mentoring_superadmin_requests' : 'admin_role_mentorship_coordination';
+            return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
+        }
+
+        if (in_array($status, ['Assigned', 'Completed'], true) && $isExternalPanel && !$this->containsEmailAddress($instructions)) {
+            $this->addFlash('error', 'An email address is required for External Panel Mentors.');
             $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') ? 'mentoring_superadmin_requests' : 'admin_role_mentorship_coordination';
             return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
         }
@@ -704,5 +712,10 @@ class MentorRequestController extends AbstractController
         }
 
         return 'Mentoring Request #' . $mentorRequest->getId();
+    }
+
+    private function containsEmailAddress(string $value): bool
+    {
+        return preg_match('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $value) === 1;
     }
 }

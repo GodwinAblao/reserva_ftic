@@ -27,6 +27,12 @@
                     {{ request.adminInstructions|nl2br }}
                 </div>
             {% endif %}
+            {% if request.externalMentorEmail %}
+                <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:14px 16px;margin:18px 0;color:#14532d;">
+                    <strong>External Mentor Contact Information</strong><br>
+                    Email: <a href="mailto:{{ request.externalMentorEmail }}" style="color:#0D9B00;font-weight:bold;">{{ request.externalMentorEmail }}</a>
+                </div>
+            {% endif %}
             <p>
                 <a href="{{ requestUrl }}" style="background:#006633;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;display:inline-block;">View Request History</a>
             </p>

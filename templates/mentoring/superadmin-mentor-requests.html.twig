@@ -58,6 +58,10 @@
 .sa-inp:focus{outline:none;border-color:#0D9B00;}
 .sa-textarea{padding:9px 11px;border:1px solid #e5e7eb;border-radius:8px;font-size:12.5px;color:#374151;background:#fff;resize:vertical;min-height:72px;width:100%;box-sizing:border-box;font-family:inherit;}
 .sa-textarea:focus{outline:none;border-color:#0D9B00;}
+.external-contact-help{display:none;margin-top:6px;font-size:11.5px;line-height:1.45;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:8px 10px;}
+.external-contact-help.is-visible{display:block;}
+.external-email-error{display:none;margin-top:6px;font-size:11.5px;font-weight:700;color:#b91c1c;}
+.external-email-error.is-visible{display:block;}
 .sa-arow{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid #f3f4f6;}
 .sa-btn-reject{padding:10px 26px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
 .sa-btn-reject:hover{background:#dc2626;}
@@ -67,6 +71,13 @@
 .sa-btn-approve:hover{background:#0a7d00;}
 .sa-btn-send{display:flex;align-items:center;gap:6px;padding:10px 26px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
 .sa-btn-send:hover{background:#0a7d00;}
+.sa-btn-send:disabled{background:#9ca3af;cursor:wait;}
+.sa-btn-edit-fields{display:none;align-items:center;gap:6px;padding:10px 18px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s;}
+.sa-btn-edit-fields:hover{background:#f9fafb;border-color:#9ca3af;}
+.assignment-form-locked .sa-inp:disabled,.assignment-form-locked .sa-textarea:disabled{background:#f3f4f6;color:#6b7280;border-color:#e5e7eb;cursor:not-allowed;opacity:1;}
+.assignment-form-locked .sa-btn-edit-fields{display:flex;}
+.assignment-form-locked .sa-btn-send{display:none;}
+.assignment-form-locked span[id^="rq-tlbl"]{pointer-events:none;color:#9ca3af!important;cursor:not-allowed!important;}
 /* badges */
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:capitalize;}
 .badge.pending{background:#fef9c3;color:#854d0e;}
@@ -120,6 +131,7 @@
 .reject-modal-confirm{background:#dc2626;color:#fff;}
 .reject-modal-confirm:hover{background:#b91c1c;}
 @keyframes rejectModalIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .no-match-modal-icon{background:#fff7ed;border-color:#fed7aa;}
 .no-match-modal-confirm{background:#b91c1c;color:#fff;}
 .no-match-modal-confirm:hover{background:#991b1b;}
@@ -472,8 +484,9 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
                 Student selected: <strong>{{ req.mentorProfile.displayName }}</strong> ({{ req.mentorProfile.specialization }})
             </div>
-            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" data-no-loading="true">
+            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" data-no-loading="true" class="js-mentor-assign-form" data-lock-on-load="{{ req.status in ['Assigned', 'Completed'] ? 'true' : 'false' }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+                <input type="hidden" name="mentor_id" value="{{ req.mentorProfile.id }}">
                 <input type="hidden" name="mentor_name" value="{{ req.mentorProfile.displayName }}">
                 <input type="hidden" name="expertise" value="{{ req.mentorProfile.specialization }}">
                 <input type="hidden" name="available_dates" value="{{ req.availableDates }}">
@@ -497,23 +510,29 @@
                 <div class="sa-assign-field" style="margin-bottom:0;"><label>Notes / Instructions</label>
                     <textarea name="instructions" class="sa-textarea" placeholder="Add notes...">{{ req.adminInstructions ?? '' }}</textarea>
                 </div>
-                <div class="sa-arow"><button type="submit" class="sa-btn-send">
+                <div class="sa-arow">
+                    <button type="button" class="sa-btn-edit-fields" onclick="unlockAssignmentForm(this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit Fields
+                    </button>
+                    <button type="submit" class="sa-btn-send">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Update
                 </button></div>
             </form>
             {% else %}
-            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" data-no-loading="true">
+            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" data-no-loading="true" class="js-mentor-assign-form" data-lock-on-load="{{ req.status in ['Assigned', 'Completed'] ? 'true' : 'false' }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+                {% set saMentorNames = mentors|map(m => m.displayName) %}
+                {% set saIsExternalAssigned = req.assignedMentorName and req.assignedMentorName not in saMentorNames %}
                 <div class="sa-grid2">
                     <div class="sa-assign-field">
                         <label style="display:flex;align-items:center;justify-content:space-between;">Mentor
-                            <span style="font-size:10px;font-weight:600;color:#0D9B00;cursor:pointer;" onclick="rqToggle({{ req.id }})" id="rq-tlbl-{{ req.id }}">Type manually</span>
+                            <span style="font-size:10px;font-weight:600;color:#0D9B00;cursor:pointer;" onclick="rqToggle({{ req.id }})" id="rq-tlbl-{{ req.id }}">{{ saIsExternalAssigned ? 'Pick from system' : 'Type manually' }}</span>
                         </label>
-                        <select name="mentor_id" class="sa-inp" id="rq-sel-{{ req.id }}" onchange="rqFill({{ req.id }})">
+                        <select name="mentor_id" class="sa-inp" id="rq-sel-{{ req.id }}" onchange="rqFill({{ req.id }})" style="{{ saIsExternalAssigned ? 'display:none;' : '' }}">
                             <option value="">-- Pick from system --</option>
                             {% for mentor in mentors %}<option value="{{ mentor.id }}" data-name="{{ mentor.displayName }}" data-spec="{{ mentor.specialization }}" {{ req.assignedMentorName==mentor.displayName?'selected':'' }}>{{ mentor.displayName }} ({{ mentor.specialization }})</option>{% endfor %}
                         </select>
-                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter mentor name..." value="{{ req.assignedMentorName ?? '' }}" style="display:none;margin-top:6px;">
+                        <input type="text" name="mentor_name" class="sa-inp" id="rq-txt-{{ req.id }}" placeholder="Enter external panel mentor name..." value="{{ req.assignedMentorName ?? '' }}" style="{{ saIsExternalAssigned ? '' : 'display:none;' }}margin-top:6px;">
                     </div>
                     <div class="sa-assign-field"><label>Specialization</label>
                         {% set saStdNames = allSpecializations|map(s => s.name) %}
@@ -545,10 +564,10 @@
                 </div>
                 <div class="sa-grid2">
                     <div class="sa-assign-field"><label>Start Time</label>
-                        <input type="time" name="available_time_start" class="sa-inp" value="">
+                        <input type="time" name="available_time_start" class="sa-inp" value="{{ req.availableTime ? req.availableTime|split(' – ')|first|trim : '' }}">
                     </div>
                     <div class="sa-assign-field"><label>End Time</label>
-                        <input type="time" name="available_time_end" class="sa-inp" value="">
+                        <input type="time" name="available_time_end" class="sa-inp" value="{{ req.availableTime and '–' in req.availableTime ? req.availableTime|split('–')|last|trim : '' }}">
                     </div>
                 </div>
                 <div class="sa-grid2">
@@ -560,8 +579,14 @@
                 </div>
                 <div class="sa-assign-field" style="margin-bottom:0;"><label>Notes</label>
                     <textarea name="instructions" class="sa-textarea" placeholder="Write any notes...">{{ req.adminInstructions ?? '' }}</textarea>
+                    <div class="external-contact-help" id="external-contact-help-{{ req.id }}">Required: Include the external mentor's email address in the Notes field, along with any additional instructions or contact details.</div>
+                    <div class="external-email-error" id="external-email-error-{{ req.id }}">An email address is required for External Panel Mentors.</div>
                 </div>
-                <div class="sa-arow"><button type="submit" class="sa-btn-send">
+                <div class="sa-arow">
+                    <button type="button" class="sa-btn-edit-fields" onclick="unlockAssignmentForm(this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit Fields
+                    </button>
+                    <button type="submit" class="sa-btn-send">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send
                 </button></div>
             </form>
@@ -1054,6 +1079,7 @@ function rqToggle(id){
     var manual=txt.style.display!=='none';
     if(manual){txt.style.display='none';txt.removeAttribute('required');sel.style.display='';lbl.textContent='Type manually';}
     else{sel.style.display='none';sel.value='';txt.style.display='';lbl.textContent='Pick from system';}
+    updateExternalContactHelp(id);
 }
 function saToggleMethod(sel, linkId, locId){
     var link=document.getElementById(linkId);
@@ -1089,7 +1115,75 @@ function rqFill(id){
     } else if(specOther){
         specOther.style.display='none';specOther.value='';
     }
+    updateExternalContactHelp(id);
 }
+function isExternalPanelMentor(id){
+    var sel=document.getElementById('rq-sel-'+id);
+    var txt=document.getElementById('rq-txt-'+id);
+    return !!(txt&&txt.style.display!=='none'&&(!sel||!sel.value));
+}
+function updateExternalContactHelp(id){
+    var help=document.getElementById('external-contact-help-'+id);
+    var error=document.getElementById('external-email-error-'+id);
+    var show=isExternalPanelMentor(id);
+    if(help) help.classList.toggle('is-visible',show);
+    if(error&&!show) error.classList.remove('is-visible');
+}
+function setSendButtonLoading(btn, loading){
+    if(!btn) return;
+    if(!btn.dataset.originalHtml) btn.dataset.originalHtml=btn.innerHTML;
+    btn.disabled=loading;
+    btn.innerHTML=loading
+        ? '<span style="width:13px;height:13px;border:2px solid rgba(255,255,255,.55);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;"></span> Saving...'
+        : btn.dataset.originalHtml;
+}
+function lockAssignmentForm(form, locked){
+    if(!form) return;
+    form.classList.toggle('assignment-form-locked',locked);
+    form.dataset.lockOnLoad=locked?'true':'false';
+    form.querySelectorAll('input:not([type="hidden"]),select,textarea').forEach(function(el){
+        if(el.classList.contains('sa-btn-edit-fields')) return;
+        el.disabled=locked;
+    });
+    var send=form.querySelector('.sa-btn-send');
+    if(send) setSendButtonLoading(send,false);
+}
+function unlockAssignmentForm(btn){
+    var form=btn.closest('form');
+    lockAssignmentForm(form,false);
+    var first=form?form.querySelector('select:not([disabled]),input:not([type="hidden"]):not([disabled]),textarea:not([disabled])'):null;
+    if(first) first.focus();
+}
+function initAssignmentLocks(){
+    document.querySelectorAll('.js-mentor-assign-form').forEach(function(form){
+        if(form.dataset.lockOnLoad==='true') lockAssignmentForm(form,true);
+    });
+    document.querySelectorAll('input[id^="rq-txt-"]').forEach(function(input){
+        updateExternalContactHelp(input.id.replace('rq-txt-',''));
+    });
+}
+function validateExternalMentorEmail(form){
+    var txt=form.querySelector('input[id^="rq-txt-"]');
+    var sel=form.querySelector('select[name="mentor_id"]');
+    var notes=form.querySelector('textarea[name="instructions"],textarea[name="admin_instructions"]');
+    var external=!!(txt&&txt.style.display!=='none'&&(!sel||!sel.value));
+    if(!external) return true;
+    var hasEmail=notes&&/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i.test(notes.value);
+    var id=txt.id ? txt.id.replace('rq-txt-','') : '';
+    var error=id ? document.getElementById('external-email-error-'+id) : null;
+    if(error) error.classList.toggle('is-visible',!hasEmail);
+    if(!hasEmail&&notes) notes.focus();
+    return hasEmail;
+}
+document.addEventListener('submit',function(e){
+    if(e.target&&e.target.classList&&e.target.classList.contains('js-mentor-assign-form')&&!validateExternalMentorEmail(e.target)){
+        e.preventDefault();
+        e.stopPropagation();
+    }
+},true);
+document.addEventListener('input',function(e){
+    if(e.target&&e.target.id&&e.target.id.indexOf('rq-txt-')===0) updateExternalContactHelp(e.target.id.replace('rq-txt-',''));
+});
 /* Merge expertise_other into expertise on submit - handled by bindAjaxForms */
 /* â”€â”€ collapsible group headers â”€â”€ */
 var SA_STORE = 'sa_groups_superadmin';
@@ -1169,7 +1263,8 @@ function saFilterList(){
 }
 /* Handle expertise_other field merging on form submit */
 document.querySelectorAll('form[data-no-loading="true"]').forEach(function(form){
-    form.addEventListener('submit',function(){
+    form.addEventListener('submit',function(e){
+        if(e.defaultPrevented) return;
         var specSel=form.querySelector('select.sa-expertise-select');
         var specOther=form.querySelector('input[name="expertise_other"]');
         if(specSel&&specOther&&specSel.value==='Other'&&specOther.value.trim()){
@@ -1180,10 +1275,14 @@ document.querySelectorAll('form[data-no-loading="true"]').forEach(function(form)
             specSel.appendChild(opt);
             specSel.value=opt.value;
         }
+        if(form.classList.contains('js-mentor-assign-form')){
+            setSendButtonLoading(form.querySelector('.sa-btn-send'),true);
+        }
     });
 });
 
 document.addEventListener('DOMContentLoaded',function(){
+    initAssignmentLocks();
     document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeFilePreviewModal(); closeRejectModal(); closeNoMentorMatchModal(); }});
 });
 

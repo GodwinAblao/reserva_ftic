@@ -212,6 +212,23 @@ class MentorCustomRequest
 
     public function getAdminInstructions(): ?string { return $this->adminInstructions; }
     public function setAdminInstructions(?string $adminInstructions): self { $this->adminInstructions = $adminInstructions; $this->touch(); return $this; }
+    public function getExternalMentorEmail(): ?string
+    {
+        if (!$this->adminInstructions || !in_array($this->status, ['Assigned', 'Completed', 'accepted'], true)) {
+            return null;
+        }
+
+        if (preg_match('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $this->adminInstructions, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[0];
+    }
+
+    public function hasExternalMentorContactInformation(): bool
+    {
+        return $this->getExternalMentorEmail() !== null;
+    }
 
     public function getRespondedAt(): ?\DateTimeInterface { return $this->respondedAt; }
     public function markResponded(): self { $this->respondedAt = new \DateTime(); $this->touch(); return $this; }

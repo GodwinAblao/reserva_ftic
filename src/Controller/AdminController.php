@@ -440,8 +440,15 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_mentorship_coordination');
         }
 
-        $this->applyMentorAssignment($req, $request, $em);
         $submittedStatus = $this->resolveAssignStatus($request);
+        if ($this->externalPanelNeedsEmail($request, $submittedStatus)) {
+            $message = 'An email address is required for External Panel Mentors.';
+            if ($isAjax) return $this->json(['success' => false, 'message' => $message]);
+            $this->addFlash('error', $message);
+            return $this->redirectToRoute('admin_mentorship_coordination');
+        }
+
+        $this->applyMentorAssignment($req, $request, $em);
         $prevStatus      = $req->getStatus();
         $req->setStatus($submittedStatus);
 
@@ -479,7 +486,7 @@ class AdminController extends AbstractController
     private function applyMentorAssignment(MentorCustomRequest $req, Request $request, EntityManagerInterface $em): void
     {
         $mentorId         = (int) $request->request->get('mentor_id', 0);
-        $mentorNameManual = trim((string) $request->request->get('mentor_name_manual', ''));
+        $mentorNameManual = trim((string) ($request->request->get('mentor_name_manual') ?: $request->request->get('mentor_name', '')));
         $specialization   = trim((string) $request->request->get('specialization', ''));
 
         $this->resolveMentorIdentity($req, $em, $mentorId, $mentorNameManual, $specialization);
@@ -495,19 +502,41 @@ class AdminController extends AbstractController
             : trim((string) $request->request->get('available_time', ''));
         $meetingMethod = trim((string) $request->request->get('meeting_method_override', ''))
             ?: trim((string) $request->request->get('meeting_method', ''));
+        $instructions = $request->request->get('admin_instructions') ?: $request->request->get('instructions');
 
         $req->setMeetingMethod($meetingMethod ?: null)
             ->setAvailableDates($request->request->get('available_dates') ?: null)
             ->setAvailableTime($availTime ?: null)
-            ->setAdminInstructions($request->request->get('admin_instructions') ?: null);
+            ->setAdminInstructions($instructions ?: null);
     }
 
     private function resolveAssignStatus(Request $request): string
     {
-        $s = trim((string) $request->request->get('status', 'approved'));
-        return in_array($s, ['pending', 'reviewing', 'assigned', 'completed', 'cancelled', 'approved'], true)
-            ? $s
-            : 'approved';
+        $s = strtolower(trim((string) $request->request->get('status', 'approved')));
+        return [
+            'pending' => 'Pending',
+            'reviewing' => 'Reviewing',
+            'assigned' => 'Assigned',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled',
+            'approved' => 'Approved',
+        ][$s] ?? 'Approved';
+    }
+
+    private function externalPanelNeedsEmail(Request $request, string $submittedStatus): bool
+    {
+        if (!in_array(strtolower($submittedStatus), ['assigned', 'completed'], true)) {
+            return false;
+        }
+
+        $mentorId = (int) $request->request->get('mentor_id', 0);
+        $mentorNameManual = trim((string) ($request->request->get('mentor_name_manual') ?: $request->request->get('mentor_name', '')));
+        if ($mentorId > 0 || $mentorNameManual === '') {
+            return false;
+        }
+
+        $instructions = trim((string) ($request->request->get('admin_instructions') ?: $request->request->get('instructions', '')));
+        return preg_match('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $instructions) !== 1;
     }
 
     private function persistAssignAuditLog(

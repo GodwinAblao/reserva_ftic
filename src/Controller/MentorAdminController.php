@@ -105,6 +105,7 @@ class MentorAdminController extends AbstractController
                 'assignedMentorExpertise' => $r->getAssignedMentorExpertise() ?? '',
                 'meetingMethod'           => $r->getMeetingMethod() ?? '',
                 'adminInstructions'       => $r->getAdminInstructions() ?? '',
+                'externalMentorEmail'     => $r->getExternalMentorEmail() ?? '',
                 'message'                 => $r->getMessage() ?? '',
                 'status'                  => $r->getStatus(),
                 'createdAt'               => $r->getCreatedAt()->format('Y-m-d H:i:s'),
