@@ -14,6 +14,8 @@ class ReservationAuditLogger
 {
     public const MANAGEABLE_STATUSES = ['Pending', 'Approved', 'Rejected', 'Cancelled'];
 
+    private ?bool $statusLogTableExists = null;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
@@ -39,6 +41,10 @@ class ReservationAuditLogger
 
         $actor ??= $this->security->getUser();
         if (!$actor instanceof User) {
+            return;
+        }
+
+        if (!$this->statusLogTableExists()) {
             return;
         }
 
@@ -70,5 +76,21 @@ class ReservationAuditLogger
     public static function isManageableStatus(string $status): bool
     {
         return in_array($status, self::MANAGEABLE_STATUSES, true);
+    }
+
+    private function statusLogTableExists(): bool
+    {
+        if ($this->statusLogTableExists !== null) {
+            return $this->statusLogTableExists;
+        }
+
+        try {
+            return $this->statusLogTableExists = $this->em
+                ->getConnection()
+                ->createSchemaManager()
+                ->tablesExist(['reservation_status_log']);
+        } catch (\Throwable) {
+            return $this->statusLogTableExists = false;
+        }
     }
 }
