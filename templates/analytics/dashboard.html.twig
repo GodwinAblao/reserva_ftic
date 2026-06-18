@@ -49,7 +49,7 @@
 <div class="an-pro-header">
     <div>
         <h2>Managerial Function Analytics</h2>
-        <p>ARIMA demand forecasting, facility utilization, and decision-support visualizations for effective facility scheduling, resource allocation, and data-driven decision-making.</p>
+        <p>Demand outlook, facility utilization, and decision-support visualizations for effective facility scheduling, resource allocation, and data-driven decision-making.</p>
     </div>
     <div class="an-pro-toolbar">
         <span id="data-source-badge" class="an-pro-badge live"><span class="dot"></span> Live</span>
@@ -63,7 +63,7 @@
 </div>
 
 <div class="sa-analytics-nav">
-    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Forecasting</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Demand Outlook</button>
     <button class="sa-analytics-btn active analytics-btn" type="button" data-fn="planning">Planning</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="organizing">Organizing</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Event Execution</button>
@@ -169,7 +169,7 @@ async function loadAnalytics(fn) {
     const box = document.getElementById('analytics-content');
     box.innerHTML = '<div class="sa-loading">Loading ' + fn + '\u2026</div>';
     destroyCharts();
-    // Forecasting tab uses the planning endpoint
+    // Demand Outlook tab uses the planning endpoint
     const apiEndpoint = fn === 'forecasting' ? 'planning' : fn;
     try {
         const res = await fetch(API + '/' + apiEndpoint + queryParams());
@@ -1196,7 +1196,7 @@ function generatePlanningInsights(d) {
         }
     }
 
-    // Recommendations — Forecasting (data-driven)
+    // Recommendations — Demand Outlook (data-driven)
     const recoFcEl = document.getElementById('reco-forecasting');
     if (recoFcEl) {
         const acc = d.forecast_accuracy || {};
@@ -1217,7 +1217,7 @@ function generatePlanningInsights(d) {
         if (seasonal.detected && seasonal.peak_months?.length) items.push('<strong>Seasonal Peak Detected:</strong> Historically high demand in <strong>' + seasonal.peak_months.slice(-2).join(', ') + '</strong>. Pre-allocate resources and increase facility availability during these months.');
         items.push('Review forecast vs actual every 4 weeks to detect model drift early and recalibrate if MAPE rises above 20%.');
 
-        recoFcEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Forecasting</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
+        recoFcEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Demand Outlook</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
     }
 
     // Recommendations — Planning (data-driven)
@@ -1586,12 +1586,12 @@ function palette() {
 
 function title(fn) {
     if (fn === 'leading') return 'Event Execution';
-    if (fn === 'forecasting') return 'Forecasting';
+    if (fn === 'forecasting') return 'Demand Outlook';
     return fn.charAt(0).toUpperCase() + fn.slice(1);
 }
 function summary(fn) {
     const m = {
-        forecasting: 'ARIMA time-series forecasts, model accuracy evaluation, demand intelligence, and rolling MAPE tracking.',
+        forecasting: 'A forward-looking view of reservation demand, demand stability, data quality, and expected usage patterns.',
         planning: 'Demand patterns by day of week, event type distribution, peak hours, and per-facility forecasts.',
         organizing: 'Facility allocation, peak times, and utilization.',
         leading: 'Approval and purpose-based success metrics.',
