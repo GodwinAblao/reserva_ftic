@@ -315,9 +315,14 @@ class MentorRequestController extends AbstractController
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
-        $status = (string) $request->request->get('status', 'Pending');
+        $action = (string) $request->request->get('action', '');
+        $status = $action === 'no_mentor_match' ? 'Cancelled' : (string) $request->request->get('status', 'Pending');
         if (!in_array($status, ['Pending', 'Reviewing', 'Assigned', 'Completed', 'Cancelled'], true)) {
             throw $this->createNotFoundException();
+        }
+
+        if ($action === 'no_mentor_match') {
+            return $this->handleNoMentorMatch($mentorRequest, $request, $em, $mailer);
         }
 
         $mentorId        = (int) $request->request->get('mentor_id', 0);
@@ -411,6 +416,80 @@ class MentorRequestController extends AbstractController
 
         $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
         $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') ? 'mentoring_superadmin_requests' : 'admin_role_mentorship_coordination';
+        return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
+    }
+
+    private function handleNoMentorMatch(MentorCustomRequest $mentorRequest, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
+    {
+        $prevStatus = $mentorRequest->getStatus();
+        $student = $mentorRequest->getStudent();
+        $reason = 'No Mentor Match';
+        $message = 'Unfortunately, we were unable to find an available mentor that matches your request at this time. Your mentoring request has been canceled. You may submit another request in the future when mentors become available.';
+        $requesterLabel = $mentorRequest->getFullName() ?: ($student ? trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? '')) : 'Unknown');
+        $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
+        $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') ? 'mentoring_superadmin_requests' : 'admin_role_mentorship_coordination';
+
+        if (in_array($prevStatus, ['Cancelled', 'Completed'], true)) {
+            $errorMessage = $prevStatus === 'Cancelled'
+                ? 'This mentor request has already been cancelled.'
+                : 'Completed mentor requests cannot be marked as No Mentor Match.';
+            if ($isAjax) {
+                return $this->json(['success' => false, 'message' => $errorMessage], Response::HTTP_BAD_REQUEST);
+            }
+            $this->addFlash('mentor_error', $errorMessage);
+            return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
+        }
+
+        $mentorRequest
+            ->setStatus('Cancelled')
+            ->setCancellationReason($reason)
+            ->setAdminInstructions($message)
+            ->markResponded();
+
+        try {
+            $this->auditLog($em, [
+                'type' => 'custom_request',
+                'id' => $mentorRequest->getId(),
+                'label' => $requesterLabel,
+                'action' => 'no_mentor_match',
+                'prev' => $prevStatus,
+                'next' => 'Cancelled',
+                'note' => $reason,
+            ]);
+        } catch (\Exception $e) {}
+
+        $em->flush();
+
+        if ($student) {
+            try {
+                $this->notificationService->notifyMentorAssistanceStatus($student, $mentorRequest->getId(), 'Cancelled', $message);
+            } catch (\Exception $e) {}
+
+            try {
+                $this->sendNoMentorMatchEmail($mailer, $student, $mentorRequest, $message, $reason);
+            } catch (\Exception $e) {}
+        }
+
+        try {
+            $actor         = $this->getUser();
+            $actorName     = $actor instanceof User ? trim(($actor->getFirstName() ?? '') . ' ' . ($actor->getLastName() ?? '')) : 'Admin';
+            $actorName     = $actorName !== '' ? $actorName : ($actor instanceof User ? $actor->getEmail() : 'Admin');
+            $requesterName = $requesterLabel !== '' ? $requesterLabel : 'Student';
+            foreach ($em->getRepository(User::class)->findAdmins() as $u) {
+                if ($u === $actor) {
+                    continue;
+                }
+                try {
+                    $this->notificationService->notifyAdminMentorRequestUpdated($u, $mentorRequest->getId(), $actorName, 'Cancelled', $requesterName);
+                } catch (\Exception $e) {}
+            }
+        } catch (\Exception $e) {}
+
+        if ($isAjax) {
+            return $this->json(['success' => true, 'message' => 'Mentor request marked as No Mentor Match. The requester has been notified.']);
+        }
+
+        $this->addFlash('mentor_success', 'Mentor request marked as No Mentor Match. The requester has been notified.');
         return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
     }
 
@@ -594,5 +673,36 @@ class MentorRequestController extends AbstractController
         try {
             $mailer->send((new Email())->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))->to($student->getEmail())->subject('Mentor Details for Your Request')->html($this->renderView('emails/mentor_assistance_response.html.twig', ['request' => $mentorRequest, 'student' => $student, 'requestUrl' => $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#my-custom-requests'])));
         } catch (\Throwable $e) {}
+    }
+
+    private function sendNoMentorMatchEmail(MailerInterface $mailer, User $student, MentorCustomRequest $mentorRequest, string $message, string $reason): void
+    {
+        try {
+            $mailer->send((new Email())
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+                ->to($student->getEmail())
+                ->subject('Mentoring Request Canceled - No Mentor Match')
+                ->html($this->renderView('emails/mentor_no_match.html.twig', [
+                    'request' => $mentorRequest,
+                    'student' => $student,
+                    'message' => $message,
+                    'reason' => $reason,
+                    'requestTitle' => $this->mentorRequestTitle($mentorRequest),
+                    'requestUrl' => $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#cancelled',
+                ])));
+        } catch (\Throwable $e) {}
+    }
+
+    private function mentorRequestTitle(MentorCustomRequest $mentorRequest): string
+    {
+        if ($mentorRequest->getPreferredExpertise()) {
+            return $mentorRequest->getPreferredExpertise();
+        }
+
+        if ($mentorRequest->getMentorProfile()) {
+            return 'Request for ' . $mentorRequest->getMentorProfile()->getDisplayName();
+        }
+
+        return 'Mentoring Request #' . $mentorRequest->getId();
     }
 }

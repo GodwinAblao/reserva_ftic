@@ -61,6 +61,8 @@
 .sa-arow{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid #f3f4f6;}
 .sa-btn-reject{padding:10px 26px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
 .sa-btn-reject:hover{background:#dc2626;}
+.sa-btn-no-match{padding:10px 18px;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,color .15s;}
+.sa-btn-no-match:hover{background:#fef2f2;color:#991b1b;}
 .sa-btn-approve{padding:10px 26px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
 .sa-btn-approve:hover{background:#0a7d00;}
 .sa-btn-send{display:flex;align-items:center;gap:6px;padding:10px 26px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
@@ -118,6 +120,9 @@
 .reject-modal-confirm{background:#dc2626;color:#fff;}
 .reject-modal-confirm:hover{background:#b91c1c;}
 @keyframes rejectModalIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.no-match-modal-icon{background:#fff7ed;border-color:#fed7aa;}
+.no-match-modal-confirm{background:#b91c1c;color:#fff;}
+.no-match-modal-confirm:hover{background:#991b1b;}
 </style>
 {% endblock %}
 
@@ -561,6 +566,17 @@
                 </button></div>
             </form>
             {% endif %}
+            {% if req.status not in ['Cancelled', 'Completed'] %}
+            <form method="post" action="{{ path('mentoring_admin_request_respond', {'id': req.id}) }}" id="no-mentor-match-form-{{ req.id }}" data-no-loading="true" style="display:none;">
+                <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_respond_'~req.id) }}">
+                <input type="hidden" name="action" value="no_mentor_match">
+                <input type="hidden" name="status" value="Cancelled">
+                <input type="hidden" name="cancellation_reason" value="No Mentor Match">
+            </form>
+            <div class="sa-arow" style="margin-top:10px;padding-top:12px;">
+                <button type="button" class="sa-btn-no-match" onclick="openNoMentorMatchModal({{ req.id }})">No Mentor Match</button>
+            </div>
+            {% endif %}
             {% endif %}
         </div>
         {% endfor %}
@@ -722,6 +738,7 @@
 .audit-action-update{background:#fef9c3;color:#854d0e;}
 .audit-action-create{background:#dbeafe;color:#1e40af;}
 .audit-action-assign{background:#e0f2fe;color:#075985;}
+.audit-action-no-match{background:#fee2e2;color:#991b1b;}
 .audit-action-default{background:#f3f4f6;color:#374151;}
 .sa-audit-status-flow{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .sa-audit-prev-status{font-size:10.5px;color:#6b7280;background:#f3f4f6;padding:2px 7px;border-radius:5px;}
@@ -757,7 +774,8 @@
             'reject'       :{label:'Rejected',       cls:'audit-action-reject'},
             'update_status':{label:'Status Updated', cls:'audit-action-update'},
             'create_mentor':{label:'Mentor Created', cls:'audit-action-create'},
-            'assign'       :{label:'Assigned',       cls:'audit-action-assign'}
+            'assign'       :{label:'Assigned',       cls:'audit-action-assign'},
+            'no_mentor_match':{label:'No Mentor Match', cls:'audit-action-no-match'}
         };
         var meta=actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
         var typeLabel=log.subjectType==='application'?'Application':'Mentor Request';
@@ -950,6 +968,8 @@ function closeCreateMentor(){document.getElementById('createMentorModal').classL
     closeCreateMentor();
     var r=document.getElementById('rejectModal');
     if(r&&r.parentNode!==document.body) document.body.appendChild(r);
+    var nm=document.getElementById('noMentorMatchModal');
+    if(nm&&nm.parentNode!==document.body) document.body.appendChild(nm);
 })();
 function cmFillUser(sel){
     var o=sel.options[sel.selectedIndex];
@@ -1124,6 +1144,22 @@ function submitRejectModal(){
     closeRejectModal();
     document.getElementById('decline-form-'+id).submit();
 }
+function openNoMentorMatchModal(id){
+    document.getElementById('noMentorMatchRequestId').value = id;
+    document.getElementById('noMentorMatchModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+function closeNoMentorMatchModal(){
+    document.getElementById('noMentorMatchModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+function submitNoMentorMatchModal(){
+    var id = document.getElementById('noMentorMatchRequestId').value;
+    var form = document.getElementById('no-mentor-match-form-' + id);
+    if (!form) return;
+    closeNoMentorMatchModal();
+    form.submit();
+}
 /* â”€â”€ search filter â”€â”€ */
 function saFilterList(){
     var q=document.getElementById('saSearch').value.toLowerCase();
@@ -1148,7 +1184,7 @@ document.querySelectorAll('form[data-no-loading="true"]').forEach(function(form)
 });
 
 document.addEventListener('DOMContentLoaded',function(){
-    document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeFilePreviewModal(); closeRejectModal(); }});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeFilePreviewModal(); closeRejectModal(); closeNoMentorMatchModal(); }});
 });
 
 
@@ -1191,6 +1227,23 @@ function closeFilePreviewModal() {
     </div>
 </div>
 <script>(function(){var r=document.getElementById('rejectModal');if(r&&r.parentNode!==document.body)document.body.appendChild(r);})();</script>
+
+{# No Mentor Match Modal #}
+<div id="noMentorMatchModal" class="reject-modal-overlay">
+    <div class="reject-modal-dialog">
+        <input type="hidden" id="noMentorMatchRequestId">
+        <div class="reject-modal-icon no-match-modal-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><path d="M8 15h8"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg>
+        </div>
+        <h3>No Mentor Match?</h3>
+        <p>Are you sure you want to mark this request as No Mentor Match? This will cancel the mentoring request and notify the requester that there are currently no available mentors matching their request.</p>
+        <div class="reject-modal-actions">
+            <button type="button" class="reject-modal-cancel" onclick="closeNoMentorMatchModal()">Cancel</button>
+            <button type="button" class="no-match-modal-confirm" onclick="submitNoMentorMatchModal()">Yes, Mark No Mentor Match</button>
+        </div>
+    </div>
+</div>
+<script>(function(){var nm=document.getElementById('noMentorMatchModal');if(nm&&nm.parentNode!==document.body)document.body.appendChild(nm);})();</script>
 
 {# â”€â”€ File Preview Modal HTML â”€â”€ #}
 <div id="filePreviewModal" class="sa-modal-overlay" style="z-index: 2000;">
