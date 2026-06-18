@@ -44,7 +44,7 @@
 .ldg-badge.Reservation      { background:#d1fae5; color:#065f46; }
 .ldg-badge.Mentoring-Audit  { background:#ede9fe; color:#4c1d95; }
 .ldg-badge.Mentor-Application{ background:#dbeafe; color:#1e40af; }
-.ldg-badge.Mentoring-Session { background:#fce7f3; color:#9d174d; }
+.ldg-badge.Mentoring-Request { background:#fce7f3; color:#9d174d; }
 .ldg-badge.User             { background:#e0f2fe; color:#0369a1; }
 .ldg-status { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:8px; }
 .ldg-status.Approved   { background:#d1fae5; color:#065f46; }
@@ -103,8 +103,8 @@
         <div class="lbl">Mentoring Events This Week</div>
     </div>
     <div class="ldg-kpi week">
-        <div class="val">{{ kpi.week_sessions ?? 0 }}</div>
-        <div class="lbl">Mentoring Sessions This Week</div>
+        <div class="val">{{ kpi.week_requests ?? 0 }}</div>
+        <div class="lbl">Mentoring Requests This Week</div>
     </div>
     <div class="ldg-kpi">
         <div class="val">{{ kpi.total_reservations ?? 0 }}</div>
@@ -122,7 +122,7 @@
     <button class="ldg-tab" data-module="reservations">📋 Reservations</button>
     <button class="ldg-tab" data-module="mentoring">🎓 Mentoring Audit</button>
     <button class="ldg-tab" data-module="applications">📝 Mentor Applications</button>
-    <button class="ldg-tab" data-module="sessions">👥 Mentoring Sessions</button>
+    <button class="ldg-tab" data-module="sessions">👥 Mentoring Requests</button>
     <button class="ldg-tab" data-module="users">👤 User Registrations</button>
 </div>
 

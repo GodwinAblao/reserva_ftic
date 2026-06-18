@@ -1059,7 +1059,7 @@ class AdminController extends AbstractController
                 (SELECT COUNT(*) FROM \"user\") AS total_users,
                 (SELECT COUNT(*) FROM reservation WHERE status != 'Suggested' AND created_at >= NOW() - INTERVAL '7 days') AS week_reservations,
                 (SELECT COUNT(*) FROM mentoring_audit_log WHERE logged_at >= NOW() - INTERVAL '7 days') AS week_mentoring,
-                (SELECT COUNT(*) FROM mentoring_appointment WHERE created_at >= NOW() - INTERVAL '7 days') AS week_sessions"
+                (SELECT COUNT(*) FROM mentor_custom_request WHERE created_at >= NOW() - INTERVAL '7 days') AS week_requests"
         );
         return $this->render('analytics/transaction_ledger.html.twig', ['kpi' => $kpi]);
     }
@@ -1093,7 +1093,7 @@ class AdminController extends AbstractController
             'reservations' => 'Reservation_Transactions',
             'mentoring'    => 'Mentoring_Audit',
             'applications' => 'Mentor_Applications',
-            'sessions'     => 'Mentoring_Sessions',
+            'sessions'     => 'Mentoring_Requests',
             'users'        => 'User_Registrations',
             default        => 'All_Transactions',
         };
@@ -1179,9 +1179,38 @@ class AdminController extends AbstractController
 
         if ($module === 'all' || $module === 'sessions') {
             $sql = "SELECT
+                        mcr.created_at AS ts,
+                        'Mentoring Request' AS module,
+                        'Request ' || mcr.status AS action,
+                        COALESCE(NULLIF(mcr.full_name, ''), NULLIF(TRIM(COALESCE(su.first_name, '') || ' ' || COALESCE(su.last_name, '')), ''), su.email) AS actor,
+                        'Student' AS actor_role,
+                        CASE
+                            WHEN mp.id IS NOT NULL THEN mp.display_name || ' (' || mp.specialization || ')'
+                            WHEN NULLIF(mcr.assigned_mentor_name, '') IS NOT NULL THEN mcr.assigned_mentor_name || COALESCE(' (' || NULLIF(mcr.assigned_mentor_expertise, '') || ')', '')
+                            ELSE COALESCE(NULLIF(mcr.preferred_expertise, ''), 'Mentor assistance request')
+                        END AS subject,
+                        TRIM(BOTH ' ' FROM CONCAT_WS(' | ',
+                            NULLIF(mcr.message, ''),
+                            NULLIF(mcr.preferred_schedule, ''),
+                            NULLIF(mcr.available_dates, ''),
+                            NULLIF(mcr.scheduled_date::text, ''),
+                            NULLIF(mcr.scheduled_time, '')
+                        )) AS detail,
+                        '' AS status_before,
+                        mcr.status AS status_after
+                    FROM mentor_custom_request mcr
+                    INNER JOIN \"user\" su ON su.id = mcr.student_id
+                    LEFT JOIN mentor_profile mp ON mp.id = mcr.mentor_profile_id
+                    WHERE 1=1";
+            if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR su.email $like :q OR mcr.full_name $like :q OR mp.display_name $like :q OR mcr.preferred_expertise $like :q OR mcr.assigned_mentor_name $like :q OR mcr.message $like :q OR mcr.status $like :q)";
+            if ($from)   $sql .= " AND mcr.created_at::date >= CAST(:from AS date)";
+            if ($to)     $sql .= " AND mcr.created_at::date <= CAST(:to AS date)";
+            $streams[] = $sql;
+
+            $sql = "SELECT
                         apt.created_at AS ts,
-                        'Mentoring Session' AS module,
-                        'Session ' || apt.status AS action,
+                        'Mentoring Request' AS module,
+                        'Request ' || apt.status AS action,
                         COALESCE(su.first_name, '') || ' ' || COALESCE(su.last_name, '') AS actor,
                         'Student' AS actor_role,
                         mp.display_name || ' (' || mp.specialization || ')' AS subject,
@@ -1192,7 +1221,7 @@ class AdminController extends AbstractController
                     INNER JOIN \"user\" su ON su.id = apt.student_id
                     INNER JOIN mentor_profile mp ON mp.id = apt.mentor_id
                     WHERE 1=1";
-            if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR mp.display_name $like :q OR apt.topic $like :q)";
+            if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR mp.display_name $like :q OR apt.topic $like :q OR apt.status $like :q)";
             if ($from)   $sql .= " AND apt.created_at::date >= CAST(:from AS date)";
             if ($to)     $sql .= " AND apt.created_at::date <= CAST(:to AS date)";
             $streams[] = $sql;
