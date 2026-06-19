@@ -141,9 +141,12 @@ class ClassScheduleNotificationService
         $previous = $additionalContext['previousSchedule'] ?? null;
         $current = $additionalContext['currentSchedule'] ?? null;
         $summary = $additionalContext['changeSummary'] ?? [];
+        $adminNotes = trim((string) ($additionalContext['adminNotes'] ?? ''));
 
         if (!is_array($previous) || !is_array($current)) {
-            return $baseMessage;
+            return $adminNotes !== ''
+                ? $baseMessage . "\n\nNotes/Reason\n" . $adminNotes
+                : $baseMessage;
         }
 
         $lines = [$baseMessage, '', 'Old Schedule'];
@@ -165,6 +168,12 @@ class ClassScheduleNotificationService
                 $new = (string) ($change['new'] ?? '');
                 $lines[] = sprintf('%s: %s -> %s', $label, $old !== '' ? $old : '—', $new !== '' ? $new : '—');
             }
+        }
+
+        if ($adminNotes !== '') {
+            $lines[] = '';
+            $lines[] = 'Notes/Reason';
+            $lines[] = $adminNotes;
         }
 
         return implode("\n", $lines);

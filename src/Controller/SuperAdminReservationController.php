@@ -189,14 +189,18 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $facilityChanged = $previousFacility?->getId() !== $reservation->getFacility()?->getId();
-        $updateMessage = $facilityChanged
-            ? sprintf(
-                'Facility changed from %s to %s. Admin note: %s',
+        $updateMessages = [];
+        if ($facilityChanged) {
+            $updateMessages[] = sprintf(
+                'Facility changed from %s to %s.',
                 $previousFacility?->getName() ?? 'N/A',
                 $reservation->getFacility()?->getName() ?? 'N/A',
-                $facilityUpdateNotes
-            )
-            : null;
+            );
+        }
+        if ($facilityUpdateNotes !== '') {
+            $updateMessages[] = 'Notes/Reason: ' . $facilityUpdateNotes;
+        }
+        $updateMessage = $updateMessages === [] ? null : implode("\n", $updateMessages);
 
         $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
@@ -581,6 +585,7 @@ class SuperAdminReservationController extends AbstractController
 
         $oldSnapshot = $this->buildClassScheduleSnapshot($schedule);
         $oldFacultyEmail = $schedule->getFacultyEmail();
+        $adminNotes = trim((string) $request->request->get('notes', ''));
         $facultyEmail    = $this->applyClassScheduleFields($schedule, $request, new ScheduleSlot($facility, $date, $start, $end), $facultyMatcher);
 
         $em->flush();
@@ -591,12 +596,13 @@ class SuperAdminReservationController extends AbstractController
         $scheduleChanged = $oldSnapshot !== $newSnapshot;
 
         // Notify faculty when the schedule details change or the faculty email changes
-        if ($scheduleChanged || ($facultyEmail !== '' && $facultyEmail !== $oldFacultyEmail)) {
+        if ($scheduleChanged || ($facultyEmail !== '' && $facultyEmail !== $oldFacultyEmail) || $adminNotes !== '') {
             $notificationResult = $notificationService->notifyFaculty($schedule, 'Your class schedule has been updated. Please review the old and new schedule details below.', [
                 'previousSchedule' => $oldSnapshot,
                 'currentSchedule' => $newSnapshot,
                 'changeSummary' => $this->buildScheduleChangeSummary($oldSnapshot, $newSnapshot),
                 'changeType' => 'modify',
+                'adminNotes' => $adminNotes,
             ]);
             $message = $notificationResult['success']
                 ? 'Class schedule updated and faculty notified.'

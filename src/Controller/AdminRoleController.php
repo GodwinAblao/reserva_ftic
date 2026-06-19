@@ -391,14 +391,18 @@ class AdminRoleController extends AbstractController
         $reservation->setUpdatedAt(new \DateTime());
         $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'update');
         $facilityChanged = $previousFacility?->getId() !== $reservation->getFacility()?->getId();
-        $updateMessage = $facilityChanged
-            ? sprintf(
-                'Facility changed from %s to %s. Admin note: %s',
+        $updateMessages = [];
+        if ($facilityChanged) {
+            $updateMessages[] = sprintf(
+                'Facility changed from %s to %s.',
                 $previousFacility?->getName() ?? 'N/A',
                 $reservation->getFacility()?->getName() ?? 'N/A',
-                $facilityUpdateNotes
-            )
-            : null;
+            );
+        }
+        if ($facilityUpdateNotes !== '') {
+            $updateMessages[] = 'Notes/Reason: ' . $facilityUpdateNotes;
+        }
+        $updateMessage = $updateMessages === [] ? null : implode("\n", $updateMessages);
         $em->flush();
 
         if ($previousStatus !== $newStatus) {

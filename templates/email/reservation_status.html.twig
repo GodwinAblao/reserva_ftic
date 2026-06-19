@@ -99,7 +99,7 @@
 
                         {% if extra_message is defined and extra_message %}
                         <p style="margin:0 0 24px;color:#374151;font-size:0.95rem;line-height:1.6;padding:14px 18px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;">
-                            {{ extra_message }}
+                            {{ extra_message|nl2br }}
                         </p>
                         {% endif %}
 

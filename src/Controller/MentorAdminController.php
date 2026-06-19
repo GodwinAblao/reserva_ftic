@@ -365,9 +365,10 @@ class MentorAdminController extends AbstractController
             }
 
             $displayName         = trim((string) $request->request->get('display_name'));
+            $programCourse       = trim((string) $request->request->get('program_course'));
             $specialization      = trim((string) $request->request->get('specialization'));
             $specializationOther = trim((string) $request->request->get('specialization_other'));
-            if ($specialization === 'Other' && $specializationOther !== '') {
+            if (in_array(strtolower($specialization), ['other', 'others'], true)) {
                 $specialization = $specializationOther;
             }
             $bio              = trim((string) $request->request->get('bio'));
@@ -376,8 +377,8 @@ class MentorAdminController extends AbstractController
             $availStart       = trim((string) $request->request->get('availability_start'));
             $availEnd         = trim((string) $request->request->get('availability_end'));
 
-            if ($displayName === '' || $specialization === '') {
-                $this->addFlash('mentor_error', 'Display name and specialization are required.');
+            if ($displayName === '' || $programCourse === '' || $specialization === '' || $education === '' || $bio === '' || $availStart === '' || $availEnd === '') {
+                $this->addFlash('mentor_error', 'Please complete all mentor profile fields before saving.');
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
@@ -391,7 +392,8 @@ class MentorAdminController extends AbstractController
                 return $this->redirectToRoute('mentoring_edit_mentor', ['id' => $mentor->getId()]);
             }
 
-            $mentor->setDisplayName($displayName)->setSpecialization($specialization)->setBio($bio ?: null)->setEducation($education ?: null)->setAvailabilityDays($availabilityDays)->setAvailabilityStart($availStart !== '' ? $availStart : null)->setAvailabilityEnd($availEnd !== '' ? $availEnd : null);
+            $mentor->getUser()?->setDegreeName($programCourse);
+            $mentor->setDisplayName($displayName)->setSpecialization($specialization)->setBio($bio)->setEducation($education)->setAvailabilityDays($availabilityDays)->setAvailabilityStart($availStart)->setAvailabilityEnd($availEnd);
             $em->flush();
 
             $this->addFlash('mentor_success', 'Mentor profile updated successfully.');

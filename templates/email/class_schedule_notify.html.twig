@@ -78,6 +78,13 @@
             </div>
             {% endif %}
 
+            {% if adminNotes is defined and adminNotes %}
+            <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 20px 24px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 10px 0; color: #92400e; font-size: 17px; font-weight: 600;">Notes/Reason</h3>
+                <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.6;">{{ adminNotes|nl2br }}</p>
+            </div>
+            {% endif %}
+
             {% if blockType is defined %}
             <!-- Block Details Card -->
             <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; border-radius: 8px; padding: 24px; margin-bottom: 24px;">

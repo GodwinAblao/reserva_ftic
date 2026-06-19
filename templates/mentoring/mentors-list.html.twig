@@ -257,11 +257,55 @@ function mlOpenEdit(url, id) {
             }
 
             /* Intercept submit → AJAX */
+            var specSelect = form.querySelector('#specialization');
+            var specOther = form.querySelector('#em-spec-other');
+            function mlSyncSpecOther() {
+                if (!specSelect || !specOther) return;
+                var isOther = ['other', 'others'].includes(String(specSelect.value || '').toLowerCase());
+                specOther.style.display = isOther ? 'block' : 'none';
+                specOther.required = isOther;
+                if (!isOther) specOther.value = '';
+            }
+            if (specSelect && specOther) {
+                specSelect.addEventListener('change', function() {
+                    mlSyncSpecOther();
+                    if (['other', 'others'].includes(String(specSelect.value || '').toLowerCase())) specOther.focus();
+                });
+                mlSyncSpecOther();
+            }
+
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
                 var btn = form.querySelector('button[type="submit"]');
                 var orig = btn ? btn.innerHTML : '';
                 if (btn) { btn.disabled = true; btn.innerHTML = 'Saving…'; }
+                var requiredFields = [
+                    form.querySelector('#program_course'),
+                    form.querySelector('#display_name'),
+                    form.querySelector('#specialization'),
+                    form.querySelector('#mentor_education'),
+                    form.querySelector('#bio'),
+                    form.querySelector('#availability_start'),
+                    form.querySelector('#availability_end')
+                ];
+                if (specSelect && specOther && ['other', 'others'].includes(String(specSelect.value || '').toLowerCase())) {
+                    requiredFields.push(specOther);
+                }
+                var missing = requiredFields.find(function(field) {
+                    return field && !String(field.value || '').trim();
+                });
+                if (missing) {
+                    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+                    missing.focus();
+                    missing.style.borderColor = '#dc2626';
+                    mlToast('Please complete all mentor profile fields before saving.', false);
+                    return;
+                }
+                if (!form.querySelectorAll('input[name="availabilityDays[]"]:checked').length) {
+                    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+                    mlToast('Please select at least one mentoring day.', false);
+                    return;
+                }
                 fetch(form.action, {
                     method: 'POST',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },

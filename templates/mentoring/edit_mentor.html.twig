@@ -72,9 +72,15 @@
             </div>
             <div class="em-row em-cols-2">
                 <div class="em-field">
+                    <label class="em-label" for="program_course">Program / Course <span class="em-req">*</span></label>
+                    <input type="text" id="program_course" name="program_course" class="em-input" value="{{ mentor.user.degreeName ?: mentor.user.degree }}" required placeholder="e.g. BS Information Technology">
+                </div>
+                <div class="em-field">
                     <label class="em-label" for="display_name">Display Name <span class="em-req">*</span></label>
                     <input type="text" id="display_name" name="display_name" class="em-input" value="{{ mentor.displayName }}" required placeholder="How this mentor appears to students">
                 </div>
+            </div>
+            <div class="em-row em-cols-2">
                 <div class="em-field">
                     <label class="em-label" for="specialization">Specialization <span class="em-req">*</span></label>
                     {% set emStdNames = allSpecializations|map(s => s.name) %}
@@ -94,13 +100,13 @@
             </div>
             <div class="em-row em-cols-1">
                 <div class="em-field">
-                    <label class="em-label" for="mentor_education">Education</label>
+                    <label class="em-label" for="mentor_education">Education <span class="em-req">*</span></label>
                     <input type="text" id="mentor_education" name="mentor_education" class="em-input" value="{{ mentor.education }}" placeholder="e.g. BS Computer Science – FEU Tech 2023">
                 </div>
             </div>
             <div class="em-row em-cols-1">
                 <div class="em-field">
-                    <label class="em-label" for="bio">Mentoring Bio</label>
+                    <label class="em-label" for="bio">Mentoring Bio <span class="em-req">*</span></label>
                     <textarea id="bio" name="bio" class="em-input em-textarea" rows="4" placeholder="Short bio about this mentor's strengths and expertise…">{{ mentor.bio }}</textarea>
                 </div>
             </div>
@@ -162,12 +168,15 @@
     const emSpecSel = document.getElementById('specialization');
     const emSpecOther = document.getElementById('em-spec-other');
     if (emSpecSel && emSpecOther) {
-        emSpecSel.addEventListener('change', function() {
-            const isOther = this.value === 'Other';
+        const syncSpecOther = function() {
+            const isOther = ['other', 'others'].includes(String(this.value || '').toLowerCase());
             emSpecOther.style.display = isOther ? 'block' : 'none';
+            emSpecOther.required = isOther;
             if (!isOther) emSpecOther.value = '';
             if (isOther) emSpecOther.focus();
-        });
+        };
+        emSpecSel.addEventListener('change', syncSpecOther);
+        syncSpecOther.call(emSpecSel);
     }
 
     /* End time > Start time validation */
@@ -193,6 +202,36 @@
             const btn = document.getElementById('emSaveBtn');
             if (!btn) return;
             if (btn.dataset.submitting === '1') { e.preventDefault(); return; }
+
+            const requiredFields = [
+                document.getElementById('program_course'),
+                document.getElementById('display_name'),
+                document.getElementById('specialization'),
+                document.getElementById('mentor_education'),
+                document.getElementById('bio'),
+                document.getElementById('availability_start'),
+                document.getElementById('availability_end')
+            ];
+            if (emSpecSel && emSpecOther && ['other', 'others'].includes(String(emSpecSel.value || '').toLowerCase())) {
+                requiredFields.push(emSpecOther);
+            }
+            const missing = requiredFields.find(function(field) {
+                return field && !String(field.value || '').trim();
+            });
+            if (missing) {
+                e.preventDefault();
+                missing.focus();
+                missing.style.borderColor = '#dc2626';
+                alert('Please complete all mentor profile fields before saving.');
+                return;
+            }
+
+            const checkedDays = form.querySelectorAll('input[name="availabilityDays[]"]:checked');
+            if (!checkedDays.length) {
+                e.preventDefault();
+                alert('Please select at least one mentoring day.');
+                return;
+            }
 
             /* Validate end time */
             if (startEl && endEl && startEl.value && endEl.value && endEl.value <= startEl.value) {
