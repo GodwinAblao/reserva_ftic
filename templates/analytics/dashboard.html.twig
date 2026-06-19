@@ -49,7 +49,7 @@
 <div class="an-pro-header">
     <div>
         <h2>Managerial Function Analytics</h2>
-        <p>Demand outlook, facility utilization, and decision-support visualizations for effective facility scheduling, resource allocation, and data-driven decision-making.</p>
+        <p>Forecasting, facility utilization, and decision-support visualizations for effective facility scheduling, resource allocation, and data-driven decision-making.</p>
     </div>
     <div class="an-pro-toolbar">
         <span id="data-source-badge" class="an-pro-badge live"><span class="dot"></span> Live</span>
@@ -63,7 +63,7 @@
 </div>
 
 <div class="sa-analytics-nav">
-    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Demand Outlook</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Forecasting</button>
     <button class="sa-analytics-btn active analytics-btn" type="button" data-fn="planning">Planning</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="organizing">Organizing</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Event Execution</button>
@@ -169,7 +169,7 @@ async function loadAnalytics(fn) {
     const box = document.getElementById('analytics-content');
     box.innerHTML = '<div class="sa-loading">Loading ' + fn + '\u2026</div>';
     destroyCharts();
-    // Demand Outlook tab uses the planning endpoint
+    // Forecasting tab uses the planning endpoint
     const apiEndpoint = fn === 'forecasting' ? 'planning' : fn;
     try {
         const res = await fetch(API + '/' + apiEndpoint + queryParams());
@@ -596,7 +596,7 @@ function organizingHtml(d) {
     <div class="sa-chart-container an-pro-chart-card"><h4>Facility Usage Comparison</h4><p class="chart-sub">Total reservations per facility</p><canvas id="c-load"></canvas><div class="an-pro-insight" id="insight-load"></div></div>
     <div class="sa-chart-container an-pro-chart-card"><h4>Peak Usage Times</h4><p class="chart-sub">Busiest time slots across all facilities</p><canvas id="c-peak"></canvas><div class="an-pro-insight" id="insight-peak"></div></div>
     <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Utilization Rate (%)</h4><p class="chart-sub">How intensively each facility is used relative to capacity</p><canvas id="c-util"></canvas><div class="an-pro-insight" id="insight-util"></div></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Peak Usage by Time of Day</h4><p class="chart-sub">Reservation demand across 24 hours \u00b7 one line per day of week \u2014 identify your busiest hours and scheduling patterns</p><canvas id="heatmap" style="min-height:320px;"></canvas><div class="an-pro-insight" id="insight-heatmap"></div></div>` + summaryHtml + `
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>School-Hour Usage Pattern</h4><p class="chart-sub">Reservation demand from 7:00 AM to 8:00 PM · one line per day of week</p><canvas id="heatmap" style="min-height:320px;"></canvas><div class="an-pro-insight" id="insight-heatmap"></div></div>` + summaryHtml + `
     <div class="an-pro-recommendations sa-chart-wide" id="reco-organizing"></div>`;
 }
 
@@ -1054,10 +1054,18 @@ function renderHeatmap(id, hm) {
         return;
     }
 
+    const schoolHourIndexes = (hm.hours || [])
+        .map((hour, index) => ({ hour: Number(hour), index }))
+        .filter(item => item.hour >= 7 && item.hour <= 20);
+    if (!schoolHourIndexes.length) {
+        el.insertAdjacentHTML('afterend', '<p class="chart-sub" style="color:#6b7280;margin-top:8px;">No school-hour usage pattern yet. Chart fills in as reservations accumulate.</p>');
+        return;
+    }
+    const schoolHours = schoolHourIndexes.map(item => item.hour);
     const days = hm.days; // ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
     // X-axis: hours formatted as time strings
-    const timeLabels = hm.hours.map(h => {
+    const timeLabels = schoolHours.map(h => {
         if (h === 0)  return '12:00 AM';
         if (h < 12)   return h + ':00 AM';
         if (h === 12) return '12:00 PM';
@@ -1068,7 +1076,7 @@ function renderHeatmap(id, hm) {
     const dayColors = ['#006633','#2563eb','#f59e0b','#0f766e','#7c3aed','#dc2626','#0891b2'];
     const datasets = days.map((day, di) => ({
         label: day,
-        data: hm.hours.map((h, hi) => Number(hm.values[hi]?.[di] || 0)),
+        data: schoolHourIndexes.map(({ index }) => Number(hm.values[index]?.[di] || 0)),
         borderColor: dayColors[di % dayColors.length],
         backgroundColor: dayColors[di % dayColors.length] + '18',
         fill: false,
@@ -1105,7 +1113,7 @@ function renderHeatmap(id, hm) {
                         maxRotation: 45,
                         callback: (val, i) => timeLabels[i]
                     },
-                    title: { display: true, text: 'Time of Day' }
+                    title: { display: true, text: 'School Hours (7:00 AM-8:00 PM)' }
                 },
                 y: {
                     beginAtZero: true,
@@ -1196,7 +1204,7 @@ function generatePlanningInsights(d) {
         }
     }
 
-    // Recommendations — Demand Outlook (data-driven)
+    // Recommendations — Forecasting (data-driven)
     const recoFcEl = document.getElementById('reco-forecasting');
     if (recoFcEl) {
         const acc = d.forecast_accuracy || {};
@@ -1217,7 +1225,7 @@ function generatePlanningInsights(d) {
         if (seasonal.detected && seasonal.peak_months?.length) items.push('<strong>Seasonal Peak Detected:</strong> Historically high demand in <strong>' + seasonal.peak_months.slice(-2).join(', ') + '</strong>. Pre-allocate resources and increase facility availability during these months.');
         items.push('Review forecast vs actual every 4 weeks to detect model drift early and recalibrate if MAPE rises above 20%.');
 
-        recoFcEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Demand Outlook</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
+        recoFcEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Forecasting</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
     }
 
     // Recommendations — Planning (data-driven)
@@ -1350,24 +1358,26 @@ function generateOrganizingInsights(d) {
         utilEl.innerHTML = txt;
     }
 
-    // Time-of-day heatmap insight
+    // School-hour heatmap insight
     const hmEl = document.getElementById('insight-heatmap');
     if (hmEl) {
         const hm = d.peak_usage_heatmap || {};
         if (hm.hours && hm.values) {
-            // Find peak hour across all days
+            const schoolHourIndexes = hm.hours
+                .map((hour, index) => ({ hour: Number(hour), index }))
+                .filter(item => item.hour >= 7 && item.hour <= 20);
             let peakHour = 0, peakVal = 0;
-            hm.hours.forEach((h, hi) => {
-                const total = (hm.values[hi] || []).reduce((s,v)=>s+Number(v),0);
-                if (total > peakVal) { peakVal = total; peakHour = h; }
+            schoolHourIndexes.forEach(({ hour, index }) => {
+                const total = (hm.values[index] || []).reduce((s,v)=>s+Number(v),0);
+                if (total > peakVal) { peakVal = total; peakHour = hour; }
             });
             const fmt = h => h === 0 ? '12:00 AM' : h < 12 ? h+':00 AM' : h === 12 ? '12:00 PM' : (h-12)+':00 PM';
             // Find busiest day overall
             const days = hm.days || [];
-            const dayTotals = days.map((day,di) => ({ day, total: hm.hours.reduce((s,h,hi)=>s+Number(hm.values[hi]?.[di]||0),0) }));
+            const dayTotals = days.map((day,di) => ({ day, total: schoolHourIndexes.reduce((s,{ index })=>s+Number(hm.values[index]?.[di]||0),0) }));
             dayTotals.sort((a,b)=>b.total-a.total);
             const busiestDay = dayTotals[0];
-            hmEl.innerHTML = '<strong>Insight:</strong> Peak hour across all days: <strong>' + fmt(peakHour) + '</strong> (' + peakVal + ' total reservations). Busiest day: <strong>' + esc(busiestDay?.day||'N/A') + '</strong> (' + (busiestDay?.total||0) + ' reservations). Use this to schedule staff deployment and set facility availability windows.';
+            hmEl.innerHTML = '<strong>Insight:</strong> Peak school hour across all days: <strong>' + fmt(peakHour) + '</strong> (' + peakVal + ' total reservations). Busiest day: <strong>' + esc(busiestDay?.day||'N/A') + '</strong> (' + (busiestDay?.total||0) + ' reservations). Use this to schedule staff deployment and set facility availability windows.';
         }
     }
 
@@ -1586,7 +1596,7 @@ function palette() {
 
 function title(fn) {
     if (fn === 'leading') return 'Event Execution';
-    if (fn === 'forecasting') return 'Demand Outlook';
+    if (fn === 'forecasting') return 'Forecasting';
     return fn.charAt(0).toUpperCase() + fn.slice(1);
 }
 function summary(fn) {

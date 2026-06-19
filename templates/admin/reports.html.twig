@@ -52,7 +52,7 @@
     <div class="rpt-kpi"><div class="val">{{ approvedRes }}</div><div class="lbl">Approved</div></div>
     <div class="rpt-kpi"><div class="val">{{ pendingRes }}</div><div class="lbl">Pending (Action Required)</div></div>
     <div class="rpt-kpi"><div class="val">{{ approvalRate }}%</div><div class="lbl">Overall Approval Rate</div></div>
-    <div class="rpt-kpi"><div class="val">{{ (mentoringStatusCounts.appointments.Scheduled ?? 0) + (mentoringStatusCounts.appointments.Completed ?? 0) }}</div><div class="lbl">Mentoring Sessions</div></div>
+    <div class="rpt-kpi"><div class="val">{{ (mentoringStatusCounts.requests.Pending ?? 0) + (mentoringStatusCounts.requests.pending ?? 0) + (mentoringStatusCounts.requests.Assigned ?? 0) + (mentoringStatusCounts.requests.assigned ?? 0) + (mentoringStatusCounts.requests.accepted ?? 0) + (mentoringStatusCounts.requests.Completed ?? 0) + (mentoringStatusCounts.requests.completed ?? 0) + (mentoringStatusCounts.requests.Canceled ?? 0) + (mentoringStatusCounts.requests.Cancelled ?? 0) + (mentoringStatusCounts.requests.cancelled ?? 0) }}</div><div class="lbl">Mentoring Requests</div></div>
     <div class="rpt-kpi"><div class="val">{{ topExpertise|length }}</div><div class="lbl">Mentor Expertise Areas</div></div>
 </div>
 
@@ -202,12 +202,12 @@
         <div class="rpt-card-head">
             <div class="rpt-icon">🧑‍🏫</div>
             <div>
-                <h4>Mentoring Sessions Export</h4>
+                <h4>Mentoring Requests Export</h4>
                 <span class="rpt-badge operational">Operational</span>
             </div>
         </div>
-        <p>All mentoring appointment records — mentor name, student email, scheduled time, and status. Use for compliance reporting, session audits, and mentor performance reviews.</p>
-        <div class="rpt-meta">Columns: ID, Mentor, Student, Scheduled At, Status</div>
+        <p>All mentoring request records: requester, preferred expertise, assigned mentor, schedule details, and status. Use for request tracking, audit review, and mentor workload planning.</p>
+        <div class="rpt-meta">Columns: ID, Requester, Email, Expertise, Assigned Mentor, Schedule, Status</div>
         <a class="rpt-btn" href="{{ path('admin_role_reports_download', {type: 'mentoring'}) }}">⬇ Download CSV</a>
     </div>
 

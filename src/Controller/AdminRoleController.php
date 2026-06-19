@@ -741,7 +741,7 @@ class AdminRoleController extends AbstractController
 
         $filename = match ($type) {
             'reservations' => 'reservations_report.csv',
-            'mentoring' => 'mentoring_report.csv',
+            'mentoring' => 'mentoring_requests_report.csv',
             default => 'report.csv',
         };
 
@@ -1078,7 +1078,17 @@ class AdminRoleController extends AbstractController
     private function mentoringStatusCounts(EntityManagerInterface $em): array
     {
         $appointmentRepo = $em->getRepository(MentoringAppointment::class);
-        $applicationRepo = $em->getRepository(\App\Entity\MentorApplication::class);
+        $requestCounts = [];
+        $requestRows = $em->getRepository(MentorCustomRequest::class)->createQueryBuilder('r')
+            ->select('r.status AS status, COUNT(r.id) AS total')
+            ->groupBy('r.status')
+            ->getQuery()
+            ->getArrayResult();
+
+        foreach ($requestRows as $row) {
+            $status = (string) ($row['status'] ?? 'Unspecified');
+            $requestCounts[$status === '' ? 'Unspecified' : $status] = (int) $row['total'];
+        }
 
         return [
             'appointments' => [
@@ -1086,11 +1096,7 @@ class AdminRoleController extends AbstractController
                 'Completed' => $appointmentRepo->count(['status' => 'Completed']),
                 'Cancelled' => $appointmentRepo->count(['status' => 'Cancelled']),
             ],
-            'requests' => [
-                'Pending' => $applicationRepo->count(['status' => 'Pending']),
-                'Approved' => $applicationRepo->count(['status' => 'Approved']),
-                'Rejected' => $applicationRepo->count(['status' => 'Rejected']),
-            ],
+            'requests' => $requestCounts,
         ];
     }
 
@@ -1161,16 +1167,45 @@ class AdminRoleController extends AbstractController
 
     private function mentoringReportRows(EntityManagerInterface $em): array
     {
-        $appointments = $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC']);
-        $rows = [['ID', 'Mentor', 'Student Email', 'Scheduled At', 'Status']];
+        $requests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC']);
+        $rows = [[
+            'ID',
+            'Requester',
+            'Email',
+            'Department/Course',
+            'Preferred Expertise',
+            'Preferred Schedule',
+            'Available Dates',
+            'Available Time',
+            'Assigned Mentor',
+            'Assigned Mentor Expertise',
+            'Meeting Method',
+            'Status',
+            'Created At',
+            'Updated At',
+            'Message',
+            'Admin Instructions',
+        ]];
         
-        foreach ($appointments as $a) {
+        foreach ($requests as $request) {
+            $student = $request->getStudent();
             $rows[] = [
-                $a->getId(),
-                $a->getMentor()->getDisplayName(),
-                $a->getStudent()->getEmail(),
-                $a->getScheduledAt()->format('Y-m-d H:i:s'),
-                $a->getStatus(),
+                $request->getId(),
+                $request->getFullName() ?: trim(($student?->getFirstName() ?? '') . ' ' . ($student?->getLastName() ?? '')),
+                $student?->getEmail() ?? '',
+                $request->getDepartmentCourse() ?? '',
+                $request->getPreferredExpertise() ?? '',
+                $request->getPreferredSchedule() ?? '',
+                $request->getAvailableDates() ?? '',
+                $request->getAvailableTime() ?? '',
+                $request->getAssignedMentorName() ?? $request->getMentorProfile()?->getDisplayName() ?? '',
+                $request->getAssignedMentorExpertise() ?? $request->getMentorProfile()?->getSpecialization() ?? '',
+                $request->getMeetingMethod() ?? '',
+                $request->getStatus(),
+                $request->getCreatedAt()->format('Y-m-d H:i:s'),
+                $request->getUpdatedAt()?->format('Y-m-d H:i:s') ?? '',
+                $request->getMessage() ?? '',
+                $request->getAdminInstructions() ?? '',
             ];
         }
         

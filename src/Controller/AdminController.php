@@ -608,6 +608,25 @@ class AdminController extends AbstractController
             foreach ($rows as $row) {
                 fputcsv($handle, $row);
             }
+        } elseif ($type === 'mentoring') {
+            fputcsv($handle, [
+                'id',
+                'requester',
+                'email',
+                'department_course',
+                'preferred_expertise',
+                'preferred_schedule',
+                'available_dates',
+                'available_time',
+                'assigned_mentor',
+                'assigned_mentor_expertise',
+                'meeting_method',
+                'status',
+                'created_at',
+                'updated_at',
+                'message',
+                'admin_instructions',
+            ]);
         }
 
         rewind($handle);
@@ -617,7 +636,7 @@ class AdminController extends AbstractController
         $response = new Response($content ?: '');
         $disposition = $response->headers->makeDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            sprintf('admin-%s-report.csv', $type === 'mentoring' ? 'mentoring' : 'reservation')
+            sprintf('admin-%s-report.csv', $type === 'mentoring' ? 'mentoring-requests' : 'reservation')
         );
         $response->headers->set('Content-Type', 'text/csv');
         $response->headers->set('Content-Disposition', $disposition);
@@ -736,15 +755,25 @@ class AdminController extends AbstractController
     private function mentoringReportRows(EntityManagerInterface $em): array
     {
         $rows = [];
-        foreach ($em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC']) as $appointment) {
+        foreach ($em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC']) as $request) {
+            $student = $request->getStudent();
             $rows[] = [
-                'id' => $appointment->getId(),
-                'student' => $appointment->getStudent()?->getEmail(),
-                'mentor' => $appointment->getMentor()?->getDisplayName(),
-                'specialization' => $appointment->getMentor()?->getSpecialization(),
-                'scheduled_at' => $appointment->getScheduledAt()?->format('Y-m-d H:i'),
-                'status' => $appointment->getStatus(),
-                'topic' => $appointment->getTopic(),
+                'id' => $request->getId(),
+                'requester' => $request->getFullName() ?: trim(($student?->getFirstName() ?? '') . ' ' . ($student?->getLastName() ?? '')),
+                'email' => $student?->getEmail() ?? '',
+                'department_course' => $request->getDepartmentCourse() ?? '',
+                'preferred_expertise' => $request->getPreferredExpertise() ?? '',
+                'preferred_schedule' => $request->getPreferredSchedule() ?? '',
+                'available_dates' => $request->getAvailableDates() ?? '',
+                'available_time' => $request->getAvailableTime() ?? '',
+                'assigned_mentor' => $request->getAssignedMentorName() ?? $request->getMentorProfile()?->getDisplayName() ?? '',
+                'assigned_mentor_expertise' => $request->getAssignedMentorExpertise() ?? $request->getMentorProfile()?->getSpecialization() ?? '',
+                'meeting_method' => $request->getMeetingMethod() ?? '',
+                'status' => $request->getStatus(),
+                'created_at' => $request->getCreatedAt()->format('Y-m-d H:i:s'),
+                'updated_at' => $request->getUpdatedAt()?->format('Y-m-d H:i:s') ?? '',
+                'message' => $request->getMessage() ?? '',
+                'admin_instructions' => $request->getAdminInstructions() ?? '',
             ];
         }
 

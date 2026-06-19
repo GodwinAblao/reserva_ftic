@@ -686,7 +686,7 @@ class AnalyticsController extends AbstractController
     {
         $days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         $data = ['hours' => [], 'days' => $days, 'values' => []];
-        for ($h = 0; $h < 24; $h++) {
+        for ($h = 7; $h <= 20; $h++) {
             $data['hours'][] = $h;
             $data['values'][] = array_map(fn($d) => $hourlyHeatmap[$h][$d] ?? 0, $days);
         }
@@ -832,10 +832,10 @@ class AnalyticsController extends AbstractController
     }
     private function classifyTimeSlot(int $hour): string
     {
-        if ($hour >= 5  && $hour < 12) return 'Morning (5AM-12PM)';
+        if ($hour >= 7  && $hour < 12) return 'Morning (7AM-12PM)';
         if ($hour >= 12 && $hour < 17) return 'Afternoon (12PM-5PM)';
-        if ($hour >= 17 && $hour < 21) return 'Evening (5PM-9PM)';
-        return 'Night (9PM-5AM)';
+        if ($hour >= 17 && $hour <= 20) return 'Evening (5PM-8PM)';
+        return 'Outside School Hours';
     }
 
     private function accumulateResMetrics(
