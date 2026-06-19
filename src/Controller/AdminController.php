@@ -388,12 +388,12 @@ class AdminController extends AbstractController
                 'role'     => $roleLabel,
                 'facility' => $r['facility_name'] ?? '',
                 'time'     => substr($r['reservation_start_time'], 0, 5)
-                              . ' – ' . substr($r['reservation_end_time'], 0, 5),
+                              . ' â€“ ' . substr($r['reservation_end_time'], 0, 5),
                 'status'   => $r['status'],
             ];
         }, $rows);
 
-        // Status counts — one query
+        // Status counts â€” one query
         $statusRows = $conn->fetchAllAssociative(
             'SELECT status, COUNT(*) AS cnt FROM reservation
              WHERE reservation_date >= :today AND reservation_date < :tomorrow GROUP BY status',
@@ -404,7 +404,7 @@ class AdminController extends AbstractController
             $statusCounts[$sr['status']] = (int) $sr['cnt'];
         }
 
-        // Facility counts — one query
+        // Facility counts â€” one query
         $facRows = $conn->fetchAllAssociative(
             'SELECT f.name AS facility_name, COUNT(r.id) AS cnt
              FROM facility f
@@ -499,8 +499,8 @@ class AdminController extends AbstractController
             return $dt ? $dt->format('g:i A') : $t;
         };
         $availTime     = ($timeStart !== '' && $timeEnd !== '')
-            ? $fmtTime($timeStart) . ' – ' . $fmtTime($timeEnd)
-            : trim((string) $request->request->get('available_time', ''));
+            ? $fmtTime($timeStart) . ' - ' . $fmtTime($timeEnd)
+            : $this->normalizeTimeRange(trim((string) $request->request->get('available_time', '')));
         $meetingMethod = trim((string) $request->request->get('meeting_method_override', ''))
             ?: trim((string) $request->request->get('meeting_method', ''));
         $instructions = $request->request->get('admin_instructions') ?: $request->request->get('instructions');
@@ -509,6 +509,30 @@ class AdminController extends AbstractController
             ->setAvailableDates($request->request->get('available_dates') ?: null)
             ->setAvailableTime($availTime ?: null)
             ->setAdminInstructions($instructions ?: null);
+    }
+
+    private function normalizeTimeRange(string $value): string
+    {
+        $unicodeDash = json_decode('"\\u2013"', true);
+        $mojibakeDash = pack('H*', 'c3a2e282ace28093');
+        $value = str_replace(['\\u2013', $unicodeDash, $mojibakeDash], '-', $value);
+        $parts = array_map('trim', explode('-', $value));
+        if (count($parts) < 2 || $parts[0] === '' || $parts[1] === '') {
+            return trim($value);
+        }
+
+        $fmtTime = static function (string $time): string {
+            foreach (['H:i', 'H:i:s', 'g:i A', 'g:i a'] as $format) {
+                $dt = \DateTime::createFromFormat($format, $time);
+                if ($dt instanceof \DateTimeInterface) {
+                    return $dt->format('g:i A');
+                }
+            }
+
+            return $time;
+        };
+
+        return $fmtTime($parts[0]) . ' - ' . $fmtTime($parts[1]);
     }
 
     private function resolveAssignStatus(Request $request): string
@@ -1188,8 +1212,8 @@ class AdminController extends AbstractController
                         'Reservation Created' AS action,
                         r.name AS actor,
                         'Requester' AS actor_role,
-                        COALESCE(f.name, '') || ' — ' || COALESCE(r.event_name, '') AS subject,
-                        'Capacity: ' || r.capacity || ' · Purpose: ' || COALESCE(r.purpose, '—') AS detail,
+                        COALESCE(f.name, '') || ' â€” ' || COALESCE(r.event_name, '') AS subject,
+                        'Capacity: ' || r.capacity || ' Â· Purpose: ' || COALESCE(r.purpose, 'â€”') AS detail,
                         '' AS status_before,
                         r.status AS status_after
                     FROM reservation r
@@ -1207,7 +1231,7 @@ class AdminController extends AbstractController
                         'Mentoring Audit' AS module,
                         mal.action AS action,
                         COALESCE(mal.performed_by_name, 'System') AS actor,
-                        COALESCE(mal.performed_by_role, '—') AS actor_role,
+                        COALESCE(mal.performed_by_role, 'â€”') AS actor_role,
                         mal.subject_label AS subject,
                         COALESCE(mal.note, '') AS detail,
                         COALESCE(mal.previous_status, '') AS status_before,

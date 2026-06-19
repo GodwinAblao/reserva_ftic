@@ -201,7 +201,7 @@
                                         {% if request.preferredSchedule %}
                                         <div class="info-item">
                                             <span class="info-label">Preferred Time</span>
-                                            <span class="info-value">{{ request.preferredSchedule }}</span>
+                                            <span class="info-value">{{ request.preferredSchedule|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
@@ -221,7 +221,7 @@
                                         {% if request.availableTime %}
                                         <div class="info-item wide">
                                             <span class="info-label">Confirmed Time</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' &middot; ' : '' }}{{ request.availableTime }}</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' &middot; ' : '' }}{{ request.availableTime|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod %}
@@ -295,7 +295,7 @@
                         {% if pendingMentorRequests|length > 0 %}
                             <div class="pending-section-header" style="width: 100%; margin-bottom: 16px; padding: 12px 16px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #16a34a;">
                                 <h4 style="margin: 0; color: #166534; font-size: 14px; font-weight: 600;">
-                                    ðŸ“ Pending Mentor Requests ({{ pendingMentorRequests|length }})
+                                    Pending Mentor Requests ({{ pendingMentorRequests|length }})
                                 </h4>
                             </div>
                             {% for request in pendingMentorRequests %}
@@ -352,7 +352,7 @@
                                         {% if request.preferredSchedule %}
                                         <div class="info-item">
                                             <span class="info-label">Preferred Time</span>
-                                            <span class="info-value">{{ request.preferredSchedule }}</span>
+                                            <span class="info-value">{{ request.preferredSchedule|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod %}
@@ -378,7 +378,7 @@
                                         {% if request.availableTime %}
                                         <div class="info-item wide">
                                             <span class="info-label">Confirmed Time</span>
-                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' &middot; ' : '' }}{{ request.availableTime }}</span>
+                                            <span class="info-value">{{ request.availableDates ? request.availableDates ~ ' &middot; ' : '' }}{{ request.availableTime|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod == 'Online' and request.meetingLink %}
@@ -425,7 +425,7 @@
                         {% if pendingApplications|length > 0 %}
                             <div class="pending-section-header" style="width: 100%; margin: 24px 0 16px 0; padding: 12px 16px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #2563eb;">
                                 <h4 style="margin: 0; color: #1e40af; font-size: 14px; font-weight: 600;">
-                                    ðŸŽ“ Pending Mentor Applications ({{ pendingApplications|length }})
+                                    Pending Mentor Applications ({{ pendingApplications|length }})
                                 </h4>
                             </div>
                             {% for application in pendingApplications %}
@@ -736,7 +736,7 @@
                         {% if cancelledRequests|length > 0 %}
                             <div class="pending-section-header" style="width: 100%; margin-bottom: 16px; padding: 12px 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
                                 <h4 style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">
-                                    ðŸš« Cancelled Requests ({{ cancelledRequests|length }})
+                                    Cancelled Requests ({{ cancelledRequests|length }})
                                 </h4>
                             </div>
                             {% for request in cancelledRequests %}
@@ -802,7 +802,7 @@
                                         {% if request.preferredSchedule %}
                                         <div class="info-item">
                                             <span class="info-label">Preferred Time</span>
-                                            <span class="info-value">{{ request.preferredSchedule }}</span>
+                                            <span class="info-value">{{ request.preferredSchedule|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) }}</span>
                                         </div>
                                         {% endif %}
                                         {% if request.meetingMethod %}
@@ -815,12 +815,12 @@
                                     <div class="card-info-footer" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #fecaca; background: #fef2f2; border-radius: 6px; padding: 12px;">
                                         {% if request.cancellationReason %}
                                         <div class="info-item wide">
-                                            <span class="info-label" style="color: #dc2626;">ðŸ“ Cancellation Reason</span>
+                                            <span class="info-label" style="color: #dc2626;">Cancellation Reason</span>
                                             <span class="info-value" style="color: #7f1d1d; font-style: italic;">{{ request.cancellationReason }}</span>
                                         </div>
                                         {% else %}
                                         <div class="info-item wide">
-                                            <span class="info-label" style="color: #dc2626;">ðŸ“ Cancellation Reason</span>
+                                            <span class="info-label" style="color: #dc2626;">Cancellation Reason</span>
                                             <span class="info-value" style="color: #9ca3af; font-style: italic;">No reason provided</span>
                                         </div>
                                         {% endif %}
@@ -879,7 +879,7 @@
                     on {{ recentRequest.createdAt|date('M d, Y') }}.
                 </p>
                 {% if recentRequest.availableDates %}
-                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} &middot; {{ recentRequest.preferredSchedule }}{% endif %}</p>
+                <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">{{ recentRequest.availableDates }}{% if recentRequest.preferredSchedule %} &middot; {{ recentRequest.preferredSchedule|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) }}{% endif %}</p>
                 {% endif %}
                 {% if recentRequest.assignedMentorName %}
                 <p style="font-size:12px;color:#0D9B00;margin:4px 0 0;font-weight:600;">Assigned: {{ recentRequest.assignedMentorName }}</p>
@@ -1032,14 +1032,14 @@
                         <div class="form-group">
                             <label for="assistance_schedule_start">Preferred Time - Start <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_start" class="form-input" name="preferred_schedule_start" min="07:00" max="19:00" required>
-                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM - 7:00 PM is allowed.</span>
+                            <span id="assistance_schedule_start_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">Only 7:00 AM - 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-grid form-grid-2">
                         <div class="form-group">
                             <label for="assistance_schedule_end">End Time <span style="color:#c00">*</span></label>
                             <input type="time" id="assistance_schedule_end" class="form-input" name="preferred_schedule_end" min="07:00" max="19:00" required>
-                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">âš  Only 7:00 AM - 7:00 PM is allowed.</span>
+                            <span id="assistance_schedule_end_warn" style="display:none;font-size:11.5px;color:#dc2626;margin-top:4px;">Only 7:00 AM - 7:00 PM is allowed.</span>
                         </div>
                     </div>
                     <div class="form-group">

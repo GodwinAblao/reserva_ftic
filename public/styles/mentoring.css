@@ -3414,7 +3414,16 @@
   border: 1px solid #cfcfcf;
   border-radius: 8px;
   background: #fff;
-  padding: 16px;
+  padding: 16px 16px 96px;
+  margin-bottom: 96px;
+}
+
+.mentoring-content-section .mentoring-content:not(.hidden) {
+  padding-bottom: 72px;
+}
+
+.mentoring-content-section .reservations-grid {
+  padding-bottom: 72px;
 }
 
 .mentoring-side-column .reservations-side-card,

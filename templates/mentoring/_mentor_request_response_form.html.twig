@@ -88,15 +88,17 @@
         <input type="date" class="form-input" name="available_dates"
             aria-label="Available Date" value="{{ request.availableDates }}">
 
-        {# Time — Start + End native time inputs #}
+        {# Time - Start + End native time inputs #}
+        {% set mrAvailableTimeInput = request.availableTime|default('')|replace({'\\u2013':'-', '–':'-', 'â€“':'-'}) %}
+        {% set mrAvailableTimeParts = mrAvailableTimeInput ? mrAvailableTimeInput|split('-') : [] %}
         <div class="mr-time-row">
             <input type="time" class="form-input" name="available_time_start"
                 aria-label="Start Time" min="07:00" max="21:00"
-                value="{{ request.availableTime ? request.availableTime|split(' – ')|first|trim : '' }}">
+                value="{{ mrAvailableTimeParts|length > 0 and mrAvailableTimeParts[0]|trim ? ('2000-01-01 ' ~ mrAvailableTimeParts[0]|trim)|date('H:i') : '' }}">
             <span class="mr-time-sep">to</span>
             <input type="time" class="form-input" name="available_time_end"
                 aria-label="End Time" min="07:00" max="21:00"
-                value="{{ request.availableTime and '–' in request.availableTime ? request.availableTime|split('–')|last|trim : '' }}">
+                value="{{ mrAvailableTimeParts|length > 1 and mrAvailableTimeParts[1]|trim ? ('2000-01-01 ' ~ mrAvailableTimeParts[1]|trim)|date('H:i') : '' }}">
         </div>
 
         <select name="meeting_method" class="form-input mr-method-select" onchange="mrToggleMethod(this)">

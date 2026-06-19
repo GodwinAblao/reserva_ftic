@@ -213,7 +213,7 @@ class MentorRequestController extends AbstractController
             $dt = \DateTime::createFromFormat('H:i', $t);
             return $dt ? $dt->format('g:i A') : $t;
         };
-        $preferredSchedule = ($scheduleStart !== '' && $scheduleEnd !== '') ? $fmtTime($scheduleStart) . ' \u2013 ' . $fmtTime($scheduleEnd) : '';
+        $preferredSchedule = ($scheduleStart !== '' && $scheduleEnd !== '') ? $fmtTime($scheduleStart) . ' - ' . $fmtTime($scheduleEnd) : '';
         $message           = trim((string) $request->request->get('message'));
 
         if ($fullName === '' || $departmentCourse === '' || $preferredExpertise === '' || $availableDates === '' || $preferredSchedule === '') {
@@ -354,7 +354,7 @@ class MentorRequestController extends AbstractController
             $dt = \DateTime::createFromFormat('H:i', $t);
             return $dt ? $dt->format('g:i A') : $t;
         };
-        $availableTime   = ($timeStart !== '' && $timeEnd !== '') ? $fmtTime($timeStart) . ' \u2013 ' . $fmtTime($timeEnd) : trim((string) $request->request->get('available_time'));
+        $availableTime   = ($timeStart !== '' && $timeEnd !== '') ? $fmtTime($timeStart) . ' - ' . $fmtTime($timeEnd) : $this->normalizeTimeRange(trim((string) $request->request->get('available_time')));
         $meetingMethod   = trim((string) $request->request->get('meeting_method'));
         $meetingLink     = trim((string) $request->request->get('meeting_link'));
         $meetingLocation = trim((string) $request->request->get('meeting_location'));
@@ -431,6 +431,30 @@ class MentorRequestController extends AbstractController
         $this->addFlash('success', 'Mentor request updated and the requester has been notified.');
         $redirectRoute = $this->isGranted('ROLE_SUPER_ADMIN') ? 'mentoring_superadmin_requests' : 'admin_role_mentorship_coordination';
         return $this->redirectToRoute($redirectRoute, [], Response::HTTP_SEE_OTHER);
+    }
+
+    private function normalizeTimeRange(string $value): string
+    {
+        $unicodeDash = json_decode('"\\u2013"', true);
+        $mojibakeDash = pack('H*', 'c3a2e282ace28093');
+        $value = str_replace(['\\u2013', $unicodeDash, $mojibakeDash], '-', $value);
+        $parts = array_map('trim', explode('-', $value));
+        if (count($parts) < 2 || $parts[0] === '' || $parts[1] === '') {
+            return trim($value);
+        }
+
+        $fmtTime = static function (string $time): string {
+            foreach (['H:i', 'H:i:s', 'g:i A', 'g:i a'] as $format) {
+                $dt = \DateTime::createFromFormat($format, $time);
+                if ($dt instanceof \DateTimeInterface) {
+                    return $dt->format('g:i A');
+                }
+            }
+
+            return $time;
+        };
+
+        return $fmtTime($parts[0]) . ' - ' . $fmtTime($parts[1]);
     }
 
     private function handleNoMentorMatch(MentorCustomRequest $mentorRequest, Request $request, EntityManagerInterface $em, MailerInterface $mailer): Response
