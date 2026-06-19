@@ -3,7 +3,7 @@
 {% block stylesheets %}
     {{ parent() }}
     {% if not is_granted('ROLE_SUPER_ADMIN') and not is_granted('ROLE_ADMIN') %}
-    <link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}" media="all">
+    <link rel="stylesheet" href="{{ asset('styles/regular_user_sidebar.css') }}?v=mentoring-sidebar-wide-20260620" media="all">
     {% endif %}
     <style>
         .flash-message {
@@ -210,7 +210,7 @@
 
     <button type="button" class="sidebar-mobile-backdrop" id="sidebarBackdrop" aria-label="Close navigation menu"></button>
 
-    <div id="appShell" class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-shell' : '' }}">
+    <div id="appShell" class="app-shell {{ is_regular_user ? 'regular-user-shell' : 'admin-shell' }} {{ is_regular_user and route starts with 'mentoring_' ? 'regular-user-mentoring-shell' : '' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-shell' : '' }}">
         <aside id="appSidebar" class="sidebar {{ is_regular_user ? 'regular-user-sidebar' : 'admin-sidebar' }} {{ not is_regular_user and is_granted('ROLE_SUPER_ADMIN') ? 'superadmin-sidebar' : '' }}">
 
             {% if is_regular_user %}

@@ -10,6 +10,7 @@
         .mentoring-content {
             display: none;
         }
+
         .mentoring-content:not(.hidden) {
             display: block;
         }
@@ -1124,10 +1125,8 @@
             contents.forEach(function(content) {
                 if (content.id === filter + '-content') {
                     content.classList.remove('hidden');
-                    content.style.display = 'block';
                 } else {
                     content.classList.add('hidden');
-                    content.style.display = 'none';
                 }
             });
         }
@@ -1140,10 +1139,8 @@
                 contents.forEach(function(content) {
                     if (content.id === filter + '-content') {
                         content.classList.remove('hidden');
-                        content.style.display = 'block';
                     } else {
                         content.classList.add('hidden');
-                        content.style.display = 'none';
                     }
                 });
             }
