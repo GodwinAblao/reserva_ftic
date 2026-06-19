@@ -360,3 +360,81 @@
         font-size: 18px;
     }
 }
+
+/* Mentoring uses the same locked left navigation as Dashboard/Profile/Facility. */
+body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell {
+    display: grid !important;
+    grid-template-columns: 300px minmax(0, 1fr) !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    position: fixed !important;
+    top: 88px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+    background: #ffffff !important;
+}
+
+body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell .sidebar.regular-user-sidebar {
+    grid-column: 1 !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: calc(100vh - 140px) !important;
+    margin: 12px !important;
+    padding: 17px 12px 14px !important;
+    transform: none !important;
+}
+
+body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell .content-area.regular-user-content {
+    grid-column: 2 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell .content-area.regular-user-content .content-wrapper {
+    padding-left: 8px !important;
+}
+
+@media (max-width: 900px) {
+    body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell {
+        position: static !important;
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        padding: 88px 0 0 0 !important;
+        bottom: auto !important;
+    }
+
+    body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell .sidebar.regular-user-sidebar {
+        position: fixed !important;
+        top: 56px !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: min(320px, 86vw) !important;
+        max-height: none !important;
+        margin: 0 !important;
+        transform: translateX(-104%) !important;
+    }
+
+    body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell.sidebar-open .sidebar.regular-user-sidebar {
+        transform: translateX(0) !important;
+    }
+
+    body.regular-user-theme .app-shell.regular-user-shell.regular-user-mentoring-shell .content-area.regular-user-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
+}

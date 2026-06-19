@@ -8,21 +8,6 @@ Review perspective: Chief Data Officer and Data Analytics professional
 
 The live public URL redirects unauthenticated users to the login page, so this report is based on the implemented Analytics dashboard structure, chart definitions, and available system metrics in the codebase. The recommendations below are written as an executive interpretation guide and can be paired with the current live numbers during presentation.
 
-## Recommended Rename for "Forecasting"
-
-### Recommended Title: Demand Outlook
-
-| Current Label | Recommended Label | Reason |
-|---|---|---|
-| Forecasting | Demand Outlook | "Forecasting" can sound technical. "Demand Outlook" is easier for non-technical users because it clearly means "what demand may look like soon." It is professional, concise, and still accurately represents predictive analytics. |
-
-### Why This Is Better
-
-- It focuses on the decision administrators care about: expected reservation demand.
-- It avoids intimidating statistical language.
-- It fits an operational dashboard where users need to plan staffing, room availability, maintenance, and support services.
-- It can cover both future estimates and current demand signals, such as stability, growth, and data quality.
-
 ## Executive Summary
 
 The Analytics page is organized around five management areas:

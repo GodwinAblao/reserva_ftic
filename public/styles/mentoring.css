@@ -809,8 +809,8 @@
 }
 
 .mentor-card-link:hover .mentor-card {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 102, 51, 0.15);
+  transform: none;
+  box-shadow: none;
 }
 
 .specialization-label {
@@ -2783,114 +2783,6 @@
   background-repeat: no-repeat;
 }
 
-.mentor-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 0.9rem;
-}
-
-.mentor-card-link:hover .mentor-card {
-  transform: none;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
-}
-
-.mentor-card {
-  background: #f7f7f7;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 1rem;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.mentor-card-top {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.mentor-avatar {
-  width: 62px;
-  height: 62px;
-  border-radius: 999px;
-  background: #d9d9d9;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.mentor-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mentor-card-title-wrap h4 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #102019;
-}
-
-.mentor-card-subtitle {
-  margin: 0.15rem 0 0;
-  color: #6b7280;
-  font-size: 0.86rem;
-}
-
-.mentor-card-tags {
-  display: flex;
-  gap: 0.4rem;
-  margin: 0.75rem 0;
-}
-
-.mentor-specialization-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.24rem 0.62rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 102, 51, 0.16);
-  background: #fff;
-  color: var(--feu-green-dark);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.mentor-description {
-  margin: 0;
-  color: #616161;
-  font-size: 0.88rem;
-  line-height: 1.45;
-  flex-grow: 1;
-}
-
-.mentor-card-footer {
-  margin-top: 0.85rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.contact-info {
-  color: #6b7280;
-  font-size: 0.77rem;
-}
-
-.mentor-view-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--feu-green);
-  color: #fff;
-  padding: 0.5rem 0.9rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
 .mentoring-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -3095,34 +2987,8 @@
   width: 100%;
 }
 
-body.regular-user-theme:has(.mentoring-page-layout) {
-  overflow-y: auto;
-}
-
-.app-shell.regular-user-shell:has(.mentoring-page-layout) {
-  position: relative;
-  top: auto;
-  bottom: auto;
-  min-height: calc(100vh - 88px);
-  margin-top: 88px;
-  overflow: visible;
-  align-items: start;
-}
-
-.app-shell.regular-user-shell:has(.mentoring-page-layout) .content-area.regular-user-content {
-  height: auto;
-  min-height: 0;
-  overflow: visible;
-}
-
-.app-shell.regular-user-shell:has(.mentoring-page-layout) .content-wrapper {
-  min-height: 0;
-}
-
-.app-shell.regular-user-shell:has(.mentoring-page-layout) .sidebar.regular-user-sidebar {
-  position: sticky !important;
-  top: 100px !important;
-  max-height: calc(100vh - 112px) !important;
+body.regular-user-theme .regular-user-mentoring-shell .content-area.regular-user-content {
+  scrollbar-gutter: stable;
 }
 
 /* Tablet & Up - Two Column Layout (768px+) */
@@ -3325,15 +3191,22 @@ body.regular-user-theme:has(.mentoring-page-layout) {
 /* Desktop & Up - Original layout */
 @media (min-width: 1024px) {
   .mentor-card-grid {
-    grid-template-columns: repeat(2, minmax(280px, 300px));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 24px;
-    margin: 0 0 54px 5px;
+    margin: 0 0 54px 0;
+  }
+}
+
+@media (min-width: 1200px) {
+  .mentor-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 .mentor-card {
   width: 100%;
   min-height: 225px;
+  height: 100%;
   padding: 16px;
   border: 1px solid #d4d4d4;
   border-radius: 8px;
@@ -3721,24 +3594,6 @@ body.regular-user-theme:has(.mentoring-page-layout) {
   .mentoring-side-column .mentoring-info-card,
   .mentoring-side-column .mentoring-side-card {
     margin-bottom: 0;
-  }
-}
-
-@media (max-width: 900px) {
-  .app-shell.regular-user-shell:has(.mentoring-page-layout) {
-    position: static !important;
-    margin-top: 0;
-    min-height: 0;
-  }
-
-  .app-shell.regular-user-shell:has(.mentoring-page-layout) .content-area.regular-user-content {
-    height: auto;
-  }
-
-  .app-shell.regular-user-shell:has(.mentoring-page-layout) .sidebar.regular-user-sidebar {
-    position: fixed !important;
-    top: 56px !important;
-    max-height: none !important;
   }
 }
 
