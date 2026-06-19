@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\MentorProfile;
+use App\Repository\MentorProfileRepository;
 use App\Repository\SpecializationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,7 +19,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class LeaderboardController extends AbstractController
 {
     #[Route('', name: 'app_leaderboard', methods: ['GET'])]
-    public function index(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
+    public function index(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository, MentorProfileRepository $mentorProfileRepository): Response
     {
         $search = $request->query->get('search', '');
         $specialization = $request->query->get('specialization', '');
@@ -39,7 +40,7 @@ class LeaderboardController extends AbstractController
                 ->setParameter('specialization', $specialization);
         }
 
-        $mentors = $qb->getQuery()->getResult();
+        $mentors = $mentorProfileRepository->filterActiveProfiles($qb->getQuery()->getResult());
 
         $specializations = $specializationRepository->findAllOrderedByName();
         $flatSpecializations = array_map(fn($s) => $s->getName(), $specializations);

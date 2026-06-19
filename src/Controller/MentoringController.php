@@ -13,6 +13,7 @@ use App\Entity\MentoringAuditLog;
 use App\Entity\User;
 use App\Service\NotificationService;
 use App\Repository\SpecializationRepository;
+use App\Repository\MentorProfileRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -37,7 +38,7 @@ class MentoringController extends AbstractController
     }
 
     #[Route('', name: 'mentoring_index', methods: ['GET'])]
-    public function index(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
+    public function index(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository, MentorProfileRepository $mentorProfileRepository): Response
     {
         $this->ensureFacultyMentorProfiles($em);
 
@@ -77,7 +78,7 @@ class MentoringController extends AbstractController
                 ->setParameter('specialization', $specializationFilter);
         }
 
-        $mentors = $qb->getQuery()->getResult();
+        $mentors = $mentorProfileRepository->filterActiveProfiles($qb->getQuery()->getResult());
 
         // Hide current user's own mentor profile from the listing
         if ($mentorProfile) {
@@ -144,8 +145,12 @@ class MentoringController extends AbstractController
             ->setMaxResults(10)
             ->getQuery()
             ->getResult();
+        $leaderboard = $mentorProfileRepository->filterActiveProfiles($leaderboard);
 
-        $availability = $em->getRepository(MentorAvailability::class)->findBy(['isBooked' => false], ['availableDate' => 'ASC', 'startTime' => 'ASC'], 50);
+        $availability = array_values(array_filter(
+            $em->getRepository(MentorAvailability::class)->findBy(['isBooked' => false], ['availableDate' => 'ASC', 'startTime' => 'ASC'], 50),
+            static fn (MentorAvailability $slot): bool => $slot->getMentor()->getUser() !== null && in_array('ROLE_MENTOR', $slot->getMentor()->getUser()->getRoles(), true)
+        ));
         $applications = $currentUser instanceof User
             ? $em->getRepository(MentorApplication::class)->findBy(['student' => $currentUser], ['createdAt' => 'DESC'])
             : [];
@@ -191,6 +196,9 @@ class MentoringController extends AbstractController
     public function show(MentorProfile $profile, EntityManagerInterface $em, SpecializationRepository $specializationRepository): Response
     {
         $this->ensureFacultyMentorProfiles($em);
+        if (!$this->isActiveMentorProfile($profile)) {
+            throw $this->createNotFoundException();
+        }
 
         $availabilities = $em->getRepository(MentorAvailability::class)->findBy([
             'mentor' => $profile,
@@ -230,6 +238,9 @@ class MentoringController extends AbstractController
     public function preview(MentorProfile $profile, EntityManagerInterface $em): Response
     {
         $this->ensureFacultyMentorProfiles($em);
+        if (!$this->isActiveMentorProfile($profile)) {
+            throw $this->createNotFoundException();
+        }
 
         $currentUser = $this->getUser();
         $canSendCustomRequest = $currentUser instanceof User
@@ -357,5 +368,11 @@ class MentoringController extends AbstractController
         } catch (\Throwable $e) {
             // Email delivery should not block the in-system notification.
         }
+    }
+
+    private function isActiveMentorProfile(MentorProfile $profile): bool
+    {
+        $user = $profile->getUser();
+        return $user !== null && in_array('ROLE_MENTOR', $user->getRoles(), true);
     }
 }

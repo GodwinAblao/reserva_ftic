@@ -13,6 +13,7 @@ use App\Entity\MentoringAuditLog;
 use App\Entity\User;
 use App\Repository\SpecializationRepository;
 use App\Repository\UserRepository;
+use App\Repository\MentorProfileRepository;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,17 +38,17 @@ class MentorAdminController extends AbstractController
 
     #[Route('/super-admin/mentors', name: 'mentoring_mentors_list', methods: ['GET'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
-    public function mentorsList(EntityManagerInterface $em): Response
+    public function mentorsList(MentorProfileRepository $mentorProfileRepository): Response
     {
         return $this->render('mentoring/mentors-list.html.twig', [
-            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'mentors' => $mentorProfileRepository->findActiveOrderedByDisplayName(),
             'is_super_admin' => $this->isGranted('ROLE_SUPER_ADMIN'),
         ]);
     }
 
     #[Route('/super-admin/mentor-requests', name: 'mentoring_superadmin_requests', methods: ['GET'])]
     #[IsGranted('ROLE_SUPER_ADMIN')]
-    public function adminMentorRequests(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository): Response
+    public function adminMentorRequests(Request $request, EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository, MentorProfileRepository $mentorProfileRepository): Response
     {
         $allRequests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
         $assistanceRequests = array_values(array_filter($allRequests, fn($r) => $r->isAssistanceRequest()));
@@ -71,8 +72,8 @@ class MentorAdminController extends AbstractController
             'requests'           => $assistanceRequests,
             'directRequests'     => $directRequests,
             'allItems'           => $allItems,
-            'mentors'            => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
-            'leaderboard'        => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
+            'mentors'            => $mentorProfileRepository->findActiveOrderedByDisplayName(),
+            'leaderboard'        => $mentorProfileRepository->findActiveLeaderboard(10),
             'users'              => $userRepository->findEligibleMentorCreationUsers(),
             'applications'       => $applications,
             'appointments'       => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
@@ -303,8 +304,8 @@ class MentorAdminController extends AbstractController
         }
 
         $existing = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
-        if ($existing) {
-            $this->addFlash('mentor_error', 'This user already has a mentor profile.');
+        if ($existing && in_array('ROLE_MENTOR', $user->getRoles(), true)) {
+            $this->addFlash('mentor_error', 'This user already has an active mentor profile.');
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
@@ -317,8 +318,7 @@ class MentorAdminController extends AbstractController
             return $this->redirectToRoute('mentoring_superadmin_requests');
         }
 
-        $profile = (new MentorProfile())
-            ->setUser($user)
+        $profile = ($existing ?: (new MentorProfile())->setUser($user))
             ->setDisplayName((string) $request->request->get('display_name', $user->getEmail()))
             ->setSpecialization((string) $request->request->get('specialization', 'General'))
             ->setBio($request->request->get('bio'))
@@ -330,7 +330,9 @@ class MentorAdminController extends AbstractController
         $roles[] = 'ROLE_MENTOR';
         $user->setRoles(array_values(array_unique($roles)));
 
-        $em->persist($profile);
+        if (!$existing) {
+            $em->persist($profile);
+        }
         $mentorLabel = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
         $this->auditLog($em, ['type' => 'application', 'id' => null, 'label' => $mentorLabel, 'action' => 'create_mentor', 'prev' => null, 'next' => 'Active', 'note' => 'Mentor profile created manually']);
         $em->flush();

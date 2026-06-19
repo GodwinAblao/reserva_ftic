@@ -27,5 +27,33 @@ class MentorProfileRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * @param MentorProfile[] $profiles
+     * @return MentorProfile[]
+     */
+    public function filterActiveProfiles(array $profiles): array
+    {
+        return array_values(array_filter($profiles, static function (MentorProfile $profile): bool {
+            $user = $profile->getUser();
+            return $user !== null && in_array('ROLE_MENTOR', $user->getRoles(), true);
+        }));
+    }
+
+    /**
+     * @return MentorProfile[]
+     */
+    public function findActiveOrderedByDisplayName(): array
+    {
+        return $this->filterActiveProfiles($this->findBy([], ['displayName' => 'ASC']));
+    }
+
+    /**
+     * @return MentorProfile[]
+     */
+    public function findActiveLeaderboard(int $limit = 10): array
+    {
+        return array_slice($this->filterActiveProfiles($this->findBy([], ['engagementPoints' => 'DESC'])), 0, $limit);
+    }
 }
 

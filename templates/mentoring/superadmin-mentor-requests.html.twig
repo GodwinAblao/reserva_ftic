@@ -903,7 +903,7 @@
                 <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required size="5" style="min-height:120px;">
                     <option value="">-- Select a user --</option>
                     {% for user in users %}
-                    <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}" data-role="{{ user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}">
+                    <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}">
                         {{ user.firstName }} {{ user.lastName }} - {{ user.email }}
                     </option>
                     {% endfor %}
@@ -928,15 +928,7 @@
                     </select>
                 </div>
             </div>
-            <div class="sa-modal-row cols-3">
-                <div class="sa-modal-field"><label>Role <span style="color:#ef4444;">*</span></label>
-                    <select name="role" id="cm_role_select" class="sa-modal-input" required>
-                        <option value="">Select role...</option>
-                        <option value="Student">Student</option>
-                        <option value="Faculty">Faculty</option>
-                        <option value="Mentor">Mentor</option>
-                    </select>
-                </div>
+            <div class="sa-modal-row cols-2">
                 <div class="sa-modal-field"><label>Mentoring Day <span style="color:#ef4444;">*</span></label>
                     <select name="availabilityDays[]" class="sa-modal-input" required>
                         <option value="">Select day...</option>
@@ -1010,18 +1002,6 @@ function cmFillUser(sel){
     var lastName = o.dataset.last || '';
     var fullName = (firstName + ' ' + lastName).trim();
     document.getElementById('cm_display_name').value = fullName || o.dataset.email || '';
-    // Pre-select role if it's Student, Faculty, or Mentor
-    var roleSelect = document.getElementById('cm_role_select');
-    var userRole = o.dataset.role || '';
-    if(userRole.toLowerCase().includes('student')) {
-        roleSelect.value = 'Student';
-    } else if(userRole.toLowerCase().includes('faculty')) {
-        roleSelect.value = 'Faculty';
-    } else if(userRole.toLowerCase().includes('mentor')) {
-        roleSelect.value = 'Mentor';
-    } else {
-        roleSelect.value = '';
-    }
 }
 function cmFilterUsers(query){
     var select = document.getElementById('cm_user_select');

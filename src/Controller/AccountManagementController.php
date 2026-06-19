@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\MentorAvailability;
+use App\Entity\MentorProfile;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -232,6 +234,7 @@ class AccountManagementController extends AbstractController
             } else {
                 $user->setRoles(['ROLE_STUDENT']);
             }
+            $this->syncMentorProfileForRoles($user, $em);
 
             try {
                 $em->persist($user);
@@ -358,6 +361,7 @@ class AccountManagementController extends AbstractController
             if (!empty($roles) && is_array($roles)) {
                 $user->setRoles($roles);
             }
+            $this->syncMentorProfileForRoles($user, $em);
 
             try {
                 $em->persist($user);
@@ -378,6 +382,38 @@ class AccountManagementController extends AbstractController
             'user' => $user,
             'specializations' => $specializations,
         ]);
+    }
+
+    private function syncMentorProfileForRoles(User $user, EntityManagerInterface $em): void
+    {
+        $mentorProfile = $em->getRepository(MentorProfile::class)->findOneBy(['user' => $user]);
+
+        if (in_array('ROLE_MENTOR', $user->getRoles(), true)) {
+            if (!$mentorProfile) {
+                $displayName = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
+                $specialization = $user->getSpecialization() ?: $user->getDegreeName() ?: $user->getDegree() ?: 'General';
+                $mentorProfile = (new MentorProfile())
+                    ->setUser($user)
+                    ->setDisplayName($displayName)
+                    ->setSpecialization($specialization)
+                    ->setBio(null);
+                $em->persist($mentorProfile);
+            }
+
+            return;
+        }
+
+        if (!$mentorProfile) {
+            return;
+        }
+
+        $futureAvailability = $em->getRepository(MentorAvailability::class)->findBy([
+            'mentor' => $mentorProfile,
+            'isBooked' => false,
+        ]);
+        foreach ($futureAvailability as $availability) {
+            $em->remove($availability);
+        }
     }
 
     #[Route('/{id}/delete', name: 'app_account_management_delete', methods: ['POST'])]

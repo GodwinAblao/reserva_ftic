@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Entity\MentorProfile;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\ParameterType;
@@ -108,8 +107,9 @@ class UserRepository extends ServiceEntityRepository
     /**
      * Find users who can still be turned into mentors.
      *
-     * Users are excluded if they already have a mentor profile or already
-     * carry the ROLE_MENTOR role.
+     * Users are excluded only if they already carry the ROLE_MENTOR role.
+     * A user may still have an old mentor profile from a previous mentor role;
+     * Create Mentor can reuse that profile and reactivate it.
      *
      * @return User[]
      */
@@ -120,19 +120,9 @@ class UserRepository extends ServiceEntityRepository
             return [];
         }
 
-        $mentorUserIds = [];
-        foreach ($this->getEntityManager()->getRepository(MentorProfile::class)->findAll() as $mentorProfile) {
-            $mentorUser = $mentorProfile->getUser();
-            if ($mentorUser) {
-                $mentorUserIds[$mentorUser->getId()] = true;
-            }
-        }
-
         return array_values(array_filter(
             $users,
-            static function (User $user) use ($mentorUserIds): bool {
-                return !isset($mentorUserIds[$user->getId()]) && !in_array('ROLE_MENTOR', $user->getRoles(), true);
-            }
+            static fn (User $user): bool => !in_array('ROLE_MENTOR', $user->getRoles(), true)
         ));
     }
 

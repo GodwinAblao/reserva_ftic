@@ -10,6 +10,7 @@ use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
+use App\Repository\MentorProfileRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\SpecializationRepository;
 use App\Repository\UserRepository;
@@ -658,7 +659,7 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/mentorship-coordination', name: 'admin_role_mentorship_coordination', methods: ['GET'])]
-    public function mentorshipCoordination(EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository): Response
+    public function mentorshipCoordination(EntityManagerInterface $em, SpecializationRepository $specializationRepository, UserRepository $userRepository, MentorProfileRepository $mentorProfileRepository): Response
     {
         // Redirect Super Admin to the full-featured Super Admin interface
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
@@ -671,8 +672,8 @@ class AdminRoleController extends AbstractController
             'applications' => $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
             'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
-            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
-            'leaderboard' => $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 10),
+            'mentors' => $mentorProfileRepository->findActiveOrderedByDisplayName(),
+            'leaderboard' => $mentorProfileRepository->findActiveLeaderboard(10),
             'users' => $userRepository->findEligibleMentorCreationUsers(),
             'statusCounts' => $this->mentoringStatusCounts($em),
             'topExpertise' => $this->topExpertise($em),
@@ -683,7 +684,7 @@ class AdminRoleController extends AbstractController
     }
 
     #[Route('/mentors', name: 'admin_role_mentors_list', methods: ['GET'])]
-    public function adminMentorsList(EntityManagerInterface $em): Response
+    public function adminMentorsList(MentorProfileRepository $mentorProfileRepository): Response
     {
         // Redirect Super Admin to the full-featured Super Admin mentors list
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
@@ -691,7 +692,7 @@ class AdminRoleController extends AbstractController
         }
 
         return $this->render('admin/admin_mentors_list.html.twig', [
-            'mentors' => $em->getRepository(MentorProfile::class)->findBy([], ['displayName' => 'ASC']),
+            'mentors' => $mentorProfileRepository->findActiveOrderedByDisplayName(),
         ]);
     }
 
@@ -1077,21 +1078,19 @@ class AdminRoleController extends AbstractController
 
     private function topExpertise(EntityManagerInterface $em): array
     {
-        $rows = $em->createQueryBuilder()
-            ->select('m.specialization AS spec, COUNT(m.id) AS cnt')
-            ->from(MentorProfile::class, 'm')
-            ->where('m.specialization IS NOT NULL')
-            ->groupBy('m.specialization')
-            ->orderBy('cnt', 'DESC')
-            ->setMaxResults(5)
-            ->getQuery()
-            ->getArrayResult();
-
         $counts = [];
-        foreach ($rows as $row) {
-            $counts[$row['spec']] = (int) $row['cnt'];
+        $mentorRepo = $em->getRepository(MentorProfile::class);
+        if ($mentorRepo instanceof MentorProfileRepository) {
+            foreach ($mentorRepo->findActiveOrderedByDisplayName() as $mentorProfile) {
+                $specialization = $mentorProfile->getSpecialization();
+                if ($specialization === '') {
+                    continue;
+                }
+                $counts[$specialization] = ($counts[$specialization] ?? 0) + 1;
+            }
         }
-        return $counts;
+        arsort($counts);
+        return array_slice($counts, 0, 5, true);
     }
 
     private function adminModules(): array

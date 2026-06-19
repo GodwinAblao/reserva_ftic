@@ -10,6 +10,7 @@ use App\Entity\MentorCustomRequest;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\MentoringAuditLog;
+use App\Repository\MentorProfileRepository;
 use App\Repository\MentoringAuditLogRepository;
 use App\Entity\Reservation;
 use App\Entity\User;
@@ -690,15 +691,17 @@ class AdminController extends AbstractController
                 ->getArrayResult()
         );
 
-        $mentorExpertise = $this->keyValueCounts(
-            $em->createQueryBuilder()
-                ->select('m.specialization AS label, COUNT(m.id) AS total')
-                ->from(MentorProfile::class, 'm')
-                ->groupBy('m.specialization')
-                ->orderBy('total', 'DESC')
-                ->getQuery()
-                ->getArrayResult()
-        );
+        $mentorExpertise = [];
+        $mentorRepo = $em->getRepository(MentorProfile::class);
+        if ($mentorRepo instanceof MentorProfileRepository) {
+            foreach ($mentorRepo->findActiveOrderedByDisplayName() as $mentorProfile) {
+                $label = $mentorProfile->getSpecialization();
+                if ($label === '') {
+                    continue;
+                }
+                $mentorExpertise[$label] = ($mentorExpertise[$label] ?? 0) + 1;
+            }
+        }
 
         foreach ($mentorExpertise as $label => $total) {
             $requestExpertise[$label] = ($requestExpertise[$label] ?? 0) + $total;
@@ -942,7 +945,8 @@ class AdminController extends AbstractController
     public function mentoringPanelApi(EntityManagerInterface $em): JsonResponse
     {
         $requests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 10);
-        $leaderboard = $em->getRepository(MentorProfile::class)->findBy([], ['engagementPoints' => 'DESC'], 5);
+        $leaderboard = $em->getRepository(MentorProfile::class);
+        $leaderboard = $leaderboard instanceof MentorProfileRepository ? $leaderboard->findActiveLeaderboard(5) : [];
 
         $reqData = array_map(fn($r) => [
             'id'     => $r->getId(),

@@ -865,7 +865,7 @@
                 <select id="cm_user_select" class="sa-modal-input" onchange="cmFillUser(this)" required>
                     <option value="">â€” Select a user â€”</option>
                     {% for user in users %}
-                    <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}" data-role="{{ user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}">
+                    <option value="{{ user.id }}" data-first="{{ user.firstName }}" data-middle="{{ user.middleName }}" data-last="{{ user.lastName }}" data-email="{{ user.email }}" data-program="{{ user.degreeName ?: user.degree }}">
                         {{ user.firstName }} {{ user.lastName }} â€” {{ user.email }}
                     </option>
                     {% endfor %}
@@ -887,8 +887,7 @@
                     </select>
                 </div>
             </div>
-            <div class="sa-modal-row cols-3">
-                <div class="sa-modal-field"><label>Role</label><input type="text" id="cm_role" class="sa-modal-input readonly" readonly placeholder="â€”"></div>
+            <div class="sa-modal-row cols-2">
                 <div class="sa-modal-field"><label>Mentoring Day</label>
                     <select name="availability_day" class="sa-modal-input">
                         <option value="">Select dayâ€¦</option>
@@ -977,7 +976,6 @@ function cmFillUser(sel){
     document.getElementById('cm_last').value=o.dataset.last||'';
     document.getElementById('cm_email').value=o.dataset.email||'';
     document.getElementById('cm_program').value=o.dataset.program||'';
-    document.getElementById('cm_role').value=o.dataset.role||'';
 }
 /* â”€â”€ type dropdown toggle â”€â”€ */
 function saOnTypeChange(){

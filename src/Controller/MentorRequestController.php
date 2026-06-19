@@ -84,6 +84,12 @@ class MentorRequestController extends AbstractController
             return $this->redirectToRoute('mentoring_show', ['id' => $profile->getId()]);
         }
 
+        if (!in_array('ROLE_MENTOR', $profile->getUser()->getRoles(), true)) {
+            if ($isAjax) return new JsonResponse(['error' => 'This mentor is no longer available.'], Response::HTTP_BAD_REQUEST);
+            $this->addFlash('error', 'This mentor is no longer available.');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
         if ($profile->getUser()->getId() === $currentUser->getId()) {
             if ($isAjax) return new JsonResponse(['error' => 'You cannot send a mentor request to your own mentor profile.'], Response::HTTP_FORBIDDEN);
             $this->addFlash('error', 'You cannot send a mentor request to your own mentor profile.');
@@ -615,6 +621,12 @@ class MentorRequestController extends AbstractController
 
         if ($availability->isBooked()) {
             $this->addFlash('error', 'That mentoring slot is already booked.');
+            return $this->redirectToRoute('mentoring_index');
+        }
+
+        $mentorUser = $availability->getMentor()->getUser();
+        if ($mentorUser === null || !in_array('ROLE_MENTOR', $mentorUser->getRoles(), true)) {
+            $this->addFlash('error', 'This mentor is no longer available.');
             return $this->redirectToRoute('mentoring_index');
         }
 
