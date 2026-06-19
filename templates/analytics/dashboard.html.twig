@@ -448,13 +448,13 @@ function forecastingHtml(d) {
         <div class="an-pro-metrics-grid">
             <div class="metric-card ${volClass}">
                 <div class="metric-icon">V</div>
-                <div class="metric-label">Demand Volatility</div>
+                <div class="metric-label">Demand Changes</div>
                 <div class="metric-value">${vol.cv ?? 0}%</div>
                 <div class="metric-desc">CV: ${vol.label || 'N/A'} (σ=${vol.std_dev ?? 0})</div>
             </div>
             <div class="metric-card">
                 <div class="metric-icon">${momIcon}</div>
-                <div class="metric-label">Trend Momentum</div>
+                <div class="metric-label">Demand Direction</div>
                 <div class="metric-value">${momentum.direction === 'up' ? '+' : momentum.direction === 'down' ? '-' : ''}${momentum.strength ?? 0}%</div>
                 <div class="metric-desc">Short: ${momentum.short_term ?? 0}/wk · Long: ${momentum.long_term ?? 0}/wk</div>
             </div>
@@ -464,32 +464,27 @@ function forecastingHtml(d) {
                 <div class="metric-value">${seasonal.detected ? 'Detected' : 'None'}</div>
                 <div class="metric-desc">Strength: ${seasonal.seasonality_strength ?? 0}% · Ratio: ${ptr}x</div>
             </div>
-            <div class="metric-card ${dqClass}">
-                <div class="metric-icon">Q</div>
-                <div class="metric-label">Data Quality</div>
-                <div class="metric-value">${dq.grade || 'N/A'} (${dq.score ?? 0}%)</div>
-                <div class="metric-desc">Complete: ${dq.completeness ?? 0}% · Consistent: ${dq.consistency ?? 0}%</div>
-            </div>
             <div class="metric-card">
                 <div class="metric-icon">P</div>
                 <div class="metric-label">Peak Months</div>
                 <div class="metric-value">${(seasonal.peak_months || []).length || 0}</div>
-                <div class="metric-desc">${(seasonal.peak_months || []).slice(-2).join(', ') || 'N/A'}</div>
+                <div class="metric-desc">${(seasonal.peak_months || []).slice(-2).map(formatLabel).join(', ') || 'N/A'}</div>
             </div>
             <div class="metric-card">
                 <div class="metric-icon">T</div>
-                <div class="metric-label">Trough Months</div>
+                <div class="metric-label">Quiet Months</div>
                 <div class="metric-value">${(seasonal.trough_months || []).length || 0}</div>
-                <div class="metric-desc">${(seasonal.trough_months || []).slice(-2).join(', ') || 'N/A'}</div>
+                <div class="metric-desc">${(seasonal.trough_months || []).slice(-2).map(formatLabel).join(', ') || 'N/A'}</div>
             </div>
         </div>
         <div class="an-pro-legend-box">
             <h5>How to Interpret</h5>
             <ul>
-                <li><strong>Demand Volatility (CV)</strong> — &lt;15% Stable, 15-30% Moderate, 30-50% Volatile, &gt;50% Highly Volatile. Red means demand changes too much and needs buffer planning.</li>
-                <li><strong>Trend Momentum</strong> — Short-term (4-week) slope. Positive = growing demand.</li>
-                <li><strong>Seasonality</strong> — Detects months &gt;30% above or &lt;30% below mean.</li>
-                <li><strong>Data Quality</strong> — Completeness (40%) + Consistency (30%) + Timeliness (30%). Green means records are complete and reliable enough for analytics.</li>
+                <li><strong>Demand Changes</strong> — Shows if reservations are steady or changing sharply. Red means demand changes too much and FTIC needs buffer planning.</li>
+                <li><strong>Demand Direction</strong> — Shows if reservations are going up, going down, or staying stable in the recent weeks.</li>
+                <li><strong>Seasonality</strong> — Shows if some months are much busier or much quieter than the usual monthly demand.</li>
+                <li><strong>Peak Months</strong> — Months with much higher reservation demand than usual. FTIC should prepare rooms, staff, and equipment earlier.</li>
+                <li><strong>Quiet Months</strong> — Months with much lower reservation demand than usual. FTIC can use these periods for maintenance, cleaning, upgrades, or promotion.</li>
             </ul>
         </div>
     </div>`;
@@ -637,12 +632,6 @@ function leadingHtml(d) {
                 <div class="metric-value">${funnel.cancelled ?? 0}</div>
                 <div class="metric-desc">${funnel.cancellation_rate ?? 0}% cancellation</div>
             </div>
-            <div class="metric-card ${dq.score >= 80 ? 'mq-excellent' : dq.score >= 60 ? 'mq-good' : 'mq-fair'}">
-                <div class="metric-icon">Q</div>
-                <div class="metric-label">Data Quality</div>
-                <div class="metric-value">${dq.grade || 'N/A'}</div>
-                <div class="metric-desc">Score: ${dq.score ?? 0}%</div>
-            </div>
         </div>
         <div class="an-pro-legend-box">
             <h5>Pipeline Health Assessment</h5>
@@ -701,12 +690,6 @@ function controllingHtml(d) {
                 <div class="metric-value">${funnel.approval_rate ?? 0}%</div>
                 <div class="metric-desc">Approval conversion rate</div>
             </div>
-            <div class="metric-card ${dq.score >= 80 ? 'mq-excellent' : dq.score >= 60 ? 'mq-good' : 'mq-fair'}">
-                <div class="metric-icon">Q</div>
-                <div class="metric-label">Data Quality</div>
-                <div class="metric-value">${dq.grade || 'N/A'}</div>
-                <div class="metric-desc">${dq.score ?? 0}% completeness</div>
-            </div>
             <div class="metric-card">
                 <div class="metric-icon">G</div>
                 <div class="metric-label">Avg Setup Gap</div>
@@ -724,7 +707,7 @@ function controllingHtml(d) {
     </div>`;
 
     // Facility Risk Matrix
-    const riskEntries = Object.entries(risks).slice(0, 6);
+    const riskEntries = Object.entries(risks);
     let riskPanel = '';
     if (riskEntries.length) {
         riskPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
@@ -1274,7 +1257,7 @@ function generatePlanningInsights(d) {
         if (mom.direction === 'down' && (mom.strength ?? 0) > 5) items.push('<strong>Declining Demand Trend (' + mom.strength + '% drop):</strong> Short-term momentum is negative. Investigate whether this is seasonal or structural — if structural, review accessibility, promotion, and booking policies.');
         if (mom.direction === 'up' && (mom.strength ?? 0) > 10) items.push('<strong>Strong Growth Trend (+' + mom.strength + '%):</strong> Demand is accelerating. Pre-emptively expand facility availability, staffing coverage, and system capacity to prevent bottlenecks.');
         if ((dq.score ?? 100) < 80) items.push('<strong>Data Quality Risk (Score ' + dq.score + '%):</strong> Incomplete or inconsistent records are degrading forecast reliability. Audit data entry practices and ensure all reservation outcomes are recorded promptly.');
-        if (seasonal.detected && seasonal.peak_months?.length) items.push('<strong>Seasonal Peak Detected:</strong> Historically high demand in <strong>' + seasonal.peak_months.slice(-2).join(', ') + '</strong>. Pre-allocate resources and increase facility availability during these months.');
+        if (seasonal.detected && seasonal.peak_months?.length) items.push('<strong>Seasonal Peak Detected:</strong> Historically high demand in <strong>' + seasonal.peak_months.slice(-2).map(formatLabel).join(', ') + '</strong>. Pre-allocate resources and increase facility availability during these months.');
         items.push('Review forecast vs actual every 4 weeks to detect model drift early and recalibrate if MAPE rises above 20%.');
 
         recoFcEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations \u2014 Forecasting</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
