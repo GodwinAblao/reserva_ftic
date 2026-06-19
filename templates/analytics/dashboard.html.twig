@@ -290,7 +290,7 @@ function redrawChartsWithFilter() {
 function renderTab(fn, data, isFallback) {
     let html = '<div class="sa-analytics-title-row"><div><h3>' + title(fn) + '</h3><p>' + summary(fn) + '</p></div>';
     html += '<span class="sa-analytics-source live">Live</span></div>';
-    html += kpiRow(fn, data);
+    if (!['forecasting', 'planning'].includes(fn)) html += kpiRow(fn, data);
     html += '<div class="sa-analytics-grid">';
     if (fn === 'forecasting') html += forecastingHtml(data);
     else if (fn === 'planning') html += planningHtml(data);
@@ -352,7 +352,6 @@ function kpiRow(fn, d) {
         cards.push(kpi('Approval rate', (funnel.approval_rate ?? 0) + '%', 'Conversion', trendIcon(funnel.approval_rate ?? 0, 70, false)));
         cards.push(kpi('Rejection rate', (funnel.rejection_rate ?? 0) + '%', 'Blocked', trendIcon(funnel.rejection_rate ?? 0, 15, true)));
         cards.push(kpi('Pipeline', funnel.submitted ?? 0, 'Total submitted', ''));
-        cards.push(kpi('RSO rate', (d.rso_completion_rate ?? 0) + '%', 'RSO-related', ''));
     }
     return '<div class="an-pro-kpi-row sa-chart-wide">' + cards.join('') + '</div>';
 }
@@ -485,12 +484,12 @@ function forecastingHtml(d) {
             </div>
         </div>
         <div class="an-pro-legend-box">
-            <h5>CDO Interpretation Guide</h5>
+            <h5>How to Interpret</h5>
             <ul>
-                <li><strong>Demand Volatility (CV)</strong> — &lt;15% Stable, 15-30% Moderate, 30-50% Volatile, &gt;50% Highly Volatile.</li>
+                <li><strong>Demand Volatility (CV)</strong> — &lt;15% Stable, 15-30% Moderate, 30-50% Volatile, &gt;50% Highly Volatile. Red means demand changes too much and needs buffer planning.</li>
                 <li><strong>Trend Momentum</strong> — Short-term (4-week) slope. Positive = growing demand.</li>
                 <li><strong>Seasonality</strong> — Detects months &gt;30% above or &lt;30% below mean.</li>
-                <li><strong>Data Quality</strong> — Completeness (40%) + Consistency (30%) + Timeliness (30%).</li>
+                <li><strong>Data Quality</strong> — Completeness (40%) + Consistency (30%) + Timeliness (30%). Green means records are complete and reliable enough for analytics.</li>
             </ul>
         </div>
     </div>`;
@@ -575,11 +574,12 @@ function organizingHtml(d) {
             <div class="an-pro-metrics-grid">`;
         capEntries.forEach(([name, info]) => {
             const cls = info.status === 'optimal' ? 'mq-excellent' : info.status === 'adequate' ? 'mq-good' : info.status === 'underused' ? 'mq-fair' : 'mq-poor';
+            const statusLabel = info.status === 'idle' ? 'Almost unused' : info.status.charAt(0).toUpperCase() + info.status.slice(1);
             capPanel += `<div class="metric-card ${cls}">
                 <div class="metric-icon">${info.bookings}</div>
                 <div class="metric-label">${esc(name)}</div>
                 <div class="metric-value">${info.efficiency}%</div>
-                <div class="metric-desc">${info.status.charAt(0).toUpperCase() + info.status.slice(1)}</div>
+                <div class="metric-desc">${statusLabel}</div>
             </div>`;
         });
         capPanel += `</div>
@@ -587,7 +587,7 @@ function organizingHtml(d) {
                 <li><strong>Optimal (≥70%)</strong> — Facility is well-utilized with strong demand matching capacity</li>
                 <li><strong>Adequate (40-69%)</strong> — Acceptable usage but room for improvement</li>
                 <li><strong>Underused (15-39%)</strong> — Consider promoting or redistributing demand to this facility</li>
-                <li><strong>Idle (&lt;15%)</strong> — Significantly underutilized — evaluate if facility is necessary</li>
+                <li><strong>Almost unused (&lt;15%)</strong> — The facility has very low recorded usage. Check if users know it is available, if it is accessible, or if it should be promoted for suitable events.</li>
             </ul></div></div>`;
     }
 
@@ -714,6 +714,13 @@ function controllingHtml(d) {
                 <div class="metric-desc">Lead time before event</div>
             </div>
         </div>
+        <div class="an-pro-legend-box"><h5>How to Interpret</h5><ul>
+            <li><strong>Overall Score</strong> — Combines advance booking discipline, attendance behavior, and approval success into one operational health grade.</li>
+            <li><strong>Setup Compliance (40%)</strong> — Higher is better. It means more users reserve at least 3 days before the event.</li>
+            <li><strong>Attendance (35%)</strong> — Higher is better. It means fewer cancelled or rejected reservations are affecting facility use.</li>
+            <li><strong>Approval Efficiency (25%)</strong> — Higher is better. It means more submitted requests successfully become approved reservations.</li>
+            <li><strong>Color Meaning</strong> — Green means healthy, yellow means needs monitoring, and red means priority action is needed.</li>
+        </ul></div>
     </div>`;
 
     // Facility Risk Matrix
@@ -726,7 +733,7 @@ function controllingHtml(d) {
             <div style="overflow-x:auto"><table class="an-pro-summary-table"><thead><tr><th>Facility</th><th>Risk Score</th><th>Overload Risk</th><th>No-Show Risk</th><th>Bookings</th></tr></thead><tbody>`;
         riskEntries.forEach(([name, r]) => {
             const riskClass = r.risk_score >= 40 ? 'color:#dc2626;font-weight:700' : r.risk_score >= 20 ? 'color:#d97706;font-weight:700' : 'color:#059669';
-            riskPanel += `<tr><td>${esc(name)}</td><td style="${riskClass}">${r.risk_score}/60</td><td><span class="util-badge ${r.overload_risk === 'High' ? 'low' : r.overload_risk === 'Medium' ? 'med' : 'high'}">${r.overload_risk}</span></td><td><span class="util-badge ${r.no_show_risk === 'High' ? 'low' : r.no_show_risk === 'Medium' ? 'med' : 'high'}">${r.no_show_risk}</span></td><td>${r.bookings}</td></tr>`;
+            riskPanel += `<tr><td>${esc(name)}</td><td style="${riskClass}">${r.risk_score}/60</td><td><span class="util-badge ${r.overload_risk === 'High' ? 'low' : r.overload_risk === 'Medium' ? 'med' : 'high'}">${r.overload_risk}</span></td><td><span class="util-badge ${r.no_show_risk === 'High' ? 'low' : r.no_show_risk === 'Medium' ? 'med' : 'high'}">${r.no_show_risk}</span> ${r.no_show_rate ?? 0}%</td><td>${r.bookings}</td></tr>`;
         });
         riskPanel += `</tbody></table></div>
             <div class="an-pro-legend-box"><h5>Risk Interpretation</h5><ul>
@@ -940,7 +947,11 @@ function drawCharts(fn, d, isFallback) {
         generateLeadingInsights(d);
     } else {
         charts.push(makeDoughnut('c-status', d.target_achievement || {}));
-        const fu = {}; Object.entries(d.facility_utilization_rate || {}).forEach(([k,v]) => fu[k] = Number(v) * 100);
+        const fu = {};
+        Object.entries(d.facility_utilization_rate || {}).forEach(([k,v]) => {
+            const rate = typeof v === 'object' && v !== null ? Number(v.utilization_rate || 0) : Number(v || 0);
+            fu[k] = rate * 100;
+        });
         charts.push(makeBar('c-futil', fu, '#b45309'));
         charts.push(makeBar('c-reject', d.rejection_analysis || {}, '#dc2626'));
         generateControllingInsights(d);
@@ -1007,7 +1018,14 @@ function makePerFacilityChart(id, rows) {
     return new Chart(el, {
         type: 'bar',
         data: { labels, datasets: [{ label: 'Next 4 weeks (ARIMA total)', data: vals, backgroundColor: labels.map((_, i) => palette()[i % 8]), borderRadius: 6 }] },
-        options: { ...chartOpts('Forecasted demand'), indexAxis: 'y' }
+        options: {
+            ...chartOpts('Forecasted demand'),
+            indexAxis: 'y',
+            scales: {
+                x: { beginAtZero: true, ticks: { precision: 0, callback: value => Math.round(Number(value)) } },
+                y: { grid: { display: false } }
+            }
+        }
     });
 }
 
@@ -1015,10 +1033,17 @@ function makeBar(id, src, color, sortHours) {
     let entries = Object.entries(src).sort((a,b) => sortHours ? String(a[0]).localeCompare(b[0]) : b[1]-a[1]).slice(0, 12);
     const el = document.getElementById(id);
     if (!el) return null;
+    const options = { ...chartOpts(''), plugins: { legend: { display: false } } };
+    if (id === 'c-util') {
+        options.scales.y.ticks = {
+            precision: 0,
+            callback: value => Math.round(Number(value))
+        };
+    }
     return new Chart(el, {
         type: 'bar',
         data: { labels: entries.map(e => formatLabel(e[0])), datasets: [{ label: 'Count', data: entries.map(e => Number(e[1])), backgroundColor: color, borderRadius: 6 }] },
-        options: { ...chartOpts(''), plugins: { legend: { display: false } } }
+        options
     });
 }
 
@@ -1042,8 +1067,35 @@ function makeDoughnut(id, src) {
     return new Chart(el, {
         type: 'doughnut',
         data: { labels: entries.map(e => formatLabel(e[0])), datasets: [{ data: entries.map(e => Number(e[1])), backgroundColor: palette(), borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } },
+        plugins: [doughnutValueLabels()]
     });
+}
+
+function doughnutValueLabels() {
+    return {
+        id: 'doughnutValueLabels',
+        afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            const dataset = chart.data.datasets[0];
+            const meta = chart.getDatasetMeta(0);
+            ctx.save();
+            ctx.font = '700 12px Segoe UI, system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            meta.data.forEach((arc, index) => {
+                const value = Number(dataset.data[index] || 0);
+                if (value <= 0) return;
+                const pos = arc.tooltipPosition();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'rgba(0,0,0,.55)';
+                ctx.fillStyle = '#fff';
+                ctx.strokeText(String(value), pos.x, pos.y);
+                ctx.fillText(String(value), pos.x, pos.y);
+            });
+            ctx.restore();
+        }
+    };
 }
 
 function renderHeatmap(id, hm) {
@@ -1418,9 +1470,8 @@ function generateLeadingInsights(d) {
     const execEl = document.getElementById('exec-leading');
     if (execEl) {
         const rate = d.overall_completion_rate ?? 0;
-        const rso = d.rso_completion_rate ?? 0;
         const status = rate >= 70 ? 'healthy' : rate >= 50 ? 'moderate' : 'concerning';
-        execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Event Execution</h5><p>Overall approval rate is <strong>${rate}%</strong> (${status}). RSO-related completion rate: <strong>${rso}%</strong>. ${rate < 50 ? 'Low approval suggests process bottlenecks or unclear requirements — review rejection reasons.' : rate >= 70 ? 'High approval rate indicates a well-functioning reservation process.' : 'Moderate approval rate — investigate top rejection reasons for improvement opportunities.'}</p></div>`;
+        execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Event Execution</h5><p>Overall approval rate is <strong>${rate}%</strong> (${status}). ${rate < 50 ? 'Low approval suggests process bottlenecks or unclear requirements — review rejection reasons.' : rate >= 70 ? 'High approval rate indicates a well-functioning reservation process.' : 'Moderate approval rate — investigate top rejection reasons for improvement opportunities.'}</p></div>`;
     }
 
     // Top events insight
@@ -1465,7 +1516,6 @@ function generateLeadingInsights(d) {
     const recoEl = document.getElementById('reco-leading');
     if (recoEl) {
         const rate = d.overall_completion_rate ?? 0;
-        const rso = d.rso_completion_rate ?? 0;
         const successData = d.event_success_by_type || {};
         const successEntries = Object.entries(successData).sort((a,b)=>a[1]-b[1]);
         const partData = d.participant_demand_trend || {};
@@ -1477,8 +1527,6 @@ function generateLeadingInsights(d) {
         else items.push('<strong>Healthy Approval Rate (' + rate + '%):</strong> System is running well. Maintain current standards and document best practices for staff onboarding.');
 
         if (successEntries.length && successEntries[0][1] < 30) items.push('<strong>Low-Performing Category:</strong> <strong>' + esc(successEntries[0][0]) + '</strong> has only <strong>' + successEntries[0][1] + '%</strong> approval rate. Investigate root causes — unclear requirements, capacity conflicts, or policy misalignment.');
-
-        if (Math.abs(rso - rate) > 20) items.push('<strong>RSO vs Overall Gap:</strong> RSO completion rate (' + rso + '%) diverges significantly from overall rate (' + rate + '%). Review RSO-specific requirements and provide targeted support or training.');
 
         if (partVals.length >= 3) {
             const last3 = partVals.slice(-3);
@@ -1507,7 +1555,10 @@ function generateControllingInsights(d) {
     const futilEl = document.getElementById('insight-futil');
     if (futilEl) {
         const util = d.facility_utilization_rate || {};
-        const rates = Object.entries(util).map(([k,v]) => ({ name:k, rate:((v.utilization_rate||0)*100) }));
+        const rates = Object.entries(util).map(([k,v]) => {
+            const rate = typeof v === 'object' && v !== null ? Number(v.utilization_rate || 0) : Number(v || 0);
+            return { name:k, rate: rate * 100 };
+        });
         if (rates.length) {
             rates.sort((a,b)=>b.rate-a.rate);
             const avg = (rates.reduce((s,r)=>s+r.rate,0)/rates.length).toFixed(1);
