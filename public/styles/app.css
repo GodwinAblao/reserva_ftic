@@ -725,8 +725,8 @@ a {
 
 .research-filter-form {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) minmax(150px, 220px) auto;
-    gap: 18px;
+    grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) max-content auto;
+    gap: 12px;
     align-items: center;
 }
 
@@ -743,9 +743,27 @@ a {
 }
 
 .research-filter-form .btn-secondary {
-    min-width: 78px;
+    min-width: 0;
     color: var(--feu-green);
     font-weight: 700;
+}
+
+.research-filter-form .research-search-button,
+.research-filter-form .research-clear-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    width: auto;
+    padding-inline: 10px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.research-filter-form .research-search-button:disabled,
+.research-filter-form .research-search-button.is-loading {
+    opacity: 0.7;
+    cursor: wait;
 }
 
 .research-section-title {

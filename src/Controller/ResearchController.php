@@ -288,8 +288,8 @@ class ResearchController extends AbstractController
         }
 
         if ($query !== '') {
-            $qb->andWhere('r.title LIKE :query')
-                ->setParameter('query', '%' . $query . '%');
+            $qb->andWhere('LOWER(r.title) LIKE :query')
+                ->setParameter('query', '%' . mb_strtolower($query) . '%');
         }
 
         if ($type !== '') {

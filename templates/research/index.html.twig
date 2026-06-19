@@ -164,7 +164,7 @@
     {% if is_granted('ROLE_SUPER_ADMIN') %}
         <div class="research-create-card">
             <div class="research-create-card-copy">
-                <h3>Add Research Content</h3>
+                <h3>Add Content</h3>
                 <p>Select the content type you want to create, then continue to the matching editor.</p>
             </div>
             <div class="research-create-controls">
@@ -190,6 +190,10 @@
                 <option value="{{ option }}" {% if option == type %}selected{% endif %}>{{ option }}</option>
             {% endfor %}
         </select>
+        <button type="submit" class="btn-secondary research-search-button" data-loading-label="Searching...">Search</button>
+        {% if query or type %}
+            <a href="{{ path('research_index') }}" class="btn-secondary research-clear-button">Clear</a>
+        {% endif %}
     </form>
 </section>
 
@@ -430,8 +434,7 @@
     <script>
     (function () {
         const searchForm = document.querySelector('.research-filter-form');
-        const searchInput = document.querySelector('.research-search-input');
-        const typeSelect = searchForm ? searchForm.querySelector('select[name="type"]') : null;
+        const searchButton = searchForm ? searchForm.querySelector('.research-search-button') : null;
         const createTypeSelect = document.getElementById('researchCreateType');
         const createGoButton = document.getElementById('researchCreateGo');
         const createTargets = {
@@ -444,32 +447,12 @@
         const tokenInput = document.getElementById('researchDeleteToken');
         const title = document.getElementById('researchDeleteTitle');
         const text = document.getElementById('researchDeleteText');
-        let searchTimer = null;
 
-        if (searchForm && searchInput) {
-            const submitSearch = function () {
-                if (typeof searchForm.requestSubmit === 'function') {
-                    searchForm.requestSubmit();
-                    return;
-                }
-
-                searchForm.submit();
-            };
-
-            searchInput.addEventListener('input', function () {
-                window.clearTimeout(searchTimer);
-                searchTimer = window.setTimeout(submitSearch, 300);
-            });
-        }
-
-        if (searchForm && typeSelect) {
-            typeSelect.addEventListener('change', function () {
-                if (typeof searchForm.requestSubmit === 'function') {
-                    searchForm.requestSubmit();
-                    return;
-                }
-
-                searchForm.submit();
+        if (searchForm && searchButton) {
+            searchForm.addEventListener('submit', function () {
+                searchButton.disabled = true;
+                searchButton.textContent = searchButton.dataset.loadingLabel || 'Searching...';
+                searchButton.classList.add('is-loading');
             });
         }
 
