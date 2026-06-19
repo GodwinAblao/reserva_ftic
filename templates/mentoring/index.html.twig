@@ -88,6 +88,14 @@
             <div class="mentor-card-grid" id="mentorCardGrid">
                 {% include 'mentoring/_mentor_cards.html.twig' with { mentors: mentors, mentorApplicationMeta: mentorApplicationMeta|default({}) } only %}
             </div>
+            <div
+                class="mentor-pagination"
+                id="mentorPagination"
+                aria-label="Available mentor pages"
+                data-current-page="{{ mentorPagination.currentPage|default(1) }}"
+                data-total-pages="{{ mentorPagination.totalPages|default(1) }}"
+                data-total-mentors="{{ mentorPagination.totalMentors|default(mentors|length) }}"
+            ></div>
 
             <!-- Filter Tabs -->
             <div class="filter-tabs-container">
@@ -1146,6 +1154,131 @@
         }
         document.addEventListener('turbo:load', syncMentoringTabState);
 
+        // ===== AVAILABLE MENTOR PAGINATION =====
+        let currentMentorPage = 1;
+
+        function renderMentorPagination(page = currentMentorPage, totalPages = null) {
+            const mentorCardGrid = document.getElementById('mentorCardGrid');
+            const pagination = document.getElementById('mentorPagination');
+            if (!mentorCardGrid || !pagination) {
+                return;
+            }
+
+            const pageCount = totalPages === null
+                ? parseInt(pagination.dataset.totalPages || '1', 10)
+                : parseInt(totalPages || '1', 10);
+
+            if (pageCount <= 1) {
+                currentMentorPage = 1;
+                pagination.innerHTML = '';
+                pagination.hidden = true;
+                pagination.dataset.currentPage = '1';
+                pagination.dataset.totalPages = String(pageCount);
+                return;
+            }
+
+            currentMentorPage = Math.min(Math.max(page, 1), pageCount);
+            pagination.dataset.currentPage = String(currentMentorPage);
+            pagination.dataset.totalPages = String(pageCount);
+
+            pagination.hidden = false;
+            pagination.innerHTML = '';
+
+            const createButton = (label, targetPage, options = {}) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'mentor-page-btn';
+                button.textContent = label;
+                if (options.active) {
+                    button.classList.add('active');
+                    button.setAttribute('aria-current', 'page');
+                }
+                if (options.disabled) {
+                    button.disabled = true;
+                }
+                button.addEventListener('click', () => {
+                    fetchMentorPage(targetPage);
+                });
+                return button;
+            };
+
+            pagination.appendChild(createButton('Prev', currentMentorPage - 1, { disabled: currentMentorPage === 1 }));
+            for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+                pagination.appendChild(createButton(String(pageNumber), pageNumber, { active: pageNumber === currentMentorPage }));
+            }
+            pagination.appendChild(createButton('Next', currentMentorPage + 1, { disabled: currentMentorPage === pageCount }));
+        }
+
+        function initMentorPagination() {
+            const pagination = document.getElementById('mentorPagination');
+            const initialPage = parseInt(pagination?.dataset.currentPage || '1', 10);
+            const totalPages = parseInt(pagination?.dataset.totalPages || '1', 10);
+            renderMentorPagination(initialPage, totalPages);
+        }
+
+        function fetchMentorPage(page = 1) {
+            const mentorSearchForm = document.getElementById('mentorSearchForm');
+            const mentorCardGrid = document.getElementById('mentorCardGrid');
+            const pagination = document.getElementById('mentorPagination');
+            const searchInput = document.getElementById('mentorSearchInput');
+            const specializationFilter = document.getElementById('specializationFilter');
+            if (!mentorSearchForm || !mentorCardGrid) {
+                return;
+            }
+
+            const searchTerm = searchInput?.value || '';
+            const specialization = specializationFilter?.value || '';
+            mentorCardGrid.style.opacity = '0.6';
+
+            fetch('{{ path("mentoring_index") }}?search=' + encodeURIComponent(searchTerm) + '&specialization=' + encodeURIComponent(specialization) + '&mentorPage=' + encodeURIComponent(page), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Mentor page failed');
+                return response.json();
+            })
+            .then(data => {
+                mentorCardGrid.innerHTML = data.html;
+                mentorCardGrid.style.opacity = '1';
+
+                const pageData = data.pagination || {};
+                if (pagination) {
+                    pagination.dataset.currentPage = String(pageData.currentPage || 1);
+                    pagination.dataset.totalPages = String(pageData.totalPages || 1);
+                    pagination.dataset.totalMentors = String(pageData.totalMentors || 0);
+                }
+                renderMentorPagination(parseInt(pageData.currentPage || '1', 10), parseInt(pageData.totalPages || '1', 10));
+
+                const cards = mentorCardGrid.querySelectorAll('.mentor-card-link');
+                cards.forEach((card, index) => {
+                    card.style.opacity = '0';
+                    card.style.animation = `fadeInUp 0.4s ease-out ${index * 0.05}s forwards`;
+                });
+                mentorCardGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                if (data.specializationsHtml) {
+                    const specializationsPanel = document.getElementById('preferredSpecializationsPanel');
+                    if (specializationsPanel) {
+                        specializationsPanel.innerHTML = data.specializationsHtml;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Mentor page error:', error);
+                mentorCardGrid.style.opacity = '1';
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMentorPagination, { once: true });
+        } else {
+            initMentorPagination();
+        }
+        document.addEventListener('turbo:load', initMentorPagination);
+
         // ===== REAL-TIME SEARCH =====
         function initMentoringSearch() {
             const mentorSearchForm = document.getElementById('mentorSearchForm');
@@ -1159,54 +1292,9 @@
             const DEBOUNCE_DELAY = 300;
             const searchInput = document.getElementById('mentorSearchInput');
             const specializationFilter = document.getElementById('specializationFilter');
-            const mentorCardGrid = document.getElementById('mentorCardGrid');
 
             function performSearch() {
-                const searchTerm = searchInput?.value || '';
-                const specialization = specializationFilter?.value || '';
-
-                // Show loading state
-                if (mentorCardGrid) {
-                    mentorCardGrid.style.opacity = '0.6';
-                }
-
-                // Make AJAX request
-                fetch('{{ path("mentoring_index") }}?search=' + encodeURIComponent(searchTerm) + '&specialization=' + encodeURIComponent(specialization), {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Search failed');
-                    return response.json();
-                })
-                .then(data => {
-                    if (mentorCardGrid) {
-                        mentorCardGrid.innerHTML = data.html;
-                        mentorCardGrid.style.opacity = '1';
-                        
-                        // Add animation to new cards
-                        const cards = mentorCardGrid.querySelectorAll('.mentor-card-link');
-                        cards.forEach((card, index) => {
-                            card.style.opacity = '0';
-                            card.style.animation = `fadeInUp 0.4s ease-out ${index * 0.05}s forwards`;
-                        });
-                    }
-
-                    if (data.specializationsHtml) {
-                        const specializationsPanel = document.getElementById('preferredSpecializationsPanel');
-                        if (specializationsPanel) {
-                            specializationsPanel.innerHTML = data.specializationsHtml;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Search error:', error);
-                    if (mentorCardGrid) {
-                        mentorCardGrid.style.opacity = '1';
-                    }
-                });
+                fetchMentorPage(1);
             }
 
             // Add event listeners

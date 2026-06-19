@@ -85,6 +85,19 @@ class MentoringController extends AbstractController
             $mentors = array_filter($mentors, fn(MentorProfile $m) => $m->getId() !== $mentorProfile->getId());
         }
 
+        $mentorPageSize = 4;
+        $totalMentors = count($mentors);
+        $totalMentorPages = max(1, (int) ceil($totalMentors / $mentorPageSize));
+        $mentorPage = max(1, $request->query->getInt('mentorPage', 1));
+        $mentorPage = min($mentorPage, $totalMentorPages);
+        $paginatedMentors = array_slice(array_values($mentors), ($mentorPage - 1) * $mentorPageSize, $mentorPageSize);
+        $mentorPagination = [
+            'currentPage' => $mentorPage,
+            'totalPages' => $totalMentorPages,
+            'totalMentors' => $totalMentors,
+            'pageSize' => $mentorPageSize,
+        ];
+
         $mentorApplicationMeta = [];
 
         $mentorUserIds = array_values(array_filter(array_map(
@@ -124,7 +137,7 @@ class MentoringController extends AbstractController
         if ($isAjax) {
             // Return the mentor cards and preferred specialization section as HTML
             $mentorHtml = $this->renderView('mentoring/_mentor_cards.html.twig', [
-                'mentors' => $mentors,
+                'mentors' => $paginatedMentors,
                 'mentorApplicationMeta' => $mentorApplicationMeta,
             ]);
             $specializationsHtml = $this->renderView('mentoring/_preferred_specializations.html.twig', [
@@ -133,6 +146,7 @@ class MentoringController extends AbstractController
             return new JsonResponse([
                 'html' => $mentorHtml,
                 'specializationsHtml' => $specializationsHtml,
+                'pagination' => $mentorPagination,
             ]);
         }
 
@@ -177,7 +191,8 @@ class MentoringController extends AbstractController
             && empty(array_filter($applications, fn($app) => in_array($app->getStatus(), ['Pending', 'Approved'])));
 
         return $this->render('mentoring/index.html.twig', [
-            'mentors' => $mentors,
+            'mentors' => $paginatedMentors,
+            'mentorPagination' => $mentorPagination,
             'mentorApplicationMeta' => $mentorApplicationMeta,
             'appointments' => $appointments,
             'leaderboard' => $leaderboard,

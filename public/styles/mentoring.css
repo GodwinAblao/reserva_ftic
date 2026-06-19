@@ -3095,6 +3095,36 @@
   width: 100%;
 }
 
+body.regular-user-theme:has(.mentoring-page-layout) {
+  overflow-y: auto;
+}
+
+.app-shell.regular-user-shell:has(.mentoring-page-layout) {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  min-height: calc(100vh - 88px);
+  margin-top: 88px;
+  overflow: visible;
+  align-items: start;
+}
+
+.app-shell.regular-user-shell:has(.mentoring-page-layout) .content-area.regular-user-content {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.app-shell.regular-user-shell:has(.mentoring-page-layout) .content-wrapper {
+  min-height: 0;
+}
+
+.app-shell.regular-user-shell:has(.mentoring-page-layout) .sidebar.regular-user-sidebar {
+  position: sticky !important;
+  top: 100px !important;
+  max-height: calc(100vh - 112px) !important;
+}
+
 /* Tablet & Up - Two Column Layout (768px+) */
 @media (min-width: 768px) {
   .mentoring-page-layout {
@@ -3237,6 +3267,50 @@
   grid-template-columns: 1fr;
   gap: 16px;
   margin: 0 0 36px 0;
+}
+
+.mentor-card-grid .mentor-card-link[hidden] {
+  display: none !important;
+}
+
+.mentor-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 34px;
+  margin: -18px 0 34px;
+}
+
+.mentor-pagination[hidden] {
+  display: none !important;
+}
+
+.mentor-page-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #0d9b00;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0d9b00;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.mentor-page-btn:hover:not(:disabled),
+.mentor-page-btn.active {
+  background: #0d9b00;
+  color: #ffffff;
+}
+
+.mentor-page-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 /* Tablet & Up - Two columns */
@@ -3414,16 +3488,17 @@
   border: 1px solid #cfcfcf;
   border-radius: 8px;
   background: #fff;
-  padding: 16px 16px 96px;
-  margin-bottom: 96px;
+  padding: 16px;
+  margin-bottom: 0;
+  overflow: visible;
 }
 
 .mentoring-content-section .mentoring-content:not(.hidden) {
-  padding-bottom: 72px;
+  padding-bottom: 0;
 }
 
 .mentoring-content-section .reservations-grid {
-  padding-bottom: 72px;
+  padding-bottom: 0;
 }
 
 .mentoring-side-column .reservations-side-card,
@@ -3646,6 +3721,24 @@
   .mentoring-side-column .mentoring-info-card,
   .mentoring-side-column .mentoring-side-card {
     margin-bottom: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell.regular-user-shell:has(.mentoring-page-layout) {
+    position: static !important;
+    margin-top: 0;
+    min-height: 0;
+  }
+
+  .app-shell.regular-user-shell:has(.mentoring-page-layout) .content-area.regular-user-content {
+    height: auto;
+  }
+
+  .app-shell.regular-user-shell:has(.mentoring-page-layout) .sidebar.regular-user-sidebar {
+    position: fixed !important;
+    top: 56px !important;
+    max-height: none !important;
   }
 }
 
