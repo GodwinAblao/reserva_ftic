@@ -235,7 +235,7 @@
 
                 <div class="sa-form-group">
                     <label for="facility">Facility *</label>
-                    <select id="facility" name="facility" class="sa-form-input" required onchange="updateFacilityCapacity()">
+                    <select id="facility" name="facility" class="sa-form-input" required onchange="updateFacilityCapacity()" data-original-facility="{{ reservation.facility.id }}">
                         <option value="">Select a facility</option>
                         {% for facility in facilities %}
                             <option value="{{ facility.id }}"
@@ -245,6 +245,13 @@
                             </option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <div class="sa-form-group full-width">
+                    <label for="facilityUpdateNotes">Facility Update Notes</label>
+                    <textarea id="facilityUpdateNotes" name="facility_update_notes" class="sa-form-input" rows="3"
+                              placeholder="Explain why the facility is being updated. This note will be sent to the requester."></textarea>
+                    <small class="help-text">Required when changing the facility. The requester will receive this note by email and notification.</small>
                 </div>
 
                 <div class="sa-form-group">
@@ -304,16 +311,17 @@
 
                 <div class="sa-form-group full-width">
                     <label for="purpose">Event Objective</label>
-                    <textarea id="purpose" name="purpose" class="sa-form-input" rows="4"
-                              placeholder="Describe the objective of the reservation...">{{ reservation.purpose ?? '' }}</textarea>
+                    <textarea id="purpose" name="purpose" class="sa-form-input readonly-field" rows="4"
+                              placeholder="Describe the objective of the reservation..." readonly>{{ reservation.purpose ?? '' }}</textarea>
                 </div>
 
                 {% if is_granted('ROLE_SUPER_ADMIN') %}
                 <div class="sa-form-group" style="display: flex; align-items: center; gap: 8px; padding-top: 8px;">
                     <input type="checkbox" id="institutionalEvent" name="institutional_event"
                            {% if reservation.institutionalEvent %}checked{% endif %}
-                           style="width: 20px; height: 20px; cursor: pointer;">
-                    <label for="institutionalEvent" style="margin: 0; cursor: pointer; font-weight: 600;">Institutional Event</label>
+                           disabled
+                           style="width: 20px; height: 20px; cursor: not-allowed; opacity: 0.65;">
+                    <label for="institutionalEvent" style="margin: 0; cursor: not-allowed; font-weight: 600; color: #6b7280;">Institutional Event</label>
                 </div>
                 {% endif %}
 
@@ -374,6 +382,17 @@
         // Update capacity input max value
         const capacityInput = document.getElementById('capacity');
         capacityInput.max = maxCapacity;
+        syncFacilityNotesRequirement();
+    }
+
+    function syncFacilityNotesRequirement() {
+        const facilitySelect = document.getElementById('facility');
+        const notes = document.getElementById('facilityUpdateNotes');
+        if (!facilitySelect || !notes) {
+            return;
+        }
+
+        notes.required = facilitySelect.value !== facilitySelect.dataset.originalFacility;
     }
 
     // Validate time inputs
@@ -397,6 +416,18 @@
             this.value = maxCapacity;
         }
     });
+
+    document.querySelector('.edit-form').addEventListener('submit', function(event) {
+        const facilitySelect = document.getElementById('facility');
+        const notes = document.getElementById('facilityUpdateNotes');
+        if (facilitySelect && notes && facilitySelect.value !== facilitySelect.dataset.originalFacility && !notes.value.trim()) {
+            event.preventDefault();
+            notes.focus();
+            alert('Please enter facility update notes before changing the facility.');
+        }
+    });
+
+    syncFacilityNotesRequirement();
 </script>
 
 <style>

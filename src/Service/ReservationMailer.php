@@ -46,7 +46,7 @@ class ReservationMailer
         );
     }
 
-    public function notifyApproved(Reservation $reservation): void
+    public function notifyApproved(Reservation $reservation, ?string $extraMessage = null): void
     {
         $user = $reservation->getUser();
         if (!$user) {
@@ -55,18 +55,24 @@ class ReservationMailer
 
         $this->sendUserEmail($reservation, $user, 'Approved',
             'Great news! Your facility reservation has been approved. Please review the details below.',
+            $extraMessage,
         );
+
+        $notificationMessage = sprintf('Your reservation for %s on %s has been approved.',
+            $reservation->getFacility()?->getName() ?? 'a facility',
+            $reservation->getReservationDate()?->format('F j, Y') ?? ''
+        );
+        if ($extraMessage) {
+            $notificationMessage .= ' Note: ' . $extraMessage;
+        }
 
         $this->createUserNotification($reservation, $user, 'Approved',
             'Reservation Approved',
-            sprintf('Your reservation for %s on %s has been approved.',
-                $reservation->getFacility()?->getName() ?? 'a facility',
-                $reservation->getReservationDate()?->format('F j, Y') ?? ''
-            ),
+            $notificationMessage,
         );
     }
 
-    public function notifyRejected(Reservation $reservation): void
+    public function notifyRejected(Reservation $reservation, ?string $extraMessage = null): void
     {
         $user = $reservation->getUser();
         if (!$user) {
@@ -77,20 +83,25 @@ class ReservationMailer
 
         $this->sendUserEmail($reservation, $user, 'Rejected',
             'We regret to inform you that your facility reservation request has been rejected.',
-            'Reason: ' . $reason,
+            trim('Reason: ' . $reason . ($extraMessage ? "\n\n" . $extraMessage : '')),
         );
+
+        $notificationMessage = sprintf('Your reservation for %s on %s was rejected. Reason: %s',
+            $reservation->getFacility()?->getName() ?? 'a facility',
+            $reservation->getReservationDate()?->format('F j, Y') ?? '',
+            $reason
+        );
+        if ($extraMessage) {
+            $notificationMessage .= ' Note: ' . $extraMessage;
+        }
 
         $this->createUserNotification($reservation, $user, 'Rejected',
             'Reservation Rejected',
-            sprintf('Your reservation for %s on %s was rejected. Reason: %s',
-                $reservation->getFacility()?->getName() ?? 'a facility',
-                $reservation->getReservationDate()?->format('F j, Y') ?? '',
-                $reason
-            ),
+            $notificationMessage,
         );
     }
 
-    public function notifyCancelled(Reservation $reservation): void
+    public function notifyCancelled(Reservation $reservation, ?string $extraMessage = null): void
     {
         $user = $reservation->getUser();
         if (!$user) {
@@ -99,18 +110,24 @@ class ReservationMailer
 
         $this->sendUserEmail($reservation, $user, 'Cancelled',
             'Your facility reservation has been cancelled.',
+            $extraMessage,
         );
+
+        $notificationMessage = sprintf('Your reservation for %s on %s has been cancelled.',
+            $reservation->getFacility()?->getName() ?? 'a facility',
+            $reservation->getReservationDate()?->format('F j, Y') ?? ''
+        );
+        if ($extraMessage) {
+            $notificationMessage .= ' Note: ' . $extraMessage;
+        }
 
         $this->createUserNotification($reservation, $user, 'Cancelled',
             'Reservation Cancelled',
-            sprintf('Your reservation for %s on %s has been cancelled.',
-                $reservation->getFacility()?->getName() ?? 'a facility',
-                $reservation->getReservationDate()?->format('F j, Y') ?? ''
-            ),
+            $notificationMessage,
         );
     }
 
-    public function notifyUpdated(Reservation $reservation): void
+    public function notifyUpdated(Reservation $reservation, ?string $extraMessage = null): void
     {
         $user = $reservation->getUser();
         if (!$user) {
@@ -119,14 +136,20 @@ class ReservationMailer
 
         $this->sendUserEmail($reservation, $user, 'Updated',
             'Your facility reservation request has been updated by the administrator. Please review the latest details below.',
+            $extraMessage,
         );
+
+        $notificationMessage = sprintf('Your reservation for %s on %s has been updated.',
+            $reservation->getFacility()?->getName() ?? 'a facility',
+            $reservation->getReservationDate()?->format('F j, Y') ?? ''
+        );
+        if ($extraMessage) {
+            $notificationMessage .= ' Note: ' . $extraMessage;
+        }
 
         $this->createUserNotification($reservation, $user, 'Updated',
             'Reservation Updated',
-            sprintf('Your reservation for %s on %s has been updated.',
-                $reservation->getFacility()?->getName() ?? 'a facility',
-                $reservation->getReservationDate()?->format('F j, Y') ?? ''
-            ),
+            $notificationMessage,
         );
     }
 

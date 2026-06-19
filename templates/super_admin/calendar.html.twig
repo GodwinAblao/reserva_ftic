@@ -944,6 +944,7 @@
     .btn-edit:hover    { background:#0284c7; color:white; }
     .btn-delete  { background:#dc2626; color:white; padding:.65rem 1.25rem; border:none; border-radius:9px; font-weight:700; cursor:pointer; }
     .btn-delete:hover  { background:#b91c1c; }
+    .calendar-edit-locked { color:#6b7280; font-size:.9rem; margin:0; padding:.75rem .9rem; border:1px solid #e5e7eb; border-radius:10px; background:#f9fafb; line-height:1.45; }
     .no-events { padding:3rem; text-align:center; color:#9ca3af; }
 
     /* Delete-schedule confirm modal */
@@ -2429,11 +2430,10 @@
             // For regular reservations only - not blocks
             const editUrl = calendarConfig.editUrlPattern.replace('{id}', data.id);
             if (calendarConfig.fullMode) {
-                // Don't show edit button for blocked/maintenance items
-                if (data.status !== 'Blocked' && data.status !== 'Maintenance') {
+                if (data.status === 'Approved') {
                     document.getElementById('modalActions').innerHTML = `<a href="${editUrl}" class="btn-edit">Edit</a>`;
                 } else {
-                    document.getElementById('modalActions').innerHTML = '<p style="color:#6b7280;font-size:0.9rem;margin:0;">Blocked schedule (view only)</p>';
+                    document.getElementById('modalActions').innerHTML = '<p class="calendar-edit-locked">Calendar editing is available only after this reservation has been approved.</p>';
                 }
             } else {
                 const statuses = ['Pending', 'Approved'];

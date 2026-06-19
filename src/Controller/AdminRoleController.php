@@ -17,6 +17,7 @@ use App\Repository\UserRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ReservationAuditLogger;
+use App\Service\ReservationMailer;
 use App\Service\ReservationStatusManager;
 use App\Service\NotificationService;
 use App\Entity\User;
@@ -331,13 +332,16 @@ class AdminRoleController extends AbstractController
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em,
         ReservationAuditLogger $auditLogger,
+        ReservationMailer $reservationMailer,
     ): Response {
         if (!$this->isCsrfTokenValid('update_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
         }
 
         $previousStatus = $reservation->getStatus();
-        $newStatus = (string) $request->request->get('status');
+        $newStatus = (string) $request->request->get('status', $previousStatus);
+        $previousFacility = $reservation->getFacility();
+        $facilityUpdateNotes = trim((string) $request->request->get('facility_update_notes', ''));
 
         if (!ReservationAuditLogger::isManageableStatus($newStatus)) {
             $this->addFlash('error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
@@ -349,7 +353,6 @@ class AdminRoleController extends AbstractController
         $reservation->setEmail((string) $request->request->get('email'));
         $reservation->setContact((string) $request->request->get('contact'));
         $reservation->setCapacity((int) $request->request->get('capacity'));
-        $reservation->setPurpose($request->request->get('purpose'));
 
         $reservationDate = new \DateTime((string) $request->request->get('reservationDate'));
         $startTime = \DateTime::createFromFormat('H:i', (string) $request->request->get('reservationStartTime'));
@@ -363,6 +366,12 @@ class AdminRoleController extends AbstractController
         if ($facilityId) {
             $facility = $em->getRepository(Facility::class)->find($facilityId);
             if ($facility) {
+                if ($previousFacility?->getId() !== $facility->getId() && $facilityUpdateNotes === '') {
+                    $this->addFlash('error', 'Facility update notes are required when changing the facility.');
+
+                    return $this->redirectToRoute('admin_role_edit_reservation', ['id' => $reservation->getId()]);
+                }
+
                 $reservation->setFacility($facility);
             }
         }
@@ -381,9 +390,34 @@ class AdminRoleController extends AbstractController
         $reservation->setStatus($newStatus);
         $reservation->setUpdatedAt(new \DateTime());
         $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'update');
+        $facilityChanged = $previousFacility?->getId() !== $reservation->getFacility()?->getId();
+        $updateMessage = $facilityChanged
+            ? sprintf(
+                'Facility changed from %s to %s. Admin note: %s',
+                $previousFacility?->getName() ?? 'N/A',
+                $reservation->getFacility()?->getName() ?? 'N/A',
+                $facilityUpdateNotes
+            )
+            : null;
         $em->flush();
 
-        $this->addFlash('success', 'Reservation updated successfully.');
+        if ($previousStatus !== $newStatus) {
+            match ($newStatus) {
+                'Approved' => $reservationMailer->notifyApproved($reservation, $updateMessage),
+                'Rejected' => $reservationMailer->notifyRejected($reservation, $updateMessage),
+                'Cancelled' => $reservationMailer->notifyCancelled($reservation, $updateMessage),
+                default => $reservationMailer->notifyUpdated($reservation, $updateMessage),
+            };
+        } else {
+            $reservationMailer->notifyUpdated($reservation, $updateMessage);
+        }
+
+        $this->addFlash(
+            'success',
+            $reservation->getUser()
+                ? 'Reservation updated successfully. The user has been notified.'
+                : 'Reservation updated successfully. No linked user account was found to notify.'
+        );
 
         return $this->redirectToRoute('admin_role_calendar');
     }

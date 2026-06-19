@@ -98,6 +98,12 @@ class SuperAdminReservationController extends AbstractController
     #[Route('/reservations/{id}/edit', name: 'admin_edit_reservation', methods: ['GET'])]
     public function editReservation(Reservation $reservation, FacilityRepository $facilityRepo): Response
     {
+        if (!$this->isCalendarEditableReservation($reservation)) {
+            $this->addFlash('error', $this->buildCalendarEditRestrictionMessage($reservation));
+
+            return $this->redirectToRoute('admin_calendar');
+        }
+
         return $this->render('super_admin/edit_reservation.html.twig', [
             'reservation' => $reservation,
             'facilities' => $facilityRepo->findAll(),
@@ -119,8 +125,16 @@ class SuperAdminReservationController extends AbstractController
         // Skip CSRF validation for Super Admin operations
         // Super Admin has full privileges and doesn't need CSRF protection
 
+        if (!$this->isCalendarEditableReservation($reservation)) {
+            $this->addFlash('error', $this->buildCalendarEditRestrictionMessage($reservation));
+
+            return $this->redirectToRoute('admin_calendar');
+        }
+
         $previousStatus = $reservation->getStatus();
-        $newStatus = (string) $request->request->get('status');
+        $newStatus = (string) $request->request->get('status', $previousStatus);
+        $previousFacility = $reservation->getFacility();
+        $facilityUpdateNotes = trim((string) $request->request->get('facility_update_notes', ''));
 
         if (!ReservationAuditLogger::isManageableStatus($newStatus)) {
             $this->addFlash('error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
@@ -133,15 +147,17 @@ class SuperAdminReservationController extends AbstractController
         $startTime = $request->request->get('reservationStartTime');
         $endTime = $request->request->get('reservationEndTime');
         $capacity = $request->request->get('capacity');
-        $purpose = $request->request->get('purpose');
-        $eventPurpose = $request->request->get('event_purpose');
-        $eventPurposeOther = $request->request->get('event_purpose_other');
-        $institutionalEvent = $request->request->get('institutional_event') === 'on';
 
         // Update facility if provided
         if ($facilityId) {
             $facility = $facilityRepo->find($facilityId);
             if ($facility) {
+                if ($previousFacility?->getId() !== $facility->getId() && $facilityUpdateNotes === '') {
+                    $this->addFlash('error', 'Facility update notes are required when changing the facility.');
+
+                    return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
+                }
+
                 $reservation->setFacility($facility);
             }
         }
@@ -166,44 +182,34 @@ class SuperAdminReservationController extends AbstractController
             $reservation->setCapacity((int) $capacity);
         }
 
-        // Update purpose if provided
-        if ($purpose !== null) {
-            $reservation->setPurpose($purpose);
-        }
-
-        // Update event purpose if provided
-        if ($eventPurpose !== null) {
-            $reservation->setEventPurpose($eventPurpose);
-        }
-
-        // Update event purpose other if provided
-        if ($eventPurposeOther !== null) {
-            $reservation->setEventPurposeOther($eventPurposeOther);
-        }
-
-        // Update institutional event flag if provided
-        if ($institutionalEvent !== null) {
-            $reservation->setInstitutionalEvent($institutionalEvent);
-        }
-
         // Update status and log change if status changed
         if ($previousStatus !== $newStatus) {
             $reservation->setStatus($newStatus);
             $auditLogger->logStatusChange($reservation, $previousStatus, $newStatus, 'admin_update', null);
         }
 
+        $facilityChanged = $previousFacility?->getId() !== $reservation->getFacility()?->getId();
+        $updateMessage = $facilityChanged
+            ? sprintf(
+                'Facility changed from %s to %s. Admin note: %s',
+                $previousFacility?->getName() ?? 'N/A',
+                $reservation->getFacility()?->getName() ?? 'N/A',
+                $facilityUpdateNotes
+            )
+            : null;
+
         $reservation->setUpdatedAt(new \DateTime());
         $em->flush();
 
         if ($previousStatus !== $newStatus) {
             match ($newStatus) {
-                'Approved' => $reservationMailer->notifyApproved($reservation),
-                'Rejected' => $reservationMailer->notifyRejected($reservation),
-                'Cancelled' => $reservationMailer->notifyCancelled($reservation),
-                default => $reservationMailer->notifyUpdated($reservation),
+                'Approved' => $reservationMailer->notifyApproved($reservation, $updateMessage),
+                'Rejected' => $reservationMailer->notifyRejected($reservation, $updateMessage),
+                'Cancelled' => $reservationMailer->notifyCancelled($reservation, $updateMessage),
+                default => $reservationMailer->notifyUpdated($reservation, $updateMessage),
             };
         } else {
-            $reservationMailer->notifyUpdated($reservation);
+            $reservationMailer->notifyUpdated($reservation, $updateMessage);
         }
 
         $this->addFlash(
@@ -1157,5 +1163,18 @@ class SuperAdminReservationController extends AbstractController
             'hasConflicts'    => true,
             'conflictMessage' => 'Existing items found in this time slot. Override to proceed?',
         ], Response::HTTP_CONFLICT);
+    }
+
+    private function isCalendarEditableReservation(Reservation $reservation): bool
+    {
+        return $reservation->getStatus() === 'Approved';
+    }
+
+    private function buildCalendarEditRestrictionMessage(Reservation $reservation): string
+    {
+        return sprintf(
+            'Calendar editing is only available for approved reservations. This reservation is currently %s.',
+            $reservation->getStatus() ?: 'Unknown'
+        );
     }
 }
