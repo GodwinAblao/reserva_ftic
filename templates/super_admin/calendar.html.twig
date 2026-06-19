@@ -230,6 +230,31 @@
         pointer-events: none;
     }
 
+    .faculty-email-invalid {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+    }
+
+    .faculty-email-error {
+        display: none;
+        margin-top: 4px;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .faculty-email-error.is-visible {
+        display: block;
+    }
+
+    .sa-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
     .manual-class-summary {
         background: var(--primary-light);
         border: 1px solid #bbf7d0;
@@ -604,6 +629,7 @@
                         <div class="sa-import-field">
                             <label>Faculty Email</label>
                             <input type="email" name="faculty_email" id="inputFacultyEmail" placeholder="faculty@feutech.edu.ph">
+                            <span id="inputFacultyEmailError" class="faculty-email-error">Faculty email must use @feutech.edu.ph.</span>
                         </div>
                     </div>
                     <p class="sa-warning-text">Adds a new class schedule to the calendar without deleting any existing schedules.</p>
@@ -676,7 +702,8 @@
                 </div>
                 <div class="sa-import-field">
                     <label>Faculty Email</label>
-                    <input type="text" name="faculty_email_input" id="modifyFacultyEmailInput" placeholder="Faculty Email">
+                    <input type="email" name="faculty_email_input" id="modifyFacultyEmailInput" placeholder="Faculty Email">
+                    <span id="modifyFacultyEmailError" class="faculty-email-error">Faculty email must use @feutech.edu.ph.</span>
                 </div>
             </div>
             
@@ -1594,6 +1621,7 @@
         // Hide action type dropdown when no class is selected
         document.getElementById('actionTypeContainer').style.display = 'none';
         document.getElementById('modifyActionType').value = 'block';
+        validateModifyFacultyEmail();
         // Enable facility select (default block mode)
         const facilitySelect = document.getElementById('modifyFacilitySelect');
         facilitySelect.disabled = false;
@@ -1610,6 +1638,9 @@
 
     async function saveModifyScheduleInBackground(e) {
         e.preventDefault();
+        if (!validateModifyFacultyEmail()) {
+            return;
+        }
         const form = document.getElementById('modifyScheduleForm');
         const submitBtn = document.getElementById('modifySubmit');
         const messageBox = document.getElementById('modifyMessage');
@@ -2536,6 +2567,7 @@
         document.getElementById('modifySubmit').textContent = 'Update Class Schedule';
         document.getElementById('modifyCancelEdit').style.display = 'inline-block';
         document.getElementById('modifyMessage').style.display = 'none';
+        validateModifyFacultyEmail();
         closeModal();
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -2854,6 +2886,9 @@
     // Manual Input Form Handler
     document.getElementById('manualInputForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!validateManualFacultyEmail()) {
+            return;
+        }
         const btn = document.getElementById('manualInputSubmit');
         const origText = btn.textContent;
         btn.disabled = true;
@@ -2921,6 +2956,7 @@
         } finally {
             btn.disabled = false;
             btn.textContent = origText;
+            validateManualFacultyEmail();
         }
     });
 
@@ -2928,6 +2964,7 @@
     // REAL-TIME CONFLICT DETECTION FOR INPUT SCHEDULE
     // ============================================
     let conflictCheckTimeout = null;
+    let manualInputHasConflict = false;
 
     function checkConflict() {
         const facility = document.getElementById('inputFacility')?.value;
@@ -2938,8 +2975,9 @@
         const conflictDiv = document.getElementById('inputConflictMessage') || createConflictMessageDiv();
 
         if (!facility || !day || !startTime || !endTime) {
+            manualInputHasConflict = false;
             conflictDiv.style.display = 'none';
-            if (submitBtn) submitBtn.disabled = false;
+            validateManualFacultyEmail();
             return;
         }
 
@@ -2963,6 +3001,7 @@
                 const data = await response.json();
 
                 if (data.hasConflict) {
+                    manualInputHasConflict = true;
                     conflictDiv.textContent = `CONFLICT: ${data.conflict.courseCode} - ${data.conflict.section} (${data.conflict.facultyName}) already scheduled from ${data.conflict.startTime} to ${data.conflict.endTime}`;
                     conflictDiv.style.display = 'block';
                     conflictDiv.style.background = '#fee2e2';
@@ -2974,8 +3013,9 @@
                     conflictDiv.style.fontWeight = '600';
                     if (submitBtn) submitBtn.disabled = true;
                 } else {
+                    manualInputHasConflict = false;
                     conflictDiv.style.display = 'none';
-                    if (submitBtn) submitBtn.disabled = false;
+                    validateManualFacultyEmail();
                 }
             } catch (err) {
                 // Silently fail - don't block user on error
@@ -3001,49 +3041,50 @@
     });
 
     // ============================================
-    // EMAIL DOMAIN VALIDATION FOR INPUT SCHEDULE
+    // FACULTY EMAIL DOMAIN VALIDATION
     // ============================================
-    function validateEmailDomain() {
-        const emailInput = document.getElementById('inputFacultyEmail');
+    function isFeuTechFacultyEmail(value) {
+        const email = value.trim().toLowerCase();
+        return email === '' || email.endsWith('@feutech.edu.ph');
+    }
+
+    function validateFacultyEmailField(inputId, errorId, submitId) {
+        const emailInput = document.getElementById(inputId);
+        const errorSpan = document.getElementById(errorId);
+        const submitBtn = document.getElementById(submitId);
+        if (!emailInput || !submitBtn) return true;
+
+        const isValid = isFeuTechFacultyEmail(emailInput.value);
+        emailInput.classList.toggle('faculty-email-invalid', !isValid);
+        if (errorSpan) {
+            errorSpan.classList.toggle('is-visible', !isValid);
+        }
+        submitBtn.disabled = !isValid;
+        return isValid;
+    }
+
+    function validateManualFacultyEmail() {
+        const isEmailValid = validateFacultyEmailField('inputFacultyEmail', 'inputFacultyEmailError', 'manualInputSubmit');
+        const submitBtn = document.getElementById('manualInputSubmit');
+        if (submitBtn && manualInputHasConflict) {
+            submitBtn.disabled = true;
+        }
+        return isEmailValid && !manualInputHasConflict;
+    }
+
+    function validateModifyFacultyEmail() {
+        return validateFacultyEmailField('modifyFacultyEmailInput', 'modifyFacultyEmailError', 'modifySubmit');
+    }
+
+    function attachFacultyEmailValidation(inputId, validator) {
+        const emailInput = document.getElementById(inputId);
         if (!emailInput) return;
-
-        const email = emailInput.value.trim().toLowerCase();
-        const allowedDomains = ['@feutech.edu.ph', '@fit.edu.ph'];
-        let errorSpan = document.getElementById('emailDomainError');
-
-        if (!errorSpan) {
-            errorSpan = document.createElement('span');
-            errorSpan.id = 'emailDomainError';
-            errorSpan.style.color = '#dc2626';
-            errorSpan.style.fontSize = '12px';
-            errorSpan.style.marginTop = '4px';
-            errorSpan.style.display = 'block';
-            emailInput.parentNode.appendChild(errorSpan);
-        }
-
-        if (email) {
-            const isValidDomain = allowedDomains.some(domain => email.endsWith(domain));
-            if (!isValidDomain) {
-                errorSpan.textContent = 'Email must be from @feutech.edu.ph or @fit.edu.ph';
-                emailInput.style.borderColor = '#dc2626';
-            } else {
-                errorSpan.textContent = '';
-                emailInput.style.borderColor = '';
-            }
-        } else {
-            errorSpan.textContent = '';
-            emailInput.style.borderColor = '';
-        }
+        emailInput.addEventListener('input', validator);
+        emailInput.addEventListener('blur', validator);
+        validator();
     }
 
-    const emailInput = document.getElementById('inputFacultyEmail');
-    if (emailInput) {
-        emailInput.addEventListener('blur', validateEmailDomain);
-        emailInput.addEventListener('input', () => {
-            const errorSpan = document.getElementById('emailDomainError');
-            if (errorSpan) errorSpan.textContent = '';
-            emailInput.style.borderColor = '';
-        });
-    }
+    attachFacultyEmailValidation('inputFacultyEmail', validateManualFacultyEmail);
+    attachFacultyEmailValidation('modifyFacultyEmailInput', validateModifyFacultyEmail);
 </script>
 {% endblock %}

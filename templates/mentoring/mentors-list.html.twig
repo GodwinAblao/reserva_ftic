@@ -110,7 +110,8 @@
                 {% if mentor.user %}
                 <div class="ml-meta-item">
                     <label>Role</label>
-                    <p>{{ mentor.user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}</p>
+                    {% set displayRoles = mentor.user.roles|filter(role => role != 'ROLE_USER') %}
+                    <p>{{ displayRoles|join(', ')|replace({'ROLE_':'','_':' '})|lower|title }}</p>
                 </div>
                 {% endif %}
             </div>
