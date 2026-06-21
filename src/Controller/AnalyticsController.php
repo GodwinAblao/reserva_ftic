@@ -596,9 +596,16 @@ class AnalyticsController extends AbstractController
             $facility = $res->getFacility();
             $facId    = $facility?->getId() ?? 0;
             $facName  = $facility->getName() ?? 'Unknown';
-            $facilityStats[$facId] ??= ['name' => $facName, 'count' => 0, 'capacity' => 0, 'id' => $facId];
+            $facilityStats[$facId] ??= [
+                'name' => $facName,
+                'count' => 0,
+                'capacity' => 0,
+                'id' => $facId,
+                'status_counts' => ['Approved' => 0, 'Pending' => 0, 'Rejected' => 0, 'Cancelled' => 0],
+            ];
             $facilityStats[$facId]['count']++;
             $facilityStats[$facId]['capacity'] += $res->getCapacity() ?? 0;
+            $facilityStats[$facId]['status_counts'][$effectiveStatus] = ($facilityStats[$facId]['status_counts'][$effectiveStatus] ?? 0) + 1;
 
             $resDate = $res->getReservationDate();
             if ($month = $resDate?->format('Y-m')) {
@@ -1147,17 +1154,18 @@ class AnalyticsController extends AbstractController
 
     private function calculateFacilityRiskScores(array $facilityStats, array $statusCounts, float $noShowRate): array
     {
-        $totalRejected = $statusCounts['Rejected'] ?? 0;
-        $totalCancelled = $statusCounts['Cancelled'] ?? 0;
         $total = array_sum($statusCounts);
         $result = [];
 
         foreach ($facilityStats as $stats) {
             $bookings = $stats['count'];
             $overloadRisk = $bookings > ($total / max(1, count($facilityStats))) * 1.5 ? 'High' : ($bookings > ($total / max(1, count($facilityStats))) ? 'Medium' : 'Low');
-            $noShowRisk = $noShowRate > 30 ? 'High' : ($noShowRate > 15 ? 'Medium' : 'Low');
+            $facilityStatuses = $stats['status_counts'] ?? [];
+            $facilityFailed = ($facilityStatuses['Cancelled'] ?? 0) + ($facilityStatuses['Rejected'] ?? 0);
+            $facilityNoShowRate = $bookings > 0 ? round(($facilityFailed / $bookings) * 100, 1) : $noShowRate;
+            $noShowRisk = $facilityNoShowRate > 30 ? 'High' : ($facilityNoShowRate > 15 ? 'Medium' : 'Low');
             $riskScore = ($overloadRisk === 'High' ? 30 : ($overloadRisk === 'Medium' ? 15 : 0)) + ($noShowRisk === 'High' ? 30 : ($noShowRisk === 'Medium' ? 15 : 0));
-            $result[$stats['name']] = ['risk_score' => $riskScore, 'overload_risk' => $overloadRisk, 'no_show_risk' => $noShowRisk, 'bookings' => $bookings];
+            $result[$stats['name']] = ['risk_score' => $riskScore, 'overload_risk' => $overloadRisk, 'no_show_risk' => $noShowRisk, 'bookings' => $bookings, 'no_show_rate' => $facilityNoShowRate];
         }
         uasort($result, fn($a, $b) => $b['risk_score'] <=> $a['risk_score']);
         return $result;
