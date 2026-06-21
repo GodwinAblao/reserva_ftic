@@ -122,7 +122,7 @@ class UserRepository extends ServiceEntityRepository
 
         return array_values(array_filter(
             $users,
-            static fn (User $user): bool => !in_array('ROLE_MENTOR', $user->getRoles(), true)
+            static fn (User $user): bool => !in_array('ROLE_MENTOR', $user->getRoles(), true) && array_diff($user->getRoles(), ['ROLE_USER']) !== []
         ));
     }
 

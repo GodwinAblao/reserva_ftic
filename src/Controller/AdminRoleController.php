@@ -1,6 +1,6 @@
 <?php
-
 declare(strict_types=1);
+
 
 namespace App\Controller;
 
@@ -620,9 +620,11 @@ class AdminRoleController extends AbstractController
     {
         $mentorId         = (int) $request->request->get('mentor_id', 0);
         $mentorNameManual = trim((string) ($request->request->get('mentor_name_manual') ?: $request->request->get('mentor_name', '')));
-        $specialization   = trim((string) $request->request->get('specialization', ''));
+        $expertise = trim((string) $request->request->get('expertise', ''));
+        $expertiseOther = trim((string) $request->request->get('expertise_other', ''));
+        if ($expertise === 'Other' && $expertiseOther !== '') { $expertise = $expertiseOther; }
 
-        $this->resolveMentorIdentity($req, $em, $mentorId, $mentorNameManual, $specialization);
+        $this->resolveMentorIdentity($req, $em, $mentorId, $mentorNameManual, $expertise);
 
         $timeStart   = trim((string) $request->request->get('available_time_start', ''));
         $timeEnd     = trim((string) $request->request->get('available_time_end', ''));
@@ -636,10 +638,14 @@ class AdminRoleController extends AbstractController
         $meetingMethod = trim((string) $request->request->get('meeting_method_override', ''))
             ?: trim((string) $request->request->get('meeting_method', ''));
         $instructions = $request->request->get('admin_instructions') ?: $request->request->get('instructions');
+        $meetingLink = trim((string) $request->request->get('meeting_link'));
+        $meetingLocation = trim((string) $request->request->get('meeting_location'));
 
         $req->setMeetingMethod($meetingMethod ?: null)
             ->setAvailableDates($request->request->get('available_dates') ?: null)
             ->setAvailableTime($availTime ?: null)
+            ->setMeetingLink($meetingLink !== '' ? $meetingLink : null)
+            ->setMeetingLocation($meetingLocation !== '' ? $meetingLocation : null)
             ->setAdminInstructions($instructions ?: null);
     }
 
@@ -730,9 +736,12 @@ class AdminRoleController extends AbstractController
 
         $specializations = $specializationRepository->findAllOrderedByName();
 
+        $allRequests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
+        $assistanceRequests = array_values(array_filter($allRequests, fn($r) => $r->isAssistanceRequest()));
+
         return $this->render('admin/admin_mentoring.html.twig', [
             'applications' => $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC'], 20),
-            'requests' => $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50),
+            'requests' => $assistanceRequests,
             'appointments' => $em->getRepository(MentoringAppointment::class)->findBy([], ['scheduledAt' => 'DESC'], 20),
             'mentors' => $mentorProfileRepository->findActiveOrderedByDisplayName(),
             'leaderboard' => $mentorProfileRepository->findActiveLeaderboard(10),
@@ -1108,6 +1117,7 @@ class AdminRoleController extends AbstractController
         $appointmentRepo = $em->getRepository(MentoringAppointment::class);
         $requestCounts = [];
         $requestRows = $em->getRepository(MentorCustomRequest::class)->createQueryBuilder('r')
+            ->andWhere('r.mentorProfile IS NULL')
             ->select('r.status AS status, COUNT(r.id) AS total')
             ->groupBy('r.status')
             ->getQuery()
@@ -1195,7 +1205,7 @@ class AdminRoleController extends AbstractController
 
     private function mentoringReportRows(EntityManagerInterface $em): array
     {
-        $requests = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC']);
+        $requests = array_values(array_filter($em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC']), fn($r) => $r->isAssistanceRequest()));
         $rows = [[
             'ID',
             'Requester',
@@ -1244,7 +1254,7 @@ class AdminRoleController extends AbstractController
     #[Route('/api/mentoring-requests-poll', name: 'admin_role_api_mentoring_poll', methods: ['GET'])]
     public function mentoringRequestsPoll(EntityManagerInterface $em): JsonResponse
     {
-        $allReqs = $em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50);
+        $allReqs = array_values(array_filter($em->getRepository(MentorCustomRequest::class)->findBy([], ['createdAt' => 'DESC'], 50), fn($r) => $r->isAssistanceRequest()));
         $applications = $em->getRepository(\App\Entity\MentorApplication::class)->findBy([], ['createdAt' => 'DESC']);
 
         $mapReq = static function (MentorCustomRequest $r): array {

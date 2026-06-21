@@ -114,10 +114,11 @@
                     <p>{% if mentor.availabilityDays %}{{ mentor.availabilityDays|join(', ') }}{% endif %}{% if mentor.availabilityStart and mentor.availabilityEnd %}{% if mentor.availabilityDays %}, {% endif %}{{ ('2000-01-01 ' ~ mentor.availabilityStart)|date('g:i A') }} – {{ ('2000-01-01 ' ~ mentor.availabilityEnd)|date('g:i A') }}{% endif %}</p>
                 </div>
                 {% endif %}
-                {% if mentor.user %}
+                {% set displayRoles = mentor.user.roles|filter(r => r != 'ROLE_USER') %}
+                {% if displayRoles is not empty %}
                 <div class="ml-meta-item">
                     <label>Role</label>
-                    <p>{{ mentor.user.roles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}</p>
+                    <p>{{ displayRoles|join(', ')|replace({'ROLE_':'','_':' '})|lower|capitalize }}</p>
                 </div>
                 {% endif %}
             </div>

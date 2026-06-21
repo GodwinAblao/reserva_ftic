@@ -135,7 +135,7 @@ class MentorAdminController extends AbstractController
     }
 
     #[Route('/super-admin/audit-log/data', name: 'mentoring_audit_log_data', methods: ['GET'])]
-    #[IsGranted('ROLE_SUPER_ADMIN')]
+    #[IsGranted('ROLE_ADMIN')]
     public function auditLogData(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $page    = max(1, (int) $request->query->get('page', 1));

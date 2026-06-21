@@ -85,6 +85,24 @@
                         <div class="dashboard-stat-foot">Pending this week</div>
                     </a>
 
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-danger" data-turbo="false">
+                        <div class="dashboard-stat-top">
+                            <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
+                            <span class="dashboard-stat-title">Rejected Reservations</span>
+                        </div>
+                        <div class="dashboard-stat-value">{{ stats.rejectedReservations }}</div>
+                        <div class="dashboard-stat-foot">Rejected this week</div>
+                    </a>
+
+                    <a href="{{ path('user_reservations') }}" class="dashboard-stat-card stat-grey" data-turbo="false">
+                        <div class="dashboard-stat-top">
+                            <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-calendar" /></svg></span>
+                            <span class="dashboard-stat-title">Cancelled Reservations</span>
+                        </div>
+                        <div class="dashboard-stat-value">{{ stats.cancelledReservations }}</div>
+                        <div class="dashboard-stat-foot">Cancelled this week</div>
+                    </a>
+
                     <a href="{{ path('mentoring_index') }}" class="dashboard-stat-card stat-muted" data-turbo="false">
                         <div class="dashboard-stat-top">
                             <span class="dashboard-stat-icon"><svg viewBox="0 0 24 24"><use href="#dashboard-icon-mentoring" /></svg></span>

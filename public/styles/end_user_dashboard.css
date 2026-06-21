@@ -125,6 +125,8 @@
 .dashboard-page .stat-green .dashboard-stat-icon { background: #0D9B00; }
 .dashboard-page .stat-success .dashboard-stat-icon { background: #0D9B00; }
 .dashboard-page .stat-warning .dashboard-stat-icon { background: #f4b437; }
+.dashboard-page .stat-danger .dashboard-stat-icon { background: #dc3545; }
+.dashboard-page .stat-grey .dashboard-stat-icon { background: #6c757d; }
 .dashboard-page .stat-muted .dashboard-stat-icon { background: #8f8f8f; }
 
 /* Dashboard sections */

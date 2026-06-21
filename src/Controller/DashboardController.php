@@ -47,7 +47,9 @@ class DashboardController extends AbstractController
             ->select(
                 'COUNT(r.id) as total',
                 'SUM(CASE WHEN r.status = :pending THEN 1 ELSE 0 END) as pending',
-                'SUM(CASE WHEN r.status = :approved THEN 1 ELSE 0 END) as approved'
+                'SUM(CASE WHEN r.status = :approved THEN 1 ELSE 0 END) as approved',
+                'SUM(CASE WHEN r.status = :rejected THEN 1 ELSE 0 END) as rejected',
+                'SUM(CASE WHEN r.status = :cancelled THEN 1 ELSE 0 END) as cancelled'
             )
             ->where('r.user = :user')
             ->andWhere('r.status != :suggested')
@@ -55,6 +57,8 @@ class DashboardController extends AbstractController
             ->setParameter('suggested', 'Suggested')
             ->setParameter('pending', 'Pending')
             ->setParameter('approved', 'Approved')
+            ->setParameter('rejected', 'Rejected')
+            ->setParameter('cancelled', 'Cancelled')
             ->getQuery()
             ->getSingleResult();
 
@@ -86,6 +90,8 @@ class DashboardController extends AbstractController
             'totalReservations' => (int) $statsData['total'],
             'pendingReservations' => (int) $statsData['pending'],
             'approvedReservations' => (int) $statsData['approved'],
+            'rejectedReservations' => (int) $statsData['rejected'],
+            'cancelledReservations' => (int) $statsData['cancelled'],
             'mentoringSessions' => count($mentoringAsStudent) + count($mentoringAsMentor),
             'unreadNotifications' => (int) $em->getRepository(Notification::class)->count(['user' => $user, 'isRead' => false]),
         ];
