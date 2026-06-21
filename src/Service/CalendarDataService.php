@@ -42,7 +42,7 @@ class CalendarDataService
 
         if (!$status || in_array($status, $reservationStatuses, true)) {
             $qb = $this->reservationRepo->createQueryBuilder('r')
-                ->select('r.id', 'r.name', 'r.eventName', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
+                ->select('r.id', 'r.name', 'r.eventName', 'r.email', 'r.contact', 'r.reservationDate', 'r.reservationStartTime', 'r.reservationEndTime', 'r.capacity', 'r.purpose', 'r.status', 'r.adminApproved', 'r.institutionalEvent', 'f.id as facilityId', 'f.name as facilityName', 'f.capacity as facilityCapacity')
                 ->innerJoin('r.facility', 'f')
                 ->where('r.reservationDate BETWEEN :start AND :end')
                 ->andWhere('r.status != :suggestedStatus')
@@ -76,6 +76,8 @@ class CalendarDataService
                     'capacity' => $r['capacity'],
                     'purpose' => $r['purpose'],
                     'status' => $r['status'],
+                    'adminApproved' => (bool) $r['adminApproved'],
+                    'institutionalEvent' => (bool) $r['institutionalEvent'],
                     'isBlock' => false,
                     'facility' => [
                         'id' => $r['facilityId'],

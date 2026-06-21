@@ -92,6 +92,12 @@ class Reservation
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isSimulated = false;
 
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $adminApproved = false;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $adminApprovedAt = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -351,6 +357,30 @@ class Reservation
     public function setIsSimulated(bool $isSimulated): static
     {
         $this->isSimulated = $isSimulated;
+
+        return $this;
+    }
+
+    public function isAdminApproved(): bool
+    {
+        return $this->adminApproved;
+    }
+
+    public function setAdminApproved(bool $adminApproved): static
+    {
+        $this->adminApproved = $adminApproved;
+
+        return $this;
+    }
+
+    public function getAdminApprovedAt(): ?\DateTimeInterface
+    {
+        return $this->adminApprovedAt;
+    }
+
+    public function setAdminApprovedAt(?\DateTimeInterface $adminApprovedAt): static
+    {
+        $this->adminApprovedAt = $adminApprovedAt;
 
         return $this;
     }

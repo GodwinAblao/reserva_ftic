@@ -16,10 +16,29 @@
 .rm-page-link.active { background:#0d9b00; border-color:#0d9b00; color:#fff; }
 .rm-page-link.disabled { opacity:.45; pointer-events:none; }
 .rm-status-heading { display:flex; align-items:center; gap:8px; }
+@keyframes saSpin { to { transform: rotate(360deg); } }
+.sa-spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:saSpin .6s linear infinite; vertical-align:middle; margin-right:5px; }
+.sa-btn-loading { opacity:.75 !important; pointer-events:none !important; cursor:not-allowed !important; }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Superadmin approve-without-admin confirm modal -->
+<div id="saApproveConfirmModal" class="sa-modal-overlay" style="display:none;">
+    <div class="sa-modal">
+        <div class="sa-modal-header">
+            <h3>Approve Without Admin Review?</h3>
+            <button type="button" class="sa-modal-close" onclick="document.getElementById('saApproveConfirmModal').style.display='none'">&times;</button>
+        </div>
+        <div class="sa-modal-body">
+            <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.55;">The admin has not yet reviewed this reservation. Are you sure you want to approve it now?</p>
+        </div>
+        <div class="sa-modal-footer">
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="document.getElementById('saApproveConfirmModal').style.display='none'">Cancel</button>
+            <button type="button" class="sa-btn sa-btn-approve" id="saApproveConfirmBtn">Yes, Approve</button>
+        </div>
+    </div>
+</div>
 <div class="sa-page-header">
     <div class="sa-page-header-left">
         <h2>Reservation Management</h2>
@@ -78,11 +97,18 @@
                 <div class="sa-reservation-row row-{{ statusClass }}">
                     <div class="sa-row-head">
                         <h4>{{ reservation.facility.name }}</h4>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             {% if reservation.institutionalEvent %}
                                 <span class="sa-badge" style="background: #dbeafe; color: #1e40af;">Institutional</span>
                             {% endif %}
                             <span class="sa-badge sa-badge-{{ statusClass }}">{{ status == 'Cancelled' ? 'Canceled' : status }}</span>
+                            {% if status == 'Pending' %}
+                                {% if reservation.adminApproved %}
+                                    <span class="sa-badge" style="background:#fef9c3;color:#854d0e;border:1px solid #fde68a;" title="Admin has reviewed and approved this reservation">&#10003; Approved by Admin</span>
+                                {% else %}
+                                    <span class="sa-badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;" title="Admin has not yet reviewed this reservation">&#9888; Pending admin approval</span>
+                                {% endif %}
+                            {% endif %}
                         </div>
                     </div>
 
@@ -141,9 +167,11 @@
 
                     {% if status == 'Pending' %}
                         <div class="sa-row-actions">
-                            <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display:inline;" data-ajax="true" data-ajax-reload="1000">
+                            <form method="POST" action="{{ path('admin_approve_reservation', {'id': reservation.id}) }}" style="display:inline;" data-ajax="true" data-ajax-reload="1000" class="sa-approve-form">
                                 <input type="hidden" name="_token" value="{{ csrf_token('approve_reservation_' ~ reservation.id) }}">
-                                <button type="submit" class="sa-btn sa-btn-approve">Approve</button>
+                                <button type="button" class="sa-btn sa-btn-approve"
+                                    data-admin-approved="{{ reservation.adminApproved ? '1' : '0' }}"
+                                    onclick="saConfirmApprove(this)">Approve</button>
                             </form>
 
                             <form method="POST" action="{{ path('admin_reject_reservation', {'id': reservation.id}) }}" style="display:inline;" class="reject-form" data-ajax="true" data-ajax-reload="1000">
@@ -189,25 +217,28 @@
         <div class="sa-modal-body">
             <label for="rejectionReason">Reason for rejection</label>
             <textarea id="rejectionReason" class="sa-form-input" rows="4" placeholder="Explain why this reservation is being rejected..."></textarea>
+            <p id="rejectionReasonError" style="display:none;margin-top:7px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;color:#dc2626;font-size:12.5px;font-weight:600;">Please provide a reason for rejection.</p>
         </div>
         <div class="sa-modal-footer">
             <button type="button" class="sa-btn sa-btn-secondary" onclick="closeRejectModal()">Cancel</button>
-            <button type="button" class="sa-btn sa-btn-reject" onclick="submitReject()">Confirm Reject</button>
+            <button type="button" class="sa-btn sa-btn-reject" id="saRejectConfirmBtn" onclick="submitReject()">Confirm Reject</button>
         </div>
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const rejectModal = document.getElementById('rejectModal');
-        if (rejectModal && rejectModal.parentElement !== document.body) {
-            document.body.appendChild(rejectModal);
-        }
+        ['rejectModal', 'saApproveConfirmModal'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.parentElement !== document.body) { document.body.appendChild(el); }
+        });
     });
 
     let currentForm = null;
+    let _saRejectTriggerBtn = null;
 
     function showRejectModal(button) {
+        _saRejectTriggerBtn = button;
         currentForm = button.closest('.reject-form');
         document.getElementById('rejectModal').style.display = 'flex';
         document.getElementById('rejectionReason').focus();
@@ -216,23 +247,76 @@
     function closeRejectModal() {
         document.getElementById('rejectModal').style.display = 'none';
         document.getElementById('rejectionReason').value = '';
+        document.getElementById('rejectionReasonError').style.display = 'none';
         currentForm = null;
+        _saRejectTriggerBtn = null;
+    }
+
+    function _saSetBtnLoading(btn, label) {
+        if (!btn) return;
+        btn._saOrigHTML = btn.innerHTML;
+        btn.innerHTML = '<span class="sa-spinner"></span>' + label;
+        btn.classList.add('sa-btn-loading');
+        btn.disabled = true;
+    }
+    function _saRestoreBtn(btn) {
+        if (!btn) return;
+        btn.innerHTML = btn._saOrigHTML || btn.innerHTML;
+        btn.classList.remove('sa-btn-loading');
+        btn.disabled = false;
     }
 
     function submitReject() {
         const reason = document.getElementById('rejectionReason').value.trim();
         if (!reason) {
-            alert('Please provide a reason for rejection');
+            document.getElementById('rejectionReasonError').style.display = 'block';
+            document.getElementById('rejectionReason').focus();
             return;
         }
+        document.getElementById('rejectionReasonError').style.display = 'none';
         if (currentForm) {
+            const confirmBtn = document.getElementById('saRejectConfirmBtn');
+            if (confirmBtn) { _saSetBtnLoading(confirmBtn, 'Rejecting...'); }
+            if (_saRejectTriggerBtn) { _saSetBtnLoading(_saRejectTriggerBtn, 'Rejecting...'); }
             currentForm.querySelector('.reject-reason').value = reason;
             currentForm.submit();
         }
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeRejectModal();
+        if (e.key === 'Escape') {
+            closeRejectModal();
+            document.getElementById('saApproveConfirmModal').style.display = 'none';
+        }
     });
+
+    var _saPendingForm = null;
+    var _saApproveTriggerBtn = null;
+    document.getElementById('saApproveConfirmBtn').onclick = function() {
+        document.getElementById('saApproveConfirmModal').style.display = 'none';
+        _saSetBtnLoading(this, 'Approving...');
+        if (_saPendingForm) {
+            if (_saApproveTriggerBtn) { _saSetBtnLoading(_saApproveTriggerBtn, 'Approving...'); }
+            _saPendingForm.submit();
+            _saPendingForm = null;
+        }
+    };
+    document.getElementById('saApproveConfirmModal').addEventListener('click', function(e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+
+    function saConfirmApprove(btn) {
+        var adminApproved = btn.getAttribute('data-admin-approved');
+        var form = btn.closest('.sa-approve-form');
+        if (!form) { return; }
+        if (adminApproved === '1') {
+            _saSetBtnLoading(btn, 'Approving...');
+            form.submit();
+        } else {
+            _saPendingForm = form;
+            _saApproveTriggerBtn = btn;
+            document.getElementById('saApproveConfirmModal').style.display = 'flex';
+        }
+    }
 </script>
 {% endblock %}

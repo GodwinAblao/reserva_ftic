@@ -28,6 +28,70 @@
 .rm-table td { padding: 12px; font-size: 13.5px; color: #374151; border-bottom: 1px solid #f9fafb; }
 .rm-table tr:last-child td { border-bottom: none; }
 .rm-table tbody tr:hover td { background: #fafafa; }
+
+/* Facility Reservation Actions */
+.fra-section { margin-bottom: 24px; }
+.fra-section-title { font-size: 16px; font-weight: 700; color: #111827; margin: 0 0 14px; }
+.fra-empty { text-align: center; color: #9ca3af; padding: 24px; font-size: 13.5px; }
+.fra-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px 20px; margin-bottom: 12px; }
+.fra-card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.fra-card-title { font-size: 14.5px; font-weight: 700; color: #111827; }
+.fra-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.fra-badge-pending { background: #fef3c7; color: #92400e; }
+.fra-badge-institutional { background: #dbeafe; color: #1e40af; }
+.fra-badge-admin-approved { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+.fra-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px 16px; margin-bottom: 14px; }
+.fra-detail-col label { font-size: 10.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 2px; }
+.fra-detail-col p { font-size: 13px; color: #374151; margin: 0; }
+.fra-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fra-btn { padding: 6px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: opacity .15s; }
+.fra-btn:hover { opacity: .85; }
+.fra-btn-approve { background: #22c55e; color: #fff; }
+.fra-btn-reject  { background: #ef4444; color: #fff; }
+.fra-btn-notes   { background: #f59e0b; color: #fff; }
+.fra-btn-done    { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; cursor: default; font-weight: 700; }
+.fra-btn-loading { opacity: .75; pointer-events: none; cursor: not-allowed; }
+@keyframes fraSpin { to { transform: rotate(360deg); } }
+.fra-spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: fraSpin .6s linear infinite; vertical-align: middle; margin-right: 5px; }
+.fra-spinner.dark { border-color: rgba(0,0,0,.15); border-top-color: #374151; }
+.fra-field-error { display:none; margin-top:7px; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:7px; color:#dc2626; font-size:12.5px; font-weight:600; }
+.fra-form-group { margin-bottom:14px; }
+.fra-form-group label { display:block; font-size:12px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+.fra-input-email { width:100%; box-sizing:border-box; border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:13px; color:#374151; background:#fff; transition:border-color .15s; }
+.fra-input-email:focus { outline:none; border-color:#0d9b00; box-shadow:0 0 0 3px rgba(13,155,0,.1); }
+.fra-dropzone { border:2px dashed #d1d5db; border-radius:10px; padding:20px 16px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; background:#fafafa; position:relative; }
+.fra-dropzone:hover, .fra-dropzone.drag-over { border-color:#0d9b00; background:#f0fdf4; }
+.fra-dropzone-icon { font-size:28px; color:#9ca3af; margin-bottom:6px; }
+.fra-dropzone-text { font-size:13px; color:#6b7280; font-weight:600; }
+.fra-dropzone-text span { color:#0d9b00; text-decoration:underline; }
+.fra-dropzone-hint { font-size:11px; color:#9ca3af; margin-top:4px; }
+.fra-file-list { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
+.fra-file-chip { display:flex; align-items:center; gap:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:7px; padding:5px 10px; font-size:12px; color:#166534; font-weight:600; }
+.fra-file-chip button { background:none; border:none; color:#9ca3af; cursor:pointer; font-size:14px; line-height:1; padding:0 2px; margin-left:auto; }
+.fra-file-chip button:hover { color:#ef4444; }
+/* Toast notification */
+@keyframes fraToastIn  { from { opacity:0; transform:translateY(16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes fraToastOut { from { opacity:1; } to { opacity:0; } }
+#fraToast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:2147483647; display:none; align-items:center; gap:10px; background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(12,30,20,.18); padding:14px 20px; min-width:280px; max-width:460px; border-left:4px solid #22c55e; animation:fraToastIn .22s ease-out; }
+#fraToast.error { border-left-color:#ef4444; }
+#fraToast .fra-toast-icon { font-size:18px; flex-shrink:0; }
+#fraToast .fra-toast-msg { font-size:13.5px; font-weight:600; color:#111827; flex:1; }
+#fraToast .fra-toast-close { background:none; border:none; font-size:18px; color:#9ca3af; cursor:pointer; line-height:1; padding:0 2px; }
+
+/* Modals — same as superadmin .sa-modal-overlay */
+.fra-modal-overlay { display: none; position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; min-height: 100vh !important; background: rgba(12,30,20,.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 2147483000 !important; padding: 24px; pointer-events: all; }
+.fra-modal { background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(12,30,20,.22); max-width: 520px; width: 100%; overflow: hidden; }
+.fra-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #f0f4ee; }
+.fra-modal-header h3 { margin: 0; font-size: 17px; font-weight: 700; color: #0d9b00; }
+.fra-modal-close { background: none; border: none; font-size: 22px; color: #9ca3af; cursor: pointer; line-height: 1; padding: 4px 8px; border-radius: 6px; transition: background .15s; }
+.fra-modal-close:hover { background: #f3f4f6; color: #374151; }
+.fra-modal-body { padding: 20px 24px; }
+.fra-modal-body label { display: block; font-size: 13px; font-weight: 700; color: #374151; margin-bottom: 8px; }
+.fra-modal-body textarea, .fra-modal-body input[type=file] { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #374151; }
+.fra-modal-body textarea { resize: vertical; min-height: 100px; }
+.fra-modal-body input[type=file] { padding: 6px 8px; }
+.fra-modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid #f0f4ee; }
+.fra-hint { font-size: 11.5px; color: #9ca3af; font-weight: 400; }
 </style>
 {% endblock %}
 
@@ -46,6 +110,92 @@
         {% else %}
             <a href="{{ path('admin_role_calendar') }}" class="sa-btn sa-btn-primary">Calendar View</a>
         {% endif %}
+    </div>
+</div>
+
+<div id="fraToast">
+    <span class="fra-toast-icon" id="fraToastIcon">&#10003;</span>
+    <span class="fra-toast-msg" id="fraToastMsg"></span>
+    <button class="fra-toast-close" onclick="fraToastHide()">&times;</button>
+</div>
+
+{# ── Admin Approve Modal ── #}
+<div id="fraApproveModal" class="fra-modal-overlay">
+    <div class="fra-modal">
+        <div class="fra-modal-header">
+            <h3>Confirm Admin Approval</h3>
+            <button type="button" class="fra-modal-close" onclick="fraClose('fraApproveModal')">&times;</button>
+        </div>
+        <div class="fra-modal-body">
+            <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.55;">This marks the reservation as <strong>approved by admin</strong> and notifies the superadmin for final action. The status remains <em>Pending</em> until the superadmin approves.</p>
+        </div>
+        <input type="hidden" id="fraApproveId">
+        <input type="hidden" id="fraApproveToken">
+        <div class="fra-modal-footer">
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="fraClose('fraApproveModal')">Cancel</button>
+            <button type="button" class="sa-btn sa-btn-approve" id="fraApproveConfirmBtn" onclick="fraSubmitApprove()">Confirm Approval</button>
+        </div>
+    </div>
+</div>
+
+{# ── Admin Reject Modal ── #}
+<div id="fraRejectModal" class="fra-modal-overlay">
+    <div class="fra-modal">
+        <div class="fra-modal-header">
+            <h3>Reject Reservation</h3>
+            <button type="button" class="fra-modal-close" onclick="fraClose('fraRejectModal')">&times;</button>
+        </div>
+        <div class="fra-modal-body">
+            <label for="fraRejectReason">Reason for rejection</label>
+            <textarea id="fraRejectReason" class="sa-form-input" rows="4" placeholder="Explain why this reservation is being rejected..."></textarea>
+            <p class="fra-field-error" id="fraRejectReasonError">Please provide a reason for rejection.</p>
+        </div>
+        <input type="hidden" id="fraRejectId">
+        <input type="hidden" id="fraRejectToken">
+        <div class="fra-modal-footer">
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="fraClose('fraRejectModal')">Cancel</button>
+            <button type="button" class="sa-btn sa-btn-reject" id="fraRejectConfirmBtn" onclick="fraSubmitReject()">Confirm Reject</button>
+        </div>
+    </div>
+</div>
+
+{# ── Admin Notes Modal ── #}
+<div id="fraNotesModal" class="fra-modal-overlay">
+    <div class="fra-modal">
+        <div class="fra-modal-header">
+            <h3>Send Notes to User</h3>
+            <button type="button" class="fra-modal-close" onclick="fraClose('fraNotesModal')">&times;</button>
+        </div>
+        <div class="fra-modal-body">
+            <div class="fra-form-group">
+                <label for="fraNotesEmail">Your Email <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(shown to recipient as reply-to)</span></label>
+                <input type="email" id="fraNotesEmail" class="fra-input-email"
+                    placeholder="admin@example.com"
+                    value="{{ app.user ? app.user.email : '' }}">
+            </div>
+            <div class="fra-form-group">
+                <label for="fraNotesText">Message / Notes</label>
+                <textarea id="fraNotesText" class="sa-form-input" rows="4" placeholder="Enter your notes or instructions for the user..."></textarea>
+            </div>
+            <div class="fra-form-group" style="margin-bottom:0;">
+                <label>Attach Files <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(PDF, DOCX, TXT, JPG, PNG, etc.)</span></label>
+                <div class="fra-dropzone" id="fraDropZone" onclick="document.getElementById('fraNotesFiles').click()">
+                    <div class="fra-dropzone-icon">&#128206;</div>
+                    <div class="fra-dropzone-text">Drop files here or <span>browse to upload</span></div>
+                    <div class="fra-dropzone-hint">PDF, DOC, DOCX, TXT, JPG, PNG, GIF, BMP, WEBP</div>
+                </div>
+                <input type="file" id="fraNotesFiles" name="attachments[]" multiple
+                    accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                    style="display:none;">
+                <div class="fra-file-list" id="fraFileList"></div>
+            </div>
+        </div>
+        <input type="hidden" id="fraNotesId">
+        <input type="hidden" id="fraNotesToken">
+        <div class="fra-modal-footer">
+            <button type="button" class="sa-btn sa-btn-secondary" onclick="fraClose('fraNotesModal')">Cancel</button>
+            <button type="button" class="sa-btn" style="background:#f59e0b;color:#fff;" id="fraNotesConfirmBtn" onclick="fraSubmitNotes()">Send Notes</button>
+        </div>
     </div>
 </div>
 
@@ -112,6 +262,93 @@
     </div>
 </div>
 
+{% if not is_granted('ROLE_SUPER_ADMIN') %}
+<div class="rm-table-card fra-section" style="margin-top:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+        <div>
+            <h3 class="fra-section-title" style="margin:0;">Facility Reservation Actions</h3>
+            <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Pending reservations awaiting your review</p>
+        </div>
+        {% if pendingFacilityReservations is defined and pendingFacilityReservations|length > 0 %}
+        <span style="font-size:12px;font-weight:600;color:#6b7280;" id="fraPaginationInfo"></span>
+        {% endif %}
+    </div>
+
+    {% if pendingFacilityReservations is defined and pendingFacilityReservations|length > 0 %}
+        <div id="fraCardsList">
+        {% for r in pendingFacilityReservations %}
+        <div class="fra-card" id="fra-card-{{ r.id }}" data-fra-card>
+            <div class="fra-card-head">
+                <span class="fra-card-title">{{ r.facility.name }}</span>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    {% if r.institutionalEvent %}
+                        <span class="fra-badge fra-badge-institutional">Institutional</span>
+                    {% endif %}
+                    {% if r.adminApproved %}
+                        <span class="fra-badge fra-badge-admin-approved">&#10003; Approved by Admin</span>
+                    {% else %}
+                        <span class="fra-badge fra-badge-pending">Pending</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="fra-detail-grid">
+                <div class="fra-detail-col">
+                    <label>Requester</label>
+                    <p>{{ r.name }}</p>
+                </div>
+                <div class="fra-detail-col">
+                    <label>Email</label>
+                    <p>{{ r.email }}</p>
+                </div>
+                <div class="fra-detail-col">
+                    <label>Date</label>
+                    <p>{{ r.reservationDate|date('M d, Y') }}</p>
+                </div>
+                <div class="fra-detail-col">
+                    <label>Time</label>
+                    <p>{{ r.reservationStartTime|date('h:i A') }} – {{ r.reservationEndTime|date('h:i A') }}</p>
+                </div>
+                <div class="fra-detail-col">
+                    <label>Attendees</label>
+                    <p>{{ r.capacity }}</p>
+                </div>
+                {% if r.eventName %}
+                <div class="fra-detail-col">
+                    <label>Event</label>
+                    <p>{{ r.eventName }}</p>
+                </div>
+                {% endif %}
+                {% if r.purpose %}
+                <div class="fra-detail-col" style="grid-column:1/-1;">
+                    <label>Purpose</label>
+                    <p>{{ r.purpose }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="fra-actions">
+                {% if r.adminApproved %}
+                    <button class="fra-btn fra-btn-done" disabled>&#10003; Admin Approved</button>
+                {% else %}
+                    <button class="fra-btn fra-btn-approve" id="fra-approve-btn-{{ r.id }}"
+                        onclick="fraOpenApprove({{ r.id }}, '{{ csrf_token('admin_approve_facility_' ~ r.id) }}', this)">Approve</button>
+                {% endif %}
+                <button class="fra-btn fra-btn-reject" id="fra-reject-btn-{{ r.id }}"
+                    onclick="fraOpenReject({{ r.id }}, '{{ csrf_token('admin_reject_facility_' ~ r.id) }}', this)">Reject</button>
+                <button class="fra-btn fra-btn-notes" id="fra-notes-btn-{{ r.id }}"
+                    onclick="fraOpenNotes({{ r.id }}, '{{ csrf_token('admin_notes_facility_' ~ r.id) }}', this)">Notes</button>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+
+        <div id="fraPagination" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:16px;flex-wrap:wrap;"></div>
+    {% else %}
+        <p class="fra-empty">No pending facility reservations.</p>
+    {% endif %}
+</div>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -184,5 +421,347 @@
         }
     };
 })();
+</script>
+
+<script>
+/* ── Facility Reservation Actions (FRA) pagination ── */
+(function() {
+    var PER_PAGE = 5;
+    var currentPage = 1;
+
+    function getCards() {
+        return Array.from(document.querySelectorAll('[data-fra-card]'));
+    }
+
+    function totalPages(cards) {
+        return Math.max(1, Math.ceil(cards.length / PER_PAGE));
+    }
+
+    function renderPage(page) {
+        var cards = getCards();
+        var total = cards.length;
+        var pages = totalPages(cards);
+        currentPage = Math.min(Math.max(1, page), pages);
+
+        cards.forEach(function(card, i) {
+            var inRange = i >= (currentPage - 1) * PER_PAGE && i < currentPage * PER_PAGE;
+            card.style.display = inRange ? '' : 'none';
+        });
+
+        var info = document.getElementById('fraPaginationInfo');
+        if (info) {
+            var from = (currentPage - 1) * PER_PAGE + 1;
+            var to   = Math.min(currentPage * PER_PAGE, total);
+            info.textContent = 'Showing ' + from + '–' + to + ' of ' + total;
+        }
+
+        var pag = document.getElementById('fraPagination');
+        if (!pag) { return; }
+        pag.innerHTML = '';
+
+        function mkBtn(label, page, disabled, active) {
+            var btn = document.createElement('button');
+            btn.textContent = label;
+            btn.style.cssText = 'min-width:34px;height:34px;padding:0 11px;border-radius:8px;font-size:13px;font-weight:700;cursor:' + (disabled ? 'default' : 'pointer') + ';border:1px solid ' + (active ? '#0d9b00' : '#d1d5db') + ';background:' + (active ? '#0d9b00' : '#fff') + ';color:' + (active ? '#fff' : (disabled ? '#9ca3af' : '#374151')) + ';opacity:' + (disabled ? '.45' : '1') + ';';
+            if (!disabled) {
+                btn.addEventListener('click', function() { renderPage(page); });
+            }
+            return btn;
+        }
+
+        pag.appendChild(mkBtn('Prev', currentPage - 1, currentPage === 1, false));
+
+        var first = Math.max(1, currentPage - 2);
+        var last  = Math.min(pages, currentPage + 2);
+        for (var p = first; p <= last; p++) {
+            pag.appendChild(mkBtn(String(p), p, false, p === currentPage));
+        }
+
+        pag.appendChild(mkBtn('Next', currentPage + 1, currentPage === pages, false));
+    }
+
+    window._fraRenderPage = renderPage;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('fraCardsList')) {
+            renderPage(1);
+        }
+    });
+
+    window._fraRemoveCard = function(cardId) {
+        var card = document.getElementById(cardId);
+        if (card) { card.remove(); }
+        var cards = getCards();
+        var pages = totalPages(cards);
+        renderPage(Math.min(currentPage, pages));
+    };
+})();
+
+/* ── Facility Reservation Actions (FRA) JS ── */
+(function() {
+    var ids = ['fraApproveModal', 'fraRejectModal', 'fraNotesModal'];
+    function moveToBody() {
+        ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && el.parentElement !== document.body) { document.body.appendChild(el); }
+        });
+    }
+    if (document.body) { moveToBody(); } else { document.addEventListener('DOMContentLoaded', moveToBody); }
+    document.addEventListener('turbo:load', moveToBody);
+})();
+
+function fraClose(id) {
+    var el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; }
+}
+
+function fraOpen(id) {
+    var el = document.getElementById(id);
+    if (el) { el.style.display = 'flex'; }
+}
+
+var _fraCurrentTriggerBtn = null;
+
+function _fraSetBtnLoading(btn, label) {
+    if (!btn) return;
+    btn._fraOrigText = btn.innerHTML;
+    btn.innerHTML = '<span class="fra-spinner"></span>' + (label || 'Loading...');
+    btn.classList.add('fra-btn-loading');
+    btn.disabled = true;
+}
+function _fraRestoreBtn(btn) {
+    if (!btn) return;
+    btn.innerHTML = btn._fraOrigText || btn.innerHTML;
+    btn.classList.remove('fra-btn-loading');
+    btn.disabled = false;
+}
+function _fraSetModalBtnLoading(btnId, label) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn._fraOrigText = btn.innerHTML;
+    btn.innerHTML = '<span class="fra-spinner"></span>' + (label || 'Processing...');
+    btn.disabled = true;
+    btn.style.pointerEvents = 'none';
+}
+function _fraRestoreModalBtn(btnId) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.innerHTML = btn._fraOrigText || btn.innerHTML;
+    btn.disabled = false;
+    btn.style.pointerEvents = '';
+}
+
+function fraOpenApprove(reservationId, token, triggerBtn) {
+    _fraCurrentTriggerBtn = triggerBtn || null;
+    document.getElementById('fraApproveId').value = reservationId;
+    document.getElementById('fraApproveToken').value = token;
+    fraOpen('fraApproveModal');
+}
+
+function fraOpenReject(reservationId, token, triggerBtn) {
+    _fraCurrentTriggerBtn = triggerBtn || null;
+    document.getElementById('fraRejectId').value = reservationId;
+    document.getElementById('fraRejectToken').value = token;
+    document.getElementById('fraRejectReason').value = '';
+    document.getElementById('fraRejectReasonError').style.display = 'none';
+    fraOpen('fraRejectModal');
+}
+
+var _fraDropFiles = [];
+
+function fraRenderFileList() {
+    var list = document.getElementById('fraFileList');
+    list.innerHTML = '';
+    _fraDropFiles.forEach(function(file, i) {
+        var chip = document.createElement('div');
+        chip.className = 'fra-file-chip';
+        chip.innerHTML = '&#128206; ' + file.name + ' <button type="button" onclick="fraRemoveFile(' + i + ')" title="Remove">&times;</button>';
+        list.appendChild(chip);
+    });
+}
+function fraRemoveFile(i) {
+    _fraDropFiles.splice(i, 1);
+    fraRenderFileList();
+}
+
+function fraOpenNotes(reservationId, token, triggerBtn) {
+    _fraCurrentTriggerBtn = triggerBtn || null;
+    document.getElementById('fraNotesId').value = reservationId;
+    document.getElementById('fraNotesToken').value = token;
+    document.getElementById('fraNotesText').value = '';
+    document.getElementById('fraNotesFiles').value = '';
+    _fraDropFiles = [];
+    fraRenderFileList();
+    fraOpen('fraNotesModal');
+}
+
+var _fraToastTimer = null;
+function fraToast(msg, isError) {
+    var el  = document.getElementById('fraToast');
+    var txt = document.getElementById('fraToastMsg');
+    var ico = document.getElementById('fraToastIcon');
+    if (!el) return;
+    if (_fraToastTimer) { clearTimeout(_fraToastTimer); }
+    txt.textContent = msg;
+    ico.innerHTML   = isError ? '&#9888;' : '&#10003;';
+    el.classList.toggle('error', !!isError);
+    el.style.display = 'flex';
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = 'fraToastIn .22s ease-out';
+    _fraToastTimer = setTimeout(fraToastHide, 4500);
+}
+function fraToastHide() {
+    var el = document.getElementById('fraToast');
+    if (!el) return;
+    el.style.animation = 'fraToastOut .22s ease-in forwards';
+    setTimeout(function() { el.style.display = 'none'; }, 220);
+}
+
+function fraAjax(url, formData, successMsg, cardId, callback, modalBtnId) {
+    fetch(url, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                if (modalBtnId) { _fraRestoreModalBtn(modalBtnId); }
+                fraClose('fraApproveModal'); fraClose('fraRejectModal'); fraClose('fraNotesModal');
+                fraToast(successMsg || data.message);
+                if (cardId) { var card = document.getElementById(cardId); if (card) { card.remove(); } }
+                if (callback) { callback(data); }
+            } else {
+                if (modalBtnId) { _fraRestoreModalBtn(modalBtnId); }
+                fraToast('Error: ' + (data.message || 'Unknown error'), true);
+            }
+        })
+        .catch(function() {
+            if (modalBtnId) { _fraRestoreModalBtn(modalBtnId); }
+            fraToast('Request failed. Please try again.', true);
+        });
+}
+
+function fraSubmitApprove() {
+    var id    = document.getElementById('fraApproveId').value;
+    var token = document.getElementById('fraApproveToken').value;
+    var fd    = new FormData();
+    fd.append('_token', token);
+    _fraSetModalBtnLoading('fraApproveConfirmBtn', 'Approving...');
+    fraAjax('/admin/reservations/' + id + '/admin-approve', fd,
+        'Admin approval recorded. Superadmin has been notified.',
+        null,
+        function() {
+            var card = document.getElementById('fra-card-' + id);
+            if (card) {
+                var head = card.querySelector('.fra-card-head > div');
+                if (head) {
+                    var pendingBadge = head.querySelector('.fra-badge-pending');
+                    if (pendingBadge) { pendingBadge.remove(); }
+                    var badge = document.createElement('span');
+                    badge.className = 'fra-badge fra-badge-admin-approved';
+                    badge.innerHTML = '&#10003; Approved by Admin';
+                    head.appendChild(badge);
+                }
+                var actions = card.querySelector('.fra-actions');
+                if (actions) {
+                    var approveBtn = actions.querySelector('.fra-btn-approve');
+                    if (approveBtn) {
+                        var done = document.createElement('button');
+                        done.className = 'fra-btn fra-btn-done';
+                        done.disabled = true;
+                        done.innerHTML = '&#10003; Admin Approved';
+                        approveBtn.replaceWith(done);
+                    }
+                }
+            }
+            if (window._fraRenderPage) { window._fraRenderPage(1); }
+        },
+        'fraApproveConfirmBtn'
+    );
+}
+
+function fraSubmitReject() {
+    var id     = document.getElementById('fraRejectId').value;
+    var token  = document.getElementById('fraRejectToken').value;
+    var reason = document.getElementById('fraRejectReason').value.trim();
+    if (!reason) { document.getElementById('fraRejectReasonError').style.display = 'block'; document.getElementById('fraRejectReason').focus(); return; }
+    document.getElementById('fraRejectReasonError').style.display = 'none';
+    var fd = new FormData();
+    fd.append('_token', token);
+    fd.append('reason', reason);
+    _fraSetModalBtnLoading('fraRejectConfirmBtn', 'Rejecting...');
+    fraAjax('/admin/reservations/' + id + '/admin-reject', fd,
+        'Reservation rejected. The user has been notified.',
+        null,
+        function() { if (window._fraRemoveCard) { window._fraRemoveCard('fra-card-' + id); } },
+        'fraRejectConfirmBtn'
+    );
+}
+
+function fraSubmitNotes() {
+    var id    = document.getElementById('fraNotesId').value;
+    var token = document.getElementById('fraNotesToken').value;
+    var notes = document.getElementById('fraNotesText').value.trim();
+    var email = document.getElementById('fraNotesEmail').value.trim();
+    if (!notes && _fraDropFiles.length === 0) { fraToast('Please enter notes or attach at least one file.', true); return; }
+    var fd = new FormData();
+    fd.append('_token', token);
+    fd.append('notes', notes);
+    if (email) { fd.append('sender_email', email); }
+    for (var i = 0; i < _fraDropFiles.length; i++) { fd.append('attachments[]', _fraDropFiles[i]); }
+    _fraSetModalBtnLoading('fraNotesConfirmBtn', 'Sending...');
+    fraAjax('/admin/reservations/' + id + '/admin-notes', fd,
+        'Notes sent to the user via email.',
+        null, null, 'fraNotesConfirmBtn'
+    );
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        ['fraApproveModal', 'fraRejectModal', 'fraNotesModal'].forEach(fraClose);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    ['fraApproveModal', 'fraRejectModal', 'fraNotesModal'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', function(e) {
+                if (e.target === el) { fraClose(id); }
+            });
+        }
+    });
+
+    /* ── Drop zone wiring ── */
+    var fileInput = document.getElementById('fraNotesFiles');
+    var dropZone  = document.getElementById('fraDropZone');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            for (var i = 0; i < fileInput.files.length; i++) {
+                _fraDropFiles.push(fileInput.files[i]);
+            }
+            fileInput.value = '';
+            fraRenderFileList();
+        });
+    }
+
+    if (dropZone) {
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            var dropped = e.dataTransfer.files;
+            for (var i = 0; i < dropped.length; i++) {
+                _fraDropFiles.push(dropped[i]);
+            }
+            fraRenderFileList();
+        });
+    }
+});
 </script>
 {% endblock %}

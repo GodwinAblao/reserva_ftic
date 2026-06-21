@@ -30,6 +30,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -226,10 +227,18 @@ class AdminRoleController extends AbstractController
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()->getResult();
 
+        $pendingFacilityReservations = $em->getRepository(Reservation::class)->createQueryBuilder('r')
+            ->leftJoin('r.facility', 'f')->addSelect('f')
+            ->where('r.status = :pending')
+            ->setParameter('pending', 'Pending')
+            ->orderBy('r.createdAt', 'DESC')
+            ->getQuery()->getResult();
+
         return $this->render('admin/reservation_monitoring.html.twig', [
             'reservations' => $todayReservations,
             'statusCounts' => $this->reservationStatusCountsToday($em),
             'facilityCounts' => $this->facilityReservationCountsToday($em),
+            'pendingFacilityReservations' => $pendingFacilityReservations,
         ]);
     }
 
@@ -304,9 +313,10 @@ class AdminRoleController extends AbstractController
 
         foreach ($payload['reservations'] as &$item) {
             if (($item['itemType'] ?? '') === 'reservation' && is_numeric($item['id'])) {
-                $item['statusCsrfToken'] = $csrfTokenManager
-                    ->getToken('update_reservation_status_' . $item['id'])
-                    ->getValue();
+                $item['statusCsrfToken'] = $csrfTokenManager->getToken('update_reservation_status_' . $item['id'])->getValue();
+                $item['adminApproveCsrf'] = $csrfTokenManager->getToken('admin_approve_facility_' . $item['id'])->getValue();
+                $item['adminRejectCsrf']  = $csrfTokenManager->getToken('admin_reject_facility_' . $item['id'])->getValue();
+                $item['adminNotesCsrf']   = $csrfTokenManager->getToken('admin_notes_facility_' . $item['id'])->getValue();
             }
         }
         unset($item);
@@ -465,6 +475,102 @@ class AdminRoleController extends AbstractController
         $result = $statusManager->reject($reservation, $reason, $isAjax);
 
         return $this->handleStatusResult($result, 'admin_role_reservation_monitoring');
+    }
+
+    #[Route('/reservations/{id}/admin-approve', name: 'admin_role_facility_admin_approve', methods: ['POST'])]
+    public function adminApproveFacilityReservation(
+        Reservation $reservation,
+        Request $request,
+        EntityManagerInterface $em,
+        ReservationMailer $reservationMailer,
+    ): JsonResponse {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->isCsrfTokenValid('admin_approve_facility_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($reservation->getStatus() !== 'Pending') {
+            return $this->json(['success' => false, 'message' => 'Only pending reservations can be admin-approved.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $reservation->setAdminApproved(true);
+        $reservation->setAdminApprovedAt(new \DateTime());
+        $reservation->setUpdatedAt(new \DateTime());
+        $em->flush();
+
+        $admin = $this->getUser();
+        $adminEmail = $admin instanceof User ? ($admin->getEmail() ?? '') : '';
+        $adminName  = $admin instanceof User ? trim(($admin->getFirstName() ?? '') . ' ' . ($admin->getLastName() ?? '')) : 'Admin';
+        $adminName  = $adminName ?: $adminEmail;
+
+        $reservationMailer->notifyAdminApprovedToSuperadmin($reservation, $adminName, $adminEmail);
+
+        return $this->json(['success' => true, 'message' => 'Admin approval recorded. Superadmin has been notified.']);
+    }
+
+    #[Route('/reservations/{id}/admin-reject', name: 'admin_role_facility_admin_reject', methods: ['POST'])]
+    public function adminRejectFacilityReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationStatusManager $statusManager,
+    ): JsonResponse {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->isCsrfTokenValid('admin_reject_facility_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if ($reservation->getStatus() !== 'Pending') {
+            return $this->json(['success' => false, 'message' => 'Only pending reservations can be rejected.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $reason = trim((string) ($request->request->get('reason') ?? 'Not specified'));
+        $result = $statusManager->reject($reservation, $reason, false);
+
+        if (!($result['success'] ?? false)) {
+            return $this->json(['success' => false, 'message' => $result['message'] ?? 'Rejection failed.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json(['success' => true, 'message' => 'Reservation rejected and user has been notified.']);
+    }
+
+    #[Route('/reservations/{id}/admin-notes', name: 'admin_role_facility_admin_notes', methods: ['POST'])]
+    public function adminNotesFacilityReservation(
+        Reservation $reservation,
+        Request $request,
+        ReservationMailer $reservationMailer,
+    ): JsonResponse {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->isCsrfTokenValid('admin_notes_facility_' . $reservation->getId(), (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $notes = trim((string) ($request->request->get('notes') ?? ''));
+        /** @var UploadedFile[] $files */
+        $files = $request->files->get('attachments') ?? [];
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+        $files = array_filter($files, fn($f) => $f instanceof UploadedFile);
+
+        $admin = $this->getUser();
+        $adminEmailDefault = $admin instanceof User ? ($admin->getEmail() ?? '') : '';
+        $senderEmail = trim((string) ($request->request->get('sender_email') ?? ''));
+        $adminEmail  = filter_var($senderEmail, FILTER_VALIDATE_EMAIL) ? $senderEmail : $adminEmailDefault;
+        $adminName   = $admin instanceof User ? trim(($admin->getFirstName() ?? '') . ' ' . ($admin->getLastName() ?? '')) : 'Admin';
+        $adminName   = $adminName ?: $adminEmail;
+
+        $reservationMailer->notifyAdminNotesToUser($reservation, $notes, $files, $adminEmail, $adminName);
+
+        return $this->json(['success' => true, 'message' => 'Notes sent to the user via email.']);
     }
 
     #[Route('/reservations/{id}/status', name: 'admin_role_update_reservation_status', methods: ['POST'])]
