@@ -170,6 +170,30 @@ class AnalyticsController extends AbstractController
         $trendMomentum = $this->calculateTrendMomentum($weeklyTrends);
         $peakTroughRatio = $this->calculatePeakTroughRatio($monthlyTrends);
 
+        // Facility demand metrics (approved-only, separate from general reservation demand)
+        $fdMetrics = $this->aggregateFacilityDemandMetrics($reservations);
+        $approvedWeeklyTrends  = $fdMetrics['approvedWeeklyTrends'];
+        $approvedMonthlyTrends = $fdMetrics['approvedMonthlyTrends'];
+        $approvedWeeklyForecast  = $this->generateForecast($approvedWeeklyTrends, 'W');
+        $approvedMonthlyForecast = $this->generateForecast($approvedMonthlyTrends, 'M');
+        $approvedWeeklyRmse = $this->naiveForecastRmse($approvedWeeklyTrends);
+        $approvedWeeklyMae  = $this->mae($approvedWeeklyTrends);
+        $approvedWeeklyMape = $this->mape($approvedWeeklyTrends);
+        $approvedMonthlyRmse = $this->rmse($approvedMonthlyTrends);
+        $approvedMonthlyMae  = $this->mae($approvedMonthlyTrends);
+        $approvedMonthlyMape = $this->mape($approvedMonthlyTrends);
+        $facilityDemandActualVsForecast = $this->buildActualVsForecast($approvedWeeklyTrends);
+        $facilityDemandRollingMape = $this->calculateRollingMape($approvedWeeklyTrends);
+        $facilityDemandVolatility = $this->calculateDemandVolatility($approvedWeeklyTrends);
+        $facilityDemandSeasonalPattern = $this->detectSeasonalPattern($approvedMonthlyTrends);
+        $facilityDemandTrendMomentum = $this->calculateTrendMomentum($approvedWeeklyTrends);
+        $facilityDemandPeakTroughRatio = $this->calculatePeakTroughRatio($approvedMonthlyTrends);
+        $selectedFacilityName = $facilityId ? ($this->getFacilityNameById($facilities, (int) $facilityId) ?: 'Selected facility') : 'All facilities';
+        $aggregateWeeklyDemand = ['facility' => $selectedFacilityName, 'historical' => $approvedWeeklyTrends, 'forecast' => $approvedWeeklyForecast['forecast'] ?? []];
+        $aggregateMonthlyDemand = ['facility' => $selectedFacilityName, 'historical' => $approvedMonthlyTrends, 'forecast' => $approvedMonthlyForecast['forecast'] ?? []];
+        $facilityDemandInsightWeekly = $this->buildFacilityDemandInsight($aggregateWeeklyDemand);
+        $facilityDemandInsightMonthly = $this->buildFacilityDemandInsight($aggregateMonthlyDemand);
+
         return $this->buildEndpointResponse($endpoint, $base, compact(
             'facilities', 'weeklyTrends', 'weeklyForecast', 'monthlyTrends', 'monthlyForecast',
             'weeklyRmse', 'weeklyMae', 'weeklyMape', 'monthlyRmse', 'monthlyMae', 'monthlyMape',
@@ -179,8 +203,24 @@ class AnalyticsController extends AbstractController
             'trendMomentum', 'peakTroughRatio',
             'roomUtilization', 'heatmapData', 'overallCompletionRate', 'rsoCompletionRate',
             'eventSuccessByType', 'topEvents', 'statusCounts',
-            'setupComplianceRate', 'noShowRate', 'averageSetupGap'
+            'setupComplianceRate', 'noShowRate', 'averageSetupGap',
+            'approvedWeeklyTrends', 'approvedWeeklyForecast', 'approvedMonthlyTrends', 'approvedMonthlyForecast',
+            'approvedWeeklyRmse', 'approvedWeeklyMae', 'approvedWeeklyMape',
+            'approvedMonthlyRmse', 'approvedMonthlyMae', 'approvedMonthlyMape',
+            'facilityDemandActualVsForecast', 'facilityDemandRollingMape',
+            'facilityDemandVolatility', 'facilityDemandSeasonalPattern', 'facilityDemandTrendMomentum',
+            'facilityDemandPeakTroughRatio', 'facilityDemandInsightWeekly', 'facilityDemandInsightMonthly'
         ));
+    }
+
+    private function getFacilityNameById(array $facilities, int $facilityId): ?string
+    {
+        foreach ($facilities as $f) {
+            if ((int) ($f['id'] ?? 0) === $facilityId) {
+                return $f['name'] ?? null;
+            }
+        }
+        return null;
     }
 
     private function generateForecast(array $trends, string $period = 'M'): array
@@ -639,6 +679,31 @@ class AnalyticsController extends AbstractController
         );
     }
 
+    private function aggregateFacilityDemandMetrics(array $reservations): array
+    {
+        $approvedMonthlyTrends = [];
+        $approvedWeeklyTrends = [];
+
+        foreach ($reservations as $res) {
+            $status = $res->getStatus();
+            $effectiveStatus = $status === 'Completed' ? 'Approved' : $status;
+
+            if ($effectiveStatus !== 'Approved') {
+                continue;
+            }
+
+            $resDate = $res->getReservationDate();
+            if ($month = $resDate?->format('Y-m')) {
+                $approvedMonthlyTrends[$month] = ($approvedMonthlyTrends[$month] ?? 0) + 1;
+            }
+            if ($week = $resDate?->format('o-\WW')) {
+                $approvedWeeklyTrends[$week] = ($approvedWeeklyTrends[$week] ?? 0) + 1;
+            }
+        }
+
+        return compact('approvedMonthlyTrends', 'approvedWeeklyTrends');
+    }
+
     private function calcEventSuccess(array $purposeSuccess): array
     {
         $result = [];
@@ -660,6 +725,27 @@ class AnalyticsController extends AbstractController
             $result[] = ['facility' => $data['name'], 'forecast' => $forecastValues, 'historical' => $data['weekly'], 'chart_value' => $chartValue];
         }
         return $result;
+    }
+
+    private function buildFacilityDemandInsight(?array $fc): string
+    {
+        if (!$fc || empty($fc['historical'])) {
+            $name = $fc['facility'] ?? 'the selected facility';
+            return "Not enough approved reservation history for {$name} to generate a reliable demand forecast.";
+        }
+        $name = $fc['facility'];
+        $hist = $fc['historical'];
+        $forecast = $fc['forecast'] ?? [];
+        $values = array_values($hist);
+        $first = $values[0];
+        $last = end($values);
+        $trend = $last > $first ? 'rising' : ($last < $first ? 'falling' : 'stable');
+        if ($forecast) {
+            $total = array_sum($forecast);
+            $avg = $total / count($forecast);
+            return "Approved-only demand for {$name} is {$trend} from {$first} to {$last} reservations. ARIMA anticipates ~" . round($avg, 1) . " approved reservations per upcoming period, with a total of " . round($total, 1) . " over the forecast horizon.";
+        }
+        return "Approved-only demand for {$name} is {$trend} from {$first} to {$last} reservations. No forecast could be generated due to limited data.";
     }
 
     private function buildRoomUtilization(array $facilityStats, array $facilityDailyBookings): array
@@ -979,6 +1065,29 @@ class AnalyticsController extends AbstractController
                 'facility_risk_scores'      => $d['facilityRiskScores'],
                 'approval_funnel'           => $d['approvalFunnel'],
                 'data_quality'              => $d['dataQualityScore'],
+            ]),
+            'facility_demand' => array_merge($base, [
+                'facility_demand_series' => [
+                    'weekly'  => ['historical' => $d['approvedWeeklyTrends'],  'forecast' => $d['approvedWeeklyForecast']['forecast']  ?? [], 'lower' => $d['approvedWeeklyForecast']['lower']  ?? [], 'upper' => $d['approvedWeeklyForecast']['upper']  ?? []],
+                    'monthly' => ['historical' => $d['approvedMonthlyTrends'], 'forecast' => $d['approvedMonthlyForecast']['forecast'] ?? [], 'lower' => $d['approvedMonthlyForecast']['lower'] ?? [], 'upper' => $d['approvedMonthlyForecast']['upper'] ?? []],
+                ],
+                'facility_demand_accuracy' => [
+                    'weekly_rmse' => $d['approvedWeeklyRmse'],
+                    'weekly_mae'  => $d['approvedWeeklyMae'],
+                    'weekly_mape' => $d['approvedWeeklyMape'],
+                    'monthly_rmse'=> $d['approvedMonthlyRmse'],
+                    'monthly_mae' => $d['approvedMonthlyMae'],
+                    'monthly_mape'=> $d['approvedMonthlyMape'],
+                ],
+                'facility_actual_vs_forecast' => $d['facilityDemandActualVsForecast'],
+                'facility_rolling_mape'       => $d['facilityDemandRollingMape'],
+                'facility_demand_volatility'  => $d['facilityDemandVolatility'],
+                'facility_demand_seasonal_pattern' => $d['facilityDemandSeasonalPattern'],
+                'facility_demand_trend_momentum'   => $d['facilityDemandTrendMomentum'],
+                'facility_demand_peak_trough_ratio'=> $d['facilityDemandPeakTroughRatio'],
+                'facility_demand_insight_weekly'  => $d['facilityDemandInsightWeekly'],
+                'facility_demand_insight_monthly' => $d['facilityDemandInsightMonthly'],
+                'data_quality' => $d['dataQualityScore'],
             ]),
             default => array_merge($base, ['error' => 'Unknown endpoint']),
         };

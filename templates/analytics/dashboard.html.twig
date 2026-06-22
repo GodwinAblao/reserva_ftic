@@ -42,6 +42,10 @@
 .util-badge.high{background:#d1fae5;color:#059669}
 .util-badge.med{background:#fef3c7;color:#d97706}
 .util-badge.low{background:#fee2e2;color:#dc2626}
+.an-pro-segmented{background:#f1f5f9;border-radius:8px;padding:3px;display:flex}
+.an-pro-segment{border:0;background:transparent;color:#4b5563;font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s ease}
+.an-pro-segment:hover{background:#e2e8f0;color:#1f2937}
+.an-pro-segment.active{background:#006633;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 </style>
 {% endblock %}
 
@@ -63,7 +67,8 @@
 </div>
 
 <div class="sa-analytics-nav">
-    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Forecasting</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="forecasting">Reservation Demand Forecasting</button>
+    <button class="sa-analytics-btn analytics-btn" type="button" data-fn="facility_demand">Facility Demand Forecasting</button>
     <button class="sa-analytics-btn active analytics-btn" type="button" data-fn="planning">Planning</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="organizing">Organizing</button>
     <button class="sa-analytics-btn analytics-btn" type="button" data-fn="leading">Event Execution</button>
@@ -169,7 +174,7 @@ async function loadAnalytics(fn) {
     const box = document.getElementById('analytics-content');
     box.innerHTML = '<div class="sa-loading">Loading ' + fn + '\u2026</div>';
     destroyCharts();
-    // Forecasting tab uses the planning endpoint
+    // Forecasting tab uses the planning endpoint; facility_demand has its own endpoint
     const apiEndpoint = fn === 'forecasting' ? 'planning' : fn;
     try {
         const res = await fetch(API + '/' + apiEndpoint + queryParams());
@@ -290,9 +295,10 @@ function redrawChartsWithFilter() {
 function renderTab(fn, data, isFallback) {
     let html = '<div class="sa-analytics-title-row"><div><h3>' + title(fn) + '</h3><p>' + summary(fn) + '</p></div>';
     html += '<span class="sa-analytics-source live">Live</span></div>';
-    if (!['forecasting', 'planning'].includes(fn)) html += kpiRow(fn, data);
+    if (!['forecasting', 'planning', 'facility_demand'].includes(fn)) html += kpiRow(fn, data);
     html += '<div class="sa-analytics-grid">';
     if (fn === 'forecasting') html += forecastingHtml(data);
+    else if (fn === 'facility_demand') html += facilityDemandHtml(data);
     else if (fn === 'planning') html += planningHtml(data);
     else if (fn === 'organizing') html += organizingHtml(data);
     else if (fn === 'leading') html += leadingHtml(data);
@@ -528,6 +534,137 @@ function forecastingHtml(d) {
     </div>
     ` + accuracyPanel + intelligencePanel + `
     <div class="an-pro-recommendations sa-chart-wide" id="reco-forecasting"></div>`;
+}
+
+function facilityDemandHtml(d) {
+    const acc = d.facility_demand_accuracy || {};
+    const mapeQuality = (v) => { if (v == null) return ''; if (v < 10) return ' mq-excellent'; if (v < 20) return ' mq-good'; if (v < 30) return ' mq-fair'; return ' mq-poor'; };
+    let accuracyPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+        <h4>Facility Demand Forecast Accuracy (Approved-only)</h4>
+        <p class="chart-sub">Forecast accuracy metrics for approved-only facility demand — lower values indicate better model performance</p>
+        <div class="an-pro-metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon">W</div>
+                <div class="metric-label">Weekly MAE</div>
+                <div class="metric-value">${acc.weekly_mae ?? '—'}</div>
+                <div class="metric-desc">Mean Absolute Error</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">W</div>
+                <div class="metric-label">Weekly RMSE</div>
+                <div class="metric-value">${acc.weekly_rmse ?? '—'}</div>
+                <div class="metric-desc">Root Mean Square Error</div>
+            </div>
+            <div class="metric-card${mapeQuality(acc.weekly_mape)}">
+                <div class="metric-icon">W</div>
+                <div class="metric-label">Weekly MAPE</div>
+                <div class="metric-value">${(acc.weekly_mape ?? '—')}%</div>
+                <div class="metric-desc">Mean Abs % Error</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">M</div>
+                <div class="metric-label">Monthly MAE</div>
+                <div class="metric-value">${acc.monthly_mae ?? '—'}</div>
+                <div class="metric-desc">Mean Absolute Error</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">M</div>
+                <div class="metric-label">Monthly RMSE</div>
+                <div class="metric-value">${acc.monthly_rmse ?? '—'}</div>
+                <div class="metric-desc">Root Mean Square Error</div>
+            </div>
+            <div class="metric-card${mapeQuality(acc.monthly_mape)}">
+                <div class="metric-icon">M</div>
+                <div class="metric-label">Monthly MAPE</div>
+                <div class="metric-value">${(acc.monthly_mape ?? '—')}%</div>
+                <div class="metric-desc">Mean Abs % Error</div>
+            </div>
+        </div>
+        <div class="an-pro-legend-box">
+            <h5>How to Interpret</h5>
+            <ul>
+                <li><strong>MAE</strong> — Average absolute difference between actual and predicted approved reservation counts</li>
+                <li><strong>RMSE</strong> — Like MAE but penalizes large errors more; useful for detecting outlier weeks</li>
+                <li><strong>MAPE</strong> — Percentage-based: <span class="mq-tag excellent">&lt;10% Excellent</span> <span class="mq-tag good">&lt;20% Good</span> <span class="mq-tag fair">&lt;30% Fair</span> <span class="mq-tag poor">&gt;30% Poor</span></li>
+            </ul>
+        </div>
+    </div>`;
+
+    const vol = d.facility_demand_volatility || {};
+    const seasonal = d.facility_demand_seasonal_pattern || {};
+    const momentum = d.facility_demand_trend_momentum || {};
+    const dq = d.data_quality || {};
+    const ptr = d.facility_demand_peak_trough_ratio || 1;
+    const volClass = vol.cv < 15 ? 'mq-excellent' : vol.cv < 30 ? 'mq-good' : vol.cv < 50 ? 'mq-fair' : 'mq-poor';
+    const momIcon = momentum.direction === 'up' ? '▲' : momentum.direction === 'down' ? '▼' : '→';
+
+    let intelligencePanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
+        <h4>Facility Demand Intelligence Dashboard</h4>
+        <p class="chart-sub">Approved-only facility demand analytics — variation, seasonality, and trend momentum</p>
+        <div class="an-pro-metrics-grid">
+            <div class="metric-card ${volClass}">
+                <div class="metric-icon">V</div>
+                <div class="metric-label">Demand Changes</div>
+                <div class="metric-value">${vol.cv ?? 0}%</div>
+                <div class="metric-desc">CV: ${vol.label || 'N/A'} (σ=${vol.std_dev ?? 0})</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">${momIcon}</div>
+                <div class="metric-label">Demand Direction</div>
+                <div class="metric-value">${momentum.direction === 'up' ? '+' : momentum.direction === 'down' ? '-' : ''}${momentum.strength ?? 0}%</div>
+                <div class="metric-desc">Short: ${momentum.short_term ?? 0}/wk · Long: ${momentum.long_term ?? 0}/wk</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">S</div>
+                <div class="metric-label">Seasonality</div>
+                <div class="metric-value">${seasonal.detected ? 'Detected' : 'None'}</div>
+                <div class="metric-desc">Strength: ${seasonal.seasonality_strength ?? 0}% · Ratio: ${ptr}x</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">P</div>
+                <div class="metric-label">Peak Months</div>
+                <div class="metric-value">${(seasonal.peak_months || []).length || 0}</div>
+                <div class="metric-desc">${(seasonal.peak_months || []).slice(-2).map(formatLabel).join(', ') || 'N/A'}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">T</div>
+                <div class="metric-label">Quiet Months</div>
+                <div class="metric-value">${(seasonal.trough_months || []).length || 0}</div>
+                <div class="metric-desc">${(seasonal.trough_months || []).slice(-2).map(formatLabel).join(', ') || 'N/A'}</div>
+            </div>
+        </div>
+    </div>`;
+
+    return `
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+            <div>
+                <h4 id="facility-demand-title" style="margin:0;">Facility Demand Forecast</h4>
+                <p class="chart-sub" style="margin:2px 0 0;">Approved-only reservation demand · ARIMA forecast</p>
+            </div>
+            <div class="an-pro-segmented" style="display:flex;gap:4px;">
+                <button type="button" class="an-pro-segment active" data-view="weekly" id="btn-facility-weekly">Weekly</button>
+                <button type="button" class="an-pro-segment" data-view="monthly" id="btn-facility-monthly">Monthly</button>
+            </div>
+        </div>
+        <div class="an-pro-ci-legend"><span class="ci-dot ci-hist"></span> Historical <span class="ci-dot ci-fc"></span> Forecast <span class="ci-dot ci-ci"></span> 80% CI</div>
+        <canvas id="c-facility-demand"></canvas>
+        <div class="an-pro-insight" id="insight-facility-demand"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <h4>Actual vs ARIMA Forecast — Facility Demand</h4>
+        <p class="chart-sub">Green: actual approved demand · Amber: ARIMA · Red dashed: naïve baseline</p>
+        <canvas id="c-facility-actual-vs"></canvas>
+        <div class="an-pro-insight" id="insight-facility-actual-vs"></div>
+    </div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide">
+        <h4>Rolling Facility Demand Accuracy (MAPE)</h4>
+        <p class="chart-sub">Tracks approved-only demand prediction error per rolling 4-week window</p>
+        <canvas id="c-facility-rolling-mape"></canvas>
+        <div class="an-pro-insight" id="insight-facility-rolling-mape"></div>
+    </div>
+    ` + accuracyPanel + intelligencePanel + `
+    <div class="an-pro-recommendations sa-chart-wide" id="reco-facility-demand"></div>`;
 }
 
 function planningHtml(d) {
@@ -889,6 +1026,98 @@ function drawCharts(fn, d, isFallback) {
             if (pf.length) charts.push(makePerFacilityChart('c-per-fac', pf));
             generatePlanningInsights(d);
         }
+    } else if (fn === 'facility_demand') {
+        // Facility Demand Forecasting tab
+        const fdSeries = d.facility_demand_series || {};
+        const fdBtnWeekly = document.getElementById('btn-facility-weekly');
+        const fdBtnMonthly = document.getElementById('btn-facility-monthly');
+        const fdEl = document.getElementById('c-facility-demand');
+        const fdTitle = document.getElementById('facility-demand-title');
+        const fdFilter = document.getElementById('facility-filter');
+        const selectedFacilityName = fdFilter && fdFilter.value ? (fdFilter.options[fdFilter.selectedIndex]?.text || 'Selected facility').replace(/\s*\(\d+\)$/, '') : 'All facilities';
+        if (fdTitle) fdTitle.textContent = 'Facility Demand Forecast - ' + esc(selectedFacilityName);
+        let fdChart = null;
+        function drawFacilityDemand(view) {
+            const s = fdSeries[view] || {};
+            const hist = s.historical || {};
+            const forecast = s.forecast || {};
+            const lower = s.lower || {};
+            const upper = s.upper || {};
+            const allKeys = [...new Set([...Object.keys(hist), ...Object.keys(forecast)])].sort();
+            if (!allKeys.length || !fdEl) return;
+            const labels = allKeys.map(formatLabel);
+            const histValues = allKeys.map(k => hist[k] ?? null);
+            const fcValues = allKeys.map(k => forecast[k] ?? null);
+            const hasFc = fcValues.some(v => v !== null);
+            const loValues = allKeys.map(k => lower[k] ?? null);
+            const hiValues = allKeys.map(k => upper[k] ?? null);
+            if (fdChart) { fdChart.destroy(); fdChart = null; }
+            fdChart = new Chart(fdEl, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Historical (approved)', data: histValues, borderColor: '#006633', backgroundColor: 'rgba(0,102,51,0.12)', fill: true, tension: 0.35, pointRadius: 3, spanGaps: false },
+                        ...(hasFc ? [
+                            { label: 'ARIMA forecast', data: fcValues, borderColor: '#f59e0b', borderDash: [6,4], tension: 0.35, pointRadius: 3, spanGaps: false },
+                            { label: 'Lower bound', data: loValues, borderColor: 'transparent', backgroundColor: 'rgba(245,158,11,0.08)', fill: '+1', pointRadius: 0, tension: 0.35 },
+                            { label: 'Upper bound', data: hiValues, borderColor: 'transparent', backgroundColor: 'rgba(245,158,11,0.08)', fill: false, pointRadius: 0, tension: 0.35 }
+                        ] : [])
+                    ]
+                },
+                options: {
+                    ...chartOpts('Approved reservations'),
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' }, title: { display: true, text: 'Approved reservations' }, ticks: { precision: 0, callback: value => Number.isInteger(Number(value)) ? value : Math.round(Number(value)) } }
+                    }
+                }
+            });
+            charts.push(fdChart);
+            const fdInsight = document.getElementById('insight-facility-demand');
+            const insightText = view === 'monthly'
+                ? (d.facility_demand_insight_monthly || d.facility_demand_insight || 'Facility demand forecast is available.')
+                : (d.facility_demand_insight_weekly || d.facility_demand_insight || 'Facility demand forecast is available.');
+            if (fdInsight) fdInsight.innerHTML = '<strong>Insight:</strong> ' + esc(insightText);
+        }
+        if (fdBtnWeekly && fdBtnMonthly) {
+            const setView = (view) => {
+                fdBtnWeekly.classList.toggle('active', view === 'weekly');
+                fdBtnMonthly.classList.toggle('active', view === 'monthly');
+                drawFacilityDemand(view);
+            };
+            fdBtnWeekly.addEventListener('click', () => setView('weekly'));
+            fdBtnMonthly.addEventListener('click', () => setView('monthly'));
+            setView('weekly');
+        } else if (fdEl) {
+            const fdInsight = document.getElementById('insight-facility-demand');
+            if (fdInsight) fdInsight.textContent = 'Facility demand data not available.';
+        }
+
+        if (d.facility_actual_vs_forecast?.labels?.length > 1) {
+            charts.push(makeActualVsForecastChart('c-facility-actual-vs', d.facility_actual_vs_forecast));
+        }
+
+        const fdRm = d.facility_rolling_mape || {};
+        if (fdRm.labels && fdRm.labels.length > 1) {
+            const fdRmEl = document.getElementById('c-facility-rolling-mape');
+            if (fdRmEl) {
+                charts.push(new Chart(fdRmEl, {
+                    type: 'line',
+                    data: { labels: fdRm.labels.map(formatLabel), datasets: [{ label: 'MAPE %', data: fdRm.values, borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.08)', fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2 }, { label: '20% threshold', data: fdRm.labels.map(() => 20), borderColor: '#dc2626', borderDash: [4,4], pointRadius: 0, borderWidth: 1, fill: false }] },
+                    options: { ...chartOpts('MAPE %'), plugins: { legend: { labels: { usePointStyle: true, padding: 16 } } } }
+                }));
+            }
+            const fdRmInsight = document.getElementById('insight-facility-rolling-mape');
+            if (fdRmInsight && fdRm.values.length >= 3) {
+                const recent = fdRm.values.slice(-3);
+                const avgRecent = (recent.reduce((a,b)=>a+b,0)/recent.length).toFixed(1);
+                const trend = fdRm.values[fdRm.values.length-1] < fdRm.values[0] ? 'improving' : 'needs attention';
+                fdRmInsight.innerHTML = '<strong>Insight:</strong> Recent 3-period avg MAPE: <strong>' + avgRecent + '%</strong>. Model is <strong>' + trend + '</strong>.';
+            }
+        }
+
+        generateFacilityDemandInsights(d);
     } else if (fn === 'organizing') {
         const view = d._xaxis_view || 'weekly';
         const loadCard = document.querySelector('#c-load')?.closest('.an-pro-chart-card');
@@ -1347,6 +1576,58 @@ function generatePlanningInsights(d) {
     }
 }
 
+function generateFacilityDemandInsights(d) {
+    const w = d.facility_demand_series?.weekly || {};
+    const wEl = document.getElementById('insight-facility-demand');
+    if (wEl && w.historical && Object.keys(w.historical).length > 1) {
+        const hist = Object.values(w.historical);
+        const fc = Object.values(w.forecast || {});
+        const lastWeeks = hist.slice(-4);
+        const avg = (lastWeeks.reduce((a,b)=>a+b,0)/lastWeeks.length).toFixed(1);
+        const trend = hist[hist.length-1] > hist[hist.length-2] ? 'increasing' : hist[hist.length-1] < hist[hist.length-2] ? 'decreasing' : 'stable';
+        let insight = '<strong>Insight:</strong> Weekly approved demand is <strong>' + trend + '</strong>. Recent 4-week average: ' + avg + ' approved reservations/week.';
+        if (fc.length) { const fcAvg = (fc.reduce((a,b)=>a+b,0)/fc.length).toFixed(1); insight += ' Forecasted average: ' + fcAvg + '/week over the next ' + fc.length + ' weeks.'; }
+        wEl.innerHTML = insight;
+    }
+
+    const avfEl = document.getElementById('insight-facility-actual-vs');
+    if (avfEl) {
+        const avf = d.facility_actual_vs_forecast || {};
+        if (avf.actual && avf.actual.length > 1) {
+            let arimaTotal = 0, naiveTotal = 0, n = avf.actual.length;
+            for (let i = 0; i < n; i++) {
+                arimaTotal += Math.abs(avf.actual[i] - (avf.arima?.[i] || 0));
+                naiveTotal += Math.abs(avf.actual[i] - (avf.naive?.[i] || 0));
+            }
+            const arimaMae = (arimaTotal / n).toFixed(2);
+            const naiveMae = (naiveTotal / n).toFixed(2);
+            const improvement = naiveTotal > 0 ? (((naiveTotal - arimaTotal) / naiveTotal) * 100).toFixed(1) : 0;
+            avfEl.innerHTML = '<strong>ARIMA vs Naïve Comparison:</strong> ARIMA MAE = <strong>' + arimaMae + '</strong> vs Naïve MAE = <strong>' + naiveMae + '</strong>. ARIMA is <strong>' + improvement + '% more accurate</strong> than the naïve baseline.';
+        }
+    }
+
+    const recoEl = document.getElementById('reco-facility-demand');
+    if (recoEl) {
+        const acc = d.facility_demand_accuracy || {};
+        const vol = d.facility_demand_volatility || {};
+        const mom = d.facility_demand_trend_momentum || {};
+        const seasonal = d.facility_demand_seasonal_pattern || {};
+        const items = [];
+
+        if ((acc.weekly_mape ?? 0) > 20) items.push('<strong>Poor Facility Demand Accuracy (Weekly MAPE ' + acc.weekly_mape + '%):</strong> Model error exceeds 20%. Collect more approved reservation history and ensure facility records are consistent.');
+        else if ((acc.weekly_mape ?? 0) > 10) items.push('<strong>Moderate Facility Demand Accuracy (Weekly MAPE ' + acc.weekly_mape + '%):</strong> Forecast is serviceable but can improve. Ensure no data gaps or outlier weeks are distorting the model.');
+        else if (acc.weekly_mape != null) items.push('<strong>Excellent Facility Demand Accuracy (Weekly MAPE ' + acc.weekly_mape + '%):</strong> Model is reliable for facility planning. Use forecasts confidently for staffing and resource allocation.');
+
+        if ((vol.cv ?? 0) > 30) items.push('<strong>High Facility Demand Volatility (CV ' + vol.cv + '%):</strong> Approved reservation counts fluctuate significantly. Build capacity buffers of at least 20% above forecast.');
+        if (mom.direction === 'down' && (mom.strength ?? 0) > 5) items.push('<strong>Declining Facility Demand (' + mom.strength + '% drop):</strong> Short-term momentum is negative. Investigate whether this is seasonal or structural.');
+        if (mom.direction === 'up' && (mom.strength ?? 0) > 10) items.push('<strong>Strong Facility Demand Growth (+' + mom.strength + '%):</strong> Approved demand is accelerating. Pre-emptively expand availability and staffing.');
+        if (seasonal.detected && seasonal.peak_months?.length) items.push('<strong>Seasonal Facility Peak Detected:</strong> Historically high approved demand in <strong>' + seasonal.peak_months.slice(-2).map(formatLabel).join(', ') + '</strong>. Pre-allocate resources during these months.');
+        items.push('Review facility demand forecast vs actual every 4 weeks to detect model drift early and recalibrate if MAPE rises above 20%.');
+
+        recoEl.innerHTML = '<div class="reco-box"><h5>Actionable Recommendations — Facility Demand</h5><ul>' + items.map(i=>'<li>'+i+'</li>').join('') + '</ul></div>';
+    }
+}
+
 function generateOrganizingInsights(d) {
     // Executive Summary
     const execEl = document.getElementById('exec-organizing');
@@ -1630,12 +1911,14 @@ function palette() {
 
 function title(fn) {
     if (fn === 'leading') return 'Event Execution';
-    if (fn === 'forecasting') return 'Forecasting';
+    if (fn === 'forecasting') return 'Reservation Demand Forecasting';
+    if (fn === 'facility_demand') return 'Facility Demand Forecasting';
     return fn.charAt(0).toUpperCase() + fn.slice(1);
 }
 function summary(fn) {
     const m = {
-        forecasting: 'A forward-looking view of reservation demand, demand stability, data quality, and expected usage patterns.',
+        forecasting: 'A forward-looking view of total reservation demand, demand stability, data quality, and expected usage patterns.',
+        facility_demand: 'Approved-only facility demand forecast, model validation, and accuracy metrics for the selected facility or all facilities.',
         planning: 'Demand patterns by day of week, event type distribution, peak hours, and per-facility forecasts.',
         organizing: 'Facility allocation, peak times, and utilization.',
         leading: 'Approval and purpose-based success metrics.',
