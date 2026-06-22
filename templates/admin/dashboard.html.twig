@@ -6,6 +6,7 @@
 {{ parent() }}
 <link rel="stylesheet" href="{{ asset('styles/analytics-pro.css') }}">
 <meta name="stats-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_stats') : path('admin_role_api_stats') }}">
+<meta name="activity-api" content="{{ is_granted('ROLE_SUPER_ADMIN') ? path('admin_api_activity') : path('admin_role_api_activity') }}">
 <style>
     /* ── Dashboard-specific styles (stat cards, activity feed, chart tabs) ── */
     .stats-grid-pro { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; margin-bottom:22px; }
@@ -48,21 +49,23 @@
     .filter-tab-pro:hover { color:#374151; }
     .filter-tab-pro.active { background:#fff; color:#0d9b00; box-shadow:0 2px 8px rgba(0,102,51,.10); }
 
-    /* Activity feed */
-    .activity-feed-pro { max-height:280px; overflow-y:auto; }
-    .activity-item-pro { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid #f0f4ee; }
-    .activity-item-pro:last-child { border-bottom:none; }
-    .activity-icon-pro { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#f0f4ee; color:#006633; }
-    .activity-content-pro { flex:1; min-width:0; }
-    .activity-title-pro { font-size:.875rem; font-weight:700; color:#111827; margin-bottom:2px; }
-    .activity-desc-pro { font-size:.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .activity-time-pro { font-size:.72rem; color:#9ca3af; white-space:nowrap; }
+    .activity-top-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .activity-top-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px; text-align:center; transition:all .2s; }
+    .activity-top-card:hover { background:#f1f5f9; border-color:#cbd5e1; }
+    .activity-top-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; background:#fff; color:#006633; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .activity-top-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.3px; margin-bottom:6px; }
+    .activity-top-value { font-size:16px; font-weight:800; color:#0f172a; line-height:1.2; margin-bottom:4px; word-break:break-word; }
+    .activity-top-sub { font-size:11px; color:#94a3b8; }
+    @media (max-width: 768px) {
+        .activity-top-grid { grid-template-columns:1fr; }
+    }
 
     /* Status badges */
     .status-badge-pro { display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:.75rem; font-weight:700; text-transform:uppercase; }
     .status-badge-pro.pending   { background:#fef9c3; color:#854d0e; }
     .status-badge-pro.approved  { background:#dcfce7; color:#166534; }
     .status-badge-pro.rejected  { background:#fee2e2; color:#991b1b; }
+    .status-badge-pro.cancelled { background:#f3f4f6; color:#4b5563; }
     .status-badge-pro.completed { background:#dbeafe; color:#1e40af; }
 
     /* Compact list */
@@ -209,27 +212,34 @@
         </div>
     </section>
 
-    <!-- Live Activity Feed -->
+    <!-- Live Activity -->
     <section class="card-panel-pro">
         <div class="section-header-pro">
             <h3 class="section-title-pro">
                 <svg width="18" height="18" style="color: #006633;"><use href="#icon-activity"></use></svg>
                 Live Activity
             </h3>
-            <button class="btn-icon-pro" onclick="clearActivity()" title="Clear activity">
-                <svg width="16" height="16"><use href="#icon-trash"></use></svg>
-            </button>
+            <span id="activity-source-badge" class="an-pro-badge demo" style="font-size:11px;padding:4px 10px;">Loading</span>
         </div>
-        <div class="activity-feed-pro" id="activity-feed">
-            <div class="activity-item-pro">
-                <div class="activity-icon-pro">
-                    <svg width="16" height="16"><use href="#icon-check"></use></svg>
-                </div>
-                <div class="activity-content-pro">
-                    <div class="activity-title-pro">Dashboard ready</div>
-                    <div class="activity-desc-pro">Real-time updates are now active</div>
-                </div>
-                <div class="activity-time-pro">Just now</div>
+
+        <div class="activity-top-grid">
+            <div class="activity-top-card">
+                <div class="activity-top-icon"><svg width="18" height="18"><use href="#icon-calendar"></use></svg></div>
+                <div class="activity-top-label">Top Facility</div>
+                <div class="activity-top-value" id="act-top-facility">N/A</div>
+                <div class="activity-top-sub" id="act-top-facility-count">0 reservations</div>
+            </div>
+            <div class="activity-top-card">
+                <div class="activity-top-icon"><svg width="18" height="18"><use href="#icon-trending"></use></svg></div>
+                <div class="activity-top-label">Top Specialization</div>
+                <div class="activity-top-value" id="act-top-specialization">N/A</div>
+                <div class="activity-top-sub" id="act-top-specialization-count">0 points</div>
+            </div>
+            <div class="activity-top-card">
+                <div class="activity-top-icon"><svg width="18" height="18"><use href="#icon-users"></use></svg></div>
+                <div class="activity-top-label">Top Active User</div>
+                <div class="activity-top-value" id="act-top-user">N/A</div>
+                <div class="activity-top-sub" id="act-top-user-count">0 events</div>
             </div>
         </div>
     </section>
@@ -305,6 +315,7 @@
     // Dashboard JavaScript - Data loaded from server initially
     window.__reservaDashboardState = window.__reservaDashboardState || {
         chart: null,
+        activityChart: null,
         lastUpdate: new Date()
     };
     var dashboardState = window.__reservaDashboardState;
@@ -317,7 +328,10 @@
     function initDashboard() {
         // Initialize chart
         initChart();
-        
+        // Load descriptive activity insights
+        loadActivity();
+        // Poll activity every 60 seconds
+        setInterval(loadActivity, 60000);
         // Stats refresh is handled by the global app layer to avoid duplicate polling.
     }
 
@@ -392,22 +406,58 @@
         while (feed.children.length > 10) feed.removeChild(feed.lastChild);
     }
 
-    function clearActivity() {
-        const feed = document.getElementById('activity-feed');
-        if (feed) {
-            feed.innerHTML = `
-                <div class="activity-item-pro">
-                    <div class="activity-icon-pro">
-                        <svg width="16" height="16"><use href="#icon-check"></use></svg>
-                    </div>
-                    <div class="activity-content-pro">
-                        <div class="activity-title-pro">Activity cleared</div>
-                        <div class="activity-desc-pro">New activity will appear here</div>
-                    </div>
-                    <div class="activity-time-pro">Just now</div>
-                </div>
-            `;
+    async function loadActivity() {
+        if (document.hidden) return;
+
+        const activityApi = document.querySelector('meta[name="activity-api"]')?.content;
+        if (!activityApi) return;
+
+        try {
+            const response = await fetch(activityApi, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const data = await response.json();
+            renderActivity(data);
+        } catch (e) {
+            const badge = document.getElementById('activity-source-badge');
+            if (badge) {
+                badge.className = 'an-pro-badge demo';
+                badge.textContent = 'Unavailable';
+            }
         }
+    }
+
+    function renderActivity(data) {
+        const badge = document.getElementById('activity-source-badge');
+        if (badge && data) {
+            const live = data.source === 'live' || data.source === 'database';
+            badge.className = 'an-pro-badge ' + (live ? 'live' : 'demo');
+            badge.textContent = data.dataSourceLabel || (live ? 'Live data' : 'Demo / fallback');
+        }
+
+        const topFacEl = document.getElementById('act-top-facility');
+        const topFacCountEl = document.getElementById('act-top-facility-count');
+        if (topFacEl && topFacCountEl) {
+            topFacEl.textContent = esc(data.topFacility?.name || 'N/A');
+            topFacCountEl.textContent = (data.topFacility?.count ?? 0) + ' reservations';
+        }
+
+        const topSpecEl = document.getElementById('act-top-specialization');
+        const topSpecCountEl = document.getElementById('act-top-specialization-count');
+        if (topSpecEl && topSpecCountEl) {
+            topSpecEl.textContent = esc(data.topSpecialization?.name || 'N/A');
+            topSpecCountEl.textContent = (data.topSpecialization?.count ?? 0) + ' points';
+        }
+
+        const topUserEl = document.getElementById('act-top-user');
+        const topUserCountEl = document.getElementById('act-top-user-count');
+        if (topUserEl && topUserCountEl) {
+            topUserEl.textContent = esc(data.topActiveUser?.name || 'N/A');
+            topUserCountEl.textContent = (data.topActiveUser?.count ?? 0) + ' events';
+        }
+    }
+
+    function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     function initChart() {

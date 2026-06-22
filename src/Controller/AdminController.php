@@ -95,6 +95,18 @@ class AdminController extends AbstractController
         );
     }
 
+    #[Route('/api/activity', name: 'admin_api_activity', methods: ['GET'])]
+    public function apiActivity(EntityManagerInterface $em, CacheInterface $cache): JsonResponse
+    {
+        return $this->cachedJsonResponse(
+            $cache,
+            'admin.dashboard.activity.superadmin.v2',
+            60,
+            fn() => $this->getActivityData($em),
+            'private, max-age=60',
+        );
+    }
+
     #[Route('/api/reservations', name: 'admin_api_reservations', methods: ['GET'])]
     public function apiReservations(Request $request, EntityManagerInterface $em): JsonResponse
     {
@@ -249,7 +261,11 @@ class AdminController extends AbstractController
                 ];
             }
 
+            $liveTotal = array_sum(array_column($dailyStats, 'reservations')) + array_sum(array_column($dailyStats, 'mentoring'));
+
             return [
+                'source' => $liveTotal > 0 ? 'live' : 'database',
+                'dataSourceLabel' => $liveTotal > 0 ? 'Live data' : 'No live data in the last 30 days',
                 'dailyStats' => $dailyStats,
                 'reservationTrends' => $this->getReservationTrends($em),
                 'mentoringTrends' => $this->getMentoringTrends($em),
@@ -1376,6 +1392,93 @@ class AdminController extends AbstractController
         $keys     = array_keys($dates);
         $rangeEnd = (new \DateTimeImmutable($keys[count($keys) - 1]))->modify('+1 day')->format('Y-m-d 00:00:00');
         return [$dates, $keys, $rangeEnd];
+    }
+
+    private function getActivityData(EntityManagerInterface $em): array
+    {
+        $conn = $em->getConnection();
+        $today = new \DateTimeImmutable('today');
+        $yesterday = $today->modify('-1 day');
+
+        // Summary helpers
+        $dateRangeSummary = function (\DateTimeInterface $start, \DateTimeInterface $end) use ($conn): array {
+            $resTotal = (int) $conn->executeQuery(
+                "SELECT COUNT(*) FROM reservation
+                 WHERE created_at >= ? AND created_at < ? AND status != 'Suggested'",
+                [$start->format('Y-m-d 00:00:00'), $end->format('Y-m-d 00:00:00')]
+            )->fetchOne();
+            $mentTotal = (int) $conn->executeQuery(
+                "SELECT COUNT(*) FROM mentoring_appointment WHERE created_at >= ? AND created_at < ?",
+                [$start->format('Y-m-d 00:00:00'), $end->format('Y-m-d 00:00:00')]
+            )->fetchOne();
+            return [
+                'total' => $resTotal + $mentTotal,
+                'reservations' => $resTotal,
+                'mentoring' => $mentTotal,
+            ];
+        };
+
+        $todaySummary = $dateRangeSummary($today, $today->modify('+1 day'));
+        $yesterdaySummary = $dateRangeSummary($yesterday, $today);
+
+        // Top facility by reservation count
+        $topFacility = $conn->executeQuery(
+            "SELECT f.name, COUNT(*) AS cnt
+             FROM reservation r
+             INNER JOIN facility f ON r.facility_id = f.id
+             WHERE r.status != 'Suggested'
+             GROUP BY f.name
+             ORDER BY cnt DESC
+             LIMIT 1"
+        )->fetchAssociative();
+
+        // Top specialization by leaderboard engagement points
+        $topSpecialization = $conn->executeQuery(
+            "SELECT m.specialization, SUM(m.engagement_points) AS cnt
+             FROM mentor_profile m
+             GROUP BY m.specialization
+             ORDER BY cnt DESC
+             LIMIT 1"
+        )->fetchAssociative();
+
+        // Top active user by reservation + mentoring events
+        $topActiveUser = $conn->executeQuery(
+            "SELECT actor_email, MAX(actor_name) AS actor_name, COUNT(*) AS cnt
+             FROM (
+                 SELECT r.name AS actor_name, r.email AS actor_email
+                 FROM reservation r
+                 WHERE r.status != 'Suggested' AND r.email IS NOT NULL AND r.email != ''
+                 UNION ALL
+                 SELECT COALESCE(s.first_name || ' ' || s.last_name, s.email) AS actor_name, s.email AS actor_email
+                 FROM mentoring_appointment a
+                 INNER JOIN \"user\" s ON a.student_id = s.id
+             ) events
+             GROUP BY actor_email
+             ORDER BY cnt DESC
+             LIMIT 1"
+        )->fetchAssociative();
+
+        return [
+            'source' => 'live',
+            'dataSourceLabel' => 'Live data',
+            'summary' => [
+                'today' => $todaySummary,
+                'yesterday' => $yesterdaySummary,
+            ],
+            'topFacility' => [
+                'name' => $topFacility['name'] ?? 'N/A',
+                'count' => (int) ($topFacility['cnt'] ?? 0),
+            ],
+            'topSpecialization' => [
+                'name' => $topSpecialization['specialization'] ?? 'N/A',
+                'count' => (int) ($topSpecialization['cnt'] ?? 0),
+            ],
+            'topActiveUser' => [
+                'name' => $topActiveUser['actor_name'] ?? ($topActiveUser['actor_email'] ?? 'N/A'),
+                'email' => $topActiveUser['actor_email'] ?? 'N/A',
+                'count' => (int) ($topActiveUser['cnt'] ?? 0),
+            ],
+        ];
     }
 
 }
