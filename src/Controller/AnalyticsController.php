@@ -135,9 +135,6 @@ class AnalyticsController extends AbstractController
         $setupComplianceRate   = $derived['setupComplianceRate'];
         $noShowRate            = $derived['noShowRate'];
 
-        $eventSuccessByType   = $this->calcEventSuccess($purposeSuccess);
-        $topEvents            = array_slice($purposeCounts, 0, 5, true);
-        $perFacilityWeekly    = $this->buildPerFacilityWeekly($facilityReservations);
         $roomUtilization      = $this->buildRoomUtilization($facilityStats, $facilityDailyBookings);
         $heatmapData          = $this->buildHeatmap($hourlyHeatmap);
 
@@ -197,12 +194,12 @@ class AnalyticsController extends AbstractController
         return $this->buildEndpointResponse($endpoint, $base, compact(
             'facilities', 'weeklyTrends', 'weeklyForecast', 'monthlyTrends', 'monthlyForecast',
             'weeklyRmse', 'weeklyMae', 'weeklyMape', 'monthlyRmse', 'monthlyMae', 'monthlyMape',
-            'hourlyPeak', 'purposeCounts', 'perFacilityWeekly', 'dayOfWeekDemand',
+            'hourlyPeak', 'purposeCounts', 'dayOfWeekDemand',
             'actualVsForecast', 'demandVolatility', 'seasonalPattern', 'capacityEfficiency',
             'rollingMape', 'dataQualityScore', 'approvalFunnel', 'facilityRiskScores',
             'trendMomentum', 'peakTroughRatio',
             'roomUtilization', 'heatmapData', 'overallCompletionRate', 'rsoCompletionRate',
-            'eventSuccessByType', 'topEvents', 'statusCounts',
+            'statusCounts',
             'setupComplianceRate', 'noShowRate', 'averageSetupGap',
             'approvedWeeklyTrends', 'approvedWeeklyForecast', 'approvedMonthlyTrends', 'approvedMonthlyForecast',
             'approvedWeeklyRmse', 'approvedWeeklyMae', 'approvedWeeklyMape',
@@ -452,7 +449,7 @@ class AnalyticsController extends AbstractController
     {
         ['usage' => $usage, 'series' => $series, 'forecast' => $forecast, 'weeklySeries' => $weeklySeries, 'weeklyForecast' => $weeklyForecast] = $ctx;
         $rows = $em->createQueryBuilder()
-            ->select('r.reservationDate, r.reservationStartTime, r.capacity, r.purpose, r.status, r.rejectionReason, r.createdAt, f.name AS facilityName, f.capacity AS facilityCapacity')
+            ->select('r.reservationDate, r.reservationStartTime, r.capacity, r.purpose, r.eventPurpose, r.eventPurposeOther, r.status, r.rejectionReason, r.createdAt, f.name AS facilityName, f.capacity AS facilityCapacity')
             ->from(Reservation::class, 'r')
             ->join('r.facility', 'f')
             ->where('f.availableForReservation = true')
@@ -473,9 +470,6 @@ class AnalyticsController extends AbstractController
         $monthlyAttendees         = $agg['monthlyAttendees'];
         $rejectionReasons         = $agg['rejectionReasons'];
         $setupGaps                = $agg['setupGaps'];
-
-
-        $eventSuccess = $this->calcFallbackEventSuccess($purposeTotals, $purposeCompleted);
 
         [$roomUtilization, $facilityUtilizationRate] = $this->buildLocalRoomUtilization($rows);
 
@@ -538,7 +532,6 @@ class AnalyticsController extends AbstractController
                 'overall_completion_rate' => round(($approvedOrCompleted / $totalReservations) * 100, 1),
                 'rso_completion_rate' => 0,
                 'participation_accuracy' => 100,
-                'event_success_by_type' => array_slice($eventSuccess, 0, 8, true),
             ],
             'controlling' => [
                 'average_setup_gap' => $averageSetupGap,
@@ -629,8 +622,7 @@ class AnalyticsController extends AbstractController
         $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
         foreach ($reservations as $res) {
-            $status = $res->getStatus();
-            $effectiveStatus = $status === 'Completed' ? 'Approved' : $status;
+            $effectiveStatus = $this->normalizeStatus($res->getStatus());
             $statusCounts[$effectiveStatus] = ($statusCounts[$effectiveStatus] ?? 0) + 1;
 
             $facility = $res->getFacility();
@@ -685,8 +677,7 @@ class AnalyticsController extends AbstractController
         $approvedWeeklyTrends = [];
 
         foreach ($reservations as $res) {
-            $status = $res->getStatus();
-            $effectiveStatus = $status === 'Completed' ? 'Approved' : $status;
+            $effectiveStatus = $this->normalizeStatus($res->getStatus());
 
             if ($effectiveStatus !== 'Approved') {
                 continue;
@@ -702,29 +693,6 @@ class AnalyticsController extends AbstractController
         }
 
         return compact('approvedMonthlyTrends', 'approvedWeeklyTrends');
-    }
-
-    private function calcEventSuccess(array $purposeSuccess): array
-    {
-        $result = [];
-        foreach ($purposeSuccess as $purpose => $data) {
-            $result[$purpose] = $data['total'] > 0 ? round(($data['approved'] / $data['total']) * 100, 1) : 0;
-        }
-        arsort($result);
-        return $result;
-    }
-
-    private function buildPerFacilityWeekly(array $facilityReservations): array
-    {
-        $result = [];
-        foreach ($facilityReservations as $data) {
-            if (count($data['weekly']) < 2) continue;
-            $forecast = $this->generateForecast($data['weekly'], 'W');
-            $forecastValues = array_slice($forecast['forecast'] ?? [], 0, 4, true);
-            $chartValue = $forecastValues !== [] ? round(array_sum($forecastValues) / count($forecastValues), 1) : 0;
-            $result[] = ['facility' => $data['name'], 'forecast' => $forecastValues, 'historical' => $data['weekly'], 'chart_value' => $chartValue];
-        }
-        return $result;
     }
 
     private function buildFacilityDemandInsight(?array $fc): string
@@ -828,12 +796,12 @@ class AnalyticsController extends AbstractController
             $facilityName = (string) $row['facilityName'];
             $facilityLoadDistribution[$facilityName] = ($facilityLoadDistribution[$facilityName] ?? 0) + 1;
 
-            $status = (string) $row['status'];
+            $status = $this->normalizeStatus((string) $row['status']);
             $statusCounts[$status] = ($statusCounts[$status] ?? 0) + 1;
 
-            $purpose = trim((string) ($row['purpose'] ?? 'General Reservation')) ?: 'General Reservation';
+            $purpose = $this->resolveFallbackEventPurpose($row);
             $purposeTotals[$purpose] = ($purposeTotals[$purpose] ?? 0) + 1;
-            if (in_array($status, ['Approved', 'Completed'], true)) {
+            if ($status === 'Approved') {
                 $purposeCompleted[$purpose] = ($purposeCompleted[$purpose] ?? 0) + 1;
             }
 
@@ -948,7 +916,7 @@ class AnalyticsController extends AbstractController
         array &$hourlyHeatmap,
         array $dayNames,
     ): void {
-        $purpose = $res->getPurpose() ?? 'General';
+        $purpose = $this->resolveEventPurpose($res);
         $purposeCounts[$purpose] = ($purposeCounts[$purpose] ?? 0) + 1;
         $purposeSuccess[$purpose] ??= ['total' => 0, 'approved' => 0];
         $purposeSuccess[$purpose]['total']++;
@@ -980,6 +948,74 @@ class AnalyticsController extends AbstractController
             $dayName = $dayNames[(int) $dayOfWeek - 1];
             $hourlyHeatmap[$hour][$dayName] = ($hourlyHeatmap[$hour][$dayName] ?? 0) + 1;
         }
+    }
+
+    private function resolveEventPurpose(mixed $res): string
+    {
+        $eventPurpose = $res->getEventPurpose();
+        $eventPurposeOther = $res->getEventPurposeOther();
+        $generalPurpose = $res->getPurpose();
+
+        if (is_string($eventPurpose) && strtolower(trim($eventPurpose)) === 'others') {
+            $other = $this->normalizePurposeText($eventPurposeOther);
+            if ($other !== '') {
+                return $other;
+            }
+        }
+
+        $eventPurpose = $this->normalizePurposeText($eventPurpose);
+        if ($eventPurpose !== '') {
+            return $eventPurpose;
+        }
+
+        $generalPurpose = $this->normalizePurposeText($generalPurpose);
+        if ($generalPurpose !== '') {
+            return $generalPurpose;
+        }
+
+        return 'General';
+    }
+
+    private function normalizePurposeText(mixed $value): string
+    {
+        if (!is_string($value)) {
+            return '';
+        }
+        $value = trim($value);
+        return $value === '' ? '' : $value;
+    }
+
+    private function normalizeStatus(?string $status): string
+    {
+        $status = trim($status ?? '');
+        $map = [
+            'approved' => 'Approved',
+            'pending' => 'Pending',
+            'rejected' => 'Rejected',
+            'cancelled' => 'Cancelled',
+            'canceled' => 'Cancelled',
+            'completed' => 'Approved',
+            'suggested' => 'Suggested',
+        ];
+        return $map[strtolower($status)] ?? $status;
+    }
+
+    private function resolveFallbackEventPurpose(array $row): string
+    {
+        $eventPurpose = $this->normalizePurposeText($row['eventPurpose'] ?? null);
+        $eventPurposeOther = $this->normalizePurposeText($row['eventPurposeOther'] ?? null);
+        $generalPurpose = $this->normalizePurposeText($row['purpose'] ?? null);
+
+        if (strtolower($eventPurpose) === 'others' && $eventPurposeOther !== '') {
+            return $eventPurposeOther;
+        }
+        if ($eventPurpose !== '') {
+            return $eventPurpose;
+        }
+        if ($generalPurpose !== '') {
+            return $generalPurpose;
+        }
+        return 'General';
     }
 
     private function buildDerivedMetrics(
@@ -1024,7 +1060,6 @@ class AnalyticsController extends AbstractController
                 'day_of_week_demand'     => $d['dayOfWeekDemand'],
                 'peak_demand_hours'      => $d['hourlyPeak'],
                 'event_type_distribution'=> $d['purposeCounts'],
-                'per_facility_weekly'    => $d['perFacilityWeekly'],
                 'demand_volatility'      => $d['demandVolatility'],
                 'seasonal_pattern'       => $d['seasonalPattern'],
                 'rolling_mape'           => $d['rollingMape'],
@@ -1044,8 +1079,6 @@ class AnalyticsController extends AbstractController
             'leading' => array_merge($base, [
                 'overall_completion_rate' => $d['overallCompletionRate'],
                 'rso_completion_rate'     => $d['rsoCompletionRate'],
-                'event_success_by_type'   => $d['eventSuccessByType'],
-                'top_events'              => $d['topEvents'],
                 'participant_demand_trend'=> $d['monthlyTrends'],
                 'approval_funnel'         => $d['approvalFunnel'],
                 'data_quality'            => $d['dataQualityScore'],
@@ -1110,16 +1143,6 @@ class AnalyticsController extends AbstractController
         }
         $facilityUtilizationRate = array_map(fn(array $v): float => $v['utilization_rate'], $roomUtilization);
         return [$roomUtilization, $facilityUtilizationRate];
-    }
-
-    private function calcFallbackEventSuccess(array $purposeTotals, array $purposeCompleted): array
-    {
-        $result = [];
-        foreach ($purposeTotals as $purpose => $total) {
-            $result[$purpose] = $total === 0 ? 0 : round((($purposeCompleted[$purpose] ?? 0) / $total) * 100, 1);
-        }
-        arsort($result);
-        return $result;
     }
 
     // ═══════════════════════════════════════════════════════════════

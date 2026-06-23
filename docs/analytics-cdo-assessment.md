@@ -181,7 +181,7 @@ The Event Execution tab evaluates how well reservation requests move from submis
 |---|---|---|
 | Reservation Approval Pipeline | Shows submitted, approved, pending, rejected, and cancelled reservations. | Identify approval bottlenecks and process health. |
 | Event Success by Purpose | Shows approval success rate by event category. | Find event types that need better guidance or policy support. |
-| Top Events by Volume | Shows the most frequent event types or names. | Plan resources around common activities. |
+| Top Event Types by Volume | Shows the most frequent event categories (reservation purpose). | Plan resources around common activities. |
 | Participant Demand Trend | Shows monthly attendee demand. | Estimate crowd size, room capacity needs, and support requirements. |
 | Event Execution KPI Cards | Show approval rate, rejection rate, total pipeline, and RSO-related performance. | Track whether reservation operations support event delivery effectively. |
 
