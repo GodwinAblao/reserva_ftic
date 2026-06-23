@@ -720,8 +720,8 @@ function organizingHtml(d) {
     return `
     <div class="an-pro-exec-summary sa-chart-wide" id="exec-organizing"></div>` + capPanel + `
     <div class="sa-chart-container an-pro-chart-card"><h4>Facility Usage Comparison</h4><p class="chart-sub">Total reservations per facility</p><canvas id="c-load"></canvas><div class="an-pro-insight" id="insight-load"></div></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Peak Usage Times</h4><p class="chart-sub">Busiest time slots across all facilities</p><canvas id="c-peak"></canvas><div class="an-pro-insight" id="insight-peak"></div></div>
-    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Facility Utilization Rate (%)</h4><p class="chart-sub">How intensively each facility is used relative to capacity</p><canvas id="c-util"></canvas><div class="an-pro-insight" id="insight-util"></div></div>
+    <div class="sa-chart-container an-pro-chart-card"><h4>Time Slot Demand Distribution</h4><p class="chart-sub">Hourly reservation volume across all facilities combined — identifies peak and off-peak windows for scheduling</p><canvas id="c-peak"></canvas><div class="an-pro-insight" id="insight-peak"></div></div>
+    <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>Capacity Utilization Rate (%)</h4><p class="chart-sub">Attendee headcount vs room capacity per facility — how full rooms are when booked</p><canvas id="c-util"></canvas><div class="an-pro-insight" id="insight-util"></div></div>
     <div class="sa-chart-container an-pro-chart-card sa-chart-wide"><h4>School-Hour Usage Pattern</h4><p class="chart-sub">Reservation demand from 7:00 AM to 8:00 PM · one line per day of week</p><canvas id="heatmap" style="min-height:320px;"></canvas><div class="an-pro-insight" id="insight-heatmap"></div></div>` + summaryHtml + `
     <div class="an-pro-recommendations sa-chart-wide" id="reco-organizing"></div>`;
 }
@@ -859,7 +859,7 @@ function controllingHtml(d) {
     <div class="an-pro-exec-summary sa-chart-wide" id="exec-controlling"></div>` + scorecard + `
     <div class="sa-chart-container an-pro-chart-card"><h4>Status Distribution</h4><p class="chart-sub">Proportion of reservation statuses</p><canvas id="c-status"></canvas><div class="an-pro-insight" id="insight-status"></div></div>
     <div class="sa-chart-container an-pro-chart-card"><h4>Facility Utilization Rate</h4><p class="chart-sub">Usage intensity per facility</p><canvas id="c-futil"></canvas><div class="an-pro-insight" id="insight-futil"></div></div>
-    <div class="sa-chart-container an-pro-chart-card"><h4>Rejection Analysis</h4><p class="chart-sub">Reasons for reservation rejections</p><canvas id="c-reject"></canvas><div class="an-pro-insight" id="insight-reject"></div></div>` + riskPanel + `
+    <div class="sa-chart-container an-pro-chart-card"><h4>Reservation Outcome Breakdown</h4><p class="chart-sub">Count of rejected and cancelled reservations — high values indicate process or compliance issues</p><canvas id="c-reject"></canvas><div class="an-pro-insight" id="insight-reject"></div></div>` + riskPanel + `
     <div class="an-pro-recommendations sa-chart-wide" id="reco-controlling"></div>`;
 }
 
