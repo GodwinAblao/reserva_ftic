@@ -1053,6 +1053,7 @@ class AdminController extends AbstractController
             ['area' => 'Reports', 'priority' => 'High', 'task' => 'Download operation reports for mentoring', 'weight' => '2%'],
         ];
     }
+
     private function cachedJsonResponse(
         \Symfony\Contracts\Cache\CacheInterface $cache,
         string $key,

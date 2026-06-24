@@ -197,15 +197,8 @@
         <div class="section-header-pro">
             <h3 class="section-title-pro">
                 <svg width="18" height="18" style="color: #006633;"><use href="#icon-trending"></use></svg>
-                Analytics Overview
+                Reservation Overview
             </h3>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <span id="chart-source-badge" class="an-pro-badge demo" style="font-size:11px;padding:4px 10px;">Loading</span>
-                <div class="filter-tabs-pro">
-                    <button class="filter-tab-pro active" data-chart="reservations" onclick="loadChart('reservations')">Reservations</button>
-                    <button class="filter-tab-pro" data-chart="mentoring" onclick="loadChart('mentoring')">Mentoring</button>
-                </div>
-            </div>
         </div>
         <div class="chart-container-pro">
             <canvas id="analyticsChart"></canvas>
@@ -219,7 +212,6 @@
                 <svg width="18" height="18" style="color: #006633;"><use href="#icon-activity"></use></svg>
                 Live Activity
             </h3>
-            <span id="activity-source-badge" class="an-pro-badge demo" style="font-size:11px;padding:4px 10px;">Loading</span>
         </div>
 
         <div class="activity-top-grid">
@@ -237,7 +229,7 @@
             </div>
             <div class="activity-top-card">
                 <div class="activity-top-icon"><svg width="18" height="18"><use href="#icon-users"></use></svg></div>
-                <div class="activity-top-label">Top Active User</div>
+                <div class="activity-top-label">Top Reserver</div>
                 <div class="activity-top-value" id="act-top-user">N/A</div>
                 <div class="activity-top-sub" id="act-top-user-count">0 events</div>
             </div>
@@ -268,28 +260,6 @@
     </div>
 </section>
 
-<!-- Upcoming Mentoring Sessions -->
-<section class="card-panel-pro">
-    <div class="section-header-pro">
-        <h3 class="section-title-pro">
-            <svg width="18" height="18" style="color: #006633;"><use href="#icon-users"></use></svg>
-            Mentoring Sessions
-        </h3>
-    </div>
-    <div class="compact-list-pro">
-        {% for session in upcomingMentoringSessions %}
-            <div class="list-row-pro">
-                <div>
-                    <strong>{{ session.mentor.displayName }}</strong>
-                    <p>{{ session.student.email }} &middot; {{ session.scheduledAt|date('M d, Y h:i A') }}</p>
-                </div>
-                <span class="status-badge-pro {{ session.status|lower }}">{{ session.status }}</span>
-            </div>
-        {% else %}
-            <div class="empty-state">No upcoming sessions</div>
-        {% endfor %}
-    </div>
-</section>
 
 <!-- Quick Actions -->
 <div class="admin-actions-pro" style="margin-top: 2rem;">
