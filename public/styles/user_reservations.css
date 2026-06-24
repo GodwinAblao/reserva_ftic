@@ -539,6 +539,17 @@
     background: #b91c1c;
 }
 
+.cancel-modal-btn-danger:disabled {
+    background: #ef4444;
+    opacity: 0.8;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+@keyframes cancelSpin {
+    to { transform: rotate(360deg); }
+}
+
 /* Reserve Button Card */
 .reserve-action-card {
     margin-bottom: 0;

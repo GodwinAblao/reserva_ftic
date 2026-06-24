@@ -214,6 +214,57 @@ class ReservationMailer
         );
     }
 
+    public function notifyExpired(Reservation $reservation): void
+    {
+        $to = $reservation->getEmail();
+        if (!$to) {
+            return;
+        }
+
+        $facilityName = $reservation->getFacility()?->getName() ?? 'the requested facility';
+        $date         = $reservation->getReservationDate()?->format('F j, Y') ?? 'the scheduled date';
+        $user         = $reservation->getUser();
+        $name         = $user?->getFirstName() ?: $reservation->getName();
+
+        $html = '<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;">'
+            . '<div style="background:#fff7ed;border-left:5px solid #f59e0b;border-radius:8px;padding:16px 20px;margin-bottom:24px;">'
+            . '<p style="margin:0;font-size:15px;font-weight:700;color:#92400e;">Reservation Expired – No Response Received</p>'
+            . '</div>'
+            . '<p>Dear <strong>' . htmlspecialchars($name) . '</strong>,</p>'
+            . '<p>We regret to inform you that your reservation request for <strong>' . htmlspecialchars($facilityName) . '</strong> '
+            . 'scheduled on <strong>' . htmlspecialchars($date) . '</strong> has been <strong>automatically cancelled</strong>.</p>'
+            . '<p>Your request remained <strong>Pending</strong> and the scheduled date has now passed without an admin response. '
+            . 'As a result, the system has automatically closed this reservation.</p>'
+            . '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:5px solid #0d9b00;border-radius:8px;padding:16px 20px;margin:20px 0;">'
+            . '<p style="margin:0;font-size:14px;color:#374151;">If you still need a facility reservation, please submit a new request through the Reserva FTIC system.</p>'
+            . '</div>'
+            . '<p style="color:#6b7280;font-size:13px;margin-top:24px;">This is an automated message. Please do not reply directly to this email.</p>'
+            . '</div>';
+
+        try {
+            $email = (new Email())
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+                ->to($to)
+                ->subject('Reservation Expired – No Response Received – Reserva FTIC')
+                ->html($html);
+
+            $this->mailer->send($email);
+            $this->logger->info('Expired reservation email sent', ['to' => $to, 'reservation_id' => $reservation->getId()]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send expired reservation email', ['to' => $to, 'error' => $e->getMessage()]);
+        }
+
+        if ($user) {
+            $this->createUserNotification(
+                $reservation,
+                $user,
+                'Cancelled',
+                'Reservation Expired – Automatically Cancelled',
+                sprintf('Your reservation for %s on %s was automatically cancelled because it passed its scheduled date without a response.', $facilityName, $date),
+            );
+        }
+    }
+
     private function sendUserEmail(Reservation $reservation, User $user, string $status, string $message, ?string $extraMessage = null): void
     {
         $to = $reservation->getEmail() ?: $user->getEmail();

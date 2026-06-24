@@ -412,15 +412,20 @@
                                         <span class="info-label">Event Objectives</span>
                                         <span class="info-value">{{ reservation.purpose ?: 'N/A' }}</span>
                                     </div>
-                                    {% if reservation.cancellationReason %}
-                                    <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #fecaca;background:#fef2f2;padding:12px;border-radius:6px;">
-                                        <span class="info-label" style="color:#dc2626;">Cancellation Reason</span>
-                                        <span class="info-value" style="color:#991b1b;">{{ reservation.cancellationReason }}</span>
+                                    {% if reservation.cancellationReason and 'passed without an admin response' in reservation.cancellationReason %}
+                                    <div class="info-item wide" style="margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;border-left:4px solid #f59e0b;padding:12px;border-radius:6px;">
+                                        <span class="info-label" style="color:#92400e;font-weight:700;">⚠ Expired – No Admin Response</span>
+                                        <span class="info-value" style="color:#78350f;margin-top:4px;display:block;">Your reservation date passed without a response from the admin. It has been automatically cancelled. Please submit a new request if still needed.</span>
+                                    </div>
+                                    {% elseif reservation.cancellationReason %}
+                                    <div class="info-item wide" style="margin-top:8px;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;padding:12px;border-radius:6px;">
+                                        <span class="info-label" style="color:#dc2626;font-weight:700;">Cancellation Reason</span>
+                                        <span class="info-value" style="color:#991b1b;margin-top:4px;display:block;">{{ reservation.cancellationReason }}</span>
                                     </div>
                                     {% else %}
-                                    <div class="info-item wide" style="margin-top:8px;padding-top:8px;border-top:1px solid #fecaca;background:#fef2f2;padding:12px;border-radius:6px;">
-                                        <span class="info-label" style="color:#dc2626;">Cancellation Reason</span>
-                                        <span class="info-value" style="color:#991b1b;">No reason provided</span>
+                                    <div class="info-item wide" style="margin-top:8px;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;padding:12px;border-radius:6px;">
+                                        <span class="info-label" style="color:#dc2626;font-weight:700;">Cancellation Reason</span>
+                                        <span class="info-value" style="color:#991b1b;margin-top:4px;display:block;">No reason provided.</span>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -564,7 +569,7 @@
                     </div>
                     <div class="cancel-modal-footer">
                         <button type="button" class="cancel-modal-btn cancel-modal-btn-secondary" onclick="closeCancelModal()">Keep Reservation</button>
-                        <button type="button" class="cancel-modal-btn cancel-modal-btn-danger" onclick="validateAndSubmitCancel()">Cancel Reservation</button>
+                        <button type="button" class="cancel-modal-btn cancel-modal-btn-danger" id="cancelSubmitBtn" onclick="validateAndSubmitCancel()">Cancel Reservation</button>
                     </div>
                 </div>
             </div>
@@ -727,13 +732,18 @@
         function validateAndSubmitCancel() {
             const reason = document.getElementById('cancelReason').value.trim();
             const errorDiv = document.getElementById('cancelReasonError');
-            
+
             if (reason.length < 10) {
                 errorDiv.style.display = 'block';
                 return false;
             }
-            
+
             errorDiv.style.display = 'none';
+
+            const btn = document.getElementById('cancelSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:cancelSpin .6s linear infinite;vertical-align:middle;margin-right:6px;"></span>Cancelling...';
+
             document.getElementById('cancelForm').submit();
             return true;
         }

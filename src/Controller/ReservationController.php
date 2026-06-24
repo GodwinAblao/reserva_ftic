@@ -9,6 +9,7 @@ use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
 use App\Service\FacilityAvailabilityService;
+use App\Service\ReservationAutoExpireService;
 use App\Service\ReservationMailer;
 use App\Service\ScheduleRevisionService;
 use App\Repository\UserRepository;
@@ -271,9 +272,19 @@ public function reserve(
 
     #[Route('/reservations', name: 'user_reservations')]
     #[IsGranted('ROLE_USER')]
-    public function userReservations(ReservationRepository $reservationRepo): Response
-    {
-        $reservations = $reservationRepo->findByUser($this->getUser());
+    public function userReservations(
+        ReservationRepository $reservationRepo,
+        ReservationAutoExpireService $autoExpireService,
+    ): Response {
+        $user = $this->getUser();
+
+        // Auto-cancel any pending reservations whose start time has passed.
+        // This keeps the page accurate in real-time without requiring a cron job.
+        if ($user instanceof User) {
+            $autoExpireService->expireOverdueForUser($user);
+        }
+
+        $reservations = $reservationRepo->findByUser($user);
 
         // Separate reservations by status
         $categorized = [
