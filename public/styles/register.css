@@ -84,6 +84,9 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 /* Logo Side (Left) */
@@ -342,8 +345,13 @@ body {
 
 @media (max-width: 1024px) {
     .container {
-        overflow: visible;
-    }
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
+}
 
     .form-side {
         min-height: calc(100vh - 74px);
