@@ -93,6 +93,7 @@ body {
 /* Logo Side (Left) */
 .logo-side {
     width: 50%;
+    max-width: 640px;
     background-color: white;
     display: flex;
     align-items: center;
@@ -109,7 +110,13 @@ body {
 
 .logo-side,
 .form-side {
-    transition: opacity 0.28s ease;
+    width: 50%;
+    max-width: 640px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 3rem 2rem;
+    padding-left: 3rem;
 }
 
 .logo-side.logo-fade-out,
@@ -153,6 +160,7 @@ body {
 /* Form Side (Right) */
 .form-side {
     width: 50%;
+    max-width: 640px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -326,8 +334,26 @@ body {
     overflow: hidden;
     width: 100%;
 }
-    .form-side, .logo-side { width: 100%; padding: 2rem; justify-content: center; }
-    .logo-side { display: none; }
+    .form-side, .logo-side {
+    width: 50%;
+    max-width: 640px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 3rem 2rem;
+    padding-right: 3rem;
+}
+    .logo-side {
+    width: 50%;
+    max-width: 640px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 3rem 2rem;
+    padding-right: 3rem;
+}
 }
 
 @media (max-width: 640px) {
@@ -378,9 +404,14 @@ body {
 }
 
     .form-side {
-        min-height: calc(100vh - 74px);
-        padding: clamp(1.25rem, 6vw, 2rem);
-    }
+    width: 50%;
+    max-width: 640px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 3rem 2rem;
+    padding-left: 3rem;
+}
 }
 
 @media (max-width: 360px) {
@@ -389,8 +420,14 @@ body {
     }
 
     .form-side {
-        padding-inline: 1rem;
-    }
+    width: 50%;
+    max-width: 640px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 3rem 2rem;
+    padding-left: 3rem;
+}
 }
 
 
