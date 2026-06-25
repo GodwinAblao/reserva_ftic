@@ -304,3 +304,59 @@ body {
     .form-side { width: 100%; justify-content: center; padding: 2rem; }
     .form-row { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 640px) {
+    .header-nav { display: none; }
+    .header-inner { padding: 0.75rem 1.25rem; }
+}
+
+/* Responsive overhaul: authentication screens */
+body {
+    overflow-x: hidden;
+}
+
+.header-inner,
+.container,
+.form-side,
+.logo-side,
+.form-wrapper,
+.form-row,
+.form-group,
+.form-group-full {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.form-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+}
+
+.form-subtitle {
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
+}
+
+.form-input,
+.submit-button {
+    min-height: 44px;
+}
+
+@media (max-width: 1024px) {
+    .container {
+        overflow: visible;
+    }
+
+    .form-side {
+        min-height: calc(100vh - 74px);
+        padding: clamp(1.25rem, 6vw, 2rem);
+    }
+}
+
+@media (max-width: 360px) {
+    .header-logo img {
+        height: 40px;
+    }
+
+    .form-side {
+        padding-inline: 1rem;
+    }
+}

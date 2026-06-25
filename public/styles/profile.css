@@ -434,3 +434,180 @@ textarea.pf-input { resize: vertical; min-height: 90px; }
     }
 }
 
+/* Responsive overhaul: profile and account forms */
+.pf-wrap,
+.pf-form,
+.pf-section,
+.pf-row,
+.pf-field,
+.pf-col {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.pf-name,
+.pf-input,
+.pf-label,
+.pf-checkbox-label {
+    overflow-wrap: anywhere;
+}
+
+.pf-input,
+.pf-save-btn,
+.pf-edit-btn,
+.pf-checkbox-label {
+    min-height: 44px;
+}
+
+.pf-checkbox {
+    flex: 0 0 18px;
+}
+
+@media (max-width: 900px) {
+    .pf-wrap {
+        min-height: 0;
+    }
+
+    .pf-header-card {
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .pf-avatar-placeholder,
+    .pf-avatar-img {
+        width: clamp(72px, 18vw, 100px);
+        height: clamp(72px, 18vw, 100px);
+    }
+}
+
+@media (max-width: 520px) {
+    .pf-header-card {
+        align-items: flex-start;
+    }
+
+    .pf-edit-btn,
+    .pf-save-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pf-actions {
+        justify-content: stretch;
+    }
+
+    .pf-checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Compact end-user profile on phones */
+@media (max-width: 640px) {
+    .pf-wrap {
+        padding: 10px 8px 0;
+    }
+
+    .pf-header-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+        padding-bottom: 16px;
+    }
+
+    .pf-avatar-placeholder,
+    .pf-avatar-img {
+        width: 62px;
+        height: 62px;
+    }
+
+    .pf-avatar-placeholder svg {
+        width: 34px;
+        height: 34px;
+    }
+
+    .pf-avatar-add {
+        width: 24px;
+        height: 24px;
+    }
+
+    .pf-name {
+        font-size: 17px;
+        line-height: 1.15;
+    }
+
+    .pf-role-label {
+        font-size: 12px;
+    }
+
+    .pf-edit-btn {
+        grid-column: 1 / -1;
+        width: 100%;
+        min-height: 38px;
+        padding: 7px 12px;
+        font-size: 12px;
+    }
+
+    .pf-divider {
+        margin: 18px 0;
+    }
+
+    .pf-section {
+        gap: 14px;
+    }
+
+    .pf-section-title {
+        font-size: 14px;
+    }
+
+    .pf-row {
+        gap: 12px;
+    }
+
+    .pf-field {
+        gap: 5px;
+    }
+
+    .pf-label,
+    .pf-optional {
+        font-size: 10px;
+    }
+
+    .pf-input {
+        min-height: 38px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+
+    textarea.pf-input {
+        min-height: 68px;
+    }
+
+    .pf-checkbox-group {
+        gap: 8px;
+    }
+
+    .pf-checkbox-label {
+        min-height: 36px;
+        font-size: 12px;
+    }
+
+    .pf-actions {
+        margin-top: 12px;
+        padding-top: 8px;
+    }
+
+    .pf-save-btn {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 360px) {
+    .pf-checkbox-group {
+        grid-template-columns: 1fr;
+    }
+}
+

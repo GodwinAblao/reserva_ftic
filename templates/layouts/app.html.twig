@@ -347,7 +347,7 @@
         const backdrop = document.getElementById('sidebarBackdrop');
         if (!shell || !sidebar || !hamburger || !backdrop) return;
 
-        const mobileQuery = window.matchMedia('(max-width: 900px)');
+        const mobileQuery = window.matchMedia(shell.classList.contains('regular-user-shell') ? '(max-width: 1100px)' : '(max-width: 900px)');
 
         function setOpen(isOpen) {
             shell.classList.toggle('sidebar-open', isOpen);

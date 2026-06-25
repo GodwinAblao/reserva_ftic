@@ -742,5 +742,60 @@ function fvCloseLightbox(e) {
     .fv-thumb { width: 84px; height: 60px; }
     .fv-media-stage { aspect-ratio: 16/11; }
 }
+
+/* Responsive overhaul: facility detail page */
+.fv-page,
+.fv-layout,
+.fv-gallery-col,
+.fv-details-col,
+.fv-media-viewer,
+.fv-meta-table {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.fv-page {
+    padding-inline: clamp(10px, 3vw, 16px);
+}
+
+.fv-title,
+.fv-description,
+.fv-meta-value,
+.fv-tag {
+    overflow-wrap: anywhere;
+}
+
+.fv-media-stage {
+    min-height: clamp(210px, 42vw, 430px);
+}
+
+.fv-lightbox {
+    padding: clamp(10px, 3vw, 20px);
+}
+
+@media (max-width: 520px) {
+    .fv-meta-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .fv-meta-label {
+        width: auto;
+    }
+
+    .fv-lightbox-nav {
+        width: 42px;
+        height: 42px;
+    }
+
+    .fv-lightbox-prev {
+        left: 8px;
+    }
+
+    .fv-lightbox-next {
+        right: 8px;
+    }
+}
 </style>
 {% endblock %}

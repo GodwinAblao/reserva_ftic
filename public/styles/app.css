@@ -1839,3 +1839,84 @@ select:focus {
 
 /* Responsive adjustments for mobile */
 /* Bottom spacing handled centrally by regular_user_sidebar.css */
+
+/* Responsive overhaul: end-user research/content surfaces */
+body.regular-user-theme .research-page,
+body.regular-user-theme .research-detail-page,
+body.regular-user-theme .research-filter-panel,
+body.regular-user-theme .research-showcase-card,
+body.regular-user-theme .research-detail-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+body.regular-user-theme .research-filter-form {
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) auto auto;
+}
+
+body.regular-user-theme .research-showcase-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+}
+
+body.regular-user-theme .research-card-content h3,
+body.regular-user-theme .research-card-content p,
+body.regular-user-theme .research-detail-content h1,
+body.regular-user-theme .research-detail-body,
+body.regular-user-theme .research-create-card-copy {
+    overflow-wrap: anywhere;
+}
+
+body.regular-user-theme .research-card-media,
+body.regular-user-theme .video-media {
+    height: clamp(140px, 26vw, 178px);
+}
+
+body.regular-user-theme .research-detail-media,
+body.regular-user-theme .research-detail-media img,
+body.regular-user-theme .research-detail-media iframe,
+body.regular-user-theme .research-detail-media embed,
+body.regular-user-theme .research-detail-media video,
+body.regular-user-theme .research-detail-placeholder {
+    min-height: clamp(220px, 42vw, 370px);
+}
+
+body.regular-user-theme .research-create-card {
+    flex-wrap: wrap;
+}
+
+body.regular-user-theme .research-create-controls,
+body.regular-user-theme .research-delete-modal-actions,
+body.regular-user-theme .app-modal-actions {
+    flex-wrap: wrap;
+}
+
+body.regular-user-theme .app-modal-panel,
+body.regular-user-theme .research-delete-modal-card {
+    width: min(100%, 560px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+@media (max-width: 720px) {
+    body.regular-user-theme .research-filter-form {
+        grid-template-columns: 1fr;
+    }
+
+    body.regular-user-theme .research-filter-form .form-input,
+    body.regular-user-theme .research-filter-form .btn-secondary,
+    body.regular-user-theme .research-create-select,
+    body.regular-user-theme .research-create-go,
+    body.regular-user-theme .research-delete-modal-cancel,
+    body.regular-user-theme .research-delete-modal-confirm,
+    body.regular-user-theme .app-modal-actions > * {
+        width: 100%;
+    }
+
+    body.regular-user-theme .research-detail-card {
+        grid-template-columns: 1fr;
+    }
+
+    body.regular-user-theme .content-header.research-page-admin-actions {
+        align-items: stretch;
+    }
+}

@@ -36,6 +36,18 @@
 
 {% block content %}
 <div class="mentoring-page-layout">
+    <div class="mentoring-mobile-actions" aria-label="Mentoring quick actions">
+        <button type="button" class="mentoring-mobile-action mentoring-mobile-action-primary" onclick="openMentorAssistance()" aria-label="Request a mentor">
+            Request
+        </button>
+        <button type="button" class="mentoring-mobile-action" onclick="openMentoringMobilePanel('mentoringTraceabilityPanel')" aria-controls="mentoringTraceabilityPanel" aria-expanded="false">
+            Rank
+        </button>
+        <button type="button" class="mentoring-mobile-action" onclick="openMentoringMobilePanel('preferredSpecializationsPanel')" aria-controls="preferredSpecializationsPanel" aria-expanded="false">
+            Specs
+        </button>
+    </div>
+
     <!-- Main Content Column -->
     <div class="mentoring-main-column">
         <!-- Flash Messages -->
@@ -874,7 +886,7 @@
         </section>
 
         <!-- Recent Request Summary (now contains Request button) -->
-        <section class="reservations-side-card reservations-info-card">
+        <section class="reservations-side-card reservations-info-card mentoring-assist-card">
             <div class="reservations-side-card-head">
                 <h3>Can't Find a Mentor?</h3>
             </div>
@@ -913,9 +925,10 @@
         </section>
 
         <!-- Top Mentors -->
-        <section class="reservations-side-card reservations-info-card">
+        <section class="reservations-side-card reservations-info-card mentoring-mobile-panel" id="mentoringTraceabilityPanel" aria-hidden="true">
             <div class="reservations-side-card-head">
                 <h3>Traceability Leaderboard</h3>
+                <button type="button" class="mentoring-panel-close" onclick="closeMentoringMobilePanels()" aria-label="Close traceability leaderboard">x</button>
             </div>
             <div class="mentor-list">
                 {% for mentor in leaderboard|slice(0, 3) %}
@@ -939,10 +952,12 @@
         </section>
 
         <!-- Preferred Specializations -->
-        <section class="mentoring-side-card mentoring-info-card" id="preferredSpecializationsPanel">
+        <section class="mentoring-side-card mentoring-info-card mentoring-mobile-panel" id="preferredSpecializationsPanel" aria-hidden="true">
+            <button type="button" class="mentoring-panel-close mentoring-panel-close-floating" onclick="closeMentoringMobilePanels()" aria-label="Close preferred specializations">x</button>
             {% include 'mentoring/_preferred_specializations.html.twig' with { specializations: specializations } only %}
         </section>
     </aside>
+    <button type="button" class="mentoring-mobile-panel-backdrop" onclick="closeMentoringMobilePanels()" aria-label="Close mentoring panel"></button>
 </div><!-- End Layout -->
 
     {% if canApplyAsMentor %}
@@ -1262,6 +1277,7 @@
                     const specializationsPanel = document.getElementById('preferredSpecializationsPanel');
                     if (specializationsPanel) {
                         specializationsPanel.innerHTML = data.specializationsHtml;
+                        specializationsPanel.insertAdjacentHTML('afterbegin', '<button type="button" class="mentoring-panel-close mentoring-panel-close-floating" onclick="closeMentoringMobilePanels()" aria-label="Close preferred specializations">x</button>');
                     }
                 }
             })
@@ -1387,6 +1403,34 @@
             document.body.style.overflow = '';
         }
 
+        function closeMentoringMobilePanels() {
+            document.querySelectorAll('.mentoring-mobile-panel.is-open').forEach(panel => {
+                panel.classList.remove('is-open');
+                panel.setAttribute('aria-hidden', 'true');
+            });
+            document.querySelectorAll('.mentoring-mobile-action[aria-controls]').forEach(button => {
+                button.setAttribute('aria-expanded', 'false');
+            });
+            document.body.classList.remove('mentoring-panel-open');
+        }
+
+        function openMentoringMobilePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            if (!panel) {
+                return;
+            }
+
+            closeMentoringMobilePanels();
+            panel.classList.add('is-open');
+            panel.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('mentoring-panel-open');
+
+            const trigger = document.querySelector(`.mentoring-mobile-action[aria-controls="${panelId}"]`);
+            if (trigger) {
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        }
+
         window.toggleAssistanceSpecializationOther = function(select, otherInputId) {
             const otherInput = document.getElementById(otherInputId);
             if (otherInput) {
@@ -1404,6 +1448,7 @@
                 if (event.key === 'Escape') {
                     closeMentorApplication();
                     closeMentorAssistance();
+                    closeMentoringMobilePanels();
                 }
             });
         }

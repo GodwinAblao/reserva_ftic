@@ -572,4 +572,19 @@
     .admin-page-logo {
         width: 110px;
     }
+
+    .admin-page-header .floating-notification-bell {
+        top: 3px !important;
+        right: 10px !important;
+    }
+
+    .admin-page-header .notification-bell-btn {
+        width: 38px !important;
+        height: 38px !important;
+    }
+
+    .admin-page-header .floating-notification-bell .notification-dropdown-floating {
+        right: -6px;
+        width: min(350px, calc(100vw - 20px));
+    }
 }

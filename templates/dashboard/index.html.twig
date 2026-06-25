@@ -113,7 +113,7 @@
                     </a>
                 </div>
 
-                {# Facility overview: infinite auto-scroll carousel. #}
+                {# Facility overview: manual dashboard carousel. #}
                 <section class="dashboard-section dashboard-facility-carousel-section">
                     <div class="dashboard-section-head">
                         <h3>Facilities</h3>
@@ -125,10 +125,15 @@
                             <p>No facilities available at the moment.</p>
                         </div>
                     {% else %}
-                        <div class="dfc-viewport">
-                            <div class="dfc-track" id="dfcTrack">
+                        <div class="dfc-shell" data-dashboard-facility-carousel>
+                            <button type="button" class="dfc-nav dfc-nav-prev" aria-label="Show previous facilities" data-dfc-prev disabled>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5.5 9 12l6.5 6.5-1.6 1.6L5.8 12l8.1-8.1 1.6 1.6Z" fill="currentColor"/></svg>
+                            </button>
+
+                            <div class="dfc-viewport" id="dashboardFacilityCarousel" tabindex="0" role="region" aria-label="Featured facilities carousel">
+                                <div class="dfc-track" id="dfcTrack" role="list">
                                 {% for facility in facilities %}
-                                    <div class="dfc-slide">
+                                    <div class="dfc-slide" role="listitem">
                                         <div class="facility-feature-card">
                                             <div class="facility-image-holder">
                                                 {% if facility.image %}
@@ -147,38 +152,17 @@
                                                 {% if facility.description %}
                                                     <p class="description">{{ facility.description }}</p>
                                                 {% endif %}
-                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view" data-turbo="false">Reserve now</a>
+                                                <a href="{{ path('app_facility_view', {id: facility.id}) }}" class="btn-view" data-turbo="false">Reserve now</a>
                                             </div>
                                         </div>
                                     </div>
                                 {% endfor %}
-                                {# Duplicate set for seamless loop #}
-                                {% for facility in facilities %}
-                                    <div class="dfc-slide" aria-hidden="true">
-                                        <div class="facility-feature-card">
-                                            <div class="facility-image-holder">
-                                                {% if facility.image %}
-                                                    <img src="{{ facility.image ~ '?v=' ~ facility.updatedAt|date('U') }}" alt="{{ facility.name }}" loading="lazy">
-                                                {% else %}
-                                                    <div class="placeholder-image">
-                                                        <span>{{ facility.name|first|upper }}</span>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="facility-details">
-                                                <h3>{{ facility.name }}</h3>
-                                                <div class="facility-meta-row">
-                                                    <span class="facility-pill">{{ facility.capacity }} pax</span>
-                                                </div>
-                                                {% if facility.description %}
-                                                    <p class="description">{{ facility.description }}</p>
-                                                {% endif %}
-                                                <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="btn-view" data-turbo="false">Reserve now</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endfor %}
+                                </div>
                             </div>
+
+                            <button type="button" class="dfc-nav dfc-nav-next" aria-label="Show next facilities" data-dfc-next>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 18.5 15 12 8.5 5.5l1.6-1.6 8.1 8.1-8.1 8.1-1.6-1.6Z" fill="currentColor"/></svg>
+                            </button>
                         </div>
                     {% endif %}
                 </section>
@@ -238,4 +222,88 @@
 
 {% block javascripts %}
 {{ parent() }}
+<script>
+(() => {
+    function initDashboardFacilityCarousel() {
+        document.querySelectorAll('[data-dashboard-facility-carousel]').forEach((carousel) => {
+            if (carousel.dataset.dfcReady === 'true') return;
+            carousel.dataset.dfcReady = 'true';
+
+            const viewport = carousel.querySelector('.dfc-viewport');
+            const prev = carousel.querySelector('[data-dfc-prev]');
+            const next = carousel.querySelector('[data-dfc-next]');
+            if (!viewport || !prev || !next) return;
+
+            const getStep = () => {
+                const slide = viewport.querySelector('.dfc-slide');
+                if (!slide) return Math.max(240, Math.floor(viewport.clientWidth * 0.8));
+                const styles = window.getComputedStyle(viewport.querySelector('.dfc-track'));
+                const gap = parseFloat(styles.columnGap || styles.gap || 0) || 0;
+                return slide.getBoundingClientRect().width + gap;
+            };
+
+            const getMaxScroll = () => Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+
+            const updateButtons = () => {
+                const canScroll = getMaxScroll() > 2;
+                prev.disabled = !canScroll;
+                next.disabled = !canScroll;
+                carousel.classList.toggle('is-at-start', !canScroll);
+                carousel.classList.toggle('is-at-end', !canScroll);
+                carousel.classList.toggle('is-looping', canScroll);
+            };
+
+            const scrollLoop = (direction) => {
+                const maxScroll = getMaxScroll();
+                if (maxScroll <= 2) return;
+
+                const step = getStep() * direction;
+                const target = viewport.scrollLeft + step;
+
+                if (target > maxScroll - 2) {
+                    viewport.scrollTo({ left: 0, behavior: 'smooth' });
+                    return;
+                }
+
+                if (target < 2) {
+                    viewport.scrollTo({ left: maxScroll, behavior: 'smooth' });
+                    return;
+                }
+
+                viewport.scrollBy({ left: step, behavior: 'smooth' });
+            };
+
+            prev.addEventListener('click', () => {
+                scrollLoop(-1);
+            });
+
+            next.addEventListener('click', () => {
+                scrollLoop(1);
+            });
+
+            viewport.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    scrollLoop(-1);
+                }
+                if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    scrollLoop(1);
+                }
+            });
+
+            viewport.addEventListener('scroll', () => window.requestAnimationFrame(updateButtons), { passive: true });
+            window.addEventListener('resize', updateButtons);
+            updateButtons();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDashboardFacilityCarousel);
+    } else {
+        initDashboardFacilityCarousel();
+    }
+    document.addEventListener('turbo:load', initDashboardFacilityCarousel);
+})();
+</script>
 {% endblock %}

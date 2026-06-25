@@ -32,6 +32,24 @@
                 <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
                 <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign up</a>
             </div>
+
+            <button class="landing-hamburger" id="landingHamburger" aria-label="Open menu" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+
+        <div class="landing-mobile-menu" id="landingMobileMenu" aria-hidden="true">
+            <nav class="landing-mobile-nav">
+                <a href="{{ path('app_home') }}" data-no-loading="true">Home</a>
+                <a href="{{ path('app_home') }}#about" data-no-loading="true">About us</a>
+                <a href="{{ path('app_home') }}#faq" data-no-loading="true">FAQ</a>
+            </nav>
+            <div class="landing-mobile-auth">
+                <a href="{{ path('app_login') }}" class="btn-login" data-turbo="false" target="_self">Login</a>
+                <a href="{{ path('app_register') }}" class="btn-signup" data-turbo="false" target="_self">Sign up</a>
+            </div>
         </div>
     </header>
 
@@ -286,6 +304,25 @@
     </footer>
 
     <script>
+        (function() {
+            const hamburger = document.getElementById('landingHamburger');
+            const mobileMenu = document.getElementById('landingMobileMenu');
+            if (hamburger && mobileMenu) {
+                hamburger.addEventListener('click', function() {
+                    const isOpen = mobileMenu.classList.toggle('is-open');
+                    hamburger.setAttribute('aria-expanded', isOpen);
+                    mobileMenu.setAttribute('aria-hidden', !isOpen);
+                });
+                mobileMenu.querySelectorAll('a').forEach(function(a) {
+                    a.addEventListener('click', function() {
+                        mobileMenu.classList.remove('is-open');
+                        hamburger.setAttribute('aria-expanded', 'false');
+                        mobileMenu.setAttribute('aria-hidden', 'true');
+                    });
+                });
+            }
+        })();
+
         (function() {
             const modal = document.getElementById('facilityModal');
             if (!modal) return;

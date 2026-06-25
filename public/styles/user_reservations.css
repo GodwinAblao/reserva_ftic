@@ -1742,4 +1742,126 @@
     }
 }
 
+/* Responsive overhaul: reservations, shared user cards, tabs, and modals */
+.reservations-page-layout,
+.reservations-main-column,
+.reservations-side-column,
+.reservation-detail-card,
+.reservation-card-new {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.reservations-main-column {
+    padding-left: clamp(0px, 4vw, 50px);
+}
+
+.dashboard-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 170px));
+    gap: clamp(10px, 3vw, 28px);
+}
+
+.dashboard-stat-title,
+.dashboard-stat-foot,
+.card-title,
+.info-value,
+.modal-value {
+    overflow-wrap: anywhere;
+}
+
+.filter-tabs-container {
+    max-width: 100%;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.filter-tab {
+    min-width: max-content;
+    min-height: 36px;
+    cursor: pointer;
+}
+
+.reservation-card-new,
+.detail-card-body {
+    overflow: hidden;
+}
+
+.card-actions {
+    align-items: center;
+}
+
+.recent-reservation-modal,
+.cancel-modal {
+    width: min(100%, 500px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+.recent-reservation-modal-row {
+    gap: 12px;
+}
+
+.cancel-modal-footer {
+    flex-wrap: wrap;
+}
+
+.cancel-modal-btn {
+    min-height: 44px;
+    white-space: normal;
+}
+
+@media (max-width: 1023px) {
+    .reservations-main-column {
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 599px) {
+    .dashboard-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+    }
+
+    .dashboard-stat-card {
+        max-width: none;
+        min-height: 128px;
+        aspect-ratio: auto;
+    }
+
+    .filter-tabs-container {
+        margin-inline: -2px;
+        padding-bottom: 2px;
+    }
+
+    .card-actions,
+    .cancel-modal-footer {
+        justify-content: stretch;
+    }
+
+    .card-actions .btn-danger-small,
+    .btn-secondary-small,
+    .btn-danger-small,
+    .btn-primary-small,
+    .cancel-modal-btn {
+        width: 100% !important;
+    }
+
+    .recent-reservation-modal-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .modal-value {
+        text-align: left;
+    }
+}
+
+@media (max-width: 360px) {
+    .dashboard-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 

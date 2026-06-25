@@ -53,7 +53,7 @@
     grid-template-columns: repeat(4, minmax(0, 5fr));
     gap: 10px;
     padding-bottom: 40px;
-    padding-left: 30px;
+    padding-left: clamp(0px, 2vw, 30px);
 }
 
 .regular-user-theme .facility-card-wrapper {
@@ -939,5 +939,165 @@
     .facility-preview-overlay,
     .facility-modal {
         padding: 14px !important;
+    }
+}
+
+/* Responsive overhaul: facility listing, detail previews, and modals */
+.regular-user-theme .facility-top-row {
+    width: 100%;
+    padding-inline: clamp(0px, 2vw, 12px);
+}
+
+.regular-user-theme .facility-top-row .search-bar input {
+    width: 100% !important;
+    min-height: 44px;
+}
+
+.regular-user-theme .facilities-grid {
+    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: clamp(14px, 2vw, 22px);
+    padding-inline: clamp(0px, 2vw, 16px);
+}
+
+.regular-user-theme .facility-card-wrapper .facility-feature-card,
+.regular-user-theme .facility-feature-card {
+    width: 100%;
+    min-width: 0;
+    border-radius: clamp(14px, 2vw, 24px);
+}
+
+.regular-user-theme .facility-card-wrapper .facility-details,
+.regular-user-theme .facility-feature-card .facility-details {
+    padding: 0 clamp(14px, 4vw, 20px) clamp(16px, 5vw, 24px);
+}
+
+.regular-user-theme .facility-card-wrapper .facility-details h3,
+.regular-user-theme .facility-feature-card .facility-details h3 {
+    font-size: clamp(18px, 4vw, 22px);
+    overflow-wrap: anywhere;
+}
+
+.facility-preview-body .facility-popup-card,
+.facility-modal .facility-modal-dialog {
+    width: min(1200px, calc(100vw - 24px)) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow: auto !important;
+}
+
+.facility-preview-body .facility-view-content,
+.facility-modal .facility-view-content {
+    min-width: 0;
+}
+
+.facility-preview-body .main-image,
+.facility-preview-body .single-image,
+.facility-preview-body .image-gallery-section > .placeholder-image,
+.facility-modal .modal-main-image-wrap,
+.facility-modal .modal-placeholder-image {
+    height: clamp(220px, 46vh, 455px);
+    min-height: 0;
+}
+
+.facility-preview-body .details-section,
+.facility-modal .facility-info-section {
+    min-width: 0;
+    color: #1f2937;
+}
+
+.facility-preview-body .facility-title,
+.facility-modal #modalFacilityName {
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 1440px) {
+    .regular-user-theme .facilities-grid {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .regular-user-theme .facility-card-wrapper .facility-feature-card,
+    .regular-user-theme .facility-feature-card {
+        min-height: 320px;
+    }
+
+    .facility-preview-body .facility-popup-card,
+    .facility-modal .facility-modal-dialog {
+        width: calc(100vw - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+    }
+
+    .facility-fact-row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+}
+
+/* Compact facility cards for end-user phones */
+@media (max-width: 640px) {
+    .regular-user-theme .facility-top-row {
+        padding-inline: 0;
+        gap: 10px;
+    }
+
+    .regular-user-theme .facilities-grid {
+        gap: 12px;
+        padding-inline: 0;
+    }
+
+    .regular-user-theme .facility-card-wrapper .facility-feature-card,
+    .regular-user-theme .facility-feature-card {
+        min-height: 250px;
+        border-radius: 16px;
+    }
+
+    .regular-user-theme .facility-card-wrapper .facility-details,
+    .regular-user-theme .facility-feature-card .facility-details {
+        gap: 6px;
+        padding: 0 12px 14px;
+    }
+
+    .regular-user-theme .facility-card-wrapper .facility-details h3,
+    .regular-user-theme .facility-feature-card .facility-details h3 {
+        font-size: 17px;
+        line-height: 1.08;
+    }
+
+    .regular-user-theme .facility-card-wrapper .facility-pill,
+    .regular-user-theme .facility-feature-card .facility-pill {
+        min-height: 24px;
+        padding: 4px 8px;
+        font-size: 10px;
+    }
+
+    .regular-user-theme .facility-card-wrapper .description,
+    .regular-user-theme .facility-feature-card .description {
+        font-size: 11px;
+        line-height: 1.3;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+
+    .regular-user-theme .facility-card-wrapper .btn-view,
+    .regular-user-theme .facility-feature-card .btn-view {
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+
+    .facility-preview-body .main-image,
+    .facility-preview-body .single-image,
+    .facility-preview-body .image-gallery-section > .placeholder-image,
+    .facility-modal .modal-main-image-wrap,
+    .facility-modal .modal-placeholder-image {
+        height: clamp(170px, 34vh, 240px);
+    }
+}
+
+@media (max-width: 380px) {
+    .regular-user-theme .facility-card-wrapper .facility-feature-card,
+    .regular-user-theme .facility-feature-card {
+        min-height: 226px;
     }
 }
