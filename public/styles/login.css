@@ -84,8 +84,6 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
-    max-width: 1600px;
-    margin: 0 auto;
     width: 100%;
 }
 
@@ -323,8 +321,6 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
-    max-width: 1600px;
-    margin: 0 auto;
     width: 100%;
 }
     .form-side, .logo-side { width: 100%; padding: 2rem; justify-content: center; }
@@ -368,8 +364,6 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
-    max-width: 1600px;
-    margin: 0 auto;
     width: 100%;
 }
 
@@ -386,5 +380,23 @@ body {
 
     .form-side {
         padding-inline: 1rem;
+    }
+}
+
+
+/* Prevent stretching on very large screens */
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+}
+
+
+/* Prevent stretching on very large screens */
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1600px;
+        margin: 0 auto;
     }
 }
