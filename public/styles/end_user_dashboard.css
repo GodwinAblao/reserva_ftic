@@ -251,7 +251,7 @@
 
 .dashboard-page .facility-feature-card:hover {
     transform: none;
-    box-shadow: 0 18px 34px rgba(20, 28, 16, 0.2);
+    box-shadow: none;
 }
 
 .dashboard-page .facility-feature-card::after {
@@ -721,7 +721,7 @@
 .dfc-slide .facility-feature-card:hover,
 .dfc-slide .facility-feature-card:focus-within {
     border-color: rgba(0, 90, 58, 0.18);
-    box-shadow: 0 10px 24px rgba(18, 35, 26, 0.1);
+    box-shadow: none;
     filter: saturate(1.04);
     transform: translateY(-4px);
 }
