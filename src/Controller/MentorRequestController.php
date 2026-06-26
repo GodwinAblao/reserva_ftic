@@ -241,19 +241,19 @@ class MentorRequestController extends AbstractController
         }
 
         try {
-            $adminUrl   = $this->generateUrl('mentoring_superadmin_requests', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#mentor-requests';
             $admins     = $em->getRepository(User::class)->findAdmins();
-            $firstAdmin = true;
             foreach ($admins as $admin) {
+                $adminUrl = $this->generateUrl(
+                    in_array('ROLE_SUPER_ADMIN', $admin->getRoles(), true) ? 'mentoring_superadmin_requests' : 'admin_role_mentorship_coordination',
+                    [],
+                    UrlGeneratorInterface::ABSOLUTE_URL
+                ) . '#mentor-requests';
                 try {
                     $this->notificationService->notifyAdminNewMentorAssistanceRequest($admin, $mentorRequest->getId(), $fullName);
                 } catch (\Exception $e) {}
-                if ($firstAdmin) {
-                    try {
-                        $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
-                    } catch (\Exception $e) {}
-                    $firstAdmin = false;
-                }
+                try {
+                    $this->sendMentorAssistanceRequestEmail($mailer, $admin, $mentorRequest, $adminUrl);
+                } catch (\Exception $e) {}
             }
             try {
                 $this->notificationService->notifyMentorAssistanceStatus($currentUser, $mentorRequest->getId(), 'Pending', 'Your mentor assistance request has been submitted and is now pending review.');
@@ -292,6 +292,7 @@ class MentorRequestController extends AbstractController
             }
             $mentorRequest->setStatus('Cancelled')->setCancellationReason($cancellationReason);
             $em->flush();
+            $this->notifyAdminsMentorRequestCancelled($mentorRequest, $currentUser, $cancellationReason, $em);
             $this->addFlash('success', 'Your mentor request has been cancelled.');
             return $this->redirectToRoute('mentoring_index', [], Response::HTTP_SEE_OTHER);
         }
@@ -735,6 +736,38 @@ class MentorRequestController extends AbstractController
                     'requestUrl' => $this->generateUrl('mentoring_index', [], UrlGeneratorInterface::ABSOLUTE_URL) . '#cancelled',
                 ])));
         } catch (\Throwable $e) {}
+    }
+
+    private function notifyAdminsMentorRequestCancelled(
+        MentorCustomRequest $mentorRequest,
+        User $student,
+        string $reason,
+        EntityManagerInterface $em
+    ): void {
+        $requesterName = $mentorRequest->getFullName()
+            ?: trim(($student->getFirstName() ?? '') . ' ' . ($student->getLastName() ?? ''))
+            ?: $student->getEmail();
+        $requestTitle = $this->mentorRequestTitle($mentorRequest);
+        $message = sprintf('%s cancelled their mentoring request: %s.', $requesterName, $requestTitle);
+
+        if (trim($reason) !== '') {
+            $message .= ' Reason: ' . trim($reason);
+        }
+
+        foreach ($em->getRepository(User::class)->findAdmins() as $admin) {
+            try {
+                $this->notificationService->notifyAdminWithEmail(
+                    $admin,
+                    'mentor_assistance',
+                    'Mentor Request Cancelled',
+                    $message,
+                    'Cancelled',
+                    $mentorRequest->getId()
+                );
+            } catch (\Throwable $e) {
+                error_log('Failed to notify admin of mentoring request cancellation: ' . $e->getMessage());
+            }
+        }
     }
 
     private function mentorRequestTitle(MentorCustomRequest $mentorRequest): string

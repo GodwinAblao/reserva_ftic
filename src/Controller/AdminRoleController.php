@@ -366,7 +366,7 @@ class AdminRoleController extends AbstractController
         $facilityUpdateNotes = trim((string) $request->request->get('facility_update_notes', ''));
 
         if (!ReservationAuditLogger::isManageableStatus($newStatus)) {
-            $this->addFlash('error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
+            $this->addFlash('reservation_error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
             return $this->redirectToRoute('admin_role_edit_reservation', ['id' => $reservation->getId()]);
         }
 
@@ -389,7 +389,7 @@ class AdminRoleController extends AbstractController
             $facility = $em->getRepository(Facility::class)->find($facilityId);
             if ($facility) {
                 if ($previousFacility?->getId() !== $facility->getId() && $facilityUpdateNotes === '') {
-                    $this->addFlash('error', 'Facility update notes are required when changing the facility.');
+                    $this->addFlash('reservation_error', 'Facility update notes are required when changing the facility.');
 
                     return $this->redirectToRoute('admin_role_edit_reservation', ['id' => $reservation->getId()]);
                 }
@@ -405,7 +405,7 @@ class AdminRoleController extends AbstractController
             $endTime,
             $reservation->getId(),
         )) {
-            $this->addFlash('error', 'Cannot update: this time range is already booked for this facility.');
+            $this->addFlash('reservation_error', 'Cannot update: this time range is already booked for this facility.');
             return $this->redirectToRoute('admin_role_edit_reservation', ['id' => $reservation->getId()]);
         }
 
@@ -439,7 +439,7 @@ class AdminRoleController extends AbstractController
         }
 
         $this->addFlash(
-            'success',
+            'reservation_success',
             $reservation->getUser()
                 ? 'Reservation updated successfully. The user has been notified.'
                 : 'Reservation updated successfully. No linked user account was found to notify.'
@@ -453,6 +453,7 @@ class AdminRoleController extends AbstractController
         Reservation $reservation,
         Request $request,
         ReservationStatusManager $statusManager,
+        ReservationMailer $reservationMailer,
     ): Response {
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->redirectToRoute('admin_reservations');
@@ -464,6 +465,13 @@ class AdminRoleController extends AbstractController
 
         $isAjax = $request->headers->get('X-Requested-With') === 'XMLHttpRequest';
         $result = $statusManager->approve($reservation, $isAjax);
+        if ($this->statusResultSucceeded($result)) {
+            $admin = $this->getUser();
+            $adminEmail = $admin instanceof User ? ($admin->getEmail() ?? '') : '';
+            $adminName = $admin instanceof User ? trim(($admin->getFirstName() ?? '') . ' ' . ($admin->getLastName() ?? '')) : 'Admin';
+            $adminName = $adminName ?: $adminEmail;
+            $reservationMailer->notifyAdminApprovedToSuperadmin($reservation, $adminName, $adminEmail);
+        }
 
         return $this->handleStatusResult($result, 'admin_role_reservation_monitoring');
     }
@@ -1423,8 +1431,18 @@ class AdminRoleController extends AbstractController
         if ($result instanceof JsonResponse) {
             return $result;
         }
-        $this->addFlash($result['success'] ? 'success' : 'error', $result['message']);
+        $this->addFlash($result['success'] ? 'reservation_success' : 'reservation_error', $result['message']);
         return $this->redirectToRoute($redirectRoute);
+    }
+
+    private function statusResultSucceeded(array|JsonResponse $result): bool
+    {
+        if (is_array($result)) {
+            return (bool) ($result['success'] ?? false);
+        }
+
+        $data = json_decode((string) $result->getContent(), true);
+        return is_array($data) && (bool) ($data['success'] ?? false);
     }
 
     private function resolveMentorIdentity(

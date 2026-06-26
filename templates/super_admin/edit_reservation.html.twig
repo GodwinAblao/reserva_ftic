@@ -198,6 +198,23 @@
 <div class="sa-form-page">
     <a href="{{ path(calendar_back_route|default('admin_calendar')) }}" class="sa-back-link">← Back to Calendar</a>
 
+    {% for message in app.flashes('reservation_success') %}
+        <div class="flash-message flash-success" style="margin:0 0 16px 0;">
+            <div class="flash-content">
+                <span class="flash-icon">OK</span>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('reservation_error') %}
+        <div class="flash-message flash-error" style="margin:0 0 16px 0;">
+            <div class="flash-content">
+                <span class="flash-icon">!</span>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+    {% endfor %}
+
     <div class="sa-page-header">
         <div class="sa-page-header-left">
             <h2>Edit Reservation</h2>

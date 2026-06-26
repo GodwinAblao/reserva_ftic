@@ -99,7 +99,7 @@ class SuperAdminReservationController extends AbstractController
     public function editReservation(Reservation $reservation, FacilityRepository $facilityRepo): Response
     {
         if (!$this->isCalendarEditableReservation($reservation)) {
-            $this->addFlash('error', $this->buildCalendarEditRestrictionMessage($reservation));
+            $this->addFlash('reservation_error', $this->buildCalendarEditRestrictionMessage($reservation));
 
             return $this->redirectToRoute('admin_calendar');
         }
@@ -126,7 +126,7 @@ class SuperAdminReservationController extends AbstractController
         // Super Admin has full privileges and doesn't need CSRF protection
 
         if (!$this->isCalendarEditableReservation($reservation)) {
-            $this->addFlash('error', $this->buildCalendarEditRestrictionMessage($reservation));
+            $this->addFlash('reservation_error', $this->buildCalendarEditRestrictionMessage($reservation));
 
             return $this->redirectToRoute('admin_calendar');
         }
@@ -137,7 +137,7 @@ class SuperAdminReservationController extends AbstractController
         $facilityUpdateNotes = trim((string) $request->request->get('facility_update_notes', ''));
 
         if (!ReservationAuditLogger::isManageableStatus($newStatus)) {
-            $this->addFlash('error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
+            $this->addFlash('reservation_error', 'Invalid status. Allowed: Pending, Approved, Rejected, Cancelled.');
             return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
         }
 
@@ -153,7 +153,7 @@ class SuperAdminReservationController extends AbstractController
             $facility = $facilityRepo->find($facilityId);
             if ($facility) {
                 if ($previousFacility?->getId() !== $facility->getId() && $facilityUpdateNotes === '') {
-                    $this->addFlash('error', 'Facility update notes are required when changing the facility.');
+                    $this->addFlash('reservation_error', 'Facility update notes are required when changing the facility.');
 
                     return $this->redirectToRoute('admin_edit_reservation', ['id' => $reservation->getId()]);
                 }
@@ -217,7 +217,7 @@ class SuperAdminReservationController extends AbstractController
         }
 
         $this->addFlash(
-            'success',
+            'reservation_success',
             $reservation->getUser()
                 ? 'Reservation updated successfully. The user has been notified.'
                 : 'Reservation updated successfully. No linked user account was found to notify.'
@@ -242,7 +242,7 @@ class SuperAdminReservationController extends AbstractController
         $endTime = $reservation->getReservationEndTime();
 
         if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $date, $startTime, $endTime)) {
-            $this->addFlash('error', 'Cannot approve: this time range is already approved for this facility.');
+            $this->addFlash('reservation_error', 'Cannot approve: this time range is already approved for this facility.');
 
             return $this->redirectToRoute('admin_reservations');
         }
@@ -253,7 +253,7 @@ class SuperAdminReservationController extends AbstractController
         // Send email notification to user
         $reservationMailer->notifyApproved($reservation);
 
-        $this->addFlash('success', 'Reservation approved successfully.');
+        $this->addFlash('reservation_success', 'Reservation approved successfully.');
 
         return $this->redirectToRoute('admin_reservations');
     }
@@ -277,7 +277,7 @@ class SuperAdminReservationController extends AbstractController
         // Send email notification to user
         $reservationMailer->notifyRejected($reservation);
 
-        $this->addFlash('success', 'Reservation rejected successfully.');
+        $this->addFlash('reservation_success', 'Reservation rejected successfully.');
 
         return $this->redirectToRoute('admin_reservations');
     }
@@ -403,7 +403,7 @@ class SuperAdminReservationController extends AbstractController
             ));
         }
 
-        $this->addFlash('success', $message);
+        $this->addFlash('reservation_success', $message);
         return $this->redirectToRoute('admin_calendar');
     }
 

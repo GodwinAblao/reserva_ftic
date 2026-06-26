@@ -102,6 +102,11 @@
     padding: 10px 16px;
     cursor: pointer;
     transition: all .2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
 }
 
 .keep-button:hover,
@@ -109,6 +114,46 @@
     background: #0b8200;
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.keep-button:disabled,
+.accept-button:disabled {
+    cursor: wait;
+    transform: none;
+    box-shadow: none;
+    opacity: .72;
+}
+
+.keep-button.is-loading,
+.accept-button.is-loading {
+    opacity: 1;
+    background: #087300;
+}
+
+.button-spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: suggestButtonSpin .7s linear infinite;
+}
+
+.is-loading .button-spinner {
+    display: inline-block;
+}
+
+.suggest-alt-submitting .alt-card,
+.suggest-alt-submitting .keep-card {
+    pointer-events: none;
+}
+
+@keyframes suggestButtonSpin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .alternatives-column {

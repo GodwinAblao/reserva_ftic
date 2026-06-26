@@ -287,8 +287,9 @@
                                         <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" onsubmit="event.preventDefault(); event.stopPropagation(); openCancelModal(this);">
                                             <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
                                             <input type="hidden" name="action" value="cancel">
-                                            <button type="submit" style="background:#dc2626;color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;" onclick="event.stopPropagation();">
-                                                Cancel Request
+                                            <button type="submit" class="mentoring-loading-button" style="background:#dc2626;color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;" onclick="event.stopPropagation();">
+                                                <span class="mentoring-button-spinner" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="28 28" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".75s" repeatCount="indefinite"/></circle></svg></span>
+                                                <span data-loading-button-label>Cancel Request</span>
                                             </button>
                                         </form>
                                     </div>
@@ -432,8 +433,9 @@
                                         <form method="post" action="{{ path('mentoring_assistance_update', {'id': request.id}) }}" onsubmit="event.preventDefault(); event.stopPropagation(); openCancelModal(this);" style="display: inline;">
                                             <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_update_' ~ request.id) }}">
                                             <input type="hidden" name="action" value="cancel">
-                                            <button type="submit" class="btn btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;" onclick="event.stopPropagation();">
-                                                Cancel Request
+                                            <button type="submit" class="btn btn-danger btn-sm mentoring-loading-button" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;" onclick="event.stopPropagation();">
+                                                <span class="mentoring-button-spinner" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="28 28" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".75s" repeatCount="indefinite"/></circle></svg></span>
+                                                <span data-loading-button-label>Cancel Request</span>
                                             </button>
                                         </form>
                                     </div>
@@ -525,11 +527,12 @@
                                         {% endif %}
                                     </div>
                                     <div class="card-actions" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
-                                        <form method="post" action="{{ path('mentoring_cancel_application', {'id': application.id}) }}" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.');">
+                                        <form method="post" action="{{ path('mentoring_cancel_application', {'id': application.id}) }}" onsubmit="return confirmMentorApplicationCancel(this);">
                                             <input type="hidden" name="_token" value="{{ csrf_token('cancel_application_' ~ application.id) }}">
-                                            <button type="submit" class="btn btn-danger btn-sm" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                                            Cancel Application
-                                        </button>
+                                            <button type="submit" class="btn btn-danger btn-sm mentoring-loading-button" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">
+                                                <span class="mentoring-button-spinner" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="28 28" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".75s" repeatCount="indefinite"/></circle></svg></span>
+                                                <span data-loading-button-label>Cancel Application</span>
+                                            </button>
                                         </form>
                                     </div>
                                 </div>
@@ -1017,7 +1020,7 @@
                 <button type="button" class="icon-button" onclick="closeMentorAssistance()" aria-label="Close">x</button>
             </div>
 
-            <form method="post" action="{{ path('mentoring_assistance_request') }}" class="mentor-form mentor-assistance-form" data-loading-label="Submitting...">
+            <form method="post" action="{{ path('mentoring_assistance_request') }}" class="mentor-form mentor-assistance-form" data-loading-label="Submitting..." onsubmit="return showMentoringButtonLoading(this);">
                 <input type="hidden" name="_token" value="{{ csrf_token('mentor_assistance_request') }}">
                 <div class="form-section">
                     <h4>Request Details</h4>
@@ -1075,7 +1078,10 @@
                 </div>
                 <div class="app-modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeMentorAssistance()">Cancel</button>
-                    <button class="btn-primary js-loading-submit" type="submit">Submit Request</button>
+                    <button class="btn-primary js-loading-submit mentoring-loading-button" type="submit">
+                        <span class="mentoring-button-spinner" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="28 28" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".75s" repeatCount="indefinite"/></circle></svg></span>
+                        <span data-loading-button-label>Submit Request</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -1453,16 +1459,52 @@
             });
         }
 
+        function showMentoringButtonLoading(form, explicitButton, labelText) {
+            if (!form || form.dataset.submitting === 'true') {
+                return false;
+            }
+
+            form.dataset.submitting = 'true';
+            const button = explicitButton || form.querySelector('.js-loading-submit, .mentoring-loading-button[type="submit"]');
+            if (!button) {
+                return true;
+            }
+
+            button.disabled = true;
+            button.classList.add('is-loading');
+            button.setAttribute('aria-busy', 'true');
+
+            const spinner = button.querySelector('.mentoring-button-spinner');
+            if (spinner) {
+                spinner.style.display = 'inline-block';
+            }
+
+            const label = button.querySelector('[data-loading-button-label]');
+            if (label) {
+                label.textContent = labelText || form.dataset.loadingLabel || 'Submitting...';
+            }
+
+            return true;
+        }
+
+        function confirmMentorApplicationCancel(form) {
+            if (!confirm('Are you sure you want to cancel this application? This action cannot be undone.')) {
+                return false;
+            }
+
+            return showMentoringButtonLoading(form, null, 'Cancelling...');
+        }
+
+        window.showMentoringButtonLoading = showMentoringButtonLoading;
+        window.confirmMentorApplicationCancel = confirmMentorApplicationCancel;
+
         document.querySelectorAll('form[data-loading-label]').forEach(form => {
-            if (form.dataset.noLoading === 'true') {
+            if (form.dataset.noLoading === 'true' || form.dataset.loadingBound === 'true') {
                 return; // Skip loading state for these forms
             }
+            form.dataset.loadingBound = 'true';
             form.addEventListener('submit', () => {
-                const button = form.querySelector('.js-loading-submit');
-                if (button) {
-                    button.disabled = true;
-                    button.textContent = form.dataset.loadingLabel || 'Submitting...';
-                }
+                showMentoringButtonLoading(form);
             });
         });
 
@@ -2240,7 +2282,10 @@
             
             <div class="cancel-modal-actions">
                 <button type="button" class="cancel-modal-cancel" onclick="closeCancelModal()">No, Keep Request</button>
-                <button type="button" class="cancel-modal-confirm" onclick="confirmCancelRequest()">Yes, Cancel Request</button>
+                <button type="button" class="cancel-modal-confirm mentoring-loading-button" onclick="confirmCancelRequest()">
+                    <span class="mentoring-button-spinner" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="9" stroke-dasharray="28 28" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" values="0 12 12;360 12 12" dur=".75s" repeatCount="indefinite"/></circle></svg></span>
+                    <span data-loading-button-label>Yes, Cancel Request</span>
+                </button>
             </div>
         </div>
     </div>
@@ -2578,6 +2623,11 @@
             reasonInput.style.borderColor = '#d1d5db';
             
             if (cancelFormToSubmit) {
+                const confirmButton = document.querySelector('#cancelRequestModal .cancel-modal-confirm');
+                if (!showMentoringButtonLoading(cancelFormToSubmit, confirmButton, 'Cancelling...')) {
+                    return;
+                }
+
                 // Add cancellation reason to form
                 let reasonField = cancelFormToSubmit.querySelector('input[name="cancellation_reason"]');
                 if (!reasonField) {
@@ -2589,7 +2639,6 @@
                 reasonField.value = reason;
                 cancelFormToSubmit.submit();
             }
-            closeCancelModal();
         }
 
         // Close cancel modal on backdrop click

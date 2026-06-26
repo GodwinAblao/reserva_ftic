@@ -142,7 +142,8 @@ class MentorApplicationController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function cancelApplication(MentorApplication $application, Request $request, EntityManagerInterface $em): Response
     {
-        if ($application->getStudent() !== $this->getUser()) {
+        $user = $this->getUser();
+        if (!$user instanceof User || $application->getStudent() !== $user) {
             $this->addFlash('error', 'You can only cancel your own applications.');
             return $this->redirectToRoute('mentoring_index');
         }
@@ -158,9 +159,33 @@ class MentorApplicationController extends AbstractController
 
         $application->setStatus('Cancelled');
         $em->flush();
+        $this->notifyAdminsMentorApplicationCancelled($application, $user, $em);
 
         $this->addFlash('success', 'Your mentor application has been cancelled.');
         return $this->redirectToRoute('mentoring_index');
+    }
+
+    private function notifyAdminsMentorApplicationCancelled(MentorApplication $application, User $user, EntityManagerInterface $em): void
+    {
+        $applicantName = trim(($application->getFirstName() ?? '') . ' ' . ($application->getLastName() ?? ''))
+            ?: trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? ''))
+            ?: $user->getEmail();
+        $message = $applicantName . ' cancelled their mentor application.';
+
+        foreach ($em->getRepository(User::class)->findAdmins() as $admin) {
+            try {
+                $this->notificationService->notifyAdminWithEmail(
+                    $admin,
+                    'mentor',
+                    'Mentor Application Cancelled',
+                    $message,
+                    'Cancelled',
+                    $application->getId()
+                );
+            } catch (\Throwable $e) {
+                error_log('Failed to notify admin of mentor application cancellation: ' . $e->getMessage());
+            }
+        }
     }
 
     /**

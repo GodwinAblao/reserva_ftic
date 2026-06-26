@@ -266,6 +266,38 @@
   color: #ffffff !important;
 }
 
+.mentoring-loading-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.mentoring-loading-button:disabled,
+.mentoring-loading-button.is-loading {
+  cursor: wait !important;
+  opacity: 0.82 !important;
+  pointer-events: none !important;
+}
+
+.mentoring-button-spinner {
+  display: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: #ffffff;
+}
+
+.mentoring-loading-button.is-loading .mentoring-button-spinner {
+  display: inline-flex;
+}
+
+@keyframes mentoringButtonSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 #mentorApplicationModal .mentor-modal-cancel,
 #mentorAssistanceModal .btn-secondary {
   background: #e7eaed !important;
@@ -4690,4 +4722,43 @@ body.regular-user-theme .regular-user-mentoring-shell .content-area.regular-user
   .mentor-card {
     min-width: 0;
   }
+}
+
+#mentorAssistanceModal .mentoring-loading-button:disabled,
+#mentorAssistanceModal .mentoring-loading-button.is-loading {
+  background: var(--feu-green-dark) !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  cursor: wait !important;
+  pointer-events: none !important;
+}
+
+#mentorAssistanceModal .mentoring-loading-button.is-loading .mentoring-button-spinner,
+#mentorAssistanceModal .mentoring-loading-button[aria-busy="true"] .mentoring-button-spinner {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 14px !important;
+  height: 14px !important;
+  border: 0 !important;
+  color: #ffffff !important;
+}
+
+.mentoring-loading-button[aria-busy="true"],
+.mentoring-loading-button.is-loading {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  opacity: 1 !important;
+  cursor: wait !important;
+  pointer-events: none !important;
+}
+
+.mentoring-loading-button[aria-busy="true"] .mentoring-button-spinner,
+.mentoring-loading-button.is-loading .mentoring-button-spinner {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0 !important;
 }

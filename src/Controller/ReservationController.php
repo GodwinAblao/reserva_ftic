@@ -9,6 +9,7 @@ use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
 use App\Service\FacilityAvailabilityService;
+use App\Service\NotificationService;
 use App\Service\ReservationAutoExpireService;
 use App\Service\ReservationMailer;
 use App\Service\ScheduleRevisionService;
@@ -20,8 +21,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
 #[Route('/facility')]
@@ -332,7 +335,9 @@ public function reserve(
         Request $request,
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em,
-        ReservationMailer $reservationMailer
+        ReservationMailer $reservationMailer,
+        UserRepository $userRepository,
+        NotificationService $notificationService
     ): Response {
         if (!$this->isCsrfTokenValid('cancel_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -344,7 +349,7 @@ public function reserve(
         }
 
         if ($reservation->getStatus() === 'Approved' && $this->isCancellationRestricted($reservation)) {
-            $this->addFlash('error', 'This approved reservation can no longer be cancelled because it is within 24 hours of the scheduled time.');
+            $this->addFlash('reservation_error', 'This approved reservation can no longer be cancelled because it is within 24 hours of the scheduled time.');
 
             return $this->redirectToRoute('user_reservations');
         }
@@ -355,10 +360,51 @@ public function reserve(
         $em->flush();
 
         $reservationMailer->notifyCancelled($reservation);
+        $this->notifyAdminsReservationCancelled($reservation, $userRepository, $notificationService);
 
-        $this->addFlash('success', 'Reservation cancelled successfully.');
+        $this->addFlash('reservation_success', 'Reservation cancelled successfully.');
 
         return $this->redirectToRoute('user_reservations');
+    }
+
+    private function notifyAdminsReservationCancelled(
+        Reservation $reservation,
+        UserRepository $userRepository,
+        NotificationService $notificationService,
+    ): void {
+        $requesterName = $reservation->getName() ?: ($reservation->getUser()?->getEmail() ?? 'A user');
+        $facilityName = $reservation->getFacility()?->getName() ?? 'a facility';
+        $date = $reservation->getReservationDate()?->format('F j, Y') ?? 'the scheduled date';
+        $time = $reservation->getReservationStartTime() && $reservation->getReservationEndTime()
+            ? $reservation->getReservationStartTime()->format('g:i A') . ' - ' . $reservation->getReservationEndTime()->format('g:i A')
+            : 'the scheduled time';
+        $reason = trim((string) $reservation->getCancellationReason());
+        $message = sprintf(
+            '%s cancelled their reservation request for %s on %s, %s.',
+            $requesterName,
+            $facilityName,
+            $date,
+            $time
+        );
+
+        if ($reason !== '') {
+            $message .= ' Reason: ' . $reason;
+        }
+
+        foreach ($userRepository->findAdmins() as $admin) {
+            try {
+                $notificationService->notifyAdminWithEmail(
+                    $admin,
+                    'reservation',
+                    'Reservation Request Cancelled',
+                    $message,
+                    'Cancelled',
+                    $reservation->getId()
+                );
+            } catch (\Throwable $e) {
+                error_log('Failed to notify admin of reservation cancellation: ' . $e->getMessage());
+            }
+        }
     }
 
     #[Route('/reservations/{id}/accept-suggestion', name: 'accept_suggestion', methods: ['POST'])]
@@ -375,7 +421,7 @@ public function reserve(
 
         $suggestedFacility = $reservation->getSuggestedFacility();
         if ($reservation->getStatus() !== 'Suggested' || !$suggestedFacility) {
-            $this->addFlash('error', 'No suggested facility to accept.');
+            $this->addFlash('reservation_error', 'No suggested facility to accept.');
 
             return $this->redirectToRoute('user_reservations');
         }
@@ -385,7 +431,7 @@ public function reserve(
         $endTime = $reservation->getReservationEndTime();
 
         if ($reservationRepo->isTimeRangeBooked($suggestedFacility, $date, $startTime, $endTime)) {
-            $this->addFlash('error', 'The suggested facility is no longer available at that time.');
+            $this->addFlash('reservation_error', 'The suggested facility is no longer available at that time.');
 
             return $this->redirectToRoute('user_reservations');
         }
@@ -397,7 +443,7 @@ public function reserve(
 
         $reservationMailer->notifySuggestionAccepted($reservation);
 
-        $this->addFlash('success', 'Suggestion accepted. Your reservation is now booked.');
+        $this->addFlash('reservation_success', 'Suggestion accepted. Your reservation is now booked.');
 
         return $this->redirectToRoute('user_reservations');
     }
@@ -415,7 +461,7 @@ public function reserve(
         }
 
         if ($reservation->getStatus() !== 'Suggested') {
-            $this->addFlash('error', 'No suggested facility to decline.');
+            $this->addFlash('reservation_error', 'No suggested facility to decline.');
 
             return $this->redirectToRoute('user_reservations');
         }
@@ -425,7 +471,7 @@ public function reserve(
         $endTime = $reservation->getReservationEndTime();
 
         if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $date, $startTime, $endTime)) {
-            $this->addFlash('error', 'The original facility is no longer available at that time.');
+            $this->addFlash('reservation_error', 'The original facility is no longer available at that time.');
 
             return $this->redirectToRoute('user_reservations');
         }
@@ -436,7 +482,7 @@ public function reserve(
 
         $reservationMailer->notifySuggestionDeclined($reservation);
 
-        $this->addFlash('success', 'Suggestion declined. Your original reservation is now booked.');
+        $this->addFlash('reservation_success', 'Suggestion declined. Your original reservation is now booked.');
 
         return $this->redirectToRoute('user_reservations');
     }
@@ -512,7 +558,7 @@ public function reserve(
         }
 
         if (!$this->isCsrfTokenValid('select_alternative_' . $id, $request->request->get('_token'))) {
-            $this->addFlash('error', 'Invalid security token. Please try again.');
+            $this->addFlash('reservation_error', 'Invalid security token. Please try again.');
             return $this->redirectToRoute('app_facility_index');
         }
 
@@ -657,7 +703,7 @@ public function reserve(
         }
         $currentUser = $this->getUser();
         if (!$currentUser || $reservation->getUser() !== $currentUser) {
-            $this->addFlash('error', 'You do not have permission to modify this reservation.');
+            $this->addFlash('reservation_error', 'You do not have permission to modify this reservation.');
             return $this->redirectToRoute('user_reservations');
         }
         return null;
@@ -674,7 +720,7 @@ public function reserve(
         $em->flush();
         $this->notifyAdminNewReservation($reservation, $mailer, $em, $userRepository);
         $reservationMailer->notifyPending($reservation);
-        $this->addFlash('success', 'Reservation submitted successfully! Your request is pending approval.');
+        $this->addFlash('reservation_success', 'Reservation submitted successfully! Your request is pending approval.');
         return $this->redirectToRoute('user_reservations');
     }
 
@@ -712,29 +758,53 @@ public function reserve(
         return $fallback instanceof \DateTimeImmutable ? $fallback : null;
     }
 
-private function notifyAdminNewReservation(Reservation $reservation, MailerInterface $mailer, EntityManagerInterface $em, UserRepository $userRepository): void
+    private function notifyAdminNewReservation(Reservation $reservation, MailerInterface $mailer, EntityManagerInterface $em, UserRepository $userRepository): void
     {
-        // 1. Send email notification to admin
-        try {
-            $email = (new Email())
-                ->from('Reserva FTIC <noreply@fticreserva.website>')
-                ->to('admin@reserva-ftic.edu.ph')
-                ->subject('New Facility Reservation Request')
-                ->html($this->renderView('email/new_reservation.html.twig', [
-                    'reservation' => $reservation,
-                ]))
-            ;
+        $admins = $userRepository->findAdmins();
+        $notifiedEmails = [];
 
-            $mailer->send($email);
-        } catch (\Exception $e) {
+        // 1. Send email notification to every admin and super admin account.
+        foreach ($admins as $admin) {
+            $adminEmail = trim($admin->getEmail());
+            if ($adminEmail === '') {
+                continue;
+            }
+
+            $emailKey = strtolower($adminEmail);
+            if (isset($notifiedEmails[$emailKey])) {
+                continue;
+            }
+            $notifiedEmails[$emailKey] = true;
+
+            try {
+                $adminName = trim(($admin->getFirstName() ?? '') . ' ' . ($admin->getLastName() ?? '')) ?: $adminEmail;
+                $email = (new Email())
+                    ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+                    ->to(new Address($adminEmail, $adminName))
+                    ->subject('New Facility Reservation Request')
+                    ->html($this->renderView('email/new_reservation.html.twig', [
+                        'reservation' => $reservation,
+                        'adminUrl' => $this->generateUrl(
+                            in_array('ROLE_SUPER_ADMIN', $admin->getRoles(), true) ? 'admin_reservations' : 'admin_role_reservation_monitoring',
+                            [],
+                            UrlGeneratorInterface::ABSOLUTE_URL
+                        ),
+                    ]));
+
+                $mailer->send($email);
+            } catch (\Throwable $e) {
+                error_log(sprintf(
+                    'Failed to send admin reservation email to %s for reservation #%s: %s',
+                    $adminEmail,
+                    $reservation->getId() ?? 'new',
+                    $e->getMessage()
+                ));
+            }
         }
 
-        // 2. Create database notifications for all super admin users
+        // 2. Create database notifications for every admin and super admin account.
         try {
-            $admins = $userRepository->findAdmins();
-
             foreach ($admins as $admin) {
-                
                 $notification = new Notification();
                 $notification->setUser($admin);
                 $notification->setType('reservation');

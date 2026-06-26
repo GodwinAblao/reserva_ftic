@@ -64,9 +64,12 @@
                 </div>
 
                 <div class="keep-card">
-                    <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.facility.id}) }}" data-turbo="false">
+                    <form method="POST" action="{{ path('user_keep_original_facility', {'id': reservation.facility.id}) }}" data-turbo="false" data-loading-form data-loading-text="Keeping Facility...">
                         <input type="hidden" name="_token" value="{{ csrf_token('keep_original_' ~ reservation.facility.id) }}">
-                        <button type="submit" class="keep-button">Keep This Facility</button>
+                        <button type="submit" class="keep-button" data-loading-button>
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span data-button-label>Keep This Facility</span>
+                        </button>
                     </form>
                 </div>
             </section>
@@ -114,9 +117,12 @@
                                         </div>
                                     </div>
 
-                                    <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.facility.id, 'facilityId': facility.id}) }}" data-turbo="false">
+                                    <form method="POST" action="{{ path('user_select_alternative', {'id': reservation.facility.id, 'facilityId': facility.id}) }}" data-turbo="false" data-loading-form data-loading-text="Selecting Facility...">
                                         <input type="hidden" name="_token" value="{{ csrf_token('select_alternative_' ~ reservation.facility.id) }}">
-                                        <button type="submit" class="accept-button">Accept This Facility</button>
+                                        <button type="submit" class="accept-button" data-loading-button>
+                                            <span class="button-spinner" aria-hidden="true"></span>
+                                            <span data-button-label>Accept This Facility</span>
+                                        </button>
                                     </form>
                                 </div>
                             </article>
@@ -137,4 +143,43 @@
             </section>
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var forms = Array.prototype.slice.call(document.querySelectorAll('[data-loading-form]'));
+            if (!forms.length) {
+                return;
+            }
+
+            forms.forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    if (form.dataset.submitting === 'true') {
+                        return;
+                    }
+
+                    form.dataset.submitting = 'true';
+                    document.body.classList.add('suggest-alt-submitting');
+
+                    forms.forEach(function (otherForm) {
+                        var button = otherForm.querySelector('[data-loading-button]');
+                        if (!button) {
+                            return;
+                        }
+
+                        button.disabled = true;
+                        button.setAttribute('aria-disabled', 'true');
+                    });
+
+                    var activeButton = form.querySelector('[data-loading-button]');
+                    var activeLabel = form.querySelector('[data-button-label]');
+                    if (activeButton) {
+                        activeButton.classList.add('is-loading');
+                        activeButton.setAttribute('aria-busy', 'true');
+                    }
+                    if (activeLabel) {
+                        activeLabel.textContent = form.dataset.loadingText || 'Submitting...';
+                    }
+                });
+            });
+        });
+    </script>
 {% endblock %}

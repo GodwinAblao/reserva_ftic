@@ -214,7 +214,7 @@ class MentorAdminController extends AbstractController
                 foreach ($admins as $admin) {
                     if ($admin === $actor) continue;
                     try {
-                        $this->notificationService->create($admin, 'mentor', 'Mentor Application Rejected', $actorName . ' rejected the mentor application from ' . $applicantName . '.', 'Rejected', $application->getId());
+                        $this->notificationService->notifyAdminWithEmail($admin, 'mentor', 'Mentor Application Rejected', $actorName . ' rejected the mentor application from ' . $applicantName . '.', 'Rejected', $application->getId());
                     } catch (\Exception $e) {}
                 }
             } catch (\Exception $e) {}
@@ -262,7 +262,7 @@ class MentorAdminController extends AbstractController
             foreach ($admins as $admin) {
                 if ($admin === $actor) continue;
                 try {
-                    $this->notificationService->create($admin, 'mentor', 'Mentor Application Approved', $actorName . ' approved the mentor application from ' . $applicantName . '.', 'Approved', $application->getId());
+                    $this->notificationService->notifyAdminWithEmail($admin, 'mentor', 'Mentor Application Approved', $actorName . ' approved the mentor application from ' . $applicantName . '.', 'Approved', $application->getId());
                 } catch (\Exception $e) {}
             }
         } catch (\Exception $e) {}
@@ -344,7 +344,7 @@ class MentorAdminController extends AbstractController
             $mentorName = trim(($user->getFirstName() ?? '') . ' ' . ($user->getLastName() ?? '')) ?: $user->getEmail();
             foreach ($admins as $admin) {
                 try {
-                    $this->notificationService->create($admin, 'mentor', 'New Mentor Profile Created', 'A new mentor profile has been created for ' . $mentorName . '.', 'Active', $profile->getId());
+                    $this->notificationService->notifyAdminWithEmail($admin, 'mentor', 'New Mentor Profile Created', 'A new mentor profile has been created for ' . $mentorName . '.', 'Active', $profile->getId());
                 } catch (\Exception $e) {}
             }
         } catch (\Exception $e) {}

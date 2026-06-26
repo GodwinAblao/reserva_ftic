@@ -12,6 +12,22 @@
     <div class="reservations-page-layout">
         <!-- Main Content Column -->
         <div class="reservations-main-column">
+            {% for message in app.flashes('reservation_success') %}
+                <div class="flash-message flash-success">
+                    <div class="flash-content">
+                        <span class="flash-icon">OK</span>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+            {% for message in app.flashes('reservation_error') %}
+                <div class="flash-message flash-error">
+                    <div class="flash-content">
+                        <span class="flash-icon">!</span>
+                        <span>{{ message }}</span>
+                    </div>
+                </div>
+            {% endfor %}
 
     <!-- Reservation Status Overview - Dashboard Style -->
     <div class="dashboard-stats-grid">

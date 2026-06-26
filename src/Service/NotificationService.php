@@ -280,15 +280,38 @@ class NotificationService
         );
     }
 
+    public function notifyAdminWithEmail(
+        User $admin,
+        string $type,
+        string $title,
+        string $message,
+        string $status,
+        ?int $referenceId = null
+    ): Notification {
+        $notification = $this->create($admin, $type, $title, $message, $status, $referenceId);
+        $this->sendAdminNotificationEmail($admin, $title . ' - Reserva FTIC', $title, $message);
+
+        return $notification;
+    }
+
     public function notifyAdminMentorRequestUpdated(User $adminUser, int $requestId, string $updatedByName, string $newStatus, string $requesterName): void
     {
+        $message = $updatedByName . ' updated the request from ' . $requesterName . ' -> Status: ' . $newStatus;
+
         $this->create(
             $adminUser,
             'mentor_request_updated',
             'Mentor Request Updated',
-            $updatedByName . ' updated the request from ' . $requesterName . ' → Status: ' . $newStatus,
+            $message,
             $newStatus,
             $requestId
+        );
+
+        $this->sendAdminNotificationEmail(
+            $adminUser,
+            'Mentor Request Updated - Reserva FTIC',
+            'Mentor Request Updated',
+            $message
         );
     }
 
@@ -309,14 +332,72 @@ class NotificationService
      */
     public function notifyAdminNewReservation(User $admin, int $reservationId, string $requesterName): void
     {
+        $message = 'A new facility reservation request has been submitted by ' . $requesterName . '.';
+
         $this->create(
             $admin,
             'reservation',
             'New Reservation Request',
-            'A new facility reservation request has been submitted by ' . $requesterName . '.',
+            $message,
             'Pending',
             $reservationId
         );
+
+        $this->sendAdminNotificationEmail(
+            $admin,
+            'New Facility Reservation Request - Reserva FTIC',
+            'New Reservation Request',
+            $message
+        );
+    }
+
+    private function sendAdminNotificationEmail(User $admin, string $subject, string $title, string $message): void
+    {
+        $to = trim($admin->getEmail());
+        if ($to === '') {
+            return;
+        }
+
+        $displayName = trim(($admin->getFirstName() ?? '') . ' ' . ($admin->getLastName() ?? '')) ?: $to;
+        $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $reason = null;
+        $mainMessage = $message;
+        if (str_contains($message, ' Reason: ')) {
+            [$mainMessage, $reason] = explode(' Reason: ', $message, 2);
+        }
+
+        $safeMessage = nl2br(htmlspecialchars($mainMessage, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+        $reasonHtml = '';
+        if ($reason !== null && trim($reason) !== '') {
+            $safeReason = nl2br(htmlspecialchars(trim($reason), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+            $reasonHtml = '<div style="margin:0 0 18px;padding:14px 16px;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:8px;background:#fef2f2;">'
+                . '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#991b1b;margin-bottom:6px;">Cancellation Reason</div>'
+                . '<div style="font-size:14px;line-height:1.5;color:#b91c1c;font-weight:700;">' . $safeReason . '</div>'
+                . '</div>';
+        }
+
+        try {
+            $email = (new Email())
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+                ->to(new Address($to, $displayName))
+                ->subject($subject)
+                ->html(
+                    '<div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#1f2937;">'
+                    . '<div style="background:#006633;color:#fff;padding:18px 22px;border-radius:8px 8px 0 0;">'
+                    . '<h1 style="font-size:20px;margin:0;">' . $safeTitle . '</h1>'
+                    . '</div>'
+                    . '<div style="border:1px solid #d1d5db;border-top:0;padding:22px;border-radius:0 0 8px 8px;background:#fff;">'
+                    . '<p style="font-size:15px;line-height:1.5;margin:0 0 18px;">' . $safeMessage . '</p>'
+                    . $reasonHtml
+                    . '<p style="font-size:13px;color:#6b7280;margin:0;">Please sign in to Reserva FTIC to review the full details.</p>'
+                    . '</div>'
+                    . '</div>'
+                );
+
+            $this->mailer->send($email);
+        } catch (\Throwable $e) {
+            error_log('Failed to send admin notification email to ' . $to . ': ' . $e->getMessage());
+        }
     }
 
     /**
