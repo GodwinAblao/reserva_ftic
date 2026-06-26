@@ -534,7 +534,7 @@ function facilityDemandHtml(d) {
     const acc = d.facility_demand_accuracy || {};
     const mapeQuality = (v) => { if (v == null) return ''; if (v < 10) return ' mq-excellent'; if (v < 20) return ' mq-good'; if (v < 30) return ' mq-fair'; return ' mq-poor'; };
     let accuracyPanel = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
-        <h4>Facility Demand Forecast Accuracy (Approved-only)</h4>
+        <h4>Facility Demand Forecast Accuracy</h4>
         <p class="chart-sub">Forecast accuracy metrics for approved-only facility demand — lower values indicate better model performance</p>
         <div class="an-pro-metrics-grid">
             <div class="metric-card">
@@ -627,6 +627,17 @@ function facilityDemandHtml(d) {
                 <div class="metric-value">${(seasonal.trough_months || []).length || 0}</div>
                 <div class="metric-desc">${(seasonal.trough_months || []).slice(-2).map(formatLabel).join(', ') || 'N/A'}</div>
             </div>
+        </div>
+        <div class="an-pro-legend-box">
+            <h5>How to Interpret</h5>
+            <ul>
+                <li><strong>Demand Changes</strong> - Shows if approved facility reservations are steady or changing sharply. Red means demand changes too much and FTIC needs buffer planning.</li>
+                <li><strong>Demand Direction</strong> - Shows if approved reservations for the selected facility are going up, going down, or staying stable in recent weeks.</li>
+                <li><strong>Monthly Pattern</strong> - Shows if some months are much busier or much quieter than the selected facility's usual demand.</li>
+                <li><strong>High-Demand Months</strong> - Months where the selected facility historically receives higher reservation demand. Prepare rooms, staff, and equipment earlier.</li>
+                <li><strong>Low-Demand Months</strong> - Months where the selected facility historically receives lower demand. Use these periods for maintenance, cleaning, upgrades, or promotion.</li>
+                <li><strong>Standing Practice</strong> - Review facility forecast vs actual every 4 weeks to detect model drift early and recalibrate if MAPE rises above 20%.</li>
+            </ul>
         </div>
     </div>`;
 
