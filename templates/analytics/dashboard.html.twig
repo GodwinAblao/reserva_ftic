@@ -348,21 +348,13 @@ function kpiRow(fn, d) {
         cards.push(kpi('Peak Slot', getPeakFromObj(d.peak_usage_times || {}), 'Highest demand', ''));
         cards.push(kpi('Avg Efficiency', avgEff + '%', 'Capacity usage', trendIcon(parseFloat(avgEff), 50, false)));
         cards.push(kpi('Total Bookings', Object.values(d.facility_load_distribution || {}).reduce((a,b)=>a+b,0), 'All facilities', ''));
-    } else if (fn === 'controlling') {
-        const funnel = d.approval_funnel || {};
-        const compliance = d.setup_compliance_rate ?? 0;
-        const noshow = d.no_show_rate ?? 0;
-        const compScore = Math.round(compliance * 0.4 + (100 - noshow) * 0.35 + (funnel.approval_rate ?? 0) * 0.25);
-        cards.push(kpi('Compliance Score', compScore + '%', 'Weighted composite', trendIcon(compScore, 70, false)));
-        cards.push(kpi('Setup compliance', compliance + '%', '≤ 3 days lead', trendIcon(compliance, 80, false)));
-        cards.push(kpi('No-show rate', noshow + '%', 'Cancelled + rejected', trendIcon(noshow, 15, true)));
-        cards.push(kpi('Avg setup gap', (d.average_setup_gap ?? 0) + ' d', 'Lead time', ''));
     } else if (fn === 'leading') {
         const funnel = d.approval_funnel || {};
         cards.push(kpi('Approval rate', (funnel.approval_rate ?? 0) + '%', 'Conversion', trendIcon(funnel.approval_rate ?? 0, 70, false)));
         cards.push(kpi('Rejection rate', (funnel.rejection_rate ?? 0) + '%', 'Blocked', trendIcon(funnel.rejection_rate ?? 0, 15, true)));
         cards.push(kpi('Pipeline', funnel.submitted ?? 0, 'Total submitted', ''));
     }
+    if (!cards.length) return '';
     return '<div class="an-pro-kpi-row sa-chart-wide">' + cards.join('') + '</div>';
 }
 
@@ -791,60 +783,7 @@ function leadingHtml(d) {
 }
 
 function controllingHtml(d) {
-    const funnel = d.approval_funnel || {};
     const risks = d.facility_risk_scores || {};
-    const dq = d.data_quality || {};
-    const compliance = d.setup_compliance_rate ?? 0;
-    const noshow = d.no_show_rate ?? 0;
-
-    // Weighted Compliance Scorecard
-    const complianceScore = Math.round(compliance * 0.4 + (100 - noshow) * 0.35 + (funnel.approval_rate ?? 0) * 0.25);
-    const csClass = complianceScore >= 80 ? 'mq-excellent' : complianceScore >= 60 ? 'mq-good' : complianceScore >= 40 ? 'mq-fair' : 'mq-poor';
-    const csGrade = complianceScore >= 90 ? 'A+' : complianceScore >= 80 ? 'A' : complianceScore >= 70 ? 'B' : complianceScore >= 60 ? 'C' : 'D';
-
-    let scorecard = `<div class="sa-chart-container an-pro-chart-card sa-chart-wide an-pro-accuracy-panel">
-        <h4>Operational Compliance Scorecard</h4>
-        <p class="chart-sub">Weighted composite score — Setup Compliance (40%) + Attendance (35%) + Approval Efficiency (25%)</p>
-        <div class="an-pro-metrics-grid">
-            <div class="metric-card ${csClass}">
-                <div class="metric-icon">O</div>
-                <div class="metric-label">Overall Score</div>
-                <div class="metric-value">${csGrade} (${complianceScore}%)</div>
-                <div class="metric-desc">Composite operational health</div>
-            </div>
-            <div class="metric-card ${compliance >= 70 ? 'mq-excellent' : compliance >= 40 ? 'mq-good' : 'mq-poor'}">
-                <div class="metric-icon">S</div>
-                <div class="metric-label">Setup Compliance</div>
-                <div class="metric-value">${compliance}%</div>
-                <div class="metric-desc">≤3 days advance booking</div>
-            </div>
-            <div class="metric-card ${noshow <= 15 ? 'mq-excellent' : noshow <= 30 ? 'mq-fair' : 'mq-poor'}">
-                <div class="metric-icon">N</div>
-                <div class="metric-label">Attendance Rate</div>
-                <div class="metric-value">${(100 - noshow).toFixed(1)}%</div>
-                <div class="metric-desc">No-show: ${noshow}%</div>
-            </div>
-            <div class="metric-card ${(funnel.approval_rate ?? 0) >= 70 ? 'mq-excellent' : (funnel.approval_rate ?? 0) >= 50 ? 'mq-good' : 'mq-fair'}">
-                <div class="metric-icon">E</div>
-                <div class="metric-label">Process Efficiency</div>
-                <div class="metric-value">${funnel.approval_rate ?? 0}%</div>
-                <div class="metric-desc">Approval conversion rate</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-icon">G</div>
-                <div class="metric-label">Avg Setup Gap</div>
-                <div class="metric-value">${d.average_setup_gap ?? 0}d</div>
-                <div class="metric-desc">Lead time before event</div>
-            </div>
-        </div>
-        <div class="an-pro-legend-box"><h5>How to Interpret</h5><ul>
-            <li><strong>Overall Score</strong> — Combines advance booking discipline, attendance behavior, and approval success into one operational health grade.</li>
-            <li><strong>Setup Compliance (40%)</strong> — Higher is better. It means more users reserve at least 3 days before the event.</li>
-            <li><strong>Attendance (35%)</strong> — Higher is better. It means fewer cancelled or rejected reservations are affecting facility use.</li>
-            <li><strong>Approval Efficiency (25%)</strong> — Higher is better. It means more submitted requests successfully become approved reservations.</li>
-            <li><strong>Color Meaning</strong> — Green means healthy, yellow means needs monitoring, and red means priority action is needed.</li>
-        </ul></div>
-    </div>`;
 
     // Facility Risk Matrix
     const riskEntries = Object.entries(risks);
@@ -860,14 +799,14 @@ function controllingHtml(d) {
         });
         riskPanel += `</tbody></table></div>
             <div class="an-pro-legend-box"><h5>Risk Interpretation</h5><ul>
-                <li><strong>Score 0-19:</strong> Low risk — normal operations</li>
-                <li><strong>Score 20-39:</strong> Moderate — monitor closely and prepare contingencies</li>
-                <li><strong>Score 40-60:</strong> High — immediate intervention recommended</li>
+                <li><strong>Risk Score:</strong> Composite score from overload risk and no-show risk. 0-19 is low, 20-39 is moderate, and 40-60 is high.</li>
+                <li><strong>Overload Risk:</strong> Compares a facility's bookings against the average bookings per facility. High means the facility is receiving much more demand than the system average.</li>
+                <li><strong>No-Show Risk:</strong> Based on the facility's rejected and cancelled reservations as a percentage of its bookings. High means many bookings fail to become successful usage.</li>
+                <li><strong>Bookings:</strong> Total reservation records counted for that facility in the current analytics dataset.</li>
             </ul></div></div>`;
     }
 
     return `
-    <div class="an-pro-exec-summary sa-chart-wide" id="exec-controlling"></div>` + scorecard + `
     <div class="sa-chart-container an-pro-chart-card"><h4>Status Distribution</h4><p class="chart-sub">Proportion of reservation statuses</p><canvas id="c-status"></canvas><div class="an-pro-insight" id="insight-status"></div></div>
     <div class="sa-chart-container an-pro-chart-card"><h4>Facility Utilization Rate</h4><p class="chart-sub">Usage intensity per facility</p><canvas id="c-futil"></canvas><div class="an-pro-insight" id="insight-futil"></div></div>
     <div class="sa-chart-container an-pro-chart-card"><h4>Reservation Outcome Breakdown</h4><p class="chart-sub">Count of rejected and cancelled reservations — high values indicate process or compliance issues</p><canvas id="c-reject"></canvas><div class="an-pro-insight" id="insight-reject"></div></div>` + riskPanel + `
@@ -1619,15 +1558,6 @@ function generateLeadingInsights(d) {
 }
 
 function generateControllingInsights(d) {
-    const execEl = document.getElementById('exec-controlling');
-    if (execEl) {
-        const compliance = d.setup_compliance_rate ?? 0;
-        const noshow = d.no_show_rate ?? 0;
-        const gap = d.average_setup_gap ?? 0;
-        const health = compliance >= 80 && noshow <= 15 ? 'Good' : compliance >= 50 ? 'Needs attention' : 'Critical';
-        execEl.innerHTML = `<div class="exec-box"><h5>Executive Summary — Controlling</h5><p>Operational health: <strong>${health}</strong>. Setup compliance (≤3 days lead time): <strong>${compliance}%</strong>. No-show rate: <strong>${noshow}%</strong>. Average setup gap: <strong>${gap} days</strong>. ${noshow > 25 ? 'High no-show rate indicates potential policy enforcement issues — consider implementing confirmation reminders or penalties.' : 'No-show rate is within acceptable range.'}</p></div>`;
-    }
-
     // Facility utilization rate insight (controlling)
     const futilEl = document.getElementById('insight-futil');
     if (futilEl) {

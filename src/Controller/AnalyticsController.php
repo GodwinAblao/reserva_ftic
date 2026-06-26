@@ -738,6 +738,7 @@ class AnalyticsController extends AbstractController
             $result[$stats['name']] = [
                 'utilization_rate' => round($busyDays / max(1, $totalDays), 2),
                 'total_bookings'   => $stats['count'],
+                'total_capacity'   => $stats['capacity'],
             ];
         }
         return $result;
