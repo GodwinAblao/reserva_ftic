@@ -67,12 +67,6 @@
                                         <td>{{ reservation.eventPurpose }}{% if reservation.eventPurpose == 'others' and reservation.eventPurposeOther %} ({{ reservation.eventPurposeOther }}){% endif %}</td>
                                     </tr>
                                     {% endif %}
-                                    {% if reservation.institutionalEvent %}
-                                    <tr>
-                                        <td style="color:#6b7280;padding:3px 0;">Institutional Event</td>
-                                        <td><strong>Yes</strong></td>
-                                    </tr>
-                                    {% endif %}
                                     <tr>
                                         <td style="color:#6b7280;padding:3px 0;">Event Objectives</td>
                                         <td>{{ reservation.purpose }}</td>

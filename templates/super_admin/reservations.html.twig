@@ -98,9 +98,6 @@
                     <div class="sa-row-head">
                         <h4>{{ reservation.facility.name }}</h4>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            {% if reservation.institutionalEvent %}
-                                <span class="sa-badge" style="background: #dbeafe; color: #1e40af;">Institutional</span>
-                            {% endif %}
                             <span class="sa-badge sa-badge-{{ statusClass }}">{{ status == 'Cancelled' ? 'Canceled' : status }}</span>
                             {% if status == 'Pending' %}
                                 {% if reservation.adminApproved %}

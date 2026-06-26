@@ -145,13 +145,6 @@
             </div>
             {% endif %}
 
-            {% if reservation.institutionalEvent %}
-            <div class="detail-row">
-                <span class="label">Institutional Event:</span>
-                <span class="value"><strong>Yes</strong></span>
-            </div>
-            {% endif %}
-
             <div class="detail-row">
                 <span class="label">Date:</span>
                 <span class="value">{{ reservation.reservationDate|date('F d, Y') }}</span>

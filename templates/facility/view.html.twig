@@ -119,7 +119,13 @@
                     <a href="{{ path('app_facility_management') }}" class="fv-btn fv-btn-secondary">Management</a>
                 {% else %}
                     {% if is_granted('IS_AUTHENTICATED_FULLY') %}
-                        <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="fv-btn fv-btn-primary">Reserve Now</a>
+                        <a href="{{ path('facility_reserve', {id: facility.id}) }}" class="fv-btn fv-btn-primary" data-fv-reserve-button>
+                            <span class="fv-btn-label">Reserve Now</span>
+                            <span class="fv-btn-loading" aria-hidden="true">
+                                <span class="fv-btn-spinner"></span>
+                                Loading...
+                            </span>
+                        </a>
                     {% else %}
                         <a href="{{ path('app_login') }}" class="fv-btn fv-btn-primary" data-turbo="false" target="_self">Sign In to Reserve</a>
                     {% endif %}
@@ -152,6 +158,7 @@ let fvThumbClickHandler = null;
 let fvTouchStartHandler = null;
 let fvTouchEndHandler = null;
 let fvKeydownHandler = null;
+let fvReserveButtonHandler = null;
 let touchStartX = 0;
 let touchEndX = 0;
 
@@ -218,6 +225,8 @@ function fvAttachGallery() {
     if (fvImageList.length > 0) {
         fvUpdateImage(0);
     }
+
+    fvAttachReserveButton();
 }
 
 function fvDetachGallery() {
@@ -246,6 +255,8 @@ function fvDetachGallery() {
     fvTouchStartHandler = null;
     fvTouchEndHandler = null;
     fvKeydownHandler = null;
+
+    fvResetReserveButton();
 }
 
 if (!window.__facilityGalleryBound) {
@@ -335,6 +346,42 @@ function fvCloseLightbox(e) {
         lightbox.classList.remove('is-open');
         document.body.style.overflow = '';
     }
+}
+
+function fvAttachReserveButton() {
+    const reserveButton = document.querySelector('[data-fv-reserve-button]');
+    if (!reserveButton) return;
+
+    if (fvReserveButtonHandler) {
+        reserveButton.removeEventListener('click', fvReserveButtonHandler);
+    }
+
+    fvReserveButtonHandler = function(event) {
+        if (reserveButton.classList.contains('is-loading')) {
+            event.preventDefault();
+            return;
+        }
+
+        reserveButton.classList.add('is-loading');
+        reserveButton.setAttribute('aria-busy', 'true');
+        reserveButton.setAttribute('aria-disabled', 'true');
+    };
+
+    reserveButton.addEventListener('click', fvReserveButtonHandler);
+}
+
+function fvResetReserveButton() {
+    const reserveButton = document.querySelector('[data-fv-reserve-button]');
+    if (!reserveButton) return;
+
+    if (fvReserveButtonHandler) {
+        reserveButton.removeEventListener('click', fvReserveButtonHandler);
+        fvReserveButtonHandler = null;
+    }
+
+    reserveButton.classList.remove('is-loading');
+    reserveButton.removeAttribute('aria-busy');
+    reserveButton.removeAttribute('aria-disabled');
 }
 </script>
 
@@ -624,6 +671,7 @@ function fvCloseLightbox(e) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     padding: 12px 28px;
     border-radius: 10px;
     font-size: 0.9rem;
@@ -632,6 +680,35 @@ function fvCloseLightbox(e) {
     transition: all 0.2s;
     flex: 1;
     min-width: 120px;
+    min-height: 48px;
+    position: relative;
+}
+.fv-btn-loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.fv-btn-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: fv-btn-spin 0.75s linear infinite;
+}
+.fv-btn.is-loading {
+    cursor: wait;
+    pointer-events: none;
+}
+.fv-btn.is-loading .fv-btn-label {
+    display: none;
+}
+.fv-btn.is-loading .fv-btn-loading {
+    display: inline-flex;
+}
+@keyframes fv-btn-spin {
+    to { transform: rotate(360deg); }
 }
 .fv-btn-primary {
     background: var(--feu-green);

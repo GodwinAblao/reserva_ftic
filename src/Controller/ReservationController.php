@@ -84,7 +84,6 @@ public function reserve(
                 $purpose = $request->request->get('purpose');
                 $eventPurpose = $request->request->get('event_purpose');
                 $eventPurposeOther = $request->request->get('event_purpose_other');
-                $institutionalEvent = $request->request->get('institutional_event') === 'on';
 
                 $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
                 $endTime   = \DateTime::createFromFormat('H:i', $endTimeStr);
@@ -133,7 +132,6 @@ public function reserve(
                     'purpose' => $purpose,
                     'event_purpose' => $eventPurpose,
                     'event_purpose_other' => $eventPurposeOther,
-                    'institutional_event' => $institutionalEvent,
                 ]);
 
                 // Redirect to suggest alternatives page (session-based, no DB record yet)
@@ -487,7 +485,6 @@ public function reserve(
             'purpose' => $sessionData['purpose'],
             'eventPurpose' => $sessionData['event_purpose'],
             'eventPurposeOther' => $sessionData['event_purpose_other'],
-            'institutionalEvent' => $sessionData['institutional_event'],
         ];
 
         return $this->render('reservation/suggest_alternatives.html.twig', [
@@ -583,7 +580,6 @@ public function reserve(
         $reservation->setPurpose($data['purpose']);
         $reservation->setEventPurpose($data['event_purpose']);
         $reservation->setEventPurposeOther($data['event_purpose_other']);
-        $reservation->setInstitutionalEvent($data['institutional_event']);
 
         $em->persist($reservation);
 

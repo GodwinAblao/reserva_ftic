@@ -343,7 +343,6 @@ class ReservationMailer
             . '<tr style="background:#f9fafb;"><td style="padding:8px;font-weight:bold;color:#6b7280;">Event</td><td style="padding:8px;">' . htmlspecialchars($event) . '</td></tr>'
             . '<tr><td style="padding:8px;font-weight:bold;color:#6b7280;">Date</td><td style="padding:8px;">' . htmlspecialchars($date) . '</td></tr>'
             . '<tr style="background:#f9fafb;"><td style="padding:8px;font-weight:bold;color:#6b7280;">Time</td><td style="padding:8px;">' . htmlspecialchars($startTime . ' – ' . $endTime) . '</td></tr>'
-            . ($reservation->isInstitutionalEvent() ? '<tr><td style="padding:8px;font-weight:bold;color:#1e40af;">Type</td><td style="padding:8px;"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;">Institutional Event</span></td></tr>' : '')
             . '</table>'
             . '<p style="margin-top:20px;color:#6b7280;">Please log in to the Reserva FTIC system to take final action on this reservation.</p>'
             . '</div>';
