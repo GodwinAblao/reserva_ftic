@@ -111,19 +111,24 @@
 .sa-modal-save{padding:10px 32px;background:#0D9B00;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:700;cursor:pointer;}
 .sa-modal-save:hover{background:#0a7d00;}
 .sa-modal-close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer;line-height:1;}
-.no-match-modal-overlay{display:none;position:fixed;inset:0;background:rgba(17,24,39,.38);z-index:9300;align-items:center;justify-content:center;padding:20px;}
-.no-match-modal-overlay.is-open{display:flex;}
-.no-match-modal-dialog{background:#fff;border-radius:14px;width:100%;max-width:430px;padding:26px 28px 24px;box-shadow:0 24px 64px rgba(0,0,0,.2);animation:noMatchModalIn .18s ease-out;}
-.no-match-modal-icon{width:48px;height:48px;border-radius:50%;background:#fff7ed;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;}
-.no-match-modal-dialog h3{font-size:18px;font-weight:800;color:#111827;text-align:center;margin:0 0 10px;}
-.no-match-modal-dialog p{font-size:13.5px;line-height:1.6;color:#4b5563;text-align:center;margin:0;}
-.no-match-modal-actions{display:flex;gap:10px;margin-top:22px;}
-.no-match-modal-cancel,.no-match-modal-confirm{flex:1;border:none;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s;}
-.no-match-modal-cancel{background:#f3f4f6;color:#374151;}
-.no-match-modal-cancel:hover{background:#e5e7eb;}
+#filePreviewModal.sa-modal-overlay{top:0;left:0;right:0;bottom:0;z-index:10000;align-items:center;padding:1.5rem;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+#filePreviewModal .sa-modal-backdrop{top:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;}
+#filePreviewModal .sa-modal{margin:auto;}
+.reject-modal-overlay{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;align-items:center;justify-content:center;padding:1.5rem;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.reject-modal-overlay.is-open{display:flex;}
+.reject-modal-dialog{width:min(480px,100%);background:#fff;border-radius:20px;padding:2rem 2rem 1.75rem;text-align:center;box-shadow:0 24px 70px rgba(15,23,42,.28);animation:rejectModalIn .18s ease-out;}
+.reject-modal-icon{width:58px;height:58px;margin:0 auto 1rem;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#fee2e2;border:1px solid #fecaca;}
+.reject-modal-dialog h3{margin:0 0 .5rem;color:#111827;font-size:1.2rem;font-weight:800;}
+.reject-modal-dialog p{margin:0 0 1.25rem;color:#6b7280;line-height:1.55;font-size:.9rem;}
+.reject-modal-actions{display:flex;gap:.75rem;justify-content:center;margin-top:1.25rem;}
+.reject-modal-actions button{border:none;border-radius:10px;padding:.7rem 1.4rem;font-weight:800;cursor:pointer;font-size:.9rem;transition:background .15s,transform .1s;}
+.reject-modal-actions button:active{transform:scale(.97);}
+.reject-modal-cancel{background:#f3f4f6;color:#374151;}
+.reject-modal-cancel:hover{background:#e5e7eb;}
+.no-match-modal-icon{background:#fff7ed;border-color:#fed7aa;}
 .no-match-modal-confirm{background:#b91c1c;color:#fff;}
 .no-match-modal-confirm:hover{background:#991b1b;}
-@keyframes noMatchModalIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes rejectModalIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:900px){.sa-dashboard{grid-template-columns:210px 1fr;}}
 @media(max-width:600px){.sa-dashboard{grid-template-columns:1fr;}.sa-left{height:auto;max-height:280px;}}
@@ -628,7 +633,7 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF
                     </a>
                     {% else %}
-                    <img src="{{ asset('uploads/profiles/' ~ file) }}" class="sa-proof-img" alt="proof" onclick="window.open(this.src)">
+                    <img src="{{ asset('uploads/profiles/' ~ file) }}" class="sa-proof-img" alt="proof" onclick="openFilePreviewModal('{{ asset('uploads/profiles/' ~ file)|e('js') }}', '{{ file|e('js') }}')">
                     {% endif %}
                 {% endfor %}
             </div>
@@ -670,192 +675,6 @@
     </div>{# end center #}
 
 </div>{# end sa-dashboard #}
-
-{# â”€â”€ Audit Log â”€â”€ #}
-<div class="sa-audit-wrap" style="margin-top:24px;">
-    <div class="sa-audit-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:32px;height:32px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;display:flex;align-items:center;justify-content:center;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9B00" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            </div>
-            <div>
-                <div style="font-size:14px;font-weight:800;color:#111827;">Activity Audit Log</div>
-                <div style="font-size:11px;color:#9ca3af;">All admin &amp; super admin actions on mentor applications &amp; mentor requests</div>
-            </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span id="auditPaginationInfo" style="font-size:11px;color:#9ca3af;"></span>
-            <div class="sa-audit-search-wrap">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="auditSearchInput" placeholder="Search by name, action, admin..." oninput="auditSearchDebounce()" autocomplete="off">
-            </div>
-        </div>
-    </div>
-    <div id="auditTableArea">
-        <div class="sa-audit-table-wrap">
-            <table class="sa-audit-table" id="auditTable">
-                <thead><tr>
-                    <th>Date &amp; Time</th><th>Subject</th><th>Type</th>
-                    <th>Action</th><th>Status Change</th><th>Performed By</th><th>Note</th>
-                </tr></thead>
-                <tbody id="auditTbody"></tbody>
-            </table>
-        </div>
-        <div id="auditEmpty" class="sa-audit-empty" style="display:none;">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>No activity recorded yet.</span>
-        </div>
-        <div id="auditLoading" style="padding:20px;text-align:center;color:#9ca3af;font-size:12px;">Loading...</div>
-    </div>
-    <div id="auditPagination" class="sa-audit-pagination"></div>
-</div>
-
-<style>
-.sa-audit-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;}
-.sa-audit-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap;gap:10px;}
-.sa-audit-search-wrap{display:flex;align-items:center;gap:8px;border:1px solid #e5e7eb;border-radius:8px;padding:0 12px;background:#fafafa;height:36px;}
-.sa-audit-search-wrap input{border:none;outline:none;font-size:12.5px;color:#374151;background:transparent;width:220px;}
-.sa-audit-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;color:#9ca3af;font-size:13px;}
-.sa-audit-table-wrap{overflow-x:auto;}
-.sa-audit-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-.sa-audit-table thead tr{background:#f9fafb;border-bottom:1px solid #e5e7eb;}
-.sa-audit-table th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
-.sa-audit-table td{padding:11px 14px;border-bottom:1px solid #f9fafb;vertical-align:middle;}
-.sa-audit-row:last-child td{border-bottom:none;}
-.sa-audit-row:hover td{background:#fafafa;}
-.sa-audit-date{display:block;font-weight:600;color:#111827;font-size:12px;}
-.sa-audit-clock{display:block;font-size:11px;color:#9ca3af;}
-.sa-audit-subject{font-weight:700;color:#111827;}
-.sa-audit-id{font-size:10.5px;color:#9ca3af;margin-left:4px;}
-.sa-audit-type-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;}
-.type-app{background:#ede9fe;color:#5b21b6;}
-.type-req{background:#dbeafe;color:#1e40af;}
-.sa-audit-action-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;}
-.audit-action-approve{background:#d1fae5;color:#065f46;}
-.audit-action-reject{background:#fee2e2;color:#991b1b;}
-.audit-action-update{background:#fef9c3;color:#854d0e;}
-.audit-action-create{background:#dbeafe;color:#1e40af;}
-.audit-action-assign{background:#e0f2fe;color:#075985;}
-.audit-action-no-match{background:#fee2e2;color:#991b1b;}
-.audit-action-default{background:#f3f4f6;color:#374151;}
-.sa-audit-status-flow{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
-.sa-audit-prev-status{font-size:10.5px;color:#6b7280;background:#f3f4f6;padding:2px 7px;border-radius:5px;}
-.sa-audit-new-status{font-size:10.5px !important;padding:2px 7px !important;}
-.sa-audit-actor{display:flex;align-items:center;gap:8px;}
-.sa-audit-actor-av{width:28px;height:28px;border-radius:50%;background:#0D9B00;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.sa-audit-actor-name{font-size:12px;font-weight:600;color:#111827;}
-.sa-audit-actor-role{font-size:10.5px;color:#9ca3af;}
-.sa-audit-note{color:#6b7280;max-width:180px;font-size:12px;}
-.sa-audit-pagination{display:flex;align-items:center;justify-content:center;gap:4px;padding:12px 20px;border-top:1px solid #f3f4f6;flex-wrap:wrap;}
-.sa-audit-pg-btn{padding:5px 11px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;font-weight:600;color:#374151;background:#fff;cursor:pointer;transition:background .12s;}
-.sa-audit-pg-btn:hover{background:#f9fafb;}
-.sa-audit-pg-btn.active{background:#0D9B00;color:#fff;border-color:#0D9B00;}
-.sa-audit-pg-btn:disabled{opacity:.4;cursor:default;}
-</style>
-
-<script>
-(function(){
-    var AUDIT_URL = '{{ path("mentoring_audit_log_data") }}';
-    var PER_PAGE  = 15;
-    var _page    = 1;
-    var _pages   = 1;
-    var _total   = 0;
-    var _search  = '';
-    var _topId   = 0;
-    var _debounce= null;
-    var _loading = false;
-
-    function auditBuildRow(log){
-        var actionMeta={
-            'approve'      :{label:'Approved',      cls:'audit-action-approve'},
-            'reject'       :{label:'Rejected',       cls:'audit-action-reject'},
-            'update_status':{label:'Status Updated', cls:'audit-action-update'},
-            'create_mentor':{label:'Mentor Created', cls:'audit-action-create'},
-            'assign'       :{label:'Assigned',       cls:'audit-action-assign'},
-            'no_mentor_match':{label:'No Mentor Match', cls:'audit-action-no-match'}
-        };
-        var meta=actionMeta[log.action]||{label:log.action,cls:'audit-action-default'};
-        var typeLabel=log.subjectType==='application'?'Application':'Mentor Request';
-        var typeCls  =log.subjectType==='application'?'type-app':'type-req';
-        var note=log.note?(log.note.length>60?log.note.slice(0,60)+'...':log.note):'-';
-        var statusFlow='';
-        if(log.previousStatus||log.newStatus){
-            statusFlow='<span class="sa-audit-status-flow">';
-            if(log.previousStatus) statusFlow+='<span class="sa-audit-prev-status">'+log.previousStatus+'</span>';
-            if(log.previousStatus&&log.newStatus) statusFlow+='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
-            if(log.newStatus) statusFlow+='<span class="badge '+log.newStatus.toLowerCase().replace(/ /g,'-')+' sa-audit-new-status">'+log.newStatus+'</span>';
-            statusFlow+='</span>';
-        } else { statusFlow='<span style="color:#d1d5db;">-</span>'; }
-        return '<tr class="sa-audit-row" data-log-id="'+log.id+'">'
-            +'<td class="sa-audit-time"><span class="sa-audit-date">'+log.loggedAt+'</span><span class="sa-audit-clock">'+log.loggedAtTime+'</span></td>'
-            +'<td><span class="sa-audit-subject">'+log.subjectLabel+'</span>'+(log.subjectId?'<span class="sa-audit-id">#'+log.subjectId+'</span>':'')+'</td>'
-            +'<td><span class="sa-audit-type-badge '+typeCls+'">'+typeLabel+'</span></td>'
-            +'<td><span class="sa-audit-action-badge '+meta.cls+'">'+meta.label+'</span></td>'
-            +'<td>'+statusFlow+'</td>'
-            +'<td><div class="sa-audit-actor"><div class="sa-audit-actor-av">'+log.performedByName.slice(0,1).toUpperCase()+'</div><div><div class="sa-audit-actor-name">'+log.performedByName+'</div>'+(log.performedByRole?'<div class="sa-audit-actor-role">'+log.performedByRole+'</div>':'')+'</div></div></td>'
-            +'<td class="sa-audit-note">'+note+'</td>'
-            +'</tr>';
-    }
-
-    function auditRenderPagination(){
-        var pg = document.getElementById('auditPagination');
-        if(!pg) return;
-        if(_pages<=1){ pg.innerHTML=''; return; }
-        var html='';
-        html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page-1)+')" '+(_page<=1?'disabled':'')+'>&lsaquo; Prev</button>';
-        var start=Math.max(1,_page-2), end=Math.min(_pages,_page+2);
-        if(start>1) html+='<button class="sa-audit-pg-btn" onclick="auditGoPage(1)">1</button>'+(start>2?'<span style="padding:0 4px;color:#9ca3af;">...</span>':'');
-        for(var i=start;i<=end;i++) html+='<button class="sa-audit-pg-btn'+(_page===i?' active':'')+' " onclick="auditGoPage('+i+')">'+i+'</button>';
-        if(end<_pages) html+=(end<_pages-1?'<span style="padding:0 4px;color:#9ca3af;">...</span>':'')+'<button class="sa-audit-pg-btn" onclick="auditGoPage('+_pages+')">'+_pages+'</button>';
-        html+='<button class="sa-audit-pg-btn" onclick="auditGoPage('+(_page+1)+')" '+(_page>=_pages?'disabled':'')+'> Next &rsaquo;</button>';
-        pg.innerHTML=html;
-        var info=document.getElementById('auditPaginationInfo');
-        if(info) info.textContent=_total+' total · page '+_page+' of '+_pages;
-    }
-
-    function auditLoadPage(page){
-        if(_loading) return;
-        _loading=true;
-        var loading=document.getElementById('auditLoading');
-        var tbody=document.getElementById('auditTbody');
-        var empty=document.getElementById('auditEmpty');
-        if(loading) loading.style.display='block';
-        if(tbody) tbody.innerHTML='';
-        if(empty) empty.style.display='none';
-        var url=AUDIT_URL+'?page='+page+'&per_page='+PER_PAGE+(s_search?'&search='+encodeURIComponent(_search):'');
-        fetch(url,{headers:{'X-Requested-With':'XMLHttpRequest','Cache-Control':'no-cache'}})
-        .then(function(r){return r.ok?r.json():null;})
-        .then(function(data){
-            _loading=false;
-            if(loading) loading.style.display='none';
-            if(!data||!data.logs){ if(empty) empty.style.display=''; return; }
-            _page=data.page; _pages=data.pages; _total=data.total;
-            if(data.logs.length>0){
-                if(_page===1) _topId=data.logs[0].id;
-                if(tbody) tbody.innerHTML=data.logs.map(auditBuildRow).join('');
-                if(empty) empty.style.display='none';
-            } else {
-                if(tbody) tbody.innerHTML='';
-                if(empty) empty.style.display='';
-            }
-            auditRenderPagination();
-        })
-        .catch(function(){_loading=false;if(loading)loading.style.display='none';if(empty)empty.style.display='';});
-    }
-    var s_search=false;
-    window.auditGoPage=function(p){ _page=p; auditLoadPage(p); };
-    window.auditSearchDebounce=function(){
-        clearTimeout(_debounce);
-        _debounce=setTimeout(function(){
-            _search=document.getElementById('auditSearchInput').value.trim();
-            s_search=_search!=='';
-            _page=1;
-            auditLoadPage(1);
-        },400);
-    };
-    document.addEventListener('DOMContentLoaded',function(){ auditLoadPage(1); });
-})();
-</script>
 
 {# â”€â”€ Create Mentor Modal - Only for Super Admin â”€â”€ #}
 {% if is_super_admin %}
@@ -921,17 +740,34 @@
 </div>
 {% endif %}
 
-<div id="noMentorMatchModal" class="no-match-modal-overlay">
-    <div class="no-match-modal-dialog">
+<div id="noMentorMatchModal" class="reject-modal-overlay">
+    <div class="reject-modal-dialog">
         <input type="hidden" id="noMentorMatchRequestId">
-        <div class="no-match-modal-icon">
+        <div class="reject-modal-icon no-match-modal-icon">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><path d="M8 15h8"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg>
         </div>
         <h3>No Mentor Match?</h3>
         <p>Are you sure you want to mark this request as No Mentor Match? This will cancel the mentoring request and notify the requester that there are currently no available mentors matching their request.</p>
-        <div class="no-match-modal-actions">
-            <button type="button" class="no-match-modal-cancel" onclick="closeNoMentorMatchModal()">Cancel</button>
+        <div class="reject-modal-actions">
+            <button type="button" class="reject-modal-cancel" onclick="closeNoMentorMatchModal()">Cancel</button>
             <button type="button" class="no-match-modal-confirm" onclick="submitNoMentorMatchModal()">Yes, Mark No Mentor Match</button>
+        </div>
+    </div>
+</div>
+
+<div id="filePreviewModal" class="sa-modal-overlay" style="z-index: 10000;">
+    <div class="sa-modal-backdrop" onclick="closeFilePreviewModal()"></div>
+    <div class="sa-modal" style="max-width: 90vw; max-height: 90vh; width: auto;">
+        <button class="sa-modal-close" onclick="closeFilePreviewModal()">x</button>
+        <h3 id="filePreviewTitle" style="margin-bottom: 16px; font-size: 16px; color: #111827;">File Preview</h3>
+        <div style="display: flex; justify-content: center; align-items: center; max-height: 70vh; overflow: auto;">
+            <img id="filePreviewImage" src="" alt="Preview" style="max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        </div>
+        <div class="sa-modal-footer" style="margin-top: 16px; display: flex; justify-content: center; gap: 12px;">
+            <a id="filePreviewDownload" href="#" target="_blank" class="sa-modal-save" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Open in New Tab
+            </a>
         </div>
     </div>
 </div>
@@ -974,6 +810,26 @@ function submitNoMentorMatchModal(){
     if(!form) return;
     closeNoMentorMatchModal();
     form.submit();
+}
+function openFilePreviewModal(fileUrl, fileName) {
+    var modal = document.getElementById('filePreviewModal');
+    var img = document.getElementById('filePreviewImage');
+    var title = document.getElementById('filePreviewTitle');
+    var download = document.getElementById('filePreviewDownload');
+    if (!modal || !img) return;
+    img.src = fileUrl;
+    img.alt = fileName || 'Preview';
+    if (title) title.textContent = fileName || 'File Preview';
+    if (download) download.href = fileUrl;
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeFilePreviewModal() {
+    var modal = document.getElementById('filePreviewModal');
+    var img = document.getElementById('filePreviewImage');
+    if (modal) modal.classList.remove('open');
+    if (img) img.src = '';
+    document.body.style.overflow = '';
 }
 function cmFillUser(sel){
     var o=sel.options[sel.selectedIndex];
@@ -1198,9 +1054,16 @@ function bindAjaxForms(){
 document.addEventListener('DOMContentLoaded',function(){
     initAssignmentLocks();
     bindAjaxForms();
-    document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeNoMentorMatchModal(); }});
+    initAdminMentoringModals();
+    document.addEventListener('keydown',function(e){if(e.key==='Escape') { closeCreateMentor(); closeNoMentorMatchModal(); closeFilePreviewModal(); }});
 });
-document.addEventListener('turbo:load', function(){initAssignmentLocks();bindAjaxForms();});
+function initAdminMentoringModals() {
+    var noMatchModal = document.getElementById('noMentorMatchModal');
+    if (noMatchModal && noMatchModal.parentNode !== document.body) document.body.appendChild(noMatchModal);
+    var filePreviewModal = document.getElementById('filePreviewModal');
+    if (filePreviewModal && filePreviewModal.parentNode !== document.body) document.body.appendChild(filePreviewModal);
+}
+document.addEventListener('turbo:load', function(){initAssignmentLocks();bindAjaxForms();initAdminMentoringModals();});
 
 </script>
 {% endblock %}

@@ -1221,6 +1221,8 @@ class AdminController extends AbstractController
     {
         $streams = [];
         $like = 'ILIKE';
+        $fromStart = $this->ledgerDateStart($from);
+        $toExclusive = $this->ledgerDateEndExclusive($to);
 
         if ($module === 'all' || $module === 'reservations') {
             $sql = "SELECT
@@ -1237,8 +1239,8 @@ class AdminController extends AbstractController
                     INNER JOIN facility f ON f.id = r.facility_id
                     WHERE r.status != 'Suggested'";
             if ($search) $sql .= " AND (r.name $like :q OR r.email $like :q OR f.name $like :q OR r.event_name $like :q)";
-            if ($from)   $sql .= " AND r.created_at::date >= CAST(:from AS date)";
-            if ($to)     $sql .= " AND r.created_at::date <= CAST(:to AS date)";
+            if ($fromStart)   $sql .= " AND r.created_at >= CAST(:from_start AS timestamp)";
+            if ($toExclusive) $sql .= " AND r.created_at < CAST(:to_exclusive AS timestamp)";
             $streams[] = $sql;
         }
 
@@ -1256,8 +1258,8 @@ class AdminController extends AbstractController
                     FROM mentoring_audit_log mal
                     WHERE 1=1";
             if ($search) $sql .= " AND (mal.performed_by_name $like :q OR mal.subject_label $like :q OR mal.action $like :q)";
-            if ($from)   $sql .= " AND mal.logged_at::date >= CAST(:from AS date)";
-            if ($to)     $sql .= " AND mal.logged_at::date <= CAST(:to AS date)";
+            if ($fromStart)   $sql .= " AND mal.logged_at >= CAST(:from_start AS timestamp)";
+            if ($toExclusive) $sql .= " AND mal.logged_at < CAST(:to_exclusive AS timestamp)";
             $streams[] = $sql;
         }
 
@@ -1275,8 +1277,8 @@ class AdminController extends AbstractController
                     FROM mentor_application ma
                     WHERE 1=1";
             if ($search) $sql .= " AND (ma.first_name $like :q OR ma.last_name $like :q OR ma.email $like :q OR ma.specialization $like :q)";
-            if ($from)   $sql .= " AND ma.created_at::date >= CAST(:from AS date)";
-            if ($to)     $sql .= " AND ma.created_at::date <= CAST(:to AS date)";
+            if ($fromStart)   $sql .= " AND ma.created_at >= CAST(:from_start AS timestamp)";
+            if ($toExclusive) $sql .= " AND ma.created_at < CAST(:to_exclusive AS timestamp)";
             $streams[] = $sql;
         }
 
@@ -1306,8 +1308,8 @@ class AdminController extends AbstractController
                     LEFT JOIN mentor_profile mp ON mp.id = mcr.mentor_profile_id
                     WHERE 1=1";
             if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR su.email $like :q OR mcr.full_name $like :q OR mp.display_name $like :q OR mcr.preferred_expertise $like :q OR mcr.assigned_mentor_name $like :q OR mcr.message $like :q OR mcr.status $like :q)";
-            if ($from)   $sql .= " AND mcr.created_at::date >= CAST(:from AS date)";
-            if ($to)     $sql .= " AND mcr.created_at::date <= CAST(:to AS date)";
+            if ($fromStart)   $sql .= " AND mcr.created_at >= CAST(:from_start AS timestamp)";
+            if ($toExclusive) $sql .= " AND mcr.created_at < CAST(:to_exclusive AS timestamp)";
             $streams[] = $sql;
 
             $sql = "SELECT
@@ -1325,8 +1327,8 @@ class AdminController extends AbstractController
                     INNER JOIN mentor_profile mp ON mp.id = apt.mentor_id
                     WHERE 1=1";
             if ($search) $sql .= " AND (su.first_name $like :q OR su.last_name $like :q OR mp.display_name $like :q OR apt.topic $like :q OR apt.status $like :q)";
-            if ($from)   $sql .= " AND apt.created_at::date >= CAST(:from AS date)";
-            if ($to)     $sql .= " AND apt.created_at::date <= CAST(:to AS date)";
+            if ($fromStart)   $sql .= " AND apt.created_at >= CAST(:from_start AS timestamp)";
+            if ($toExclusive) $sql .= " AND apt.created_at < CAST(:to_exclusive AS timestamp)";
             $streams[] = $sql;
         }
 
@@ -1346,9 +1348,10 @@ class AdminController extends AbstractController
                         COALESCE(u.degree, '') AS detail,
                         '' AS status_before,
                         CASE WHEN u.is_verified THEN 'Verified' ELSE 'Unverified' END AS status_after
-                    FROM \"user\" u
+            FROM \"user\" u
                     WHERE 1=1";
             if ($search) $sql .= " AND (u.first_name $like :q OR u.last_name $like :q OR u.email $like :q)";
+            if ($fromStart || $toExclusive) $sql .= " AND 1=0";
             $streams[] = $sql;
         }
 
@@ -1360,8 +1363,8 @@ class AdminController extends AbstractController
         $params = ['lim' => $limit, 'off' => $offset];
         $types  = ['lim' => \Doctrine\DBAL\ParameterType::INTEGER, 'off' => \Doctrine\DBAL\ParameterType::INTEGER];
         if ($search) { $params['q'] = '%' . $search . '%'; }
-        if ($from)   { $params['from'] = $from; }
-        if ($to)     { $params['to']   = $to; }
+        if ($fromStart)   { $params['from_start'] = $fromStart; }
+        if ($toExclusive) { $params['to_exclusive'] = $toExclusive; }
 
         $data = $conn->fetchAllAssociative($final, $params, $types);
 
@@ -1381,6 +1384,26 @@ class AdminController extends AbstractController
     private function countLedgerRows(\Doctrine\DBAL\Connection $conn, string $module, string $search, string $from, string $to): int
     {
         return count($this->buildLedgerRows($conn, $module, $search, $from, $to, 100000, 0));
+    }
+
+    private function ledgerDateStart(string $date): ?string
+    {
+        $date = trim($date);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+
+        return $date . ' 00:00:00';
+    }
+
+    private function ledgerDateEndExclusive(string $date): ?string
+    {
+        $date = trim($date);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return null;
+        }
+
+        return (new \DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d 00:00:00');
     }
 
     private function buildDateRange(\DateTime $today, int $days): array

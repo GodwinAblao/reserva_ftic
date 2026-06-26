@@ -190,6 +190,10 @@
     });
 
     document.getElementById('ldgApply').addEventListener('click', () => {
+        if (fromEl.value && toEl.value && toEl.value < fromEl.value) {
+            alert('End date must be the same as or after the start date.');
+            return;
+        }
         state.q    = search.value.trim();
         state.from = fromEl.value;
         state.to   = toEl.value;
