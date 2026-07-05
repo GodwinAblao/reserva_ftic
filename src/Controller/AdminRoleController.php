@@ -9,13 +9,16 @@ use App\Entity\Facility;
 use App\Entity\MentorProfile;
 use App\Entity\MentoringAppointment;
 use App\Entity\Reservation;
+use App\Entity\ReservationConflict;
 use App\Repository\FacilityRepository;
 use App\Repository\MentorProfileRepository;
+use App\Repository\ReservationConflictRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\SpecializationRepository;
 use App\Repository\UserRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleNotificationService;
+use App\Service\ConflictDetectionService;
 use App\Service\ReservationAuditLogger;
 use App\Service\ReservationMailer;
 use App\Service\ReservationStatusManager;
@@ -227,6 +230,7 @@ class AdminRoleController extends AbstractController
     #[Route('/reservation-monitoring', name: 'admin_role_reservation_monitoring', methods: ['GET'])]
     public function reservationMonitoring(
         EntityManagerInterface $em,
+        ReservationConflictRepository $conflictRepo,
     ): Response {
         $today = new \DateTime('today');
         $tomorrow = new \DateTime('tomorrow');
@@ -246,11 +250,19 @@ class AdminRoleController extends AbstractController
             ->orderBy('r.createdAt', 'DESC')
             ->getQuery()->getResult();
 
+        $conflictsByReservation = [];
+        foreach ($pendingFacilityReservations as $r) {
+            if ($r->isInstitutionalEvent()) {
+                $conflictsByReservation[$r->getId()] = $conflictRepo->findByReservation($r);
+            }
+        }
+
         return $this->render('admin/reservation_monitoring.html.twig', [
             'reservations' => $todayReservations,
             'statusCounts' => $this->reservationStatusCountsToday($em),
             'facilityCounts' => $this->facilityReservationCountsToday($em),
             'pendingFacilityReservations' => $pendingFacilityReservations,
+            'conflictsByReservation' => $conflictsByReservation,
         ]);
     }
 
@@ -503,6 +515,7 @@ class AdminRoleController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         ReservationMailer $reservationMailer,
+        ReservationConflictRepository $conflictRepo,
     ): JsonResponse {
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
@@ -514,6 +527,10 @@ class AdminRoleController extends AbstractController
 
         if ($reservation->getStatus() !== 'Pending') {
             return $this->json(['success' => false, 'message' => 'Only pending reservations can be admin-approved.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($reservation->isInstitutionalEvent() && $conflictRepo->hasUnresolvedConflicts($reservation)) {
+            return $this->json(['success' => false, 'message' => 'Cannot approve: this institutional event has unresolved scheduling conflicts. Resolve all conflicts first.'], Response::HTTP_BAD_REQUEST);
         }
 
         $reservation->setAdminApproved(true);
@@ -529,6 +546,53 @@ class AdminRoleController extends AbstractController
         $reservationMailer->notifyAdminApprovedToSuperadmin($reservation, $adminName, $adminEmail);
 
         return $this->json(['success' => true, 'message' => 'Admin approval recorded. Superadmin has been notified.']);
+    }
+
+    #[Route('/reservations/{id}/conflict/{conflictId}/resolve', name: 'admin_role_resolve_conflict', methods: ['POST'])]
+    public function resolveConflict(
+        Reservation $reservation,
+        int $conflictId,
+        Request $request,
+        EntityManagerInterface $em,
+        ReservationConflictRepository $conflictRepo,
+    ): JsonResponse {
+        if ($this->isGranted('ROLE_SUPER_ADMIN')) {
+            return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
+        }
+
+        if (!$this->isCsrfTokenValid('resolve_conflict_' . $conflictId, (string) $request->request->get('_token'))) {
+            return $this->json(['success' => false, 'message' => 'Invalid security token.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $conflict = $conflictRepo->find($conflictId);
+        if (!$conflict || $conflict->getReservation()?->getId() !== $reservation->getId()) {
+            return $this->json(['success' => false, 'message' => 'Conflict not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($conflict->isResolved()) {
+            return $this->json(['success' => false, 'message' => 'This conflict is already resolved.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $resolution = (string) $request->request->get('resolution', ReservationConflict::RESOLUTION_MANUAL);
+        $notes = trim((string) $request->request->get('notes', ''));
+
+        $conflict->setResolution($resolution);
+        $conflict->setResolutionNotes($notes ?: null);
+        if ($this->getUser() instanceof User) {
+            $conflict->setResolvedBy($this->getUser());
+        }
+        $conflict->setResolvedAt(new \DateTime());
+        $conflict->setUpdatedAt(new \DateTime());
+        $em->flush();
+
+        $remaining = $conflictRepo->countUnresolved($reservation);
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Conflict resolved successfully.',
+            'remainingConflicts' => $remaining,
+            'allResolved' => $remaining === 0,
+        ]);
     }
 
     #[Route('/reservations/{id}/admin-reject', name: 'admin_role_facility_admin_reject', methods: ['POST'])]

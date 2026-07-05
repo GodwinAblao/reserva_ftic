@@ -1,0 +1,55 @@
+{% extends 'layouts/app.html.twig' %}
+{% block title %}{{ message.subject }}{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;padding:24px 16px;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+        <a href="{{ path('inbox_index') }}" style="color:#6b7280;text-decoration:none;font-size:13px;">&#8592; Back to Inbox</a>
+        <form method="POST" action="{{ path('inbox_delete" data-turbo="false', {id: message.id}) }}" style="margin:0;" onsubmit="return confirm('Delete this message?')">
+            <input type="hidden" name="_token" value="{{ csrf_token('inbox_delete_' ~ message.id) }}">
+            <button type="submit" style="padding:6px 14px;border:1px solid #fca5a5;border-radius:7px;background:#fef2f2;color:#dc2626;font-size:12px;cursor:pointer;">Delete</button>
+        </form>
+    </div>
+
+    <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;">{{ message.subject }}</h1>
+    <p style="margin:0 0 20px;font-size:12px;color:#9ca3af;">{{ thread|length }} message{{ thread|length != 1 ? 's' : '' }} in thread</p>
+
+    {% for flash in app.flashes('inbox_success') %}
+        <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;">{{ flash }}</div>
+    {% endfor %}
+    {% for flash in app.flashes('inbox_error') %}
+        <div style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;">{{ flash }}</div>
+    {% endfor %}
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+    {% for msg in thread %}
+        {% set isMine = msg.sender.id == app.user.id %}
+        <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+            <div style="background:{{ isMine ? '#f0fdf4' : '#f9fafb' }};padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:13px;font-weight:600;color:#374151;">
+                    {{ isMine ? 'You' : msg.senderDisplayName }}
+                    <span style="font-weight:normal;color:#9ca3af;font-size:12px;">&#8594; {{ isMine ? msg.recipientDisplayName : 'You' }}</span>
+                </span>
+                <span style="font-size:11px;color:#9ca3af;">{{ msg.createdAt|date('M d, Y h:i A') }}</span>
+            </div>
+            <div style="padding:14px 16px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#111827;">{{ msg.body }}</div>
+        </div>
+    {% endfor %}
+    </div>
+
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;">
+        <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;">Reply</h3>
+        <form method="POST" action="{{ path('inbox_reply" data-turbo="false', {id: message.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('inbox_reply_' ~ message.id) }}">
+            <textarea name="body" required rows="4"
+                      placeholder="Write your reply..."
+                      style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:10px;"></textarea>
+            <div style="display:flex;justify-content:flex-end;">
+                <button type="submit" style="padding:8px 20px;background:#0d9b00;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">Send Reply</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

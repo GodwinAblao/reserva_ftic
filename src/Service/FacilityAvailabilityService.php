@@ -66,13 +66,20 @@ class FacilityAvailabilityService
                 $maintenanceTimes[$dateStr] = [];
             }
 
+            $itemType = $event['itemType'] ?? (!empty($event['isBlock']) ? 'block' : 'reservation');
+            $status = (string) ($event['status'] ?? '');
+
+            $label = match ($itemType) {
+                'class_schedule' => ($event['eventName'] ?? $event['name'] ?? 'Class') . ($event['email'] ? ' — ' . $event['email'] : ''),
+                'block' => $event['name'] ?? ($status === 'Maintenance' ? 'Maintenance' : 'Blocked'),
+                default => ($event['eventName'] ?? $event['name'] ?? 'Reserved') . ($event['name'] ? ' (' . $event['name'] . ')' : ''),
+            };
+
             $range = [
                 'start' => $event['reservationStartTime'],
                 'end' => $event['reservationEndTime'],
+                'label' => $label,
             ];
-
-            $itemType = $event['itemType'] ?? (!empty($event['isBlock']) ? 'block' : 'reservation');
-            $status = (string) ($event['status'] ?? '');
 
             if ($itemType === 'class_schedule') {
                 // Check if class schedule has blocked/maintenance status

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Message;
 use App\Entity\Notification;
 use App\Entity\Reservation;
 use App\Entity\User;
@@ -436,6 +437,62 @@ class ReservationMailer
             $this->em->flush();
         } catch (\Throwable $e) {
             $this->logger->error('Failed to create user notification', ['error' => $e->getMessage()]);
+        }
+    }
+
+    public function notifyInboxMessage(Message $message): void
+    {
+        $recipient = $message->getRecipient();
+        $sender    = $message->getSender();
+
+        if (!$recipient || !$recipient->getEmail()) {
+            return;
+        }
+
+        $to            = $recipient->getEmail();
+        $recipientName = trim(($recipient->getFirstName() ?? '') . ' ' . ($recipient->getLastName() ?? '')) ?: $to;
+        $senderName    = trim(($sender?->getFirstName() ?? '') . ' ' . ($sender?->getLastName() ?? '')) ?: ($sender?->getEmail() ?? 'Someone');
+        $senderEmail   = $sender?->getEmail() ?? 'noreply@fticreserva.website';
+        $isReply       = str_starts_with($message->getSubject(), 'Re: ');
+
+        $inboxUrl = $this->urlGenerator->generate('inbox_index', [], UrlGeneratorInterface::ABSOLUTE_URL);
+
+        $html = '<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;">'
+            . '<div style="background:#f0fdf4;border-left:5px solid #0d9b00;border-radius:8px;padding:16px 20px;margin-bottom:24px;">'
+            . '<p style="margin:0;font-size:15px;font-weight:700;color:#166534;">'
+            . ($isReply ? 'You have a new reply on Reserva FTIC' : 'You have a new message on Reserva FTIC')
+            . '</p></div>'
+            . '<p>Dear <strong>' . htmlspecialchars($recipientName) . '</strong>,</p>'
+            . '<p><strong>' . htmlspecialchars($senderName) . '</strong>'
+            . ' (<a href="mailto:' . htmlspecialchars($senderEmail) . '" style="color:#0d9b00;">' . htmlspecialchars($senderEmail) . '</a>)'
+            . ' sent you a message via the Reserva FTIC Inbox.</p>'
+            . '<table style="width:100%;border-collapse:collapse;margin:16px 0;">'
+            . '<tr style="background:#f9fafb;"><td style="padding:8px 12px;font-weight:bold;color:#6b7280;width:30%;">Subject</td>'
+            . '<td style="padding:8px 12px;">' . htmlspecialchars($message->getSubject()) . '</td></tr>'
+            . '</table>'
+            . '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px 20px;margin:16px 0;">'
+            . '<p style="margin:0;font-size:14px;line-height:1.65;white-space:pre-wrap;color:#111827;">'
+            . nl2br(htmlspecialchars($message->getBody()))
+            . '</p></div>'
+            . '<div style="text-align:center;margin-top:24px;">'
+            . '<a href="' . $inboxUrl . '" style="display:inline-block;padding:10px 24px;background:#0d9b00;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Open Inbox</a>'
+            . '</div>'
+            . '<hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb;">'
+            . '<p style="color:#9ca3af;font-size:12px;text-align:center;">This message was sent through the Reserva FTIC internal messaging system. Log in to reply.</p>'
+            . '</div>';
+
+        try {
+            $email = (new Email())
+                ->from(new Address('noreply@fticreserva.website', 'Reserva FTIC'))
+                ->replyTo(new Address($senderEmail, $senderName))
+                ->to($to)
+                ->subject(($isReply ? '[Reply] ' : '[New Message] ') . $message->getSubject() . ' – Reserva FTIC')
+                ->html($html);
+
+            $this->mailer->send($email);
+            $this->logger->info('Inbox message email sent', ['to' => $to, 'subject' => $message->getSubject()]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send inbox message email', ['to' => $to, 'error' => $e->getMessage()]);
         }
     }
 }

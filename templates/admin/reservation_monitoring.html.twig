@@ -91,6 +91,22 @@
 .fra-modal-body input[type=file] { padding: 6px 8px; }
 .fra-modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid #f0f4ee; }
 .fra-hint { font-size: 11.5px; color: #9ca3af; font-weight: 400; }
+/* ── Conflict Panel — minimalist integrated card design ── */
+.fra-conflict-section { border-top: 1px solid #fee2e2; margin: 14px -20px 0; padding: 0 20px; }
+.fra-conflict-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; padding:10px 0; background:none; border:none; cursor:pointer; text-align:left; gap:8px; }
+.fra-conflict-toggle:hover .fra-conflict-label { color:#b91c1c; }
+.fra-conflict-label { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#dc2626; }
+.fra-conflict-badge { background:#fee2e2; color:#991b1b; border-radius:99px; padding:1px 7px; font-size:11px; font-weight:700; }
+.fra-conflict-chevron { color:#9ca3af; transition:transform .2s ease; flex-shrink:0; }
+.fra-conflict-body { display:none; padding-bottom:4px; }
+.fra-conflict-item { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #f3f4f6; }
+.fra-conflict-item:last-child { border-bottom:none; }
+.fra-conflict-item-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.fra-conflict-item-type { font-size:10px; font-weight:700; text-transform:uppercase; color:#9ca3af; letter-spacing:.05em; }
+.fra-conflict-item-name { font-size:13px; font-weight:600; color:#111827; }
+.fra-conflict-item-meta { font-size:11.5px; color:#6b7280; }
+.fra-conflict-item-action { flex-shrink:0; display:flex; align-items:center; }
+.fra-conflict-resolved { font-size:11px; background:#f0fdf4; color:#166534; padding:2px 8px; border-radius:99px; font-weight:600; border:1px solid #bbf7d0; white-space:nowrap; }
 </style>
 {% endblock %}
 
@@ -297,6 +313,7 @@
             <div class="fra-card-head">
                 <span class="fra-card-title">{{ r.facility.name }}</span>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    {% if r.institutionalEvent %}<span class="fra-badge fra-badge-institutional" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">&#9889; Institutional Event</span>{% endif %}
                     {% if r.adminApproved %}
                         <span class="fra-badge fra-badge-admin-approved">&#10003; Approved by Admin</span>
                     {% else %}
@@ -340,12 +357,56 @@
                 {% endif %}
             </div>
 
+            {% set cardConflicts = conflictsByReservation[r.id] ?? [] %}
+            {% if cardConflicts|length > 0 %}
+            <div class="fra-conflict-section" id="fra-conflicts-{{ r.id }}">
+                <button type="button" class="fra-conflict-toggle" data-conflict-id="{{ r.id }}">
+                    <span class="fra-conflict-label">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        {{ cardConflicts|length }} Scheduling Conflict{{ cardConflicts|length > 1 ? 's' : '' }} Detected
+                        <span class="fra-conflict-badge">{{ cardConflicts|length }}</span>
+                    </span>
+                    <svg class="fra-conflict-chevron" id="fra-conflicts-chevron-{{ r.id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="fra-conflict-body" id="fra-conflicts-body-{{ r.id }}">
+                    {% for conflict in cardConflicts %}
+                    <div class="fra-conflict-item" id="fra-conflict-{{ conflict.id }}" {% if conflict.resolution %}style="opacity:.55;"{% endif %}>
+                        <div class="fra-conflict-item-info">
+                            <span class="fra-conflict-item-type">{{ conflict.conflictType|replace({'_':' '}) }}</span>
+                            <span class="fra-conflict-item-name">{{ conflict.conflictItemLabel }}</span>
+                            {% if conflict.conflictProfessor %}<span class="fra-conflict-item-meta">{{ conflict.conflictProfessor }}{% if conflict.conflictProfessorEmail %} &middot; {{ conflict.conflictProfessorEmail }}{% endif %}</span>{% endif %}
+                            {% if conflict.conflictDate %}<span class="fra-conflict-item-meta">{{ conflict.conflictDate|date('M d, Y') }}{% if conflict.conflictStartTime %} &middot; {{ conflict.conflictStartTime|date('h:i A') }}{% endif %}{% if conflict.conflictEndTime %} &ndash; {{ conflict.conflictEndTime|date('h:i A') }}{% endif %}</span>{% endif %}
+                            {% if conflict.conflictOwner %}<span class="fra-conflict-item-meta">{{ conflict.conflictOwner }}{% if conflict.conflictOwnerEmail %} &middot; {{ conflict.conflictOwnerEmail }}{% endif %}</span>{% endif %}
+                            {% if conflict.resolutionNotes %}<span class="fra-conflict-item-meta" style="font-style:italic;color:#9ca3af;">{{ conflict.resolutionNotes }}</span>{% endif %}
+                        </div>
+                        <div class="fra-conflict-item-action">
+                            {% if conflict.resolution %}
+                                <span class="fra-conflict-resolved">&#10003; {{ conflict.resolution|replace({'_':' '})|capitalize }}</span>
+                            {% elseif conflict.conflictType == 'class_schedule' %}
+                                <a href="{{ path('admin_role_calendar') }}?highlight_class={{ conflict.conflictItemId }}{% if conflict.conflictDate %}&amp;date={{ conflict.conflictDate|date('Y-m-d') }}{% endif %}" class="fra-btn fra-btn-notes" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-block;">View on Calendar &#8599;</a>
+                            {% else %}
+                                <button class="fra-btn fra-btn-notes" style="font-size:11px;padding:4px 10px;" onclick="fraOpenResolveConflict({{ r.id }}, {{ conflict.id }}, '{{ csrf_token('resolve_conflict_' ~ conflict.id) }}')">Resolve</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="fra-actions">
                 {% if r.adminApproved %}
                     <button class="fra-btn fra-btn-done" disabled>&#10003; Admin Approved</button>
                 {% else %}
-                    <button class="fra-btn fra-btn-approve" id="fra-approve-btn-{{ r.id }}"
-                        onclick="fraOpenApprove({{ r.id }}, '{{ csrf_token('admin_approve_facility_' ~ r.id) }}', this)">Approve</button>
+                    {% set cardConflicts2 = conflictsByReservation[r.id] ?? [] %}
+                    {% set hasUnresolved = false %}
+                    {% for c2 in cardConflicts2 %}{% if c2.resolution is null %}{% set hasUnresolved = true %}{% endif %}{% endfor %}
+                    {% if r.institutionalEvent and hasUnresolved %}
+                        <button class="fra-btn fra-btn-approve" disabled title="Resolve all scheduling conflicts before approving." style="opacity:.5;cursor:not-allowed;">&#128274; Resolve Conflicts First</button>
+                    {% else %}
+                        <button class="fra-btn fra-btn-approve" id="fra-approve-btn-{{ r.id }}"
+                            onclick="fraOpenApprove({{ r.id }}, '{{ csrf_token('admin_approve_facility_' ~ r.id) }}', this)">Approve</button>
+                    {% endif %}
                 {% endif %}
                 <button class="fra-btn fra-btn-reject" id="fra-reject-btn-{{ r.id }}"
                     onclick="fraOpenReject({{ r.id }}, '{{ csrf_token('admin_reject_facility_' ~ r.id) }}', this)">Reject</button>
@@ -512,7 +573,7 @@
 
 /* ── Facility Reservation Actions (FRA) JS ── */
 (function() {
-    var ids = ['fraApproveModal', 'fraRejectModal', 'fraNotesModal'];
+    var ids = ['fraApproveModal', 'fraRejectModal', 'fraNotesModal', 'fraResolveModal'];
     function moveToBody() {
         ids.forEach(function(id) {
             var el = document.getElementById(id);
@@ -729,12 +790,12 @@ function fraSubmitNotes() {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        ['fraApproveModal', 'fraRejectModal', 'fraNotesModal'].forEach(fraClose);
+        ['fraApproveModal', 'fraRejectModal', 'fraNotesModal', 'fraResolveModal'].forEach(fraClose);
     }
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    ['fraApproveModal', 'fraRejectModal', 'fraNotesModal'].forEach(function(id) {
+    ['fraApproveModal', 'fraRejectModal', 'fraNotesModal', 'fraResolveModal'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) {
             el.addEventListener('click', function(e) {
@@ -776,5 +837,83 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+
+/* ── Conflict Panel JS ── */
+function fraToggleConflicts(id) {
+    var body = document.getElementById('fra-conflicts-body-' + id);
+    var chevron = document.getElementById('fra-conflicts-chevron-' + id);
+    if (!body) return;
+    var open = body.style.display === 'block';
+    body.style.display = open ? 'none' : 'block';
+    if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.fra-conflict-toggle[data-conflict-id]');
+    if (btn) { e.preventDefault(); fraToggleConflicts(btn.dataset.conflictId); }
+});
+
+var _fraResolveCurrentId = null, _fraResolveCurrentConflictId = null, _fraResolveCurrentToken = null;
+function fraOpenResolveConflict(reservationId, conflictId, token) {
+    _fraResolveCurrentId = reservationId;
+    _fraResolveCurrentConflictId = conflictId;
+    _fraResolveCurrentToken = token;
+    document.getElementById('fraResolveNotes').value = '';
+    document.getElementById('fraResolveSelect').value = 'manual';
+    fraOpen('fraResolveModal');
+}
+
+function fraSubmitResolve() {
+    var id = _fraResolveCurrentId;
+    var cid = _fraResolveCurrentConflictId;
+    var token = _fraResolveCurrentToken;
+    var resolution = document.getElementById('fraResolveSelect').value;
+    var notes = document.getElementById('fraResolveNotes').value.trim();
+    var fd = new FormData();
+    fd.append('_token', token);
+    fd.append('resolution', resolution);
+    fd.append('notes', notes);
+    _fraSetModalBtnLoading('fraResolveConfirmBtn', 'Resolving...');
+    fetch('/admin/reservations/' + id + '/conflict/' + cid + '/resolve', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            _fraRestoreModalBtn('fraResolveConfirmBtn');
+            if (data.success) {
+                fraClose('fraResolveModal');
+                fraToast('Conflict resolved.');
+                var row = document.getElementById('fra-conflict-' + cid);
+                if (row) { row.style.opacity = '.55'; var btn = row.querySelector('button'); if (btn) { btn.replaceWith(document.createTextNode('✓ ' + resolution.replace(/_/g,' '))); } }
+                if (data.allResolved) {
+                    var appBtn = document.getElementById('fra-approve-btn-' + id);
+                    if (appBtn) { appBtn.disabled = false; appBtn.style.opacity = ''; appBtn.style.cursor = ''; appBtn.innerHTML = 'Approve'; }
+                }
+            } else { fraToast('Error: ' + (data.message || 'Unknown error'), true); }
+        })
+        .catch(function() { _fraRestoreModalBtn('fraResolveConfirmBtn'); fraToast('Request failed. Please try again.', true); });
+}
 </script>
+
+<div id="fraResolveModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:28px 28px 20px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+        <h3 style="margin:0 0 16px;font-size:16px;font-weight:700;">Resolve Scheduling Conflict</h3>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Resolution Action</label>
+        <select id="fraResolveSelect" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;margin-bottom:12px;">
+            <option value="room_changed">Room Changed</option>
+            <option value="time_changed">Time Changed</option>
+            <option value="moved_online">Moved Online</option>
+            <option value="rescheduled">Rescheduled</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="facility_changed">Facility Changed</option>
+            <option value="relocated">Relocated</option>
+            <option value="manual" selected>Manual / Other</option>
+        </select>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Notes <span style="color:#9ca3af;font-weight:normal;">(optional)</span></label>
+        <textarea id="fraResolveNotes" rows="3" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;resize:vertical;box-sizing:border-box;" placeholder="Describe how the conflict was resolved..."></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+            <button onclick="fraClose('fraResolveModal')" style="padding:8px 18px;border:1px solid #d1d5db;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;">Cancel</button>
+            <button id="fraResolveConfirmBtn" onclick="fraSubmitResolve()" style="padding:8px 18px;border:none;border-radius:7px;background:#0d9b00;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">Confirm Resolution</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

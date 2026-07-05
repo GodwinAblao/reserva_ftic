@@ -1,0 +1,65 @@
+{% extends 'layouts/app.html.twig' %}
+{% block title %}Inbox{% endblock %}
+
+{% block content %}
+<div style="max-width:780px;margin:0 auto;padding:24px 16px;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+        <h1 style="margin:0;font-size:22px;font-weight:700;">
+            {% if activeTab == 'sent' %}Sent Messages{% else %}Inbox{% if unreadCount > 0 %} <span style="font-size:13px;background:#dc2626;color:#fff;padding:2px 8px;border-radius:99px;vertical-align:middle;">{{ unreadCount }}</span>{% endif %}{% endif %}
+        </h1>
+        <a href="{{ path('inbox_compose') }}" style="padding:8px 18px;background:#0d9b00;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">+ Compose</a>
+    </div>
+
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <a href="{{ path('inbox_index') }}" style="padding:6px 16px;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none;{{ activeTab == 'inbox' ? 'background:#0d9b00;color:#fff;' : 'background:#f3f4f6;color:#374151;' }}">Inbox</a>
+        <a href="{{ path('inbox_sent') }}" style="padding:6px 16px;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none;{{ activeTab == 'sent' ? 'background:#0d9b00;color:#fff;' : 'background:#f3f4f6;color:#374151;' }}">Sent</a>
+    </div>
+
+    {% for flash in app.flashes('inbox_success') %}
+        <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;">{{ flash }}</div>
+    {% endfor %}
+    {% for flash in app.flashes('inbox_error') %}
+        <div style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;">{{ flash }}</div>
+    {% endfor %}
+
+    {% if messages|length == 0 %}
+        <div style="text-align:center;padding:48px 16px;color:#9ca3af;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="margin:0 auto 12px;display:block;opacity:.4;"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z" fill="currentColor"/></svg>
+            {% if activeTab == 'inbox' %}
+                <p style="margin:0 0 6px;font-size:14px;">Your inbox is empty.</p>
+                <p style="margin:0;font-size:12px;">Messages sent <strong>to you</strong> will appear here. Messages <strong>you sent</strong> are in the <a href="{{ path('inbox_sent') }}" style="color:#0d9b00;">Sent</a> folder.</p>
+            {% else %}
+                <p style="margin:0;font-size:14px;">No sent messages yet.</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+        {% for msg in messages %}
+            {% set isUnread = activeTab == 'inbox' and not msg.isReadByRecipient %}
+            <a href="{{ path('inbox_view', {id: msg.id}) }}" style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid #f3f4f6;text-decoration:none;background:{{ isUnread ? '#fffbeb' : '#fff' }};transition:background .15s;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='{{ isUnread ? '#fffbeb' : '#fff' }}'">
+                <div style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#374151;">
+                    {% if activeTab == 'sent' %}
+                        {{ msg.recipientDisplayName|slice(0,1)|upper }}
+                    {% else %}
+                        {{ msg.senderDisplayName|slice(0,1)|upper }}
+                    {% endif %}
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <span style="font-size:13px;font-weight:{{ isUnread ? '700' : '500' }};color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">
+                            {% if activeTab == 'sent' %}To: {{ msg.recipientDisplayName }}{% else %}{{ msg.senderDisplayName }}{% endif %}
+                        </span>
+                        <span style="font-size:11px;color:#9ca3af;flex-shrink:0;">{{ msg.createdAt|date('M d, Y') }}</span>
+                    </div>
+                    <div style="font-size:13px;font-weight:{{ isUnread ? '600' : 'normal' }};color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ msg.subject }}</div>
+                    <div style="font-size:12px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ msg.body|slice(0,80) }}{% if msg.body|length > 80 %}…{% endif %}</div>
+                </div>
+                {% if isUnread %}<span style="flex-shrink:0;width:8px;height:8px;background:#dc2626;border-radius:50%;margin-top:6px;"></span>{% endif %}
+            </a>
+        {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

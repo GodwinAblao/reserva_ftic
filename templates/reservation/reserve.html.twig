@@ -152,6 +152,18 @@
                               placeholder="Describe the objective of your event...">{{ existingReservation ? existingReservation.purpose : '' }}</textarea>
                 </div>
 
+                <div class="form-group-item" style="margin-top:8px;">
+                    <label class="institutional-checkbox-label" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:normal;">
+                        <input type="checkbox" id="institutionalEvent" name="institutional_event" value="1"
+                               style="margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:#0d9b00;"
+                               {{ existingReservation and existingReservation.institutionalEvent ? 'checked' : '' }}>
+                        <span>
+                            <strong>Institutional Event</strong><br>
+                            <small style="color:#6b7280;">Check this if the event is an official institutional activity. It may override existing schedules — conflicts will be flagged for admin resolution.</small>
+                        </span>
+                    </label>
+                </div>
+
                 <!-- Hidden fields for date and time -->
                 <input type="hidden" id="reservation_date" name="reservation_date" required 
                        value="{{ existingReservation ? existingReservation.reservationDate|date('Y-m-d') : '' }}">
@@ -496,6 +508,23 @@
         background: linear-gradient(145deg, #ffedd5 0%, #fed7aa 100%);
         border-color: #f97316;
         color: #9a3412;
+    }
+
+    #timeGrid.institutional-mode .time-slot.booked,
+    #timeGrid.institutional-mode .time-slot.class,
+    #timeGrid.institutional-mode .time-slot.maintenance,
+    #timeGrid.institutional-mode .time-slot.blocked,
+    #timeGrid.institutional-mode .time-slot.pending {
+        cursor: pointer;
+        opacity: 0.75;
+    }
+    #timeGrid.institutional-mode .time-slot.booked:hover,
+    #timeGrid.institutional-mode .time-slot.class:hover,
+    #timeGrid.institutional-mode .time-slot.maintenance:hover,
+    #timeGrid.institutional-mode .time-slot.blocked:hover,
+    #timeGrid.institutional-mode .time-slot.pending:hover {
+        opacity: 1;
+        filter: brightness(1.05);
     }
 
     .time-slot.disabled {
@@ -1370,6 +1399,8 @@
 
     function renderTimeSlots(date) {
         const timeGrid = document.getElementById('timeGrid');
+        const isInstitutionalMode = document.getElementById('institutionalEvent')?.checked;
+        timeGrid.classList.toggle('institutional-mode', !!isInstitutionalMode);
         timeGrid.innerHTML = '';
         const dateStr = formatLocalDate(date);
         const bookedRanges = bookedTimesData[dateStr] || [];
@@ -1400,32 +1431,37 @@
                 slot.classList.add('disabled');
                 slot.disabled = true;
                 slot.title = 'This time has already passed';
-            } else if (isTimeBooked(timeStr, classRanges)) {
-                slot.classList.add('class');
-                slot.disabled = true;
-                slot.title = 'Scheduled class (same as admin calendar)';
-            } else if (isTimeBooked(timeStr, maintenanceRanges)) {
-                slot.classList.add('maintenance');
-                slot.disabled = true;
-                slot.title = 'Maintenance';
-            } else if (isTimeBooked(timeStr, blockedRanges)) {
-                slot.classList.add('blocked');
-                slot.disabled = true;
-                slot.title = 'Blocked';
-            } else if (isTimeBooked(timeStr, bookedRanges)) {
-                slot.classList.add('booked');
-                slot.disabled = true;
-                slot.title = 'Booked';
-            } else if (isTimeBooked(timeStr, pendingRanges)) {
-                slot.classList.add('pending');
-                slot.disabled = true;
-                slot.title = 'Pending reservation request';
             } else {
-                slot.classList.add('available');
-                slot.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    selectTimeRange(timeStr, slot, slots);
-                });
+                const isInstitutional = document.getElementById('institutionalEvent')?.checked;
+                if (isTimeBooked(timeStr, classRanges)) {
+                    slot.classList.add('class');
+                    if (!isInstitutional) { slot.disabled = true; }
+                    slot.title = (getSlotLabel(timeStr, classRanges) || 'Scheduled class') + (isInstitutional ? ' (overridable)' : ' (class schedule)');
+                } else if (isTimeBooked(timeStr, maintenanceRanges)) {
+                    slot.classList.add('maintenance');
+                    if (!isInstitutional) { slot.disabled = true; }
+                    slot.title = (getSlotLabel(timeStr, maintenanceRanges) || 'Maintenance') + (isInstitutional ? ' (overridable)' : ' (maintenance)');
+                } else if (isTimeBooked(timeStr, blockedRanges)) {
+                    slot.classList.add('blocked');
+                    if (!isInstitutional) { slot.disabled = true; }
+                    slot.title = (getSlotLabel(timeStr, blockedRanges) || 'Blocked') + (isInstitutional ? ' (overridable)' : ' (blocked)');
+                } else if (isTimeBooked(timeStr, bookedRanges)) {
+                    slot.classList.add('booked');
+                    if (!isInstitutional) { slot.disabled = true; }
+                    slot.title = (getSlotLabel(timeStr, bookedRanges) || 'Booked') + (isInstitutional ? ' (overridable)' : ' (booked)');
+                } else if (isTimeBooked(timeStr, pendingRanges)) {
+                    slot.classList.add('pending');
+                    if (!isInstitutional) { slot.disabled = true; }
+                    slot.title = (getSlotLabel(timeStr, pendingRanges) || 'Pending reservation') + (isInstitutional ? ' (overridable)' : ' (pending)');
+                } else {
+                    slot.classList.add('available');
+                }
+                if (!slot.disabled) {
+                    slot.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        selectTimeRange(timeStr, slot, slots);
+                    });
+                }
             }
 
             timeGrid.appendChild(slot);
@@ -1727,7 +1763,22 @@
         });
     }
 
+    function getSlotLabel(timeStr, ranges) {
+        const minutes = timeToMinutes(timeStr);
+        for (const range of ranges) {
+            const start = timeToMinutes(range.start);
+            const end = timeToMinutes(range.end);
+            if (minutes >= start && minutes <= end && range.label) {
+                return range.label;
+            }
+        }
+        return null;
+    }
+
     function isSelectedRangeUnavailable() {
+        if (document.getElementById('institutionalEvent')?.checked) {
+            return false;
+        }
         if (!selectedDate || !selectedStartTime || !selectedEndTime) {
             return false;
         }
@@ -1872,6 +1923,20 @@
             return;
         }
         display.textContent = minutesToTimeAMPM(timeToMinutes(selectedStartTime)) + ' - ' + minutesToTimeAMPM(timeToMinutes(selectedEndTime));
+    }
+    // Re-render time grid whenever institutional event checkbox is toggled
+    const institutionalCheckbox = document.getElementById('institutionalEvent');
+    if (institutionalCheckbox) {
+        institutionalCheckbox.addEventListener('change', () => {
+            if (selectedDate) {
+                selectedStartTime = null;
+                selectedEndTime = null;
+                document.getElementById('reservation_start_time').value = '';
+                document.getElementById('reservation_end_time').value = '';
+                updateSelectedTimeDisplay();
+                renderTimeSlots(selectedDate);
+            }
+        });
     }
 })();
 </script>

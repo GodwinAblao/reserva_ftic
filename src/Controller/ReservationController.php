@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Entity\Notification;
 use App\Repository\ReservationRepository;
 use App\Repository\FacilityRepository;
+use App\Service\ConflictDetectionService;
 use App\Service\FacilityAvailabilityService;
 use App\Service\NotificationService;
 use App\Service\ReservationAutoExpireService;
@@ -87,6 +88,7 @@ public function reserve(
                 $purpose = $request->request->get('purpose');
                 $eventPurpose = $request->request->get('event_purpose');
                 $eventPurposeOther = $request->request->get('event_purpose_other');
+                $institutionalEvent = (bool) $request->request->get('institutional_event', false);
 
                 $startTime = \DateTime::createFromFormat('H:i', $startTimeStr);
                 $endTime   = \DateTime::createFromFormat('H:i', $endTimeStr);
@@ -96,7 +98,8 @@ public function reserve(
                     return $validationError;
                 }
 
-                if ($reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending'])) {
+                // Institutional events may override existing schedules — skip conflict check
+                if (!$institutionalEvent && $reservationRepo->isTimeRangeBooked($facility, $date, $startTime, $endTime, null, ['Approved', 'Pending'])) {
                     // Find alternative facilities
                     $alternatives = $reservationRepo->findAvailableAlternatives(
                         $capacity,
@@ -135,6 +138,7 @@ public function reserve(
                     'purpose' => $purpose,
                     'event_purpose' => $eventPurpose,
                     'event_purpose_other' => $eventPurposeOther,
+                    'institutional_event' => $institutionalEvent,
                 ]);
 
                 // Redirect to suggest alternatives page (session-based, no DB record yet)
@@ -531,6 +535,7 @@ public function reserve(
             'purpose' => $sessionData['purpose'],
             'eventPurpose' => $sessionData['event_purpose'],
             'eventPurposeOther' => $sessionData['event_purpose_other'],
+            'institutionalEvent' => $sessionData['institutional_event'] ?? false,
         ];
 
         return $this->render('reservation/suggest_alternatives.html.twig', [
@@ -549,7 +554,8 @@ public function reserve(
         FacilityRepository $facilityRepo,
         MailerInterface $mailer,
         UserRepository $userRepository,
-        ReservationMailer $reservationMailer
+        ReservationMailer $reservationMailer,
+        ConflictDetectionService $conflictDetectionService
     ): Response {
         $sessionData = $request->getSession()->get('pending_reservation');
         if (!$sessionData) {
@@ -572,7 +578,13 @@ public function reserve(
         $reservation = $this->createReservationFromSession($sessionData, $facility, $em);
         $request->getSession()->remove('pending_reservation');
 
-        return $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
+        $response = $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
+
+        if ($reservation->isInstitutionalEvent()) {
+            try { $conflictDetectionService->detectAndStoreConflicts($reservation); } catch (\Throwable) {}
+        }
+
+        return $response;
     }
 
     #[Route('/reservations/{id}/keep-original-facility', name: 'user_keep_original_facility', methods: ['POST'])]
@@ -584,7 +596,8 @@ public function reserve(
         FacilityRepository $facilityRepo,
         MailerInterface $mailer,
         UserRepository $userRepository,
-        ReservationMailer $reservationMailer
+        ReservationMailer $reservationMailer,
+        ConflictDetectionService $conflictDetectionService
     ): Response {
         $sessionData = $request->getSession()->get('pending_reservation');
         if (!$sessionData) {
@@ -607,7 +620,13 @@ public function reserve(
         $reservation = $this->createReservationFromSession($sessionData, $facility, $em);
         $request->getSession()->remove('pending_reservation');
 
-        return $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
+        $response = $this->submitPendingReservation($reservation, $em, $mailer, $userRepository, $reservationMailer);
+
+        if ($reservation->isInstitutionalEvent()) {
+            try { $conflictDetectionService->detectAndStoreConflicts($reservation); } catch (\Throwable) {}
+        }
+
+        return $response;
     }
 
     private function createReservationFromSession(array $data, Facility $facility, EntityManagerInterface $em): Reservation
@@ -626,6 +645,7 @@ public function reserve(
         $reservation->setPurpose($data['purpose']);
         $reservation->setEventPurpose($data['event_purpose']);
         $reservation->setEventPurposeOther($data['event_purpose_other']);
+        $reservation->setInstitutionalEvent((bool) ($data['institutional_event'] ?? false));
 
         $em->persist($reservation);
 

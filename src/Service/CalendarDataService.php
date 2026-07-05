@@ -37,7 +37,7 @@ class CalendarDataService
         $data = [];
         $startDate = new \DateTime($start);
         $endDate = new \DateTime($end);
-        $reservationStatuses = ['Pending', 'Approved'];
+        $reservationStatuses = ['Approved'];
         $blockStatuses = ['Blocked', 'Manual', 'Maintenance', 'Imported'];
 
         if (!$status || in_array($status, $reservationStatuses, true)) {

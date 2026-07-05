@@ -103,6 +103,8 @@
     {% set admin_page_name = 'Managerial Function' %}
 {% elseif route starts with 'admin_calendar' or route starts with 'admin_role_calendar' %}
     {% set admin_page_name = 'Calendar' %}
+{% elseif route starts with 'inbox_' %}
+    {% set admin_page_name = 'Inbox' %}
 {% endif %}
 
 {% block body_class %}{{ is_regular_user ? 'regular-user-theme' : '' }}{% endblock %}
@@ -283,6 +285,10 @@
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v2H3V3Zm0 4h18v2H3V7Zm0 4h12v2H3v-2Zm0 4h12v2H3v-2Zm0 4h8v2H3v-2Z" fill="currentColor"/></svg></span>
                     <span>Activity Logs</span>
                 </a>
+                <a class="nav-link {{ route starts with 'inbox_' ? 'active' : '' }}" href="{{ path('inbox_index') }}" data-turbo="false">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z" fill="currentColor"/></svg></span>
+                    <span>Inbox</span>
+                </a>
                 {% elseif is_granted('ROLE_ADMIN') %}
                 <span class="nav-section-label">General</span>
                 <a class="nav-link {{ route == 'admin_role_home' ? 'active' : '' }}" href="{{ path('admin_role_home') }}" data-turbo="false">
@@ -307,6 +313,10 @@
                 <a class="nav-link {{ route == 'admin_role_reports' or route starts with 'analytics_' ? 'active' : '' }}" href="{{ path('admin_role_reports') }}" data-turbo="false">
                     <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0V12h2v7h-2Z" fill="currentColor"/></svg></span>
                     <span>Reports</span>
+                </a>
+                <a class="nav-link {{ route starts with 'inbox_' ? 'active' : '' }}" href="{{ path('inbox_index') }}" data-turbo="false">
+                    <span class="nav-link-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z" fill="currentColor"/></svg></span>
+                    <span>Inbox</span>
                 </a>
                 {% else %}
                 {% include 'layouts/_regular_user_nav.html.twig' %}

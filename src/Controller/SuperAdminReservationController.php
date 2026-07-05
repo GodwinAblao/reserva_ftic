@@ -8,6 +8,7 @@ use App\Entity\ClassSchedule;
 use App\Entity\Reservation;
 use App\Repository\FacilityRepository;
 use App\Repository\FacilityScheduleBlockRepository;
+use App\Repository\ReservationConflictRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\ClassScheduleRepository;
 use App\Service\CalendarDataService;
@@ -231,7 +232,8 @@ class SuperAdminReservationController extends AbstractController
         Request $request,
         ReservationRepository $reservationRepo,
         EntityManagerInterface $em,
-        ReservationMailer $reservationMailer
+        ReservationMailer $reservationMailer,
+        ReservationConflictRepository $conflictRepo
     ): Response {
         if (!$this->isCsrfTokenValid('approve_reservation_' . $reservation->getId(), (string) $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Invalid CSRF token.');
@@ -241,7 +243,12 @@ class SuperAdminReservationController extends AbstractController
         $startTime = $reservation->getReservationStartTime();
         $endTime = $reservation->getReservationEndTime();
 
-        if ($reservationRepo->isTimeRangeBooked($reservation->getFacility(), $date, $startTime, $endTime)) {
+        if ($reservation->isInstitutionalEvent() && $conflictRepo->hasUnresolvedConflicts($reservation)) {
+            $this->addFlash('reservation_error', 'Cannot approve: this institutional event has unresolved scheduling conflicts. Resolve all conflicts first.');
+            return $this->redirectToRoute('admin_reservations');
+        }
+
+        if (!$reservation->isInstitutionalEvent() && $reservationRepo->isTimeRangeBooked($reservation->getFacility(), $date, $startTime, $endTime)) {
             $this->addFlash('reservation_error', 'Cannot approve: this time range is already approved for this facility.');
 
             return $this->redirectToRoute('admin_reservations');

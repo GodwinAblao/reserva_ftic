@@ -1,0 +1,50 @@
+{% extends 'layouts/app.html.twig' %}
+{% block title %}Compose Message{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;margin:0 auto;padding:24px 16px;">
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <a href="{{ path('inbox_index') }}" style="color:#6b7280;text-decoration:none;font-size:13px;">&#8592; Back to Inbox</a>
+    </div>
+
+    <h1 style="margin:0 0 20px;font-size:22px;font-weight:700;">Compose Message</h1>
+
+    {% for flash in app.flashes('inbox_error') %}
+        <div style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;">{{ flash }}</div>
+    {% endfor %}
+
+    <form method="POST" action="{{ path('inbox_compose') }}" data-turbo="false" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;">
+        <input type="hidden" name="_token" value="{{ csrf_token('inbox_compose') }}">
+
+        <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">To <span style="color:#dc2626;">*</span></label>
+            <input type="email" name="recipient_email" required
+                   value="{{ prefillRecipient }}"
+                   placeholder="recipient@email.com"
+                   style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;">
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Subject <span style="color:#dc2626;">*</span></label>
+            <input type="text" name="subject" required
+                   value="{{ prefillSubject }}"
+                   placeholder="Message subject..."
+                   style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;">
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Message <span style="color:#dc2626;">*</span></label>
+            <textarea name="body" required rows="7"
+                      placeholder="Write your message here..."
+                      style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <a href="{{ path('inbox_index') }}" style="padding:9px 20px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;text-decoration:none;color:#374151;">Cancel</a>
+            <button type="submit" style="padding:9px 22px;background:#0d9b00;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">Send Message</button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}
