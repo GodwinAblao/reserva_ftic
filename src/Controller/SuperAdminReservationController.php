@@ -13,6 +13,7 @@ use App\Repository\ReservationRepository;
 use App\Repository\ClassScheduleRepository;
 use App\Service\CalendarDataService;
 use App\Service\ClassScheduleFacultyMatcher;
+use App\Service\ConflictDetectionService;
 use App\Service\ScheduleRevisionService;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ClassScheduleImportService;
@@ -32,6 +33,11 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_SUPER_ADMIN')]
 class SuperAdminReservationController extends AbstractController
 {
+    public function __construct(
+        private readonly ConflictDetectionService $conflictDetectionService,
+    ) {
+    }
+
     #[Route('/reservations', name: 'admin_reservations')]
     public function listReservations(
         ReservationRepository $reservationRepo,
@@ -242,6 +248,10 @@ class SuperAdminReservationController extends AbstractController
         $date = $reservation->getReservationDate();
         $startTime = $reservation->getReservationStartTime();
         $endTime = $reservation->getReservationEndTime();
+
+        if ($reservation->isInstitutionalEvent()) {
+            $this->conflictDetectionService->syncReservationConflicts($reservation);
+        }
 
         if ($reservation->isInstitutionalEvent() && $conflictRepo->hasUnresolvedConflicts($reservation)) {
             $this->addFlash('reservation_error', 'Cannot approve: this institutional event has unresolved scheduling conflicts. Resolve all conflicts first.');
@@ -596,6 +606,7 @@ class SuperAdminReservationController extends AbstractController
         $facultyEmail    = $this->applyClassScheduleFields($schedule, $request, new ScheduleSlot($facility, $date, $start, $end), $facultyMatcher);
 
         $em->flush();
+        $this->conflictDetectionService->syncClassScheduleConflicts($schedule);
 
         $newSnapshot = $this->buildClassScheduleSnapshot($schedule);
         $message = 'Class schedule updated successfully.';

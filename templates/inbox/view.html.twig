@@ -6,7 +6,7 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <a href="{{ path('inbox_index') }}" style="color:#6b7280;text-decoration:none;font-size:13px;">&#8592; Back to Inbox</a>
-        <form method="POST" action="{{ path('inbox_delete" data-turbo="false', {id: message.id}) }}" style="margin:0;" onsubmit="return confirm('Delete this message?')">
+        <form method="POST" action="{{ path('inbox_delete', {id: message.id}) }}" data-turbo="false" style="margin:0;" onsubmit="return confirm('Delete this message?')">
             <input type="hidden" name="_token" value="{{ csrf_token('inbox_delete_' ~ message.id) }}">
             <button type="submit" style="padding:6px 14px;border:1px solid #fca5a5;border-radius:7px;background:#fef2f2;color:#dc2626;font-size:12px;cursor:pointer;">Delete</button>
         </form>
@@ -40,7 +40,7 @@
 
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;">
         <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;">Reply</h3>
-        <form method="POST" action="{{ path('inbox_reply" data-turbo="false', {id: message.id}) }}">
+        <form method="POST" action="{{ path('inbox_reply', {id: message.id}) }}" data-turbo="false">
             <input type="hidden" name="_token" value="{{ csrf_token('inbox_reply_' ~ message.id) }}">
             <textarea name="body" required rows="4"
                       placeholder="Write your reply..."

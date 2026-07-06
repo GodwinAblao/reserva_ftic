@@ -451,6 +451,7 @@
 {% endblock %}
 
 {% set calendar_full_mode = calendar_full_mode|default(true) %}
+{% set calendar_schedule_management_enabled = calendar_schedule_management_enabled|default(calendar_full_mode) %}
 
 {% block content %}
 {% set calendar_flashes = app.flashes %}
@@ -478,6 +479,7 @@
      data-status-url-pattern="{{ calendar_status_url_pattern|default('') }}"
      data-block-create-url="{{ calendar_block_create_url|default(path('admin_calendar_block')) }}"
      data-import-url="{{ calendar_import_url|default(path('admin_calendar_import')) }}"
+     data-import-manual-url="{{ calendar_import_manual_url|default(path('admin_calendar_import_manual')) }}"
      data-import-delete-url="{{ calendar_import_delete_url|default(path('admin_calendar_import_delete')) }}"
      data-block-update-pattern="{{ calendar_block_update_pattern|default('/super-admin/calendar/block/{id}/update') }}"
      data-block-delete-pattern="{{ calendar_block_delete_pattern|default('/super-admin/calendar/block/{id}/delete') }}"
@@ -486,6 +488,7 @@
      data-class-schedule-delete-pattern="{{ calendar_class_schedule_delete_pattern|default('/super-admin/class-schedule/{id}/delete') }}"
      data-class-schedule-available-url="{{ calendar_class_schedule_available_url|default('') }}"
      data-full-mode="{{ calendar_full_mode ? '1' : '0' }}"
+     data-schedule-management-enabled="{{ calendar_schedule_management_enabled ? '1' : '0' }}"
      data-can-import="{{ calendar_can_import|default(false) ? '1' : '0' }}"
      style="display:none;"></div>
 <div class="sa-page-header">
@@ -514,7 +517,7 @@
 
             <!-- Upload CSV Tab -->
             <div id="tab-upload-csv" class="import-tab-content" style="display: block;">
-                <form id="scheduleImportForm" action="{{ path('admin_calendar_import') }}" method="POST" enctype="multipart/form-data">
+                <form id="scheduleImportForm" action="{{ calendar_import_url|default(path('admin_calendar_import')) }}" method="POST" enctype="multipart/form-data">
                     <p style="font-size: 14px; color: var(--text-light); line-height: 1.6; margin-bottom: 16px;">Format: facility, day, start, end, course_code, section, faculty_name, faculty_email. Day: Monday–Sunday. Legacy 6-column CSV still supported.</p>
 
                     <div class="sa-import-mini-grid">
@@ -551,7 +554,7 @@
                     <p class="sa-warning-text"><strong>Warning:</strong> CSV upload will DELETE all existing schedules and replace them with the new file. The schedule will only be displayed within the selected date range.</p>
 
                     <div style="display: flex; gap: 12px; margin-top: 16px;">
-                        <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ path('admin_calendar_import_delete') }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
+                        <button type="button" id="scheduleDeleteSubmit" data-delete-url="{{ calendar_import_delete_url|default(path('admin_calendar_import_delete')) }}" data-token="{{ csrf_token('delete_imported_schedule') }}" class="sa-btn sa-btn-danger-soft">Delete Imported Schedule</button>
                         <button type="submit" id="scheduleImportSubmit" class="sa-btn sa-btn-primary" style="flex: 1;">Import &amp; Sync Schedule</button>
                     </div>
                     <div id="scheduleImportMessage" class="schedule-import-message" style="display:none; margin-top: 12px;"></div>
@@ -561,7 +564,7 @@
 
             <!-- Input Schedule Tab -->
             <div id="tab-input-schedule" class="import-tab-content" style="display: none;">
-                <form id="manualInputForm" action="{{ path('admin_calendar_import_manual') }}" method="POST">
+                <form id="manualInputForm" action="{{ calendar_import_manual_url|default(path('admin_calendar_import_manual')) }}" method="POST">
                     <div class="sa-import-mini-grid">
                         <div class="sa-import-field">
                             <label>Facility <span style="color: #dc2626;">*</span></label>
@@ -640,8 +643,8 @@
         </div>
         {% endif %}
 
-        {% if calendar_full_mode %}
-        <form id="modifyScheduleForm" action="{{ path('admin_calendar_block') }}" method="POST" data-create-url="{{ path('admin_calendar_block') }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
+        {% if calendar_schedule_management_enabled %}
+        <form id="modifyScheduleForm" action="{{ calendar_block_create_url|default(path('admin_calendar_block')) }}" method="POST" data-create-url="{{ calendar_block_create_url|default(path('admin_calendar_block')) }}" data-block-token="{{ csrf_token('manual_schedule_block') }}" data-delete-token="{{ csrf_token('manual_schedule_block_delete') }}" class="sa-import-card">
             <h3>Schedule Management</h3>
             <input type="hidden" name="_token" id="modifyFormToken" value="{{ csrf_token('manual_schedule_block') }}">
             <input type="hidden" id="modifyBlockId" name="block_id" value="">
@@ -659,7 +662,9 @@
                 <label>Action Type</label>
                 <select name="action_type" id="modifyActionType" required>
                     <option value="modify">Modify Schedule Details</option>
+                    {% if calendar_full_mode %}
                     <option value="block">Block This Time Slot</option>
+                    {% endif %}
                 </select>
             </div>
 
@@ -1177,8 +1182,11 @@
         classScheduleDeletePattern: calendarAppEl.dataset.classScheduleDeletePattern || '',
         classScheduleAvailableUrl: calendarAppEl.dataset.classScheduleAvailableUrl || '',
         fullMode: calendarAppEl.dataset.fullMode === '1',
+        scheduleManagementEnabled: calendarAppEl.dataset.scheduleManagementEnabled === '1',
         canImport: calendarAppEl.dataset.canImport === '1',
     };
+    const calendarInitialParams = new URLSearchParams(window.location.search);
+    let pendingAutoEditClassId = calendarInitialParams.get('edit_class') || calendarInitialParams.get('highlight_class') || '';
     let facilityAllocationTimer = null;
 
     const today = new Date();
@@ -1259,6 +1267,10 @@
         // Enhance time inputs with AM/PM display and validation
         const startTimeInput = document.getElementById('modifyStartTime');
         const endTimeInput = document.getElementById('modifyEndTime');
+
+        if (!startTimeInput || !endTimeInput) {
+            return;
+        }
         
         function formatTimeToAMPM(time24) {
             const [hours, minutes] = time24.split(':');
@@ -1387,7 +1399,7 @@
                 updateEndTimeOptions();
                 
                 // Refresh facility allocation if in class mode
-                if (document.getElementById('manualEditMode').value === 'class' && calendarConfig.classScheduleAvailableUrl) {
+                if (document.getElementById('manualEditMode')?.value === 'class' && calendarConfig.classScheduleAvailableUrl) {
                     refreshFacilityAllocation();
                 }
             } else {
@@ -1472,7 +1484,7 @@
         on(document.getElementById('confirmDeleteSchedule'), 'click',  deleteImportedScheduleInBackground, L);
         on(document.getElementById('cancelRevertSchedule'),  'click',  closeRevertScheduleModal,        L);
         on(document.getElementById('confirmRevertSchedule'), 'click',  confirmRevertSchedule,            L);
-        if (calendarConfig.fullMode) {
+        if (calendarConfig.scheduleManagementEnabled) {
             on(document.getElementById('modifyScheduleForm'),       'submit', saveModifyScheduleInBackground, L);
             on(document.getElementById('modifyCancelEdit'), 'click',  resetModifyScheduleForm,        L);
             on(document.getElementById('modifyActionType'), 'change', handleModifyActionTypeChange, L);
@@ -1490,6 +1502,7 @@
             if (!document.hidden) renderCalendar(true);
         }, 300000);  // 5 min — calendar data rarely changes; user actions trigger immediate refresh
 
+        renderCalendar(true);
     }
 
     // Boot the calendar once per page visit, regardless of Turbo or hard-load.
@@ -1528,6 +1541,17 @@
         }
     }
 
+    async function readJsonResponse(response, fallbackMessage) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return response.json();
+        }
+
+        const text = await response.text();
+        const isHtml = /^\s*<!doctype|^\s*<html/i.test(text);
+        throw new Error(isHtml ? fallbackMessage : (text.trim() || fallbackMessage));
+    }
+
     async function importScheduleInBackground(event) {
         event.preventDefault();
 
@@ -1550,7 +1574,7 @@
                     'Accept': 'application/json',
                 },
             });
-            const data = await response.json();
+            const data = await readJsonResponse(response, 'The schedule request returned an HTML page instead of JSON. Please refresh, sign in again, and retry.');
 
             console.log('Import Response:', data);
             console.log('Response status:', response.status);
@@ -1801,14 +1825,20 @@
             if (editMode === 'class' && classScheduleId) {
                 // For class schedule modification, use the class schedule update endpoint
                 if (actionType === 'block') {
-                    actionUrl = `/super-admin/class-schedule/${classScheduleId}/block`;
+                    actionUrl = calendarConfig.classScheduleBlockPattern
+                        ? calendarConfig.classScheduleBlockPattern.replace('ID_PLACEHOLDER', classScheduleId).replace('{id}', classScheduleId)
+                        : `/super-admin/class-schedule/${classScheduleId}/block`;
                 } else {
-                    actionUrl = `/super-admin/class-schedule/${classScheduleId}/update`;
+                    actionUrl = calendarConfig.classScheduleUpdatePattern
+                        ? calendarConfig.classScheduleUpdatePattern.replace('ID_PLACEHOLDER', classScheduleId).replace('{id}', classScheduleId)
+                        : `/super-admin/class-schedule/${classScheduleId}/update`;
                 }
             } else if (editMode === 'block' && blockId) {
                 // For block editing, use the update endpoint with numeric block ID
                 const numericBlockId = blockId.toString().replace('block_', '');
-                actionUrl = `/super-admin/calendar/block/${numericBlockId}/update`;
+                actionUrl = calendarConfig.blockUpdatePattern
+                    ? calendarConfig.blockUpdatePattern.replace('ID_PLACEHOLDER', numericBlockId).replace('{id}', numericBlockId)
+                    : `/super-admin/calendar/block/${numericBlockId}/update`;
             } else {
                 // For manual blocks, use the block endpoint
                 actionUrl = form.action;
@@ -1909,7 +1939,7 @@
             
             console.log('Facility response status:', response.status);
             
-            const data = await response.json();
+            const data = await readJsonResponse(response, 'The facility availability request returned an HTML page instead of JSON. Please refresh, sign in again, and retry.');
             console.log('Facility data:', data);
             const availableIds = new Set((data.facilities || []).map((f) => String(f.id)));
             const selectedId = facilitySelect.value;
@@ -2077,7 +2107,7 @@
                     'Accept': 'application/json',
                 },
             });
-            const data = await response.json();
+            const data = await readJsonResponse(response, 'The delete request returned an HTML page instead of JSON. Please refresh, sign in again, and retry.');
 
             if (!response.ok || !data.success) {
                 throw new Error(data.message || 'Delete failed.');
@@ -2207,6 +2237,29 @@
             ? renderWeekView(events, startDate)
             : renderDayView(events, renderDate);
         bindEventBlocks();
+        processPendingAutoEditClass();
+    }
+
+    function processPendingAutoEditClass() {
+        if (!pendingAutoEditClassId || !calendarConfig.scheduleManagementEnabled) {
+            return;
+        }
+
+        const classBlock = Array.from(document.querySelectorAll('.event-block[data-item-type="class_schedule"]'))
+            .find((block) => block.dataset.classId === String(pendingAutoEditClassId));
+        if (!classBlock || !document.getElementById('modifyScheduleForm')) {
+            return;
+        }
+
+        pendingAutoEditClassId = '';
+        openEventModal(classBlock);
+        window.setTimeout(() => {
+            modifyClassScheduleFromModal();
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('edit_class');
+            cleanUrl.searchParams.delete('highlight_class');
+            window.history.replaceState(null, '', cleanUrl.toString());
+        }, 0);
     }
 
     // Use event delegation for better performance - single listener on container

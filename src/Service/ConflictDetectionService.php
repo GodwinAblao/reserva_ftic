@@ -241,4 +241,129 @@ class ConflictDetectionService
     {
         return $this->conflictRepo->findByReservation($reservation);
     }
+
+    public function syncClassScheduleConflicts(ClassSchedule $schedule): void
+    {
+        $this->removeStaleClassScheduleConflicts($schedule);
+        $this->storeCurrentInstitutionalConflictsForClassSchedule($schedule);
+        $this->em->flush();
+    }
+
+    public function syncReservationConflicts(Reservation $reservation): void
+    {
+        if (!$reservation->isInstitutionalEvent()) {
+            return;
+        }
+
+        $this->detectAndStoreConflicts($reservation);
+
+        foreach ($this->conflictRepo->findByReservation($reservation) as $conflict) {
+            if ($conflict->getConflictType() !== ReservationConflict::TYPE_CLASS_SCHEDULE) {
+                continue;
+            }
+
+            $schedule = $this->classScheduleRepo->find($conflict->getConflictItemId());
+            if (!$schedule || !$this->classScheduleStillConflicts($reservation, $schedule)) {
+                $this->em->remove($conflict);
+            }
+        }
+
+        $this->em->flush();
+    }
+
+    private function removeStaleClassScheduleConflicts(ClassSchedule $schedule): void
+    {
+        $existing = $this->conflictRepo->createQueryBuilder('c')
+            ->andWhere('c.conflictType = :type')
+            ->andWhere('c.conflictItemId = :itemId')
+            ->setParameter('type', ReservationConflict::TYPE_CLASS_SCHEDULE)
+            ->setParameter('itemId', $schedule->getId())
+            ->getQuery()
+            ->getResult();
+
+        foreach ($existing as $conflict) {
+            /** @var ReservationConflict $conflict */
+            $reservation = $conflict->getReservation();
+            if (!$reservation || !$this->classScheduleStillConflicts($reservation, $schedule)) {
+                $this->em->remove($conflict);
+                continue;
+            }
+
+            $conflict->setConflictItemLabel($schedule->getDisplayTitle());
+            $conflict->setConflictItemFacility($schedule->getFacility()?->getName());
+            $conflict->setConflictDate($schedule->getScheduleDate());
+            $conflict->setConflictStartTime($schedule->getStartTime());
+            $conflict->setConflictEndTime($schedule->getEndTime());
+            $conflict->setConflictProfessor($schedule->getFacultyName());
+            $conflict->setConflictProfessorEmail($schedule->getFacultyEmail());
+            $conflict->setConflictCourse($schedule->getCourseCode());
+            $conflict->setConflictSection($schedule->getSection());
+            $conflict->setConflictStatus($schedule->getStatus() ?: 'Active');
+            $conflict->setUpdatedAt(new \DateTime());
+        }
+    }
+
+    private function storeCurrentInstitutionalConflictsForClassSchedule(ClassSchedule $schedule): void
+    {
+        $facility = $schedule->getFacility();
+        $date = $schedule->getScheduleDate();
+        $start = $schedule->getStartTime();
+        $end = $schedule->getEndTime();
+
+        if (!$facility || !$date || !$start || !$end || !$schedule->getId()) {
+            return;
+        }
+
+        $startOfDay = (clone $date)->setTime(0, 0, 0);
+        $endOfDay = (clone $date)->setTime(23, 59, 59);
+
+        $institutionalReservations = $this->reservationRepo->createQueryBuilder('r')
+            ->andWhere('r.facility = :facility')
+            ->andWhere('r.institutionalEvent = true')
+            ->andWhere('r.status IN (:statuses)')
+            ->andWhere('r.reservationDate BETWEEN :startOfDay AND :endOfDay')
+            ->andWhere('r.reservationStartTime < :endTime')
+            ->andWhere('r.reservationEndTime > :startTime')
+            ->setParameter('facility', $facility)
+            ->setParameter('statuses', ['Pending', 'Approved'])
+            ->setParameter('startOfDay', $startOfDay)
+            ->setParameter('endOfDay', $endOfDay)
+            ->setParameter('startTime', $start->format('H:i:s'))
+            ->setParameter('endTime', $end->format('H:i:s'))
+            ->getQuery()
+            ->getResult();
+
+        foreach ($institutionalReservations as $reservation) {
+            /** @var Reservation $reservation */
+            if ($this->conflictAlreadyExists($reservation, ReservationConflict::TYPE_CLASS_SCHEDULE, $schedule->getId())) {
+                continue;
+            }
+
+            $conflict = new ReservationConflict();
+            $conflict->setReservation($reservation);
+            $conflict->setConflictType(ReservationConflict::TYPE_CLASS_SCHEDULE);
+            $conflict->setConflictItemId($schedule->getId());
+            $conflict->setConflictItemLabel($schedule->getDisplayTitle());
+            $conflict->setConflictItemFacility($schedule->getFacility()?->getName());
+            $conflict->setConflictDate($schedule->getScheduleDate());
+            $conflict->setConflictStartTime($schedule->getStartTime());
+            $conflict->setConflictEndTime($schedule->getEndTime());
+            $conflict->setConflictProfessor($schedule->getFacultyName());
+            $conflict->setConflictProfessorEmail($schedule->getFacultyEmail());
+            $conflict->setConflictCourse($schedule->getCourseCode());
+            $conflict->setConflictSection($schedule->getSection());
+            $conflict->setConflictStatus($schedule->getStatus() ?: 'Active');
+            $this->em->persist($conflict);
+        }
+    }
+
+    private function classScheduleStillConflicts(Reservation $reservation, ClassSchedule $schedule): bool
+    {
+        return $reservation->isInstitutionalEvent()
+            && in_array($reservation->getStatus(), ['Pending', 'Approved'], true)
+            && $reservation->getFacility()?->getId() === $schedule->getFacility()?->getId()
+            && $reservation->getReservationDate()?->format('Y-m-d') === $schedule->getScheduleDate()?->format('Y-m-d')
+            && $reservation->getReservationStartTime() < $schedule->getEndTime()
+            && $reservation->getReservationEndTime() > $schedule->getStartTime();
+    }
 }

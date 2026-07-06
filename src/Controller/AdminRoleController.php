@@ -11,18 +11,22 @@ use App\Entity\MentoringAppointment;
 use App\Entity\Reservation;
 use App\Entity\ReservationConflict;
 use App\Repository\FacilityRepository;
+use App\Repository\ClassScheduleRepository;
 use App\Repository\MentorProfileRepository;
 use App\Repository\ReservationConflictRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\SpecializationRepository;
 use App\Repository\UserRepository;
 use App\Service\CalendarDataService;
+use App\Service\ClassScheduleImportService;
+use App\Service\ClassScheduleFacultyMatcher;
 use App\Service\ClassScheduleNotificationService;
 use App\Service\ConflictDetectionService;
 use App\Service\ReservationAuditLogger;
 use App\Service\ReservationMailer;
 use App\Service\ReservationStatusManager;
 use App\Service\NotificationService;
+use App\Service\ScheduleRevisionService;
 use App\Entity\User;
 use App\Entity\MentorCustomRequest;
 use App\Entity\MentorApplication;
@@ -231,6 +235,7 @@ class AdminRoleController extends AbstractController
     public function reservationMonitoring(
         EntityManagerInterface $em,
         ReservationConflictRepository $conflictRepo,
+        ConflictDetectionService $conflictDetectionService,
     ): Response {
         $today = new \DateTime('today');
         $tomorrow = new \DateTime('tomorrow');
@@ -253,6 +258,7 @@ class AdminRoleController extends AbstractController
         $conflictsByReservation = [];
         foreach ($pendingFacilityReservations as $r) {
             if ($r->isInstitutionalEvent()) {
+                $conflictDetectionService->syncReservationConflicts($r);
                 $conflictsByReservation[$r->getId()] = $conflictRepo->findByReservation($r);
             }
         }
@@ -280,17 +286,21 @@ class AdminRoleController extends AbstractController
             'facilities' => $facilityRepo->findAll(),
             'initialDate' => $parsedInitialDate ? $parsedInitialDate->format('Y-m-d') : null,
             'calendar_full_mode' => false,
+            'calendar_schedule_management_enabled' => $request->query->has('edit_class') || $request->query->has('highlight_class'),
             'calendar_can_import' => true,
             'calendar_back_url' => $this->generateUrl('admin_role_reservation_monitoring'),
             'calendar_data_url' => $this->generateUrl('admin_role_calendar_data'),
             'calendar_edit_url_pattern' => '/admin/reservations/{id}/edit',
             'calendar_status_url_pattern' => '/admin/reservations/{id}/status',
             'calendar_block_create_url' => '',
-            'calendar_import_url' => $this->generateUrl('admin_calendar_import'),
-            'calendar_import_delete_url' => $this->generateUrl('admin_calendar_import_delete'),
+            'calendar_import_url' => $this->generateUrl('admin_role_calendar_import'),
+            'calendar_import_manual_url' => $this->generateUrl('admin_role_calendar_import_manual'),
+            'calendar_import_delete_url' => $this->generateUrl('admin_role_calendar_import_delete'),
             'calendar_block_update_pattern' => '',
             'calendar_block_delete_pattern' => '',
             'calendar_notify_url_pattern' => '/admin/class-schedule/{id}/notify',
+            'calendar_class_schedule_update_pattern' => str_replace('{id}', 'ID_PLACEHOLDER', $this->generateUrl('admin_role_class_schedule_update', ['id' => 'ID_PLACEHOLDER'])),
+            'calendar_class_schedule_available_url' => $this->generateUrl('admin_role_class_schedule_available_facilities'),
         ]);
     }
 
@@ -314,6 +324,134 @@ class AdminRoleController extends AbstractController
             ['success' => $result['success'], 'message' => $result['message'], 'channels' => $result['channels']],
             $result['success'] ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST,
         );
+    }
+
+    #[Route('/calendar/class-schedule/available-facilities', name: 'admin_role_class_schedule_available_facilities', methods: ['GET'])]
+    public function availableFacilitiesForClassSchedule(
+        Request $request,
+        FacilityRepository $facilityRepo,
+        ReservationRepository $reservationRepo,
+    ): JsonResponse {
+        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->query->get('date'));
+        $start = \DateTime::createFromFormat('!H:i', (string) $request->query->get('start'));
+        $end = \DateTime::createFromFormat('!H:i', (string) $request->query->get('end'));
+
+        if (!$date || !$start || !$end || $end <= $start) {
+            return $this->json(['facilities' => [], 'message' => 'Invalid date or time.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $excludeId = $request->query->get('exclude_id');
+        $excludeScheduleId = is_numeric($excludeId) ? (int) $excludeId : null;
+        $availableFacilities = [];
+
+        foreach ($facilityRepo->findAll() as $facility) {
+            $isBooked = $reservationRepo->isTimeRangeBooked(
+                $facility,
+                $date,
+                $start,
+                $end,
+                null,
+                ['Approved', 'Pending'],
+                $excludeScheduleId,
+            );
+
+            if (!$isBooked) {
+                $availableFacilities[] = [
+                    'id' => $facility->getId(),
+                    'name' => $facility->getName(),
+                    'capacity' => $facility->getCapacity(),
+                ];
+            }
+        }
+
+        return $this->json(['facilities' => $availableFacilities]);
+    }
+
+    #[Route('/class-schedule/{id}/update', name: 'admin_role_class_schedule_update', methods: ['POST'])]
+    public function updateClassSchedule(
+        ClassSchedule $schedule,
+        Request $request,
+        FacilityRepository $facilityRepo,
+        ClassScheduleFacultyMatcher $facultyMatcher,
+        ConflictDetectionService $conflictDetectionService,
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
+        ClassScheduleNotificationService $notificationService,
+    ): JsonResponse {
+        $facility = $facilityRepo->find($request->request->get('facility'));
+        $date = \DateTime::createFromFormat('!Y-m-d', (string) $request->request->get('date'));
+        $start = \DateTime::createFromFormat('!H:i', (string) $request->request->get('start_time'));
+        $end = \DateTime::createFromFormat('!H:i', (string) $request->request->get('end_time'));
+
+        if (!$facility || !$date || !$start || !$end || $end <= $start) {
+            return $this->json(['success' => false, 'message' => 'Invalid class schedule data.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $dayStart = \DateTime::createFromFormat('!H:i', '07:00');
+        $dayEnd = \DateTime::createFromFormat('!H:i', '20:00');
+        if ($date->format('w') === '0') {
+            return $this->json(['success' => false, 'message' => 'All facilities are closed on Sundays.'], Response::HTTP_BAD_REQUEST);
+        }
+        if ($start < $dayStart || $end > $dayEnd) {
+            return $this->json(['success' => false, 'message' => 'Class schedules must be between 7:00 AM and 8:00 PM.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $oldSummary = sprintf(
+            '%s on %s, %s-%s at %s',
+            $schedule->getDisplayTitle(),
+            $schedule->getScheduleDate()?->format('M d, Y') ?? '',
+            $schedule->getStartTime()?->format('h:i A') ?? '',
+            $schedule->getEndTime()?->format('h:i A') ?? '',
+            $schedule->getFacility()?->getName() ?? 'N/A',
+        );
+        $oldFacultyEmail = $schedule->getFacultyEmail();
+        $previousFacility = $schedule->getFacility();
+        $facultyEmail = trim((string) ($request->request->get('faculty_email_input') ?: $request->request->get('faculty_email', '')));
+
+        if ($previousFacility && $previousFacility->getId() !== $facility->getId()) {
+            $schedule->setPreviousFacility($previousFacility);
+            $schedule->setIsRelocated(true);
+        }
+
+        $schedule
+            ->setFacility($facility)
+            ->setScheduleDate($date)
+            ->setDayOfWeek($date->format('l'))
+            ->setStartTime($start)
+            ->setEndTime($end)
+            ->setCourseCode(trim((string) ($request->request->get('course_code_input') ?: $request->request->get('course_code', $schedule->getCourseCode()))))
+            ->setSection(trim((string) ($request->request->get('section_input') ?: $request->request->get('section', $schedule->getSection() ?? ''))) ?: null)
+            ->setFacultyName(trim((string) ($request->request->get('faculty_name_input') ?: $request->request->get('faculty_name', $schedule->getFacultyName() ?? ''))) ?: null)
+            ->setFacultyEmail($facultyEmail !== '' ? $facultyEmail : null)
+            ->setFacultyUser($facultyMatcher->resolveFacultyUser($facultyEmail))
+            ->setUpdatedAt(new \DateTime());
+
+        $em->flush();
+        $conflictDetectionService->syncClassScheduleConflicts($schedule);
+
+        $newSummary = sprintf(
+            '%s on %s, %s-%s at %s',
+            $schedule->getDisplayTitle(),
+            $schedule->getScheduleDate()?->format('M d, Y') ?? '',
+            $schedule->getStartTime()?->format('h:i A') ?? '',
+            $schedule->getEndTime()?->format('h:i A') ?? '',
+            $schedule->getFacility()?->getName() ?? 'N/A',
+        );
+
+        if ($oldSummary !== $newSummary || $facultyEmail !== ($oldFacultyEmail ?? '')) {
+            $notificationService->notifyFaculty($schedule, "Your class schedule has been updated.\n\nOld Schedule: {$oldSummary}\nNew Schedule: {$newSummary}");
+        }
+
+        return $this->json([
+            'success' => true,
+            'message' => 'Class schedule updated successfully.',
+            'schedule' => [
+                'id' => $schedule->getId(),
+                'reservationDate' => $schedule->getScheduleDate()->format('Y-m-d'),
+                'isRelocated' => $schedule->isRelocated(),
+            ],
+            'scheduleRevision' => $scheduleRevision->getRevision(),
+        ]);
     }
 
     #[Route('/calendar/data', name: 'admin_role_calendar_data', methods: ['GET'])]
@@ -346,6 +484,132 @@ class AdminRoleController extends AbstractController
         unset($item);
 
         return $this->json($payload);
+    }
+
+    #[Route('/calendar/import', name: 'admin_role_calendar_import', methods: ['POST'])]
+    public function importSchedule(
+        Request $request,
+        ClassScheduleImportService $importService,
+        ScheduleRevisionService $scheduleRevision,
+    ): JsonResponse {
+        try {
+            $file = $request->files->get('schedule_file');
+            $pasteData = $request->request->get('schedule_paste');
+            $startDate = $request->request->get('start_date');
+            $endDate = $request->request->get('end_date');
+            $term = $request->request->get('term');
+            $sourceName = $file ? $file->getClientOriginalName() : 'Pasted Data';
+
+            $result = $importService->import($file, $pasteData, $sourceName, $startDate, $endDate, $term);
+
+            return $this->json([
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'created' => $result['created'],
+                'processed' => $result['processed'],
+                'relocated' => $result['relocated'],
+                'warnings' => $result['warnings'],
+                'date' => $result['date'],
+                'scheduleRevision' => $scheduleRevision->getRevision(),
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Import failed: ' . $e->getMessage(),
+            ], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route('/calendar/import/manual', name: 'admin_role_calendar_import_manual', methods: ['POST'])]
+    public function importManualSchedule(
+        Request $request,
+        ClassScheduleImportService $importService,
+        ScheduleRevisionService $scheduleRevision,
+    ): JsonResponse {
+        try {
+            $facility = $request->request->get('facility');
+            $day = $request->request->get('day');
+            $startTime = $request->request->get('start_time');
+            $endTime = $request->request->get('end_time');
+            $startDate = $request->request->get('start_date');
+            $endDate = $request->request->get('end_date');
+            $term = $request->request->get('term');
+            $courseCode = $request->request->get('course_code');
+            $section = $request->request->get('section');
+            $facultyName = $request->request->get('faculty_name');
+            $facultyEmail = $request->request->get('faculty_email');
+
+            if (!$facility || !$day || !$startTime || !$endTime || !$startDate || !$endDate || !$courseCode || !$section || !$facultyName || !$facultyEmail) {
+                return $this->json([
+                    'success' => false,
+                    'message' => 'All fields are required, including start date and end date.',
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            $csvContent = "facility,day,start_time,end_time,course_code,section,faculty_name,faculty_email\n";
+            $csvContent .= "\"$facility\",\"$day\",\"$startTime\",\"$endTime\",\"$courseCode\",\"$section\",\"$facultyName\",\"$facultyEmail\"\n";
+
+            $tempFile = tempnam(sys_get_temp_dir(), 'schedule_') . '.csv';
+            file_put_contents($tempFile, $csvContent);
+
+            $uploadedFile = new UploadedFile($tempFile, 'manual_schedule.csv', 'text/csv', null, true);
+            $result = $importService->import($uploadedFile, '', 'Manual Entry', $startDate, $endDate, $term, true);
+
+            unlink($tempFile);
+
+            return $this->json([
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'created' => $result['created'],
+                'scheduleRevision' => $scheduleRevision->getRevision(),
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Import failed: ' . $e->getMessage(),
+            ], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route('/calendar/import/delete', name: 'admin_role_calendar_import_delete', methods: ['POST'])]
+    public function deleteImportedSchedule(
+        ClassScheduleRepository $classScheduleRepo,
+        EntityManagerInterface $em,
+        ScheduleRevisionService $scheduleRevision,
+    ): JsonResponse {
+        try {
+            $importedSchedules = $classScheduleRepo->createQueryBuilder('cs')
+                ->where('cs.importBatchId IS NOT NULL')
+                ->getQuery()
+                ->getResult();
+
+            if (empty($importedSchedules)) {
+                return $this->json([
+                    'success' => false,
+                    'message' => 'No imported schedules found to delete.',
+                ]);
+            }
+
+            $deletedCount = 0;
+            foreach ($importedSchedules as $schedule) {
+                $em->remove($schedule);
+                ++$deletedCount;
+            }
+
+            $em->flush();
+
+            return $this->json([
+                'success' => true,
+                'message' => "Successfully deleted {$deletedCount} imported class schedules.",
+                'deletedCount' => $deletedCount,
+                'scheduleRevision' => $scheduleRevision->getRevision(),
+            ]);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Error deleting imported schedules: ' . $e->getMessage(),
+            ], Response::HTTP_BAD_REQUEST);
+        }
     }
 
     #[Route('/reservations/{id}/edit', name: 'admin_role_edit_reservation', methods: ['GET'])]
@@ -516,6 +780,7 @@ class AdminRoleController extends AbstractController
         EntityManagerInterface $em,
         ReservationMailer $reservationMailer,
         ReservationConflictRepository $conflictRepo,
+        ConflictDetectionService $conflictDetectionService,
     ): JsonResponse {
         if ($this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->json(['success' => false, 'message' => 'Use super-admin tools for this account.'], Response::HTTP_FORBIDDEN);
@@ -527,6 +792,10 @@ class AdminRoleController extends AbstractController
 
         if ($reservation->getStatus() !== 'Pending') {
             return $this->json(['success' => false, 'message' => 'Only pending reservations can be admin-approved.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($reservation->isInstitutionalEvent()) {
+            $conflictDetectionService->syncReservationConflicts($reservation);
         }
 
         if ($reservation->isInstitutionalEvent() && $conflictRepo->hasUnresolvedConflicts($reservation)) {

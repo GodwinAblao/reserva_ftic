@@ -383,7 +383,7 @@
                             {% if conflict.resolution %}
                                 <span class="fra-conflict-resolved">&#10003; {{ conflict.resolution|replace({'_':' '})|capitalize }}</span>
                             {% elseif conflict.conflictType == 'class_schedule' %}
-                                <a href="{{ path('admin_role_calendar') }}?highlight_class={{ conflict.conflictItemId }}{% if conflict.conflictDate %}&amp;date={{ conflict.conflictDate|date('Y-m-d') }}{% endif %}" class="fra-btn fra-btn-notes" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-block;">View on Calendar &#8599;</a>
+                                <a href="{{ path('admin_role_calendar') }}?edit_class={{ conflict.conflictItemId }}{% if conflict.conflictDate %}&amp;date={{ conflict.conflictDate|date('Y-m-d') }}{% endif %}" class="fra-btn fra-btn-notes" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-block;">View on Calendar &#8599;</a>
                             {% else %}
                                 <button class="fra-btn fra-btn-notes" style="font-size:11px;padding:4px 10px;" onclick="fraOpenResolveConflict({{ r.id }}, {{ conflict.id }}, '{{ csrf_token('resolve_conflict_' ~ conflict.id) }}')">Resolve</button>
                             {% endif %}
