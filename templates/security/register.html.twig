@@ -116,6 +116,15 @@
                                 <input type="password" id="password" name="password" class="form-input" required minlength="8" onpaste="return false;" oncopy="return false;" oncut="return false;" />
                                 <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
                             </div>
+                            <ul class="password-requirements" aria-live="polite">
+                                <li data-password-rule="length">At least 8 characters</li>
+                                <li data-password-rule="digit">At least 1 digit</li>
+                                <li data-password-rule="lowercase">At least 1 lower case letter</li>
+                                <li data-password-rule="uppercase">At least 1 upper case letter</li>
+                                <li data-password-rule="special">At least 1 special character such as *, -, or #</li>
+                                <li data-password-rule="allowed">Only letters, digits, and approved symbols</li>
+                                <li data-password-rule="common">Not a common password</li>
+                            </ul>
                         </div>
 
                         <div class="form-group">
@@ -124,6 +133,9 @@
                                 <input type="password" id="confirmPassword" name="passwordRepeat" class="form-input" required onpaste="return false;" oncopy="return false;" oncut="return false;" />
                                 <button type="button" class="password-toggle" data-password-toggle="confirmPassword" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
                             </div>
+                            <ul class="password-requirements password-requirements--confirm" aria-live="polite">
+                                <li data-password-rule="match">Passwords match</li>
+                            </ul>
                         </div>
                     </div>
 
@@ -227,6 +239,46 @@
         .password-input-wrapper input::-webkit-credentials-auto-fill-button {
             visibility: hidden;
             display: none !important;
+        }
+        .password-requirements {
+            list-style: none;
+            margin: 0.15rem 0 0;
+            padding: 0;
+            display: grid;
+            gap: 0.25rem;
+            color: #6b7280;
+            font-size: 0.78rem;
+            line-height: 1.25;
+        }
+        .password-requirements li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4rem;
+            transition: color 0.2s ease;
+        }
+        .password-requirements li::before {
+            content: "";
+            width: 0.48rem;
+            height: 0.48rem;
+            margin-top: 0.24rem;
+            border: 1px solid currentColor;
+            border-radius: 9999px;
+            flex: 0 0 auto;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .password-requirements li.is-valid {
+            color: #0D9B00;
+            font-weight: 600;
+        }
+        .password-requirements li.is-valid::before {
+            background: #0D9B00;
+            border-color: #0D9B00;
+        }
+        .password-requirements li.is-invalid {
+            color: #991b1b;
+        }
+        .password-requirements--confirm {
+            margin-top: 0.15rem;
         }
         .loading-spinner {
             display: inline-block;
@@ -401,6 +453,88 @@
         document.addEventListener('DOMContentLoaded', initializePasswordToggles);
         document.addEventListener('turbo:load', initializePasswordToggles);
         initializePasswordToggles();
+
+        function initializePasswordValidationChecklist() {
+            const passwordInput = document.getElementById('password');
+            const confirmInput = document.getElementById('confirmPassword');
+            if (!passwordInput || !confirmInput || passwordInput.dataset.validationChecklistBound === 'true') {
+                return;
+            }
+
+            passwordInput.dataset.validationChecklistBound = 'true';
+
+            const commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'admin', 'letmein'];
+            const rules = {
+                length: function(value) {
+                    return value.length >= 8;
+                },
+                digit: function(value) {
+                    return /\d/.test(value);
+                },
+                lowercase: function(value) {
+                    return /[a-z]/.test(value);
+                },
+                uppercase: function(value) {
+                    return /[A-Z]/.test(value);
+                },
+                special: function(value) {
+                    return /[^A-Za-z0-9]/.test(value);
+                },
+                allowed: function(value) {
+                    return /^[A-Za-z0-9@$!%*?&#^_.\-~+=|\\\/:;,(){}\[\]<>"']*$/.test(value);
+                },
+                common: function(value) {
+                    return value === '' || !commonPasswords.includes(value.toLowerCase());
+                }
+            };
+
+            function setRuleState(ruleName, isValid, shouldMarkInvalid) {
+                const item = document.querySelector('[data-password-rule="' + ruleName + '"]');
+                if (!item) {
+                    return;
+                }
+
+                item.classList.toggle('is-valid', isValid);
+                item.classList.toggle('is-invalid', shouldMarkInvalid && !isValid);
+            }
+
+            function updatePasswordChecklist() {
+                const value = passwordInput.value;
+                const hasStarted = value.length > 0;
+                let firstFailedRule = '';
+
+                Object.keys(rules).forEach(function(ruleName) {
+                    const isValid = rules[ruleName](value);
+                    setRuleState(ruleName, isValid, hasStarted);
+                    if (!isValid && !firstFailedRule) {
+                        firstFailedRule = ruleName;
+                    }
+                });
+
+                if (!hasStarted || !firstFailedRule) {
+                    passwordInput.setCustomValidity('');
+                } else {
+                    passwordInput.setCustomValidity('Please complete the password requirements.');
+                }
+
+                updateConfirmChecklist();
+            }
+
+            function updateConfirmChecklist() {
+                const hasConfirmValue = confirmInput.value.length > 0;
+                const matches = passwordInput.value !== '' && passwordInput.value === confirmInput.value;
+                setRuleState('match', matches, hasConfirmValue);
+                confirmInput.setCustomValidity(!hasConfirmValue || matches ? '' : 'Passwords must match.');
+            }
+
+            passwordInput.addEventListener('input', updatePasswordChecklist);
+            confirmInput.addEventListener('input', updateConfirmChecklist);
+            updatePasswordChecklist();
+        }
+
+        document.addEventListener('DOMContentLoaded', initializePasswordValidationChecklist);
+        document.addEventListener('turbo:load', initializePasswordValidationChecklist);
+        initializePasswordValidationChecklist();
 
         function startResendCooldown(seconds) {
             registerState.resendCooldownSeconds = Math.max(0, seconds);

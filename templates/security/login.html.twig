@@ -182,7 +182,16 @@
                         <input type="password" id="resetPasswordNew" name="password" class="form-input" required>
                         <button type="button" class="password-toggle" data-password-toggle="resetPasswordNew" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
                     </div>
-                    <small style="display:block; margin-top: 6px; color: #6b7280; font-size: 0.875rem;">Password must be 8+ chars with uppercase, lowercase, number, special char. Cannot reuse old password.</small>
+                    <ul class="password-requirements" aria-live="polite">
+                        <li data-reset-password-rule="length">At least 8 characters</li>
+                        <li data-reset-password-rule="digit">At least 1 digit</li>
+                        <li data-reset-password-rule="lowercase">At least 1 lower case letter</li>
+                        <li data-reset-password-rule="uppercase">At least 1 upper case letter</li>
+                        <li data-reset-password-rule="special">At least 1 special character such as *, -, or #</li>
+                        <li data-reset-password-rule="allowed">Only letters, digits, and approved symbols</li>
+                        <li data-reset-password-rule="common">Not a common password</li>
+                    </ul>
+                    <small style="display:block; margin-top: 6px; color: #6b7280; font-size: 0.78rem;">Cannot reuse old password.</small>
                 </div>
                 <div class="form-group">
                     <label for="resetPasswordRepeat" class="form-label">Confirm Password</label>
@@ -190,6 +199,9 @@
                         <input type="password" id="resetPasswordRepeat" name="passwordRepeat" class="form-input" required>
                         <button type="button" class="password-toggle" data-password-toggle="resetPasswordRepeat" aria-label="Show password" title="Show password" data-eye-state="off"><span class="password-eye" aria-hidden="true">👁</span></button>
                     </div>
+                    <ul class="password-requirements password-requirements--confirm" aria-live="polite">
+                        <li data-reset-password-rule="match">Passwords match</li>
+                    </ul>
                 </div>
                 <input type="hidden" name="_csrf_token" id="resetPasswordCsrfToken" value="">
                 <input type="hidden" name="token" id="resetPasswordToken" value="">
@@ -238,6 +250,46 @@
             .password-input-wrapper input::-webkit-credentials-auto-fill-button {
                 visibility: hidden;
                 display: none !important;
+            }
+            .password-requirements {
+                list-style: none;
+                margin: 0.15rem 0 0;
+                padding: 0;
+                display: grid;
+                gap: 0.25rem;
+                color: #6b7280;
+                font-size: 0.78rem;
+                line-height: 1.25;
+            }
+            .password-requirements li {
+                display: flex;
+                align-items: flex-start;
+                gap: 0.4rem;
+                transition: color 0.2s ease;
+            }
+            .password-requirements li::before {
+                content: "";
+                width: 0.48rem;
+                height: 0.48rem;
+                margin-top: 0.24rem;
+                border: 1px solid currentColor;
+                border-radius: 9999px;
+                flex: 0 0 auto;
+                transition: background-color 0.2s ease, border-color 0.2s ease;
+            }
+            .password-requirements li.is-valid {
+                color: #0D9B00;
+                font-weight: 600;
+            }
+            .password-requirements li.is-valid::before {
+                background: #0D9B00;
+                border-color: #0D9B00;
+            }
+            .password-requirements li.is-invalid {
+                color: #991b1b;
+            }
+            .password-requirements--confirm {
+                margin-top: 0.15rem;
             }
         `;
         document.head.appendChild(styleTag);
@@ -296,6 +348,87 @@
     document.addEventListener('DOMContentLoaded', initializePasswordToggles);
     document.addEventListener('turbo:load', initializePasswordToggles);
     initializePasswordToggles();
+
+    function initializeResetPasswordValidationChecklist() {
+        const passwordInput = document.getElementById('resetPasswordNew');
+        const confirmInput = document.getElementById('resetPasswordRepeat');
+        const form = document.getElementById('resetPasswordForm');
+        if (!passwordInput || !confirmInput || !form || passwordInput.dataset.validationChecklistBound === 'true') {
+            return;
+        }
+
+        passwordInput.dataset.validationChecklistBound = 'true';
+
+        const commonPasswords = ['123456', 'password', '12345678', 'qwerty', 'abc123', 'admin', 'letmein'];
+        const rules = {
+            length: function(value) {
+                return value.length >= 8;
+            },
+            digit: function(value) {
+                return /\d/.test(value);
+            },
+            lowercase: function(value) {
+                return /[a-z]/.test(value);
+            },
+            uppercase: function(value) {
+                return /[A-Z]/.test(value);
+            },
+            special: function(value) {
+                return /[^A-Za-z0-9]/.test(value);
+            },
+            allowed: function(value) {
+                return /^[A-Za-z0-9@$!%*?&#^_.\-~+=|\\\/:;,(){}\[\]<>"']*$/.test(value);
+            },
+            common: function(value) {
+                return value === '' || !commonPasswords.includes(value.toLowerCase());
+            }
+        };
+
+        function setRuleState(ruleName, isValid, shouldMarkInvalid) {
+            const item = document.querySelector('[data-reset-password-rule="' + ruleName + '"]');
+            if (!item) {
+                return;
+            }
+
+            item.classList.toggle('is-valid', isValid);
+            item.classList.toggle('is-invalid', shouldMarkInvalid && !isValid);
+        }
+
+        function updatePasswordChecklist() {
+            const value = passwordInput.value;
+            const hasStarted = value.length > 0;
+            let firstFailedRule = '';
+
+            Object.keys(rules).forEach(function(ruleName) {
+                const isValid = rules[ruleName](value);
+                setRuleState(ruleName, isValid, hasStarted);
+                if (!isValid && !firstFailedRule) {
+                    firstFailedRule = ruleName;
+                }
+            });
+
+            passwordInput.setCustomValidity(!hasStarted || !firstFailedRule ? '' : 'Please complete the password requirements.');
+            updateConfirmChecklist();
+        }
+
+        function updateConfirmChecklist() {
+            const hasConfirmValue = confirmInput.value.length > 0;
+            const matches = passwordInput.value !== '' && passwordInput.value === confirmInput.value;
+            setRuleState('match', matches, hasConfirmValue);
+            confirmInput.setCustomValidity(!hasConfirmValue || matches ? '' : 'Passwords must match.');
+        }
+
+        passwordInput.addEventListener('input', updatePasswordChecklist);
+        confirmInput.addEventListener('input', updateConfirmChecklist);
+        form.addEventListener('reset', function() {
+            window.setTimeout(updatePasswordChecklist, 0);
+        });
+        updatePasswordChecklist();
+    }
+
+    document.addEventListener('DOMContentLoaded', initializeResetPasswordValidationChecklist);
+    document.addEventListener('turbo:load', initializeResetPasswordValidationChecklist);
+    initializeResetPasswordValidationChecklist();
 
     {% if show_account_verify_modal is defined and show_account_verify_modal %}
     document.addEventListener('DOMContentLoaded', function() {
@@ -472,6 +605,11 @@
 
     document.getElementById('resetPasswordForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        if (!this.checkValidity()) {
+            this.reportValidity();
+            return;
+        }
+
         const password = document.getElementById('resetPasswordNew').value;
         const passwordRepeat = document.getElementById('resetPasswordRepeat').value;
         const token = document.getElementById('resetPasswordToken').value;
