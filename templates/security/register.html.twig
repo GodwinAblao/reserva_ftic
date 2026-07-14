@@ -494,7 +494,7 @@
                     return;
                 }
 
-                item.classList.toggle('is-valid', isValid);
+                item.classList.toggle('is-valid', shouldMarkInvalid && isValid);
                 item.classList.toggle('is-invalid', shouldMarkInvalid && !isValid);
             }
 
