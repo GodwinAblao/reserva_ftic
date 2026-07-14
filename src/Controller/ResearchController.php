@@ -28,6 +28,9 @@ class ResearchController extends AbstractController
     {
         $query = trim((string) $request->query->get('q', ''));
         $type = trim((string) $request->query->get('type', ''));
+        if (!in_array($type, ['News', 'Article', 'Research'], true)) {
+            $type = '';
+        }
         $articlePage = max(1, $request->query->getInt('articlesPage', 1));
         $newsPage = max(1, $request->query->getInt('newsPage', 1));
         $researchPage = max(1, $request->query->getInt('researchPage', 1));
@@ -282,14 +285,67 @@ class ResearchController extends AbstractController
             ->addSelect('u');
 
         if (!$this->isGranted('ROLE_ADMIN')) {
-            $qb->andWhere('r.visibility = :public OR r.author = :author')
+            $qb->andWhere('(r.visibility = :public OR r.author = :author)')
                 ->setParameter('public', 'Public')
                 ->setParameter('author', $this->getUser());
         }
 
         if ($query !== '') {
-            $qb->andWhere('LOWER(r.title) LIKE :query')
-                ->setParameter('query', '%' . mb_strtolower($query) . '%');
+            $searchTerms = $this->normalizeResearchSearchTerms($query);
+            $dateRanges = $this->extractResearchSearchDateRanges($query);
+            if ($dateRanges !== []) {
+                $searchTerms = array_values(array_filter(
+                    $searchTerms,
+                    fn (string $term): bool => !$this->isDateSearchToken($term)
+                ));
+            }
+
+            foreach ($searchTerms as $index => $term) {
+                $parameter = 'queryTerm' . $index;
+                $termConditions = [sprintf(
+                    'LOWER(r.title) LIKE :%1$s
+                    OR LOWER(r.category) LIKE :%1$s
+                    OR LOWER(COALESCE(r.tags, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(r.summary, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(r.body, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(r.authors, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(r.abstract, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(u.email, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(u.firstName, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(u.middleName, \'\')) LIKE :%1$s
+                    OR LOWER(COALESCE(u.lastName, \'\')) LIKE :%1$s',
+                    $parameter
+                )];
+
+                foreach ($this->extractResearchSearchDateRanges($term) as $dateIndex => $range) {
+                    $startParameter = 'dateStart' . $index . '_' . $dateIndex;
+                    $endParameter = 'dateEnd' . $index . '_' . $dateIndex;
+                    $termConditions[] = sprintf('(r.createdAt >= :%s AND r.createdAt < :%s)', $startParameter, $endParameter);
+                    $qb
+                        ->setParameter($startParameter, $range['start'])
+                        ->setParameter($endParameter, $range['end']);
+                }
+
+                $qb
+                    ->andWhere('(' . implode(' OR ', $termConditions) . ')')
+                    ->setParameter($parameter, '%' . $term . '%');
+            }
+
+            if ($dateRanges !== []) {
+                $dateConditions = [];
+                foreach ($dateRanges as $index => $range) {
+                    $startParameter = 'dateStart' . $index;
+                    $endParameter = 'dateEnd' . $index;
+                    $dateConditions[] = sprintf('(r.createdAt >= :%s AND r.createdAt < :%s)', $startParameter, $endParameter);
+                    $qb
+                        ->setParameter($startParameter, $range['start'])
+                        ->setParameter($endParameter, $range['end']);
+                }
+
+                if ($dateConditions !== []) {
+                    $qb->andWhere('(' . implode(' OR ', $dateConditions) . ')');
+                }
+            }
         }
 
         if ($type !== '') {
@@ -298,6 +354,74 @@ class ResearchController extends AbstractController
         }
 
         return $qb;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function normalizeResearchSearchTerms(string $query): array
+    {
+        $terms = preg_split('/\s+/', mb_strtolower(trim($query))) ?: [];
+        $terms = array_map(static fn (string $term): string => trim($term, " \t\n\r\0\x0B,.;:()[]{}\"'"), $terms);
+
+        return array_values(array_unique(array_filter($terms, static fn (string $term): bool => $term !== '')));
+    }
+
+    private function isDateSearchToken(string $term): bool
+    {
+        return preg_match('/^\d{4}(?:[-\/]\d{1,2}(?:[-\/]\d{1,2})?)?$/', $term) === 1
+            || preg_match('/^\d{1,2}(?:st|nd|rd|th)?$/', $term) === 1
+            || preg_match('/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)$/', $term) === 1;
+    }
+
+    /**
+     * @return list<array{start:\DateTimeImmutable,end:\DateTimeImmutable}>
+     */
+    private function extractResearchSearchDateRanges(string $query): array
+    {
+        $normalized = mb_strtolower(trim($query));
+        if ($normalized === '') {
+            return [];
+        }
+
+        $ranges = [];
+
+        if (preg_match('/^\d{4}$/', $normalized) === 1) {
+            $start = new \DateTimeImmutable($normalized . '-01-01 00:00:00');
+            $ranges[] = ['start' => $start, 'end' => $start->modify('+1 year')];
+        }
+
+        if (preg_match('/^(\d{4})[-\/](\d{1,2})$/', $normalized, $matches) === 1) {
+            $start = \DateTimeImmutable::createFromFormat('!Y-n', $matches[1] . '-' . $matches[2]);
+            if ($start instanceof \DateTimeImmutable) {
+                $ranges[] = ['start' => $start, 'end' => $start->modify('+1 month')];
+            }
+        }
+
+        if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/', $normalized, $matches) === 1) {
+            $start = \DateTimeImmutable::createFromFormat('!Y-n-j', $matches[1] . '-' . $matches[2] . '-' . $matches[3]);
+            if ($start instanceof \DateTimeImmutable) {
+                $ranges[] = ['start' => $start, 'end' => $start->modify('+1 day')];
+            }
+        }
+
+        if (preg_match('/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b.*\b(\d{4})\b/', $normalized, $matches) === 1) {
+            $start = new \DateTimeImmutable($matches[1] . ' 1 ' . $matches[2]);
+            $ranges[] = ['start' => $start, 'end' => $start->modify('+1 month')];
+        }
+
+        if (preg_match('/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,)?\s+(\d{4})\b/', $normalized, $matches) === 1) {
+            $start = new \DateTimeImmutable($matches[1] . ' ' . $matches[2] . ' ' . $matches[3]);
+            $ranges[] = ['start' => $start, 'end' => $start->modify('+1 day')];
+        }
+
+        $unique = [];
+        foreach ($ranges as $range) {
+            $key = $range['start']->format('Y-m-d') . ':' . $range['end']->format('Y-m-d');
+            $unique[$key] = $range;
+        }
+
+        return array_values($unique);
     }
 
     private function isResearchFileAvailable(?string $filePath): bool

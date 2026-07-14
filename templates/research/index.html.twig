@@ -183,7 +183,7 @@
 <section class="research-page">
 <section class="research-filter-panel">
     <form method="get" action="{{ path('research_index') }}" class="research-filter-form">
-        <input name="q" value="{{ query }}" class="form-input research-search-input" placeholder="Search by title">
+        <input name="q" value="{{ query }}" class="form-input research-search-input" placeholder="Search by title, author, date, or keyword">
         <select name="type" class="form-input">
             <option value="">All types</option>
             {% for option in ['News', 'Article', 'Research'] %}
@@ -197,6 +197,7 @@
     </form>
 </section>
 
+{% if type == '' or type == 'Article' %}
 <h2 class="research-section-title" id="articles">Articles</h2>
 <section class="research-showcase-grid articles-grid">
     {% set articleCount = 0 %}
@@ -270,7 +271,9 @@
 {% else %}
     <div class="research-pagination-info research-pagination-info--single">Page 1 of 1</div>
 {% endif %}
+{% endif %}
 
+{% if type == '' or type == 'News' %}
 <h2 class="research-section-title" id="news">News</h2>
 <section class="research-showcase-grid news-grid">
     {% set newsCount = 0 %}
@@ -345,7 +348,9 @@
 {% else %}
     <div class="research-pagination-info research-pagination-info--single">Page 1 of 1</div>
 {% endif %}
+{% endif %}
 
+{% if type == '' or type == 'Research' %}
 <h2 class="research-section-title" id="research">Research</h2>
 <section class="research-showcase-grid research-doc-grid">
     {% set researchCount = 0 %}
@@ -417,6 +422,7 @@
     </div>
 {% else %}
     <div class="research-pagination-info research-pagination-info--single">Page 1 of 1</div>
+{% endif %}
 {% endif %}
 
 <div id="researchDeleteModal" class="research-delete-modal" aria-hidden="true">
