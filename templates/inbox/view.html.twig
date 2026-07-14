@@ -34,17 +34,33 @@
                 <span style="font-size:11px;color:#9ca3af;">{{ msg.createdAt|date('M d, Y h:i A') }}</span>
             </div>
             <div style="padding:14px 16px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#111827;">{{ msg.body }}</div>
+            {% if msg.attachments|length > 0 %}
+                <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:8px;">
+                    {% for attachment in msg.attachments %}
+                        <a href="{{ path('inbox_attachment_download', {id: attachment.id}) }}"
+                           style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid #d1fae5;border-radius:8px;background:#f0fdf4;color:#166534;text-decoration:none;font-size:12px;">
+                            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ attachment.originalName }}</span>
+                            <span style="flex-shrink:0;color:#6b7280;">{{ attachment.formattedFileSize }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
         </div>
     {% endfor %}
     </div>
 
     <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:20px;">
         <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;">Reply</h3>
-        <form method="POST" action="{{ path('inbox_reply', {id: message.id}) }}" data-turbo="false">
+        <form method="POST" action="{{ path('inbox_reply', {id: message.id}) }}" enctype="multipart/form-data" data-turbo="false">
             <input type="hidden" name="_token" value="{{ csrf_token('inbox_reply_' ~ message.id) }}">
             <textarea name="body" required rows="4"
                       placeholder="Write your reply..."
                       style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;resize:vertical;box-sizing:border-box;margin-bottom:10px;"></textarea>
+            <div style="margin-bottom:10px;">
+                <input type="file" name="attachments[]" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
+                       style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;background:#fff;">
+                <small style="display:block;margin-top:6px;color:#6b7280;font-size:12px;">Up to 3 files. PDF, Word, PNG, or JPG. Max 10 MB each.</small>
+            </div>
             <div style="display:flex;justify-content:flex-end;">
                 <button type="submit" style="padding:8px 20px;background:#0d9b00;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">Send Reply</button>
             </div>

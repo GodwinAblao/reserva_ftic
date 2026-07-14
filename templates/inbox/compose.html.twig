@@ -14,7 +14,7 @@
         <div style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;">{{ flash }}</div>
     {% endfor %}
 
-    <form method="POST" action="{{ path('inbox_compose') }}" data-turbo="false" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;">
+    <form method="POST" action="{{ path('inbox_compose') }}" enctype="multipart/form-data" data-turbo="false" style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;">
         <input type="hidden" name="_token" value="{{ csrf_token('inbox_compose') }}">
 
         <div style="margin-bottom:14px;">
@@ -38,6 +38,13 @@
             <textarea name="body" required rows="7"
                       placeholder="Write your message here..."
                       style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Attachments</label>
+            <input type="file" name="attachments[]" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
+                   style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;background:#fff;">
+            <small style="display:block;margin-top:6px;color:#6b7280;font-size:12px;">Up to 3 files. PDF, Word, PNG, or JPG. Max 10 MB each.</small>
         </div>
 
         <div style="display:flex;gap:8px;justify-content:flex-end;">

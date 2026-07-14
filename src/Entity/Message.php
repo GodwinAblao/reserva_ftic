@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\MessageRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -50,9 +52,17 @@ class Message
     #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private \DateTimeInterface $createdAt;
 
+    /**
+     * @var Collection<int, MessageAttachment>
+     */
+    #[ORM\OneToMany(mappedBy: 'message', targetEntity: MessageAttachment::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $attachments;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
+        $this->attachments = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -86,6 +96,33 @@ class Message
 
     public function getCreatedAt(): \DateTimeInterface { return $this->createdAt; }
     public function setCreatedAt(\DateTimeInterface $createdAt): static { $this->createdAt = $createdAt; return $this; }
+
+    /**
+     * @return Collection<int, MessageAttachment>
+     */
+    public function getAttachments(): Collection
+    {
+        return $this->attachments;
+    }
+
+    public function addAttachment(MessageAttachment $attachment): static
+    {
+        if (!$this->attachments->contains($attachment)) {
+            $this->attachments->add($attachment);
+            $attachment->setMessage($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAttachment(MessageAttachment $attachment): static
+    {
+        if ($this->attachments->removeElement($attachment) && $attachment->getMessage() === $this) {
+            $attachment->setMessage(null);
+        }
+
+        return $this;
+    }
 
     public function getSenderDisplayName(): string
     {
